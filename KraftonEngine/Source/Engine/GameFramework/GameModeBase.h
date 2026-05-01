@@ -8,4 +8,4 @@ public:
 
 	virtual void StartPlay() {}
 }; 
-IMPLEMENT_CLASS(AGameModeBase, UObject)
+IMPLEMENT_CLASS(AGameModeBase, AActor)
