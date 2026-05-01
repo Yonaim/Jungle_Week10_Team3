@@ -225,7 +225,6 @@ void FMeshBufferManager::CreateScaleGizmo()
 		FVector4(0.0f, 1.0f, 0.0f, 1.0f),
 		FVector4(0.0f, 0.0f, 1.0f, 1.0f)
 	};
-
 	FVector dirs[3] = { FVector(1,0,0), FVector(0,1,0), FVector(0,0,1) };
 
 	auto AddBox = [&](const FVector& Center, const FVector& Extent, const FVector4& Color, int SubID) {
@@ -293,6 +292,7 @@ void FMeshBufferManager::CreateTranslationGizmo()
 		FVector4(0.0f, 1.0f, 0.0f, 1.0f),
 		FVector4(0.0f, 0.0f, 1.0f, 1.0f)
 	};
+	const FVector4 centerColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	for (int32 axis = 0; axis < 3; ++axis)
 	{
@@ -341,6 +341,49 @@ void FMeshBufferManager::CreateTranslationGizmo()
 			indices.push_back(curr + 1); indices.push_back(next + 1); indices.push_back(next + 2);
 			indices.push_back(curr + 2); indices.push_back(next + 2); indices.push_back(tipIndex);
 			indices.push_back(baseCenterIndex); indices.push_back(next + 2); indices.push_back(curr + 2);
+		}
+	}
+
+	const int32 sphereSlices = 12;
+	const int32 sphereStacks = 10;
+	const float centerRadius = 0.12f;
+	const uint32 centerStartVertex = static_cast<uint32>(vertices.size());
+
+	for (int32 stack = 0; stack <= sphereStacks; ++stack)
+	{
+		const float v = static_cast<float>(stack) / sphereStacks;
+		const float phi = v * M_PI;
+		const float sinPhi = sin(phi);
+		const float cosPhi = cos(phi);
+
+		for (int32 slice = 0; slice <= sphereSlices; ++slice)
+		{
+			const float u = static_cast<float>(slice) / sphereSlices;
+			const float theta = u * 2.0f * M_PI;
+			const float sinTheta = sin(theta);
+			const float cosTheta = cos(theta);
+
+			const FVector Position(
+				centerRadius * sinPhi * cosTheta,
+				centerRadius * sinPhi * sinTheta,
+				centerRadius * cosPhi);
+			vertices.push_back({ Position, centerColor, 3 });
+		}
+	}
+
+	for (int32 stack = 0; stack < sphereStacks; ++stack)
+	{
+		for (int32 slice = 0; slice < sphereSlices; ++slice)
+		{
+			const uint32 row0 = centerStartVertex + stack * (sphereSlices + 1);
+			const uint32 row1 = row0 + sphereSlices + 1;
+			const uint32 i0 = row0 + slice;
+			const uint32 i1 = row0 + slice + 1;
+			const uint32 i2 = row1 + slice;
+			const uint32 i3 = row1 + slice + 1;
+
+			indices.push_back(i0); indices.push_back(i2); indices.push_back(i1);
+			indices.push_back(i1); indices.push_back(i2); indices.push_back(i3);
 		}
 	}
 }

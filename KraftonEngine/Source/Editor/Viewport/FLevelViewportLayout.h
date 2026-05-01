@@ -73,9 +73,13 @@ public:
 
 	enum class EViewportPlaceActorType : uint8
 	{
+		Actor,
+		StaticMeshActor,
 		Cube,
 		Sphere,
 		Cylinder,
+		Cone,
+		Plane,
 		Decal,
 		HeightFog,
 		AmbientLight,

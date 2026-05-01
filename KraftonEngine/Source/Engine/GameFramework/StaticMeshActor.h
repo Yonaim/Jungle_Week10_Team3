@@ -12,7 +12,7 @@ public:
 	DECLARE_CLASS(AStaticMeshActor, AActor)
 	AStaticMeshActor() {}
 
-	void InitDefaultComponents(const FString& UStaticMeshFileName = "Data/BasicShape/Cylinder.obj");
+	void InitDefaultComponents(const FString& UStaticMeshFileName = "None");
 
 private:
 	UStaticMeshComponent* StaticMeshComponent = nullptr;

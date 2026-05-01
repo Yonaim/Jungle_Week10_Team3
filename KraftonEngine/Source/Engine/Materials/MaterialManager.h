@@ -22,6 +22,7 @@ namespace MatKeys
 
 class FMaterialTemplate;
 class UMaterial;
+class UTexture2D;
 struct FMaterialConstantBuffer;
 
 struct FMaterialAssetListItem
@@ -53,6 +54,8 @@ public:
 
 	void ScanMaterialAssets();
 	const TArray<FMaterialAssetListItem>& GetAvailableMaterialFiles() const { return AvailableMaterialFiles; }
+	UTexture2D* GetMaterialPreviewTexture(UMaterial* Material) const;
+	UTexture2D* GetMaterialPreviewTexture(const FString& MaterialPath);
 
 	void Release();
 private:

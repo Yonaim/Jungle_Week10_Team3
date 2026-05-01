@@ -185,6 +185,36 @@ bool UGizmoComponent::IntersectRayRotationHandle(const FRay& Ray, int32 Axis, fl
 	return false;
 }
 
+bool UGizmoComponent::IntersectRayCenterHandle(const FRay& Ray, float& OutRayT) const
+{
+	const FVector Center = GetWorldLocation();
+	const float CenterScale = GetWorldScale().X;
+	const float CenterRadius = 0.14f * CenterScale;
+
+	const FVector ToCenter = Center - Ray.Origin;
+	const float Projection = ToCenter.Dot(Ray.Direction);
+	if (Projection < 0.0f)
+	{
+		return false;
+	}
+
+	const FVector ClosestPoint = Ray.Origin + Ray.Direction * Projection;
+	const float DistanceSq = (ClosestPoint - Center).Dot(ClosestPoint - Center);
+	const float RadiusSq = CenterRadius * CenterRadius;
+	if (DistanceSq > RadiusSq)
+	{
+		return false;
+	}
+
+	const float Offset = std::sqrt((std::max)(0.0f, RadiusSq - DistanceSq));
+	OutRayT = Projection - Offset;
+	if (OutRayT < 0.0f)
+	{
+		OutRayT = Projection;
+	}
+	return true;
+}
+
 void UGizmoComponent::HandleDrag(float DragAmount)
 {
 	// Snap is applied on the accumulated drag so mouse deltas do not jitter between steps.
@@ -450,6 +480,16 @@ bool UGizmoComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitR
 		}
 	}
 
+	if (CurMode == EGizmoMode::Translate)
+	{
+		float CenterRayT = 0.0f;
+		if (IntersectRayCenterHandle(Ray, CenterRayT) && CenterRayT < BestRayT)
+		{
+			BestRayT = CenterRayT;
+			BestAxis = 3;
+		}
+	}
+
 	if (BestAxis >= 0)
 	{
 		OutHitResult.bHit = true;
@@ -514,6 +554,12 @@ void UGizmoComponent::SetTarget(AActor* NewTargetActor)
 
 void UGizmoComponent::UpdateLinearDrag(const FRay& Ray)
 {
+	if (SelectedAxis == 3)
+	{
+		UpdatePlanarDrag(Ray);
+		return;
+	}
+
 	FVector AxisVector = GetVectorForAxis(SelectedAxis);
 
 	FVector PlaneNormal = AxisVector.Cross(Ray.Direction);
@@ -538,6 +584,47 @@ void UGizmoComponent::UpdateLinearDrag(const FRay& Ray)
 
 	HandleDrag(DragAmount);
 
+	LastIntersectionLocation = CurrentIntersectionLocation;
+}
+
+void UGizmoComponent::UpdatePlanarDrag(const FRay& Ray)
+{
+	if (!TargetComponent)
+	{
+		return;
+	}
+
+	if (bIsFirstFrameOfDrag)
+	{
+		DragPlaneNormal = (Ray.Direction * -1.0f).Normalized();
+		const float InitialDenom = Ray.Direction.Dot(DragPlaneNormal);
+		if (std::abs(InitialDenom) < 1e-6f)
+		{
+			return;
+		}
+
+		const float InitialDistance = (GetWorldLocation() - Ray.Origin).Dot(DragPlaneNormal) / InitialDenom;
+		LastIntersectionLocation = Ray.Origin + (Ray.Direction * InitialDistance);
+		bIsFirstFrameOfDrag = false;
+		return;
+	}
+
+	const float Denom = Ray.Direction.Dot(DragPlaneNormal);
+	if (std::abs(Denom) < 1e-6f)
+	{
+		return;
+	}
+
+	const float DistanceToPlane = (GetWorldLocation() - Ray.Origin).Dot(DragPlaneNormal) / Denom;
+	const FVector CurrentIntersectionLocation = Ray.Origin + (Ray.Direction * DistanceToPlane);
+	const FVector FullDelta = CurrentIntersectionLocation - LastIntersectionLocation;
+	if (FullDelta.Dot(FullDelta) <= FMath::Epsilon)
+	{
+		return;
+	}
+
+	TargetComponent->SetWorldLocation(TargetComponent->GetWorldLocation() + FullDelta);
+	UpdateGizmoTransform();
 	LastIntersectionLocation = CurrentIntersectionLocation;
 }
 
@@ -588,8 +675,7 @@ void UGizmoComponent::UpdateHoveredAxis(int Index)
 			uint32 VertexIndex = MeshData->Indices[Index];
 			uint32 HitAxis = MeshData->Vertices[VertexIndex].SubID;
 
-			// 마스크에 의해 숨겨진 축은 선택 불가
-			if (AxisMask & (1u << HitAxis))
+			if (HitAxis == 3 || (AxisMask & (1u << HitAxis)))
 			{
 				SelectedAxis = HitAxis;
 			}

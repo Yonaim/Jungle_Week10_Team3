@@ -1,5 +1,6 @@
 ﻿#include "ShapeComponent.h"
 #include "GameFramework/World.h"
+#include "Collision/CollisionDispatcher.h"
 
 DEFINE_CLASS(UShapeComponent, UPrimitiveComponent)
 HIDE_FROM_COMPONENT_LIST(UShapeComponent)
@@ -8,8 +9,20 @@ void UShapeComponent::PostEditProperty(const char* PropertyName) {
 	USceneComponent::PostEditProperty(PropertyName);
 }
 
-void UShapeComponent::ContributeSelectedVisuals(FScene& Scene) const {
-	DrawDebugShape(Scene);
+void UShapeComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) {
+	USceneComponent::GetEditableProperties(OutProps);
+	OutProps.push_back({ "Draw Only If Selected", EPropertyType::Bool, &bDrawOnlyIfSelected });
+}
+
+void UShapeComponent::ContributeVisuals(FScene& Scene) const {
+	if (!bDrawOnlyIfSelected) {
+		DrawDebugShape(Scene);
+	}
+	else {
+		if (Owner && Owner->IsActorSelected()) {
+			DrawDebugShape(Scene);
+		}
+	}
 }
 
 void UShapeComponent::DrawDebugRing(FVector Center, float Radius, FVector AxisA, FVector AxisB, uint32 Segments, bool Half, FScene& Scene) const {

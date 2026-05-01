@@ -64,8 +64,18 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	}
 
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadFromFile");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ResourceFilePath()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadDefaultResources");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::DefaultContentResourceFilePath()), Device);
+	}
+
+	{
+		SCOPE_STARTUP_STAT("ResourceManager::LoadEditorResources");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::EditorResourceFilePath()), Device);
+	}
+
+	{
+		SCOPE_STARTUP_STAT("ResourceManager::LoadProjectResources");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ProjectResourceFilePath()), Device);
 	}
 
 	{

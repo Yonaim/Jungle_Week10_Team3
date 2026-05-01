@@ -4,12 +4,28 @@
 #include "Platform/Paths.h"
 #include "WICTextureLoader.h"
 
+#include <algorithm>
+#include <cwctype>
 #include <d3d11.h>
 #include <filesystem>
 
 IMPLEMENT_CLASS(UTexture2D, UObject)
 
 std::map<FString, UTexture2D*> UTexture2D::TextureCache;
+TArray<FTextureAssetListItem> UTexture2D::AvailableTextureFiles;
+
+namespace
+{
+	bool ShouldSkipTextureScanDirectory(const std::filesystem::path& Path)
+	{
+		const std::wstring Name = Path.filename().wstring();
+		return Name == L".git"
+			|| Name == L".vs"
+			|| Name == L"Bin"
+			|| Name == L"Build"
+			|| Name == L"Intermediate";
+	}
+}
 
 UTexture2D::~UTexture2D()
 {
@@ -49,6 +65,67 @@ void UTexture2D::ReleaseAllGPU()
 		}
 	}
 	TextureCache.clear();
+}
+
+void UTexture2D::ScanTextureAssets()
+{
+	AvailableTextureFiles.clear();
+
+	const std::filesystem::path ProjectRoot(FPaths::RootDir());
+	if (!std::filesystem::exists(ProjectRoot))
+	{
+		return;
+	}
+
+	std::error_code ErrorCode;
+	std::filesystem::recursive_directory_iterator It(
+		ProjectRoot,
+		std::filesystem::directory_options::skip_permission_denied,
+		ErrorCode);
+	std::filesystem::recursive_directory_iterator End;
+
+	while (It != End)
+	{
+		if (ErrorCode)
+		{
+			ErrorCode.clear();
+			It.increment(ErrorCode);
+			continue;
+		}
+
+		const std::filesystem::directory_entry& Entry = *It;
+		if (Entry.is_directory(ErrorCode) && ShouldSkipTextureScanDirectory(Entry.path()))
+		{
+			It.disable_recursion_pending();
+		}
+		else if (Entry.is_regular_file(ErrorCode) && IsSupportedTextureExtension(Entry.path()))
+		{
+			FTextureAssetListItem Item;
+			Item.DisplayName = FPaths::ToUtf8(Entry.path().filename().wstring());
+			Item.FullPath = FPaths::ToUtf8(Entry.path().lexically_relative(ProjectRoot).generic_wstring());
+			AvailableTextureFiles.push_back(std::move(Item));
+		}
+
+		It.increment(ErrorCode);
+	}
+}
+
+const TArray<FTextureAssetListItem>& UTexture2D::GetAvailableTextureFiles()
+{
+	return AvailableTextureFiles;
+}
+
+bool UTexture2D::IsSupportedTextureExtension(const std::filesystem::path& Path)
+{
+	std::wstring Ext = Path.extension().wstring();
+	std::transform(Ext.begin(), Ext.end(), Ext.begin(), towlower);
+
+	return Ext == L".png"
+		|| Ext == L".jpg"
+		|| Ext == L".jpeg"
+		|| Ext == L".bmp"
+		|| Ext == L".tga"
+		|| Ext == L".dds";
 }
 
 UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Device)

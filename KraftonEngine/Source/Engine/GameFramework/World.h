@@ -73,7 +73,11 @@ public:
 	void InsertActorToOctree(AActor* actor);
 	void RemoveActorToOctree(AActor* actor);
 	void UpdateActorInOctree(AActor* actor);
-	  
+
+	// Overlaps
+	void UpdateOverlaps();
+
+private:
 	//TArray<AActor*> Actors;
 	ULevel* PersistentLevel;
 	AGameModeBase* AuthorGameMode = nullptr;

@@ -26,3 +26,12 @@ struct FTextureAtlasResource
 using FFontResource     = FTextureAtlasResource;
 using FParticleResource = FTextureAtlasResource;
 using FTextureResource  = FTextureAtlasResource;	// 단일 정적 텍스처 (Columns=Rows=1)
+
+struct FPathResource
+{
+	FName Name;
+	FString Path; // Asset 상대 경로
+};
+
+using FMeshResource = FPathResource;
+using FGenericPathResource = FPathResource;

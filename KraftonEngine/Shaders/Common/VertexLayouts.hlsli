@@ -13,6 +13,13 @@ struct VS_Input_PC
     float4 color    : COLOR;
 };
 
+struct VS_Input_Gizmo
+{
+    float3 position : POSITION;
+    float4 color    : COLOR;
+    uint   subID    : TEXCOORD0;
+};
+
 // FVertexPNCT (Position + Normal + Color + TexCoord)
 // 사용: StaticMesh, OutlinePNCT
 struct VS_Input_PNCT
@@ -55,6 +62,13 @@ struct PS_Input_Color
 {
     float4 position : SV_POSITION;
     float4 color    : COLOR;
+};
+
+struct PS_Input_Gizmo
+{
+    float4 position : SV_POSITION;
+    float4 color    : COLOR;
+    nointerpolation uint subID : TEXCOORD0;
 };
 
 // SV_POSITION + TexCoord

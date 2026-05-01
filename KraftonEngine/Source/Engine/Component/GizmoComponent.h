@@ -87,6 +87,7 @@ public:
 private:
 	bool IntersectRayAxis(const FRay& Ray, FVector AxisEnd, float AxisScale, float& OutRayT);
 	bool IntersectRayRotationHandle(const FRay& Ray, int32 Axis, float& OutRayT) const;
+	bool IntersectRayCenterHandle(const FRay& Ray, float& OutRayT) const;
 
 	//Control Target Method
 	void HandleDrag(float DragAmount);
@@ -97,6 +98,7 @@ private:
 	void ScaleTarget(float DragAmount);
 
 	void UpdateLinearDrag(const FRay& Ray);
+	void UpdatePlanarDrag(const FRay& Ray);
 	void UpdateAngularDrag(const FRay& Ray);
 
 private:
@@ -121,6 +123,7 @@ private:
 	float ScaleSnapSize = 0.1f;
 	float AccumulatedRawDragAmount = 0.0f;
 	float LastAppliedSnappedDragAmount = 0.0f;
+	FVector DragPlaneNormal = FVector(0.0f, 0.0f, 1.0f);
 	const FMeshData* MeshData = nullptr;
 	uint32 AxisMask = 0x7; // 비트 0=X, 1=Y, 2=Z — LineTrace용 (렌더링은 Proxy가 직접 계산)
 	FPrimitiveSceneProxy* InnerProxy = nullptr;	// GizmoInner 전용 프록시

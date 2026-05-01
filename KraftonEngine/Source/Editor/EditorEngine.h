@@ -45,6 +45,8 @@ public:
 	void NewScene();
 	bool LoadSceneWithDialog();
 	bool LoadSceneFromPath(const FString& InScenePath);
+	bool ImportMaterialWithDialog();
+	bool ImportTextureWithDialog();
 	bool SaveScene();
 	bool SaveSceneAsWithDialog();
 	bool SaveSceneAs(const FString& InSceneName);

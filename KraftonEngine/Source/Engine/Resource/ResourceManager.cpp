@@ -17,6 +17,8 @@ namespace ResourceKey
 	constexpr const char* Font     = "Font";
 	constexpr const char* Particle = "Particle";
 	constexpr const char* Texture  = "Texture";
+	constexpr const char* Mesh     = "Mesh";
+	constexpr const char* PathMap  = "Path";
 	constexpr const char* Path     = "Path";
 	constexpr const char* Columns  = "Columns";
 	constexpr const char* Rows     = "Rows";
@@ -85,6 +87,33 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			Resource.Rows    = 1;
 			Resource.SRV     = nullptr;
 			TextureResources[Pair.first] = Resource;
+		}
+	}
+
+	// Mesh — { "Name": { "Path": "..." } }  (경로 레지스트리 전용)
+	if (Root.hasKey(ResourceKey::Mesh))
+	{
+		JSON MeshSection = Root[ResourceKey::Mesh];
+		for (auto& Pair : MeshSection.ObjectRange())
+		{
+			JSON Entry = Pair.second;
+			FMeshResource Resource;
+			Resource.Name = FName(Pair.first.c_str());
+			Resource.Path = Entry[ResourceKey::Path].ToString();
+			MeshResources[Pair.first] = Resource;
+		}
+	}
+
+	if (Root.hasKey(ResourceKey::PathMap))
+	{
+		JSON PathSection = Root[ResourceKey::PathMap];
+		for (auto& Pair : PathSection.ObjectRange())
+		{
+			JSON Entry = Pair.second;
+			FGenericPathResource Resource;
+			Resource.Name = FName(Pair.first.c_str());
+			Resource.Path = Entry[ResourceKey::Path].ToString();
+			PathResources[Pair.first] = Resource;
 		}
 	}
 
@@ -344,6 +373,74 @@ TArray<FString> FResourceManager::GetTextureNames() const
 	TArray<FString> Names;
 	Names.reserve(TextureResources.size());
 	for (const auto& [Key, _] : TextureResources)
+	{
+		Names.push_back(Key);
+	}
+	return Names;
+}
+
+FMeshResource* FResourceManager::FindMesh(const FName& MeshName)
+{
+	auto It = MeshResources.find(MeshName.ToString());
+	return (It != MeshResources.end()) ? &It->second : nullptr;
+}
+
+const FMeshResource* FResourceManager::FindMesh(const FName& MeshName) const
+{
+	auto It = MeshResources.find(MeshName.ToString());
+	return (It != MeshResources.end()) ? &It->second : nullptr;
+}
+
+void FResourceManager::RegisterMesh(const FName& MeshName, const FString& InPath)
+{
+	FMeshResource Resource;
+	Resource.Name = MeshName;
+	Resource.Path = InPath;
+	MeshResources[MeshName.ToString()] = Resource;
+}
+
+TArray<FString> FResourceManager::GetMeshNames() const
+{
+	TArray<FString> Names;
+	Names.reserve(MeshResources.size());
+	for (const auto& [Key, _] : MeshResources)
+	{
+		Names.push_back(Key);
+	}
+	return Names;
+}
+
+FGenericPathResource* FResourceManager::FindPath(const FName& ResourceName)
+{
+	auto It = PathResources.find(ResourceName.ToString());
+	return (It != PathResources.end()) ? &It->second : nullptr;
+}
+
+const FGenericPathResource* FResourceManager::FindPath(const FName& ResourceName) const
+{
+	auto It = PathResources.find(ResourceName.ToString());
+	return (It != PathResources.end()) ? &It->second : nullptr;
+}
+
+void FResourceManager::RegisterPath(const FName& ResourceName, const FString& InPath)
+{
+	FGenericPathResource Resource;
+	Resource.Name = ResourceName;
+	Resource.Path = InPath;
+	PathResources[ResourceName.ToString()] = Resource;
+}
+
+FString FResourceManager::ResolvePath(const FName& ResourceName, const FString& Fallback) const
+{
+	const FGenericPathResource* Resource = FindPath(ResourceName);
+	return Resource ? Resource->Path : Fallback;
+}
+
+TArray<FString> FResourceManager::GetPathNames() const
+{
+	TArray<FString> Names;
+	Names.reserve(PathResources.size());
+	for (const auto& [Key, _] : PathResources)
 	{
 		Names.push_back(Key);
 	}

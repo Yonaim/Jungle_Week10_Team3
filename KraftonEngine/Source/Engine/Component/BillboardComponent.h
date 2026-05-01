@@ -22,9 +22,11 @@ public:
 
 	void SetBillboardEnabled(bool bEnable) { bIsBillboard = bEnable; }
 
-	// --- Material ---
+	// --- Texture ---
+	void SetTexture(class UTexture2D* InTexture);
 	void SetMaterial(class UMaterial* InMaterial);
-	class UMaterial* GetMaterial() const { return Material; }
+	class UTexture2D* GetTexture() const { return Texture; }
+	const FString& GetTexturePath() const { return TextureSlot.Path; }
 
 	// --- Sprite Size (월드 공간) ---
 	void SetSpriteSize(float InWidth, float InHeight) { Width = InWidth; Height = InHeight; }
@@ -38,10 +40,12 @@ public:
 	FMeshDataView GetMeshDataView() const override { return FMeshDataView::FromMeshData(FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad)); }
 
 protected:
+	bool ResolveTextureFromPath(const FString& InPath);
+
 	bool bIsBillboard = true;
 
-	FMaterialSlot MaterialSlot;
-	UMaterial* Material = nullptr;
+	FTextureSlot TextureSlot;
+	UTexture2D* Texture = nullptr;
 
 	float Width  = 1.0f;
 	float Height = 1.0f;

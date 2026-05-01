@@ -53,12 +53,16 @@ void FSelectionManager::Select(AActor* Actor)
 	// 기존 선택 해제
 	for (AActor* Prev : SelectedActors)
 		SetActorProxiesSelected(Prev, false);
-
+	
+	for (auto* Actor : SelectedActors) {
+		Actor->SetActorSelected(false);
+	}
 	SelectedActors.clear();
 	SelectedComponent = nullptr;
 
 	if (Actor)
 	{
+		Actor->SetActorSelected(true);
 		SelectedActors.push_back(Actor);
 		SetActorProxiesSelected(Actor, true);
 		SelectedComponent = Actor->GetRootComponent();

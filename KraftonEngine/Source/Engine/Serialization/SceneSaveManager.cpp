@@ -11,6 +11,7 @@
 #include "Component/SceneComponent.h"
 #include "Component/ActorComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/BillboardComponent.h"
 #include "Component/CameraComponent.h"
 #include "Component/DecalComponent.h"
 #include "Component/HeightFogComponent.h"
@@ -352,6 +353,13 @@ json::JSON FSceneSaveManager::SerializePropertyValue(const FPropertyDescriptor& 
 
 	case EPropertyType::MaterialSlot: {
 		const FMaterialSlot* Slot = static_cast<const FMaterialSlot*>(Prop.ValuePtr);
+		JSON obj = json::Object();
+		obj["Path"] = JSON(Slot->Path);
+		return obj;
+	}
+
+	case EPropertyType::TextureSlot: {
+		const FTextureSlot* Slot = static_cast<const FTextureSlot*>(Prop.ValuePtr);
 		JSON obj = json::Object();
 		obj["Path"] = JSON(Slot->Path);
 		return obj;
@@ -739,6 +747,25 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON&
 		DeserializePropertyValue(Prop, Value);
 		Comp->PostEditProperty(Prop.Name.c_str());
 	}
+
+	if (UBillboardComponent* BillboardComponent = Cast<UBillboardComponent>(Comp))
+	{
+		if (PropsJSON.hasKey("Material") && !PropsJSON.hasKey("Texture"))
+		{
+			TArray<FPropertyDescriptor> BillboardProps;
+			BillboardComponent->GetEditableProperties(BillboardProps);
+			for (FPropertyDescriptor& Prop : BillboardProps)
+			{
+				if (Prop.Name == "Texture" && Prop.Type == EPropertyType::TextureSlot)
+				{
+					json::JSON& Value = PropsJSON["Material"];
+					DeserializePropertyValue(Prop, Value);
+					BillboardComponent->PostEditProperty("Texture");
+					break;
+				}
+			}
+		}
+	}
 }
 
 void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json::JSON& Value)
@@ -797,6 +824,12 @@ void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json
 	case EPropertyType::MaterialSlot: {
 		FMaterialSlot* Slot = static_cast<FMaterialSlot*>(Prop.ValuePtr);
 		if (Value.hasKey("Path"))     Slot->Path = Value["Path"].ToString();
+		break;
+	}
+
+	case EPropertyType::TextureSlot: {
+		FTextureSlot* Slot = static_cast<FTextureSlot*>(Prop.ValuePtr);
+		if (Value.hasKey("Path")) Slot->Path = Value["Path"].ToString();
 		break;
 	}
 

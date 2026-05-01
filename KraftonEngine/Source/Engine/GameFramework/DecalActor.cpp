@@ -3,6 +3,7 @@
 #include "Component/BillboardComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Materials/MaterialManager.h"
+#include "Resource/ResourceManager.h"
 
 IMPLEMENT_CLASS(ADecalActor, AActor)
 
@@ -16,6 +17,7 @@ ADecalActor::ADecalActor()
 void ADecalActor::InitDefaultComponents()
 {
 	DecalComponent = AddComponent<UDecalComponent>();
+	const FString DefaultDecalMaterialPath = FResourceManager::Get().ResolvePath(FName("Default.Material.Decal"));
 	auto Material = FMaterialManager::Get().GetOrCreateMaterial(DefaultDecalMaterialPath);
 	DecalComponent->SetMaterial(Material);
 	SetRootComponent(DecalComponent);

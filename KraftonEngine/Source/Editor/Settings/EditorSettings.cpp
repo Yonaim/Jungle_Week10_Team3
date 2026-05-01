@@ -52,13 +52,12 @@ namespace Key
 	// UI Widgets
 	constexpr const char* UIWidgets = "UIWidgets";
 	constexpr const char* ShowConsole = "ShowConsole";
-	constexpr const char* ShowControlPanel = "ShowControlPanel";
 	constexpr const char* ShowPropertyWindow = "ShowPropertyWindow";
 	constexpr const char* ShowSceneManager = "ShowSceneManager";
+	constexpr const char* ShowPlaceActors = "ShowPlaceActors";
 	constexpr const char* ShowStatProfiler = "ShowStatProfiler";
 	constexpr const char* ShowContentBrowser = "ShowContentBrowser";
 	constexpr const char* ShowImGuiSettings = "ShowImGuiSettings";
-	constexpr const char* ShowEditorDebug = "ShowEditorDebug";
 	constexpr const char* ShowShadowMapDebug = "ShowShadowMapDebug";
 
 	// Perspective Camera
@@ -150,13 +149,12 @@ void FEditorSettings::SaveToFile(const FString& Path) const
 	// UI Widgets
 	JSON WidgetsObj = Object();
 	WidgetsObj[Key::ShowConsole] = UI.bConsole;
-	WidgetsObj[Key::ShowControlPanel] = UI.bControl;
 	WidgetsObj[Key::ShowPropertyWindow] = UI.bProperty;
 	WidgetsObj[Key::ShowSceneManager] = UI.bScene;
+	WidgetsObj[Key::ShowPlaceActors] = UI.bPlaceActors;
 	WidgetsObj[Key::ShowStatProfiler] = UI.bStat;
 	WidgetsObj[Key::ShowContentBrowser] = UI.bContentBrowser;
 	WidgetsObj[Key::ShowImGuiSettings] = UI.bImGUISettings;
-	WidgetsObj[Key::ShowEditorDebug] = UI.bEditorDebug;
 	WidgetsObj[Key::ShowShadowMapDebug] = UI.bShadowMapDebug;
 	Root[Key::UIWidgets] = WidgetsObj;
 
@@ -323,13 +321,12 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 	{
 		JSON W = Root[Key::UIWidgets];
 		if (W.hasKey(Key::ShowConsole))        UI.bConsole = W[Key::ShowConsole].ToBool();
-		if (W.hasKey(Key::ShowControlPanel))   UI.bControl = W[Key::ShowControlPanel].ToBool();
 		if (W.hasKey(Key::ShowPropertyWindow)) UI.bProperty = W[Key::ShowPropertyWindow].ToBool();
 		if (W.hasKey(Key::ShowSceneManager))   UI.bScene = W[Key::ShowSceneManager].ToBool();
+		if (W.hasKey(Key::ShowPlaceActors))    UI.bPlaceActors = W[Key::ShowPlaceActors].ToBool();
 		if (W.hasKey(Key::ShowStatProfiler))   UI.bStat = W[Key::ShowStatProfiler].ToBool();
 		if (W.hasKey(Key::ShowContentBrowser)) UI.bContentBrowser = W[Key::ShowContentBrowser].ToBool();
 		if (W.hasKey(Key::ShowImGuiSettings))  UI.bImGUISettings = W[Key::ShowImGuiSettings].ToBool();
-		if (W.hasKey(Key::ShowEditorDebug))    UI.bEditorDebug = W[Key::ShowEditorDebug].ToBool();
 		if (W.hasKey(Key::ShowShadowMapDebug)) UI.bShadowMapDebug = W[Key::ShowShadowMapDebug].ToBool();
 	}
 

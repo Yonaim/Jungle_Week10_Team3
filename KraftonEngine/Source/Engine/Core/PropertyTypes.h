@@ -20,12 +20,18 @@ enum class EPropertyType : uint8_t
 	Color4,	   // FVector4 RGBA — ImGui::ColorEdit4 위젯
 	StaticMeshRef, // UStaticMesh* 에셋 레퍼런스 (드롭다운 선택)
 	MaterialSlot,  // FMaterialSlot — 머티리얼 경로
+	TextureSlot,   // FTextureSlot — 텍스처 경로
 	Enum,
 	Vec3Array,
 };
 
 // 머티리얼 슬롯: 경로를 하나의 단위로 관리
 struct FMaterialSlot
+{
+	std::string Path;
+};
+
+struct FTextureSlot
 {
 	std::string Path;
 };

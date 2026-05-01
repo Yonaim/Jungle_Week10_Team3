@@ -2,7 +2,7 @@
 
 #include "Editor/EditorEngine.h"
 #include "Editor/PIE/PIETypes.h"
-#include "Platform/Paths.h"
+#include "Resource/ResourceManager.h"
 #include "ImGui/imgui.h"
 #include "WICTextureLoader.h"
 
@@ -13,14 +13,15 @@ void FEditorPlayToolbarWidget::Initialize(UEditorEngine* InEditor, ID3D11Device*
 	Editor = InEditor;
 	if (!InDevice) return;
 
-	const std::wstring IconDir = FPaths::Combine(FPaths::RootDir(), L"Asset/Editor/Icons/");
+	const FString PlayIconPath = FResourceManager::Get().ResolvePath(FName("Editor.Icon.Play"));
+	const FString StopIconPath = FResourceManager::Get().ResolvePath(FName("Editor.Icon.Stop"));
 
 	DirectX::CreateWICTextureFromFile(
-		InDevice, (IconDir + L"icon_playInSelectedViewport_16x.png").c_str(),
+		InDevice, FPaths::ToWide(PlayIconPath).c_str(),
 		nullptr, &PlayIcon);
 
 	DirectX::CreateWICTextureFromFile(
-		InDevice, (IconDir + L"generic_stop_16x.png").c_str(),
+		InDevice, FPaths::ToWide(StopIconPath).c_str(),
 		nullptr, &StopIcon);
 }
 
@@ -37,14 +38,14 @@ void FEditorPlayToolbarWidget::Render(float Width)
 
 	const ImVec2 CursorStart = ImGui::GetCursorScreenPos();
 
-	// 툴바 배경
+	// ??而?獄쏄퀗瑗?
 	ImDrawList* DrawList = ImGui::GetWindowDrawList();
 	DrawList->AddRectFilled(
 		CursorStart,
 		ImVec2(CursorStart.x + Width, CursorStart.y + ToolbarHeight),
 		IM_COL32(40, 40, 40, 255));
 
-	// 내부 버튼 영역을 상자 중앙에 배치
+	// ??? 甕곌쑵???怨몃열???怨몄쁽 餓λ쵐釉??獄쏄퀣??
 	const float ButtonPadding = (ToolbarHeight - IconSize) * 0.5f;
 	ImGui::SetCursorScreenPos(ImVec2(CursorStart.x + ButtonPadding, CursorStart.y + ButtonPadding));
 
@@ -72,7 +73,7 @@ void FEditorPlayToolbarWidget::Render(float Width)
 		if (bDisabled)
 		{
 			ImGui::PopStyleVar();
-			bClicked = false; // disabled 상태에서는 클릭 무시
+			bClicked = false; // disabled ?怨밴묶?癒?퐣???????얜똻??
 		}
 		return bClicked;
 	};
@@ -92,6 +93,6 @@ void FEditorPlayToolbarWidget::Render(float Width)
 
 	ImGui::PopStyleColor(3);
 
-	// 다음 콘텐츠는 툴바 아래로 이어지도록 커서 복원
+	// ??쇱벉 ?꾩꼹?쀯㎘醫딅뮉 ??而??袁⑥삋嚥???곷선筌왖?袁⑥쨯 ?뚣끉苑?癰귣벊??
 	ImGui::SetCursorScreenPos(ImVec2(CursorStart.x, CursorStart.y + ToolbarHeight));
 }

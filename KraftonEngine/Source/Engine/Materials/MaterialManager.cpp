@@ -37,6 +37,52 @@ void FMaterialManager::ScanMaterialAssets()
 	}
 }
 
+UTexture2D* FMaterialManager::GetMaterialPreviewTexture(UMaterial* Material) const
+{
+	if (!Material)
+	{
+		return nullptr;
+	}
+
+	UTexture2D* PreviewTexture = nullptr;
+	static const char* PreferredSlots[] = {
+		"DiffuseTexture",
+		"EmissiveTexture",
+		"Custom0Texture",
+		"Custom1Texture",
+		"NormalTexture"
+	};
+
+	for (const char* SlotName : PreferredSlots)
+	{
+		if (Material->GetTextureParameter(SlotName, PreviewTexture) && PreviewTexture)
+		{
+			return PreviewTexture;
+		}
+	}
+
+	TMap<FString, UTexture2D*>* Textures = Material->GetTexture();
+	if (!Textures)
+	{
+		return nullptr;
+	}
+
+	for (const auto& Pair : *Textures)
+	{
+		if (Pair.second)
+		{
+			return Pair.second;
+		}
+	}
+
+	return nullptr;
+}
+
+UTexture2D* FMaterialManager::GetMaterialPreviewTexture(const FString& MaterialPath)
+{
+	return GetMaterialPreviewTexture(GetOrCreateMaterial(MaterialPath));
+}
+
 UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MatFilePath)
 {
 	std::filesystem::path Path(FPaths::ToWide(MatFilePath));

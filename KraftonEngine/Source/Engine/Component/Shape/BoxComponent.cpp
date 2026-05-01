@@ -4,7 +4,7 @@
 IMPLEMENT_CLASS(UBoxComponent, UShapeComponent)
 
 void UBoxComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) {
-	USceneComponent::GetEditableProperties(OutProps);
+	UShapeComponent::GetEditableProperties(OutProps);
 	OutProps.push_back({ "Box Extent", EPropertyType::Vec3, &BoxExtent, 0.0f, 0.0f, 0.1f });
 }
 
@@ -42,4 +42,20 @@ void UBoxComponent::DrawDebugShape(FScene& Scene) const {
 void UBoxComponent::SetRelativeScale(const FVector& NewScale) {
 	USceneComponent::SetRelativeScale(NewScale);
 	BoxExtent = NewScale;
+}
+
+void UBoxComponent::UpdateWorldAABB() const {
+	FVector LExt = BoxExtent;
+
+	FMatrix worldMatrix = GetWorldMatrix();
+
+	float NewEx = std::abs(worldMatrix.M[0][0]) * LExt.X + std::abs(worldMatrix.M[1][0]) * LExt.Y + std::abs(worldMatrix.M[2][0]) * LExt.Z;
+	float NewEy = std::abs(worldMatrix.M[0][1]) * LExt.X + std::abs(worldMatrix.M[1][1]) * LExt.Y + std::abs(worldMatrix.M[2][1]) * LExt.Z;
+	float NewEz = std::abs(worldMatrix.M[0][2]) * LExt.X + std::abs(worldMatrix.M[1][2]) * LExt.Y + std::abs(worldMatrix.M[2][2]) * LExt.Z;
+
+	FVector WorldCenter = GetWorldLocation();
+	WorldAABBMinLocation = WorldCenter - FVector(NewEx, NewEy, NewEz);
+	WorldAABBMaxLocation = WorldCenter + FVector(NewEx, NewEy, NewEz);
+	bWorldAABBDirty = false;
+	bHasValidWorldAABB = true;
 }

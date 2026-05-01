@@ -1,4 +1,4 @@
-﻿#include "Editor/Viewport/FLevelViewportLayout.h"
+#include "Editor/Viewport/FLevelViewportLayout.h"
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
@@ -19,12 +19,11 @@
 #include "UI/SSplitter.h"
 #include "Math/MathUtils.h"
 #include "Platform/Paths.h"
+#include "Resource/ResourceManager.h"
 #include "ImGui/imgui.h"
 #include "WICTextureLoader.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
-#include "Component/Light/LightComponentBase.h"
-
 #include "GameFramework/StaticMeshActor.h"
 
 #include <algorithm>
@@ -44,28 +43,35 @@ enum class EToolbarIcon : int32
 	TranslateSnap,
 	RotateSnap,
 	ScaleSnap,
+	CameraSettings,
 	ShowFlag,
 	Count
 };
 
-const wchar_t* GetToolbarIconFileName(EToolbarIcon Icon)
+const char* GetToolbarIconResourceKey(EToolbarIcon Icon)
 {
 	switch (Icon)
 	{
-	case EToolbarIcon::Menu: return L"Menu.png";
-	case EToolbarIcon::Setting: return L"Setting.png";
-	case EToolbarIcon::AddActor: return L"Add_Actor.png";
-	case EToolbarIcon::Translate: return L"Translate.png";
-	case EToolbarIcon::Rotate: return L"Rotate.png";
-	case EToolbarIcon::Scale: return L"Scale.png";
-	case EToolbarIcon::WorldSpace: return L"WorldSpace.png";
-	case EToolbarIcon::LocalSpace: return L"LocalSpace.png";
-	case EToolbarIcon::TranslateSnap: return L"Translate_Snap.png";
-	case EToolbarIcon::RotateSnap: return L"Rotate_Snap.png";
-	case EToolbarIcon::ScaleSnap: return L"Scale_Snap.png";
-	case EToolbarIcon::ShowFlag: return L"Show_Flag.png";
-	default: return L"";
+	case EToolbarIcon::Menu: return "Editor.ToolIcon.Menu";
+	case EToolbarIcon::Setting: return "Editor.ToolIcon.Setting";
+	case EToolbarIcon::AddActor: return "Editor.ToolIcon.AddActor";
+	case EToolbarIcon::Translate: return "Editor.ToolIcon.Translate";
+	case EToolbarIcon::Rotate: return "Editor.ToolIcon.Rotate";
+	case EToolbarIcon::Scale: return "Editor.ToolIcon.Scale";
+	case EToolbarIcon::WorldSpace: return "Editor.ToolIcon.WorldSpace";
+	case EToolbarIcon::LocalSpace: return "Editor.ToolIcon.LocalSpace";
+	case EToolbarIcon::TranslateSnap: return "Editor.ToolIcon.TranslateSnap";
+	case EToolbarIcon::RotateSnap: return "Editor.ToolIcon.RotateSnap";
+	case EToolbarIcon::ScaleSnap: return "Editor.ToolIcon.ScaleSnap";
+	case EToolbarIcon::CameraSettings: return "Editor.ToolIcon.Camera";
+	case EToolbarIcon::ShowFlag: return "Editor.ToolIcon.ShowFlag";
+	default: return "";
 	}
+}
+
+FString GetToolbarIconPath(EToolbarIcon Icon)
+{
+	return FResourceManager::Get().ResolvePath(FName(GetToolbarIconResourceKey(Icon)));
 }
 
 ID3D11ShaderResourceView** GetToolbarIconTable()
@@ -105,11 +111,10 @@ void EnsureToolbarIconsLoaded(FRenderer* RendererPtr)
 
 	ID3D11Device* Device = RendererPtr->GetFD3DDevice().GetDevice();
 	ID3D11ShaderResourceView** ToolbarIcons = GetToolbarIconTable();
-	const std::wstring IconDir = FPaths::Combine(FPaths::RootDir(), L"Asset/Editor/ToolIcons/");
 	for (int32 i = 0; i < static_cast<int32>(EToolbarIcon::Count); ++i)
 	{
-		const std::wstring FilePath = IconDir + GetToolbarIconFileName(static_cast<EToolbarIcon>(i));
-		DirectX::CreateWICTextureFromFile(Device, FilePath.c_str(), nullptr, &ToolbarIcons[i]);
+		const FString FilePath = GetToolbarIconPath(static_cast<EToolbarIcon>(i));
+		DirectX::CreateWICTextureFromFile(Device, FPaths::ToWide(FilePath).c_str(), nullptr, &ToolbarIcons[i]);
 	}
 
 	bToolbarIconsLoaded = true;
@@ -163,9 +168,19 @@ bool DrawToolbarIconButton(const char* Id, EToolbarIcon Icon, const char* Fallba
 	const ImVec2 IconSize = GetToolbarIconRenderSize(Icon, FallbackSize, MaxIconSize);
 	return ImGui::ImageButton(Id, reinterpret_cast<ImTextureID>(IconSRV), IconSize);
 }
+
+FString GetRegisteredMeshPath(const char* MeshKey)
+{
+	if (const FMeshResource* MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
+	{
+		return MeshResource->Path;
+	}
+
+	return "";
+}
 }
 
-// ─── 레이아웃별 슬롯 수 ─────────────────────────────────────
+// ??? ?덉씠?꾩썐蹂??щ’ ???????????????????????????????????????
 
 int32 FLevelViewportLayout::GetSlotCount(EViewportLayout Layout)
 {
@@ -182,41 +197,40 @@ int32 FLevelViewportLayout::GetSlotCount(EViewportLayout Layout)
 	}
 }
 
-// ─── 아이콘 파일명 매핑 ──────────────────────────────────────
+// ??? ?꾩씠肄??뚯씪紐?留ㅽ븨 ??????????????????????????????????????
 
-static const wchar_t* GetLayoutIconFileName(EViewportLayout Layout)
+const char* GetLayoutIconResourceKey(EViewportLayout Layout)
 {
 	switch (Layout)
 	{
-	case EViewportLayout::OnePane:          return L"ViewportLayout_OnePane.png";
-	case EViewportLayout::TwoPanesHoriz:   return L"ViewportLayout_TwoPanesHoriz.png";
-	case EViewportLayout::TwoPanesVert:    return L"ViewportLayout_TwoPanesVert.png";
-	case EViewportLayout::ThreePanesLeft:  return L"ViewportLayout_ThreePanesLeft.png";
-	case EViewportLayout::ThreePanesRight: return L"ViewportLayout_ThreePanesRight.png";
-	case EViewportLayout::ThreePanesTop:   return L"ViewportLayout_ThreePanesTop.png";
-	case EViewportLayout::ThreePanesBottom:return L"ViewportLayout_ThreePanesBottom.png";
-	case EViewportLayout::FourPanes2x2:    return L"ViewportLayout_FourPanes2x2.png";
-	case EViewportLayout::FourPanesLeft:   return L"ViewportLayout_FourPanesLeft.png";
-	case EViewportLayout::FourPanesRight:  return L"ViewportLayout_FourPanesRight.png";
-	case EViewportLayout::FourPanesTop:    return L"ViewportLayout_FourPanesTop.png";
-	case EViewportLayout::FourPanesBottom: return L"ViewportLayout_FourPanesBottom.png";
-	default:                               return L"";
+	case EViewportLayout::OnePane:          return "Editor.Layout.OnePane";
+	case EViewportLayout::TwoPanesHoriz:    return "Editor.Layout.TwoPanesHoriz";
+	case EViewportLayout::TwoPanesVert:     return "Editor.Layout.TwoPanesVert";
+	case EViewportLayout::ThreePanesLeft:   return "Editor.Layout.ThreePanesLeft";
+	case EViewportLayout::ThreePanesRight:  return "Editor.Layout.ThreePanesRight";
+	case EViewportLayout::ThreePanesTop:    return "Editor.Layout.ThreePanesTop";
+	case EViewportLayout::ThreePanesBottom: return "Editor.Layout.ThreePanesBottom";
+	case EViewportLayout::FourPanes2x2:     return "Editor.Layout.FourPanes2x2";
+	case EViewportLayout::FourPanesLeft:    return "Editor.Layout.FourPanesLeft";
+	case EViewportLayout::FourPanesRight:   return "Editor.Layout.FourPanesRight";
+	case EViewportLayout::FourPanesTop:     return "Editor.Layout.FourPanesTop";
+	case EViewportLayout::FourPanesBottom:  return "Editor.Layout.FourPanesBottom";
+	default:                                return "";
 	}
 }
 
-// ─── 아이콘 로드/해제 ────────────────────────────────────────
+// ??? ?꾩씠肄?濡쒕뱶/?댁젣 ????????????????????????????????????????
 
 void FLevelViewportLayout::LoadLayoutIcons(ID3D11Device* Device)
 {
 	if (!Device) return;
 
-	std::wstring IconDir = FPaths::Combine(FPaths::RootDir(), L"Asset/Editor/Icons/");
-
 	for (int32 i = 0; i < static_cast<int32>(EViewportLayout::MAX); ++i)
 	{
-		std::wstring Path = IconDir + GetLayoutIconFileName(static_cast<EViewportLayout>(i));
+		const EViewportLayout Layout = static_cast<EViewportLayout>(i);
+		const FString Path = FResourceManager::Get().ResolvePath(FName(GetLayoutIconResourceKey(Layout)));
 		DirectX::CreateWICTextureFromFile(
-			Device, Path.c_str(),
+			Device, FPaths::ToWide(Path).c_str(),
 			nullptr, &LayoutIcons[i]);
 	}
 }
@@ -233,7 +247,7 @@ void FLevelViewportLayout::ReleaseLayoutIcons()
 	}
 }
 
-// ─── Initialize / Release ────────────────────────────────────
+// ??? Initialize / Release ????????????????????????????????????
 
 void FLevelViewportLayout::Initialize(UEditorEngine* InEditor, FWindowsWindow* InWindow, FRenderer& InRenderer,
 	FSelectionManager* InSelectionManager)
@@ -243,13 +257,13 @@ void FLevelViewportLayout::Initialize(UEditorEngine* InEditor, FWindowsWindow* I
 	RendererPtr = &InRenderer;
 	SelectionManager = InSelectionManager;
 
-	// 아이콘 로드
+	// ?꾩씠肄?濡쒕뱶
 	LoadLayoutIcons(InRenderer.GetFD3DDevice().GetDevice());
 
-	// Play/Stop 툴바 초기화
+	// Play/Stop ?대컮 珥덇린??
 	PlayToolbar.Initialize(InEditor, InRenderer.GetFD3DDevice().GetDevice());
 
-	// LevelViewportClient 생성 (단일 뷰포트)
+	// LevelViewportClient ?앹꽦 (?⑥씪 酉고룷??
 	auto* LevelVC = new FLevelEditorViewportClient();
 	LevelVC->SetOverlayStatSystem(&Editor->GetOverlayStatSystem());
 	LevelVC->SetSettings(&FEditorSettings::Get());
@@ -308,7 +322,7 @@ void FLevelViewportLayout::Release()
 	PlayToolbar.Release();
 }
 
-// ─── 활성 뷰포트 ────────────────────────────────────────────
+// ??? ?쒖꽦 酉고룷??????????????????????????????????????????????
 
 void FLevelViewportLayout::SetActiveViewport(FLevelEditorViewportClient* InClient)
 {
@@ -335,7 +349,7 @@ void FLevelViewportLayout::ResetViewport(UWorld* InWorld)
 		VC->CreateCamera();
 		VC->ResetCamera();
 
-		// 카메라 재생성 후 현재 뷰포트 크기로 AspectRatio 동기화
+		// 移대찓???ъ깮?????꾩옱 酉고룷???ш린濡?AspectRatio ?숆린??
 		if (FViewport* VP = VC->GetViewport())
 		{
 			UCameraComponent* Cam = VC->GetCamera();
@@ -345,7 +359,7 @@ void FLevelViewportLayout::ResetViewport(UWorld* InWorld)
 			}
 		}
 
-		// 기존 뷰포트 타입(Ortho 방향 등)을 새 카메라에 재적용
+		// 湲곗〈 酉고룷?????Ortho 諛⑺뼢 ??????移대찓?쇱뿉 ?ъ쟻??
 		VC->SetViewportType(VC->GetRenderOptions().ViewportType);
 	}
 	if (ActiveViewportClient && InWorld)
@@ -406,11 +420,11 @@ void FLevelViewportLayout::RestoreWorldAxisAfterPIE()
 	bHasSavedWorldAxisVisibility = false;
 }
 
-// ─── 뷰포트 슬롯 관리 ───────────────────────────────────────
+// ??? 酉고룷???щ’ 愿由????????????????????????????????????????
 
 void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
 {
-	// 현재 슬롯보다 더 필요하면 추가 생성
+	// ?꾩옱 ?щ’蹂대떎 ???꾩슂?섎㈃ 異붽? ?앹꽦
 	while (static_cast<int32>(LevelViewportClients.size()) < RequiredCount)
 	{
 		int32 Idx = static_cast<int32>(LevelViewportClients.size());
@@ -470,7 +484,7 @@ void FLevelViewportLayout::ShrinkViewportSlots(int32 RequiredCount)
 	}
 }
 
-// ─── SSplitter 트리 빌드 ─────────────────────────────────────
+// ??? SSplitter ?몃━ 鍮뚮뱶 ?????????????????????????????????????
 
 SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 {
@@ -479,11 +493,11 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	switch (Layout)
 	{
 	case EViewportLayout::OnePane:
-		return nullptr; // 트리 불필요
+		return nullptr; // ?몃━ 遺덊븘??
 
 	case EViewportLayout::TwoPanesHoriz:
 	{
-		// H → [0] | [1]
+		// H ??[0] | [1]
 		auto* Root = new SSplitterH();
 		Root->SetSideLT(W[0]);
 		Root->SetSideRB(W[1]);
@@ -491,7 +505,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::TwoPanesVert:
 	{
-		// V → [0] / [1]
+		// V ??[0] / [1]
 		auto* Root = new SSplitterV();
 		Root->SetSideLT(W[0]);
 		Root->SetSideRB(W[1]);
@@ -499,7 +513,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::ThreePanesLeft:
 	{
-		// H → [0] | V([1]/[2])
+		// H ??[0] | V([1]/[2])
 		auto* RightV = new SSplitterV();
 		RightV->SetSideLT(W[1]);
 		RightV->SetSideRB(W[2]);
@@ -510,7 +524,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::ThreePanesRight:
 	{
-		// H → V([0]/[1]) | [2]
+		// H ??V([0]/[1]) | [2]
 		auto* LeftV = new SSplitterV();
 		LeftV->SetSideLT(W[0]);
 		LeftV->SetSideRB(W[1]);
@@ -521,7 +535,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::ThreePanesTop:
 	{
-		// V → [0] / H([1]|[2])
+		// V ??[0] / H([1]|[2])
 		auto* BottomH = new SSplitterH();
 		BottomH->SetSideLT(W[1]);
 		BottomH->SetSideRB(W[2]);
@@ -532,7 +546,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::ThreePanesBottom:
 	{
-		// V → H([0]|[1]) / [2]
+		// V ??H([0]|[1]) / [2]
 		auto* TopH = new SSplitterH();
 		TopH->SetSideLT(W[0]);
 		TopH->SetSideRB(W[1]);
@@ -543,7 +557,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::FourPanes2x2:
 	{
-		// H → V([0]/[2]) | V([1]/[3])
+		// H ??V([0]/[2]) | V([1]/[3])
 		auto* LeftV = new SSplitterV();
 		LeftV->SetSideLT(W[0]);
 		LeftV->SetSideRB(W[2]);
@@ -557,7 +571,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::FourPanesLeft:
 	{
-		// H → [0] | V([1] / V([2]/[3]))
+		// H ??[0] | V([1] / V([2]/[3]))
 		auto* InnerV = new SSplitterV();
 		InnerV->SetSideLT(W[2]);
 		InnerV->SetSideRB(W[3]);
@@ -572,7 +586,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::FourPanesRight:
 	{
-		// H → V([0] / V([1]/[2])) | [3]
+		// H ??V([0] / V([1]/[2])) | [3]
 		auto* InnerV = new SSplitterV();
 		InnerV->SetSideLT(W[1]);
 		InnerV->SetSideRB(W[2]);
@@ -587,7 +601,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::FourPanesTop:
 	{
-		// V → [0] / H([1] | H([2]|[3]))
+		// V ??[0] / H([1] | H([2]|[3]))
 		auto* InnerH = new SSplitterH();
 		InnerH->SetSideLT(W[2]);
 		InnerH->SetSideRB(W[3]);
@@ -602,7 +616,7 @@ SSplitter* FLevelViewportLayout::BuildSplitterTree(EViewportLayout Layout)
 	}
 	case EViewportLayout::FourPanesBottom:
 	{
-		// V → H([0] | H([1]|[2])) / [3]
+		// V ??H([0] | H([1]|[2])) / [3]
 		auto* InnerH = new SSplitterH();
 		InnerH->SetSideLT(W[1]);
 		InnerH->SetSideRB(W[2]);
@@ -869,7 +883,7 @@ bool FLevelViewportLayout::UpdateLayoutTransition(float DeltaTime)
 	return true;
 }
 
-// ─── 레이아웃 전환 ──────────────────────────────────────────
+// ??? ?덉씠?꾩썐 ?꾪솚 ??????????????????????????????????????????
 
 void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 {
@@ -902,7 +916,7 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 	const bool bLeavingOnePane = (CurrentLayout == EViewportLayout::OnePane && NewLayout != EViewportLayout::OnePane);
 	const bool bEnteringOnePane = (CurrentLayout != EViewportLayout::OnePane && NewLayout == EViewportLayout::OnePane);
 
-	// 기존 트리 해제
+	// 湲곗〈 ?몃━ ?댁젣
 	SSplitter::DestroyTree(RootSplitter);
 	RootSplitter = nullptr;
 	DraggingSplitter = nullptr;
@@ -910,7 +924,7 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 	int32 RequiredSlots = GetSlotCount(NewLayout);
 	int32 OldSlotCount = static_cast<int32>(LevelViewportClients.size());
 
-	// 슬롯 수 조정
+	// ?щ’ ??議곗젙
 	if (RequiredSlots > OldSlotCount)
 		EnsureViewportSlots(RequiredSlots);
 	else if (RequiredSlots < OldSlotCount && NewLayout != EViewportLayout::OnePane)
@@ -931,7 +945,7 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 		RestoreMaximizedViewportToOriginalSlot();
 	}
 
-	// 분할 전환 시 새로 추가된 슬롯에 Top, Front, Right 순으로 기본 설정
+	// 遺꾪븷 ?꾪솚 ???덈줈 異붽????щ’??Top, Front, Right ?쒖쑝濡?湲곕낯 ?ㅼ젙
 	if (NewLayout != EViewportLayout::OnePane)
 	{
 		constexpr ELevelViewportType DefaultTypes[] = {
@@ -939,7 +953,7 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 			ELevelViewportType::Front,
 			ELevelViewportType::Right
 		};
-		// 기존 슬롯(또는 슬롯 0)은 유지, 새로 생긴 슬롯에만 적용
+		// 湲곗〈 ?щ’(?먮뒗 ?щ’ 0)? ?좎?, ?덈줈 ?앷릿 ?щ’?먮쭔 ?곸슜
 		int32 StartIdx = OldSlotCount;
 		for (int32 i = StartIdx; i < RequiredSlots && (i - 1) < 3; ++i)
 		{
@@ -947,7 +961,7 @@ void FLevelViewportLayout::SetLayout(EViewportLayout NewLayout)
 		}
 	}
 
-	// 새 트리 빌드
+	// ???몃━ 鍮뚮뱶
 	RootSplitter = BuildSplitterTree(NewLayout);
 	ActiveSlotCount = RequiredSlots;
 	CurrentLayout = NewLayout;
@@ -983,7 +997,7 @@ void FLevelViewportLayout::ToggleViewportSplit(int32 SourceSlotIndex)
 	}
 }
 
-// ─── Viewport UI 렌더링 ─────────────────────────────────────
+// ??? Viewport UI ?뚮뜑留??????????????????????????????????????
 
 void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 {
@@ -1016,7 +1030,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
 	if (ContentSize.x > 0 && ContentSize.y > 0)
 	{
-		// 상단에 Play/Stop 툴바 영역 확보 후 나머지를 뷰포트에 할당
+		// ?곷떒??Play/Stop ?대컮 ?곸뿭 ?뺣낫 ???섎㉧吏瑜?酉고룷?몄뿉 ?좊떦
 		const float ToolbarHeight = PlayToolbar.GetDesiredHeight();
 		ImGui::SetCursorScreenPos(ContentPos);
 		PlayToolbar.Render(ContentSize.x);
@@ -1038,7 +1052,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			return R.Width > 1.0f && R.Height > 1.0f;
 		};
 
-		// SSplitter 레이아웃 계산
+		// SSplitter ?덉씠?꾩썐 怨꾩궛
 		if (RootSplitter)
 		{
 			RootSplitter->ComputeLayout(ContentRect);
@@ -1048,7 +1062,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			ViewportWindows[0]->SetRect(ContentRect);
 		}
 
-		// 각 ViewportClient에 Rect 반영 + 이미지 렌더
+		// 媛?ViewportClient??Rect 諛섏쁺 + ?대?吏 ?뚮뜑
 		for (int32 i = 0; i < ActiveSlotCount; ++i)
 		{
 			if (i < static_cast<int32>(LevelViewportClients.size()) && IsSlotVisibleEnough(i))
@@ -1059,7 +1073,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			}
 		}
 
-		// 각 뷰포트 패인 상단에 툴바 오버레이 렌더
+		// 媛?酉고룷???⑥씤 ?곷떒???대컮 ?ㅻ쾭?덉씠 ?뚮뜑
 		for (int32 i = 0; i < ActiveSlotCount; ++i)
 		{
 			const bool bShowPaneToolbar =
@@ -1071,7 +1085,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			}
 		}
 
-		// 분할 바 렌더 (재귀 수집)
+		// 遺꾪븷 諛??뚮뜑 (?ш? ?섏쭛)
 		if (RootSplitter)
 		{
 			TArray<SSplitter*> AllSplitters;
@@ -1090,13 +1104,13 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			}
 		}
 
-		// 입력 처리
+		// ?낅젰 泥섎━
 		if (ImGui::IsWindowHovered())
 		{
 			ImVec2 MousePos = ImGui::GetIO().MousePos;
 			FPoint MP = { MousePos.x, MousePos.y };
 
-			// 마우스가 어떤 슬롯 위에 있는지
+			// 留덉슦?ㅺ? ?대뼡 ?щ’ ?꾩뿉 ?덈뒗吏
 			for (int32 i = 0; i < ActiveSlotCount; ++i)
 			{
 				if (IsSlotVisibleEnough(i) && ViewportWindows[i]->IsHover(MP))
@@ -1106,7 +1120,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 				}
 			}
 
-			// 분할 바 드래그
+			// 遺꾪븷 諛??쒕옒洹?
 			if (RootSplitter && LayoutTransition == EViewportLayoutTransition::None)
 			{
 				if (ImGui::IsMouseClicked(0))
@@ -1137,7 +1151,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 				}
 				else
 				{
-					// 호버 커서 변경
+					// ?몃쾭 而ㅼ꽌 蹂寃?
 					SSplitter* Hovered = SSplitter::FindSplitterAtBar(RootSplitter, MP);
 					if (Hovered)
 					{
@@ -1149,7 +1163,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 				}
 			}
 
-			// 활성 뷰포트 전환 (분할 바 드래그 중이 아닐 때)
+			// ?쒖꽦 酉고룷???꾪솚 (遺꾪븷 諛??쒕옒洹?以묒씠 ?꾨땺 ??
 			if (!DraggingSplitter && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)))
 			{
 				for (int32 i = 0; i < ActiveSlotCount; ++i)
@@ -1174,7 +1188,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 	ImGui::PopStyleVar();
 }
 
-// ─── 각 뷰포트 패인 툴바 오버레이 ──────────────────────────
+// ??? 媛?酉고룷???⑥씤 ?대컮 ?ㅻ쾭?덉씠 ??????????????????????????
 
 void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float ToolbarTop)
 {
@@ -1223,7 +1237,7 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 		return bClicked;
 	};
 
-	// 상단 툴바에서도 Place Actor 컨텍스트 메뉴를 바로 열 수 있게 한다.
+	// ?곷떒 ?대컮?먯꽌??Place Actor 而⑦뀓?ㅽ듃 硫붾돱瑜?諛붾줈 ?????덇쾶 ?쒕떎.
 	if (DrawToolbarIconButton("##SharedAddActorIcon", EToolbarIcon::AddActor, "Add", ToolbarFallbackIconSize, ToolbarMaxIconSize))
 	{
 		const FPoint MousePos = { ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y };
@@ -1289,7 +1303,7 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 		ImGui::PopStyleColor();
 	}
 
-	// 스냅 토글과 수치를 같은 자리에서 바꾸고 즉시 Gizmo 설정에 반영한다.
+	// ?ㅻ깄 ?좉?怨??섏튂瑜?媛숈? ?먮━?먯꽌 諛붽씀怨?利됱떆 Gizmo ?ㅼ젙??諛섏쁺?쒕떎.
 	auto DrawSnapControl = [&](const char* Id, EToolbarIcon Icon, const char* FallbackLabel, bool& bEnabled, float& Value, float MinValue)
 	{
 		ImGui::SameLine(0.0f, 6.0f);
@@ -1336,7 +1350,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 	constexpr float PaneToolbarFallbackIconSize = 14.0f;
 	constexpr float PaneToolbarMaxIconSize = 16.0f;
 
-	// 패인 상단에 오버레이 윈도우
+	// ?⑥씤 ?곷떒???ㅻ쾭?덉씠 ?덈룄??
 	char OverlayID[64];
 	snprintf(OverlayID, sizeof(OverlayID), "##PaneToolbar_%d", SlotIndex);
 
@@ -1358,7 +1372,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 
 		const bool bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
 
-		// Layout 드롭다운
+		// Layout ?쒕∼?ㅼ슫
 		char PopupID[64];
 		snprintf(PopupID, sizeof(PopupID), "LayoutPopup_%d", SlotIndex);
 
@@ -1416,7 +1430,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			ImGui::EndPopup();
 		}
 
-		// 토글 버튼 (같은 행)
+		// ?좉? 踰꾪듉 (媛숈? ??
 		ImGui::SameLine();
 
 		constexpr float ToggleIconSize = 16.0f;
@@ -1442,44 +1456,14 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 		}
 		//if (bIsTransitioning) ImGui::EndDisabled();
 
-		// ViewportType + Settings 팝업
+		// Camera + View Mode + Settings ?앹뾽
 		if (SlotIndex < static_cast<int32>(LevelViewportClients.size()))
 		{
 			FLevelEditorViewportClient* VC = LevelViewportClients[SlotIndex];
 			FViewportRenderOptions& Opts = VC->GetRenderOptions();
+			UCameraComponent* Camera = VC->GetCamera();
 
-			// ── Viewport Type 드롭다운 (Perspective / Ortho 방향) ──
-			ImGui::SameLine();
-
-			static const char* ViewportTypeNames[] = {
-				"Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Orthographic"
-			};
-			constexpr int32 ViewportTypeCount = sizeof(ViewportTypeNames) / sizeof(ViewportTypeNames[0]);
-			int32 CurrentTypeIdx = static_cast<int32>(Opts.ViewportType);
-			const char* CurrentTypeName = ViewportTypeNames[CurrentTypeIdx];
-
-			char VTPopupID[64];
-			snprintf(VTPopupID, sizeof(VTPopupID), "ViewportTypePopup_%d", SlotIndex);
-
-			if (ImGui::Button(CurrentTypeName))
-			{
-				ImGui::OpenPopup(VTPopupID);
-			}
-
-			if (ImGui::BeginPopup(VTPopupID))
-			{
-				for (int32 t = 0; t < ViewportTypeCount; ++t)
-				{
-					bool bSelected = (t == CurrentTypeIdx);
-					if (ImGui::Selectable(ViewportTypeNames[t], bSelected))
-					{
-						VC->SetViewportType(static_cast<ELevelViewportType>(t));
-					}
-				}
-				ImGui::EndPopup();
-			}
-
-			// ── View Mode 팝업 ──
+			// ?? View Mode ?앹뾽 ??
 			ImGui::SameLine();
 
 			static const char* ViewModeNames[] = { "Phong", "Unlit", "Gouraud", "Lambert", "Wireframe", "SceneDepth", "WorldNormal", "LightCulling" };
@@ -1488,7 +1472,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			char ViewModePopupID[64];
 			snprintf(ViewModePopupID, sizeof(ViewModePopupID), "ViewModePopup_%d", SlotIndex);
 
-			if (DrawToolbarIconButton("##ViewModeIcon", EToolbarIcon::ShowFlag, CurrentViewModeName, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
+			if (DrawToolbarIconButton("##ViewModeIcon", EToolbarIcon::WorldSpace, CurrentViewModeName, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
 			{
 				ImGui::OpenPopup(ViewModePopupID);
 			}
@@ -1533,13 +1517,92 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 				ImGui::EndPopup();
 			}
 
-			// ── Settings 팝업 ──
+			// ?? Camera ?앹뾽 ??
+			ImGui::SameLine();
+
+			char CameraPopupID[64];
+			snprintf(CameraPopupID, sizeof(CameraPopupID), "CameraPopup_%d", SlotIndex);
+
+			if (DrawToolbarIconButton("##CameraSettingsIcon", EToolbarIcon::CameraSettings, "Camera", PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
+			{
+				ImGui::OpenPopup(CameraPopupID);
+			}
+
+			if (ImGui::BeginPopup(CameraPopupID))
+			{
+				static const char* ViewportTypeNames[] = {
+					"Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Orthographic"
+				};
+				constexpr int32 ViewportTypeCount = sizeof(ViewportTypeNames) / sizeof(ViewportTypeNames[0]);
+				int32 CurrentTypeIdx = static_cast<int32>(Opts.ViewportType);
+
+				ImGui::Text("Camera");
+				ImGui::Separator();
+
+				if (ImGui::BeginCombo("View", ViewportTypeNames[CurrentTypeIdx]))
+				{
+					for (int32 t = 0; t < ViewportTypeCount; ++t)
+					{
+						const bool bSelected = (t == CurrentTypeIdx);
+						if (ImGui::Selectable(ViewportTypeNames[t], bSelected))
+						{
+							VC->SetViewportType(static_cast<ELevelViewportType>(t));
+							CurrentTypeIdx = t;
+						}
+						if (bSelected)
+						{
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+
+				FEditorSettings& Settings = FEditorSettings::Get();
+				float CameraSpeed = Settings.CameraSpeed;
+				if (ImGui::DragFloat("Speed", &CameraSpeed, 0.1f, 0.1f, 1000.0f, "%.1f"))
+				{
+					Settings.CameraSpeed = Clamp(CameraSpeed, 0.1f, 1000.0f);
+				}
+
+				if (Camera)
+				{
+					float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
+					if (ImGui::DragFloat("FOV", &CameraFOV_Deg, 0.5f, 1.0f, 170.0f, "%.1f"))
+					{
+						Camera->SetFOV(Clamp(CameraFOV_Deg, 1.0f, 170.0f) * DEG_TO_RAD);
+					}
+
+					float OrthoWidth = Camera->GetOrthoWidth();
+					if (ImGui::DragFloat("Ortho Width", &OrthoWidth, 0.1f, 0.1f, 100000.0f, "%.1f"))
+					{
+						Camera->SetOrthoWidth(Clamp(OrthoWidth, 0.1f, 100000.0f));
+					}
+
+					FVector CamPos = Camera->GetWorldLocation();
+					float CameraLocation[3] = { CamPos.X, CamPos.Y, CamPos.Z };
+					if (ImGui::DragFloat3("Location", CameraLocation, 0.1f))
+					{
+						Camera->SetWorldLocation(FVector(CameraLocation[0], CameraLocation[1], CameraLocation[2]));
+					}
+
+					FRotator CamRot = Camera->GetRelativeRotation();
+					float CameraRotation[3] = { CamRot.Roll, CamRot.Pitch, CamRot.Yaw };
+					if (ImGui::DragFloat3("Rotation", CameraRotation, 0.1f))
+					{
+						Camera->SetRelativeRotation(FRotator(CameraRotation[1], CameraRotation[2], CameraRotation[0]));
+					}
+				}
+
+				ImGui::EndPopup();
+			}
+
+			// ?? Settings ?앹뾽 ??
 			ImGui::SameLine();
 
 			char SettingsPopupID[64];
 			snprintf(SettingsPopupID, sizeof(SettingsPopupID), "SettingsPopup_%d", SlotIndex);
 
-			if (DrawToolbarIconButton("##SettingsIcon", EToolbarIcon::Setting, "Settings", PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
+			if (DrawToolbarIconButton("##SettingsIcon", EToolbarIcon::ShowFlag, "Show", PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
 			{
 				ImGui::OpenPopup(SettingsPopupID);
 			}
@@ -1632,58 +1695,6 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 
 				ImGui::EndPopup();
 			}
-			// ── View Light / Reset Camera 버튼 ──
-			ImGui::SameLine();
-
-			if (VC->IsViewingFromLight())
-			{
-				if (ImGui::Button("Reset Camera"))
-				{
-					VC->ClearLightViewOverride();
-				}
-
-				// PointLight face selector (0~5: +X,-X,+Y,-Y,+Z,-Z)
-				ULightComponentBase* ActiveLight = VC->GetLightViewOverride();
-				if (ActiveLight && ActiveLight->GetLightType() == ELightComponentType::Point)
-				{
-					ImGui::SameLine();
-					static const char* FaceNames[] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
-					int32 FaceIdx = VC->GetPointLightFaceIndex();
-					ImGui::SetNextItemWidth(50.0f);
-					if (ImGui::Combo("##Face", &FaceIdx, FaceNames, 6))
-					{
-						VC->SetPointLightFaceIndex(FaceIdx);
-					}
-				}
-			}
-			else
-			{
-				ULightComponentBase* FoundLight = nullptr;
-				if (SelectionManager)
-				{
-					if (AActor* Selected = SelectionManager->GetPrimarySelection())
-					{
-						for (UActorComponent* Comp : Selected->GetComponents())
-						{
-							if (ULightComponentBase* LC = Cast<ULightComponentBase>(Comp))
-							{
-								if (LC->GetLightType() != ELightComponentType::Ambient)
-								{
-									FoundLight = LC;
-									break;
-								}
-							}
-						}
-					}
-				}
-
-				if (!FoundLight) ImGui::BeginDisabled();
-				if (ImGui::Button("View Light"))
-				{
-					VC->SetLightViewOverride(FoundLight);
-				}
-				if (!FoundLight) ImGui::EndDisabled();
-			}
 		} // SlotIndex guard
 
 		ImGui::PopID();
@@ -1758,7 +1769,7 @@ void FLevelViewportLayout::HandleViewportContextMenuInput(const FPoint& MousePos
 		const ImGuiIO& IO = ImGui::GetIO();
 		const bool bNoModifiers = !IO.KeyCtrl && !IO.KeyShift && !IO.KeyAlt && !IO.KeySuper;
 
-		// 카메라 우클릭 드래그와 구분하기 위해 거의 이동하지 않은 우클릭만 popup으로 본다.
+		// 移대찓???고겢由??쒕옒洹몄? 援щ텇?섍린 ?꾪빐 嫄곗쓽 ?대룞?섏? ?딆? ?고겢由?쭔 popup?쇰줈 蹂몃떎.
 		if (bClickCandidate && bNoModifiers)
 		{
 			ContextMenuState.PendingPopupSlot = i;
@@ -1795,7 +1806,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 
 	if (ImGui::BeginMenu("Place Actor"))
 	{
-		// 기존 Control Panel의 spawn 기능을 뷰포트 기준 배치 메뉴로 옮긴다.
+		// 湲곗〈 Control Panel??spawn 湲곕뒫??酉고룷??湲곗? 諛곗튂 硫붾돱濡???릿??
 		const FPoint SpawnPos = ContextMenuState.PendingSpawnPos;
 		const int32 SpawnSlot = ContextMenuState.PendingSpawnSlot;
 
@@ -1814,8 +1825,11 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		};
 
 		PlaceActorMenuItem("Cube", EViewportPlaceActorType::Cube);
+		PlaceActorMenuItem("Static Mesh Actor", EViewportPlaceActorType::StaticMeshActor);
 		PlaceActorMenuItem("Sphere", EViewportPlaceActorType::Sphere);
 		PlaceActorMenuItem("Cylinder", EViewportPlaceActorType::Cylinder);
+		PlaceActorMenuItem("Cone", EViewportPlaceActorType::Cone);
+		PlaceActorMenuItem("Plane", EViewportPlaceActorType::Plane);
 		PlaceActorMenuItem("Decal", EViewportPlaceActorType::Decal);
 		PlaceActorMenuItem("Height Fog", EViewportPlaceActorType::HeightFog);
 		PlaceActorMenuItem("Ambient Light", EViewportPlaceActorType::AmbientLight);
@@ -1831,7 +1845,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 	{
 		ImGui::BeginDisabled();
 	}
-	//스크린 우클릭 후 제거, 이 기능 꼭 있어야 할까? 그런 의문이 듭니다
+	//?ㅽ겕由??고겢由????쒓굅, ??湲곕뒫 瑗??덉뼱???좉퉴? 洹몃윴 ?섎Ц????땲??
 	//if (ImGui::MenuItem("Delete"))
 	//{
 	//	SelectionManager->DeleteSelectedActors();
@@ -1874,7 +1888,7 @@ bool FLevelViewportLayout::TryComputePlacementLocation(int32 SlotIndex, const FP
 
 	const float LocalX = Clamp(ClientPos.X - ViewRect.X, 0.0f, VPWidth - 1.0f);
 	const float LocalY = Clamp(ClientPos.Y - ViewRect.Y, 0.0f, VPHeight - 1.0f);
-	// 클릭한 화면 좌표를 월드 레이로 바꿔 카메라 전방의 기본 배치 위치를 계산한다.
+	// ?대┃???붾㈃ 醫뚰몴瑜??붾뱶 ?덉씠濡?諛붽퓭 移대찓???꾨갑??湲곕낯 諛곗튂 ?꾩튂瑜?怨꾩궛?쒕떎.
 	const FRay Ray = ViewportClient->GetCamera()->DeprojectScreenToWorld(LocalX, LocalY, VPWidth, VPHeight);
 	const FVector RayDirection = Ray.Direction.Normalized();
 
@@ -1915,12 +1929,27 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 
 	switch (Type)
 	{
+	case EViewportPlaceActorType::Actor:
+	{
+		SpawnedActor = World->SpawnActor<AActor>();
+		break;
+	}
+	case EViewportPlaceActorType::StaticMeshActor:
+	{
+		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+		}
+		break;
+	}
 	case EViewportPlaceActorType::Cube:
 	{
 		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
 		if (Actor)
 		{
-			Actor->InitDefaultComponents("Data/BasicShape/Cube.OBJ");
+			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Cube"));
 			SpawnedActor = Actor;
 		}
 		break;
@@ -1930,7 +1959,7 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
 		if (Actor)
 		{
-			Actor->InitDefaultComponents("Data/BasicShape/Sphere.OBJ");
+			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Sphere"));
 			SpawnedActor = Actor;
 		}
 		break;
@@ -1940,7 +1969,27 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
 		if (Actor)
 		{
-			Actor->InitDefaultComponents("Data/BasicShape/Cylinder.obj");
+			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Cylinder"));
+			SpawnedActor = Actor;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::Cone:
+	{
+		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Cone"));
+			SpawnedActor = Actor;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::Plane:
+	{
+		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Plane"));
 			SpawnedActor = Actor;
 		}
 		break;
@@ -2021,7 +2070,7 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		return nullptr;
 	}
 
-	// 배치 직후 월드/옥트리/선택 상태를 함께 갱신해 에디터 피드백을 즉시 맞춘다.
+	// 諛곗튂 吏곹썑 ?붾뱶/?ν듃由??좏깮 ?곹깭瑜??④퍡 媛깆떊???먮뵒???쇰뱶諛깆쓣 利됱떆 留욎텣??
 	SpawnedActor->SetActorLocation(SpawnLocation);
 	World->InsertActorToOctree(SpawnedActor);
 	if (SelectionManager)
@@ -2037,7 +2086,7 @@ AActor* FLevelViewportLayout::SpawnPlaceActor(EViewportPlaceActorType Type, cons
 	return SpawnActorFromViewportMenu(Type, Location);
 }
 
-// ─── FEditorSettings ↔ 뷰포트 상태 동기화 ──────────────────
+// ??? FEditorSettings ??酉고룷???곹깭 ?숆린????????????????????
 
 void FLevelViewportLayout::SaveToSettings()
 {
@@ -2045,13 +2094,13 @@ void FLevelViewportLayout::SaveToSettings()
 
 	S.LayoutType = static_cast<int32>(CurrentLayout);
 
-	// 뷰포트별 렌더 옵션 저장
+	// 酉고룷?몃퀎 ?뚮뜑 ?듭뀡 ???
 	for (int32 i = 0; i < ActiveSlotCount && i < static_cast<int32>(LevelViewportClients.size()); ++i)
 	{
 		S.SlotOptions[i] = LevelViewportClients[i]->GetRenderOptions();
 	}
 
-	// Splitter 비율 저장
+	// Splitter 鍮꾩쑉 ???
 	if (LayoutTransition != EViewportLayoutTransition::None && TransitionRestoreRatioCount > 0)
 	{
 		S.SplitterCount = TransitionRestoreRatioCount;
@@ -2077,7 +2126,7 @@ void FLevelViewportLayout::SaveToSettings()
 		S.SplitterCount = 0;
 	}
 
-	// Perspective 카메라 (slot 0) 저장
+	// Perspective 移대찓??(slot 0) ???
 	if (!LevelViewportClients.empty())
 	{
 		UCameraComponent* Cam = LevelViewportClients[0]->GetCamera();
@@ -2086,7 +2135,7 @@ void FLevelViewportLayout::SaveToSettings()
 			S.PerspCamLocation = Cam->GetWorldLocation();
 			S.PerspCamRotation = Cam->GetRelativeRotation();
 			const FCameraState& CS = Cam->GetCameraState();
-			S.PerspCamFOV = CS.FOV * (180.0f / 3.14159265358979f); // rad → deg
+			S.PerspCamFOV = CS.FOV * (180.0f / 3.14159265358979f); // rad ??deg
 			S.PerspCamNearClip = CS.NearZ;
 			S.PerspCamFarClip = CS.FarZ;
 		}
@@ -2097,15 +2146,15 @@ void FLevelViewportLayout::LoadFromSettings()
 {
 	const FEditorSettings& S = FEditorSettings::Get();
 
-	// 레이아웃 전환 (슬롯 생성 + 트리 빌드)
+	// ?덉씠?꾩썐 ?꾪솚 (?щ’ ?앹꽦 + ?몃━ 鍮뚮뱶)
 	EViewportLayout NewLayout = static_cast<EViewportLayout>(S.LayoutType);
 	if (NewLayout >= EViewportLayout::MAX)
 		NewLayout = EViewportLayout::OnePane;
 
-	// OnePane이 아니면 레이아웃 적용 (Initialize에서 이미 OnePane으로 생성됨)
+	// OnePane???꾨땲硫??덉씠?꾩썐 ?곸슜 (Initialize?먯꽌 ?대? OnePane?쇰줈 ?앹꽦??
 	if (NewLayout != EViewportLayout::OnePane)
 	{
-		// SetLayout 내부 bWasOnePane 분기를 피하기 위해 직접 전환
+		// SetLayout ?대? bWasOnePane 遺꾧린瑜??쇳븯湲??꾪빐 吏곸젒 ?꾪솚
 		SSplitter::DestroyTree(RootSplitter);
 		RootSplitter = nullptr;
 		DraggingSplitter = nullptr;
@@ -2118,17 +2167,17 @@ void FLevelViewportLayout::LoadFromSettings()
 		CurrentLayout = NewLayout;
 	}
 
-	// 뷰포트별 렌더 옵션 적용
+	// 酉고룷?몃퀎 ?뚮뜑 ?듭뀡 ?곸슜
 	for (int32 i = 0; i < ActiveSlotCount && i < static_cast<int32>(LevelViewportClients.size()); ++i)
 	{
 		FLevelEditorViewportClient* VC = LevelViewportClients[i];
 		VC->GetRenderOptions() = S.SlotOptions[i];
 
-		// ViewportType에 따라 카메라 ortho/방향 설정
+		// ViewportType???곕씪 移대찓??ortho/諛⑺뼢 ?ㅼ젙
 		VC->SetViewportType(S.SlotOptions[i].ViewportType);
 	}
 
-	// Splitter 비율 복원
+	// Splitter 鍮꾩쑉 蹂듭썝
 	if (RootSplitter)
 	{
 		TArray<SSplitter*> AllSplitters;
@@ -2139,7 +2188,7 @@ void FLevelViewportLayout::LoadFromSettings()
 		}
 	}
 
-	// Perspective 카메라 (slot 0) 복원
+	// Perspective 移대찓??(slot 0) 蹂듭썝
 	if (!LevelViewportClients.empty())
 	{
 		UCameraComponent* Cam = LevelViewportClients[0]->GetCamera();
@@ -2149,7 +2198,7 @@ void FLevelViewportLayout::LoadFromSettings()
 			Cam->SetRelativeRotation(S.PerspCamRotation);
 
 			FCameraState CS = Cam->GetCameraState();
-			CS.FOV = S.PerspCamFOV * (3.14159265358979f / 180.0f); // deg → rad
+			CS.FOV = S.PerspCamFOV * (3.14159265358979f / 180.0f); // deg ??rad
 			CS.NearZ = S.PerspCamNearClip;
 			CS.FarZ = S.PerspCamFarClip;
 			Cam->SetCameraState(CS);

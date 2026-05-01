@@ -1,9 +1,10 @@
-﻿#include "Mesh/ObjImporter.h"
+#include "Mesh/ObjImporter.h"
 #include "Mesh/StaticMeshAsset.h"
 #include "Materials/Material.h"
 #include "Core/Log.h"
 #include "Engine/Platform/Paths.h"
 #include "Mesh/ObjManager.h"
+#include "Resource/ResourceManager.h"
 #include "SimpleJSON/json.hpp"
 #include "Materials/MaterialManager.h"
 #include <algorithm>
@@ -453,14 +454,15 @@ FString FObjImporter::ConvertMtlInfoToJson(const FObjMaterialInfo* MtlInfo)
 // MTL 정보에서 머티리얼 mat 파일로 변환하는 함수
 FString FObjImporter::ConvertMtlInfoToMat(const FObjMaterialInfo* MtlInfo)
 {
-	FString MatPath = "Asset/Materials/Auto/" + MtlInfo->MaterialSlotName + ".mat";
+	const FString AutoMaterialDirectory = FResourceManager::Get().ResolvePath(FName("Default.Directory.MaterialAuto"));
+	const FString MatPath = AutoMaterialDirectory + "/" + MtlInfo->MaterialSlotName + ".mat";
 
 	// 이미 존재하면 덮어쓰지 않음 (에디터에서 수정했을 수 있으므로)
 	if (std::filesystem::exists(FPaths::ToWide(MatPath)))
 		return MatPath;
 
 	// Auto/ 디렉토리 보장
-	std::filesystem::create_directories(FPaths::ToWide("Asset/Materials/Auto"));
+	std::filesystem::create_directories(FPaths::ToWide(AutoMaterialDirectory));
 
 	json::JSON JsonData;
 	JsonData["PathFileName"] = MatPath;

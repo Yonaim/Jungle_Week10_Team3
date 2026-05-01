@@ -11,6 +11,7 @@ public:
 
 	float GetSphereRadius() const { return SphereRadius; }
 	void  SetSphereRadius(float InRadius) { SphereRadius = InRadius; }
+	void  UpdateWorldAABB() const override;
 
 	void DrawDebugShape(FScene& Scene) const override;
 

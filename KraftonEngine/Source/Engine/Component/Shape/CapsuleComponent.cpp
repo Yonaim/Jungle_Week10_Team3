@@ -4,7 +4,7 @@
 IMPLEMENT_CLASS(UCapsuleComponent, UShapeComponent)
 
 void UCapsuleComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) {
-	USceneComponent::GetEditableProperties(OutProps);
+	UShapeComponent::GetEditableProperties(OutProps);
 	OutProps.push_back({ "Capsule Radius",		EPropertyType::Float, &CapsuleRadius,	  0.0f, 2048.f, 0.1f });
 	OutProps.push_back({ "Capsule Half-Height", EPropertyType::Float, &CapsuleHalfHeight, 0.0f, 2048.f, 0.1f });
 }
@@ -50,4 +50,22 @@ void UCapsuleComponent::DrawDebugShape(FScene& Scene) const {
 	Scene.AddDebugLine(TopCenter - Fwd   * CapsuleRadius, BotCenter - Fwd   * CapsuleRadius, ShapeColor);
 	Scene.AddDebugLine(TopCenter + Right * CapsuleRadius, BotCenter + Right * CapsuleRadius, ShapeColor);
 	Scene.AddDebugLine(TopCenter - Right * CapsuleRadius, BotCenter - Right * CapsuleRadius, ShapeColor);
+}
+
+void UCapsuleComponent::UpdateWorldAABB() const {
+	FVector WorldCenter = GetWorldLocation();
+	FVector Up = GetUpVector().Normalized();
+
+	float BiasedHeight = CapsuleHalfHeight > CapsuleRadius ? (CapsuleHalfHeight - CapsuleRadius) : 0.f;
+
+	FVector Extent(
+		fabsf(Up.X) * BiasedHeight + CapsuleRadius,
+		fabsf(Up.Y) * BiasedHeight + CapsuleRadius,
+		fabsf(Up.Z) * BiasedHeight + CapsuleRadius
+	);
+
+	WorldAABBMinLocation = WorldCenter - Extent;
+	WorldAABBMaxLocation = WorldCenter + Extent;
+	bWorldAABBDirty = false;
+	bHasValidWorldAABB = true;
 }

@@ -1,4 +1,4 @@
-﻿#include "ContentBrowser.h"
+#include "ContentBrowser.h"
 
 #include "ContentBrowserElement.h"
 #include "Editor/Settings/EditorSettings.h"
@@ -9,6 +9,11 @@
 
 namespace
 {
+	FString GetEditorPathResource(const char* Key)
+	{
+		return FResourceManager::Get().ResolvePath(FName(Key));
+	}
+
 	bool IsParentDirectoryReference(const std::filesystem::path& Path)
 	{
 		for (const std::filesystem::path& Part : Path)
@@ -72,7 +77,7 @@ namespace
 				return false;
 		}
 
-		return pIt == p.end(); // parent 끝까지 다 맞았으면 포함됨
+		return pIt == p.end(); // parent ?앷퉴吏 ??留욎븯?쇰㈃ ?ы븿??
 	}
 }
 
@@ -81,16 +86,14 @@ void FEditorContentBrowserWidget::Initialize(UEditorEngine* InEditor, ID3D11Devi
 	FEditorWidget::Initialize(InEditor);
 	if (!InDevice) return;
 
-	const std::wstring IconDir = L"Asset/Editor/Icons/";
-
-	ICons["Default"] = FResourceManager::Get().FindLoadedTexture(FPaths::ToUtf8(IconDir + L"StartMerge_42x.png"));
-	ICons["Directory"] = FResourceManager::Get().FindLoadedTexture(FPaths::ToUtf8(IconDir + L"Folder_Base_256x.png"));
-	ICons[".Scene"] = FResourceManager::Get().FindLoadedTexture(FPaths::ToUtf8(IconDir + L"World_64x.png"));
-	ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(FPaths::ToUtf8(IconDir + L"icon_MatEd_Mesh_40x.png"));
-	ICons[".mat"] = FResourceManager::Get().FindLoadedTexture(FPaths::ToUtf8(IconDir + L"Sphere_64x.png"));
+	ICons["Default"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Default"));
+	ICons["Directory"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Directory"));
+	ICons[".Scene"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Scene"));
+	ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Mesh"));
+	ICons[".mat"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Material"));
 
 	ContentBrowserContext Context;
-	Context.ContentSize = ImVec2(50, 50);
+	Context.ContentSize = ImVec2(76.0f, 96.0f);
 	Context.EditorEngine = InEditor;
 	BrowserContext = Context;
 	LoadFromSettings();
@@ -100,7 +103,7 @@ void FEditorContentBrowserWidget::Initialize(UEditorEngine* InEditor, ID3D11Devi
 
 void FEditorContentBrowserWidget::Render(float DeltaTime)
 {
-	if (!ImGui::Begin("ContentBrowser"))
+	if (!ImGui::Begin("Content Browser"))
 	{
 		ImGui::End();
 		return;
@@ -162,8 +165,8 @@ void FEditorContentBrowserWidget::Refresh()
 
 void FEditorContentBrowserWidget::SetIconSize(float Size)
 {
-	const float ClampedSize = (std::max)(20.0f, (std::min)(Size, 100.0f));
-	BrowserContext.ContentSize = ImVec2(ClampedSize, ClampedSize);
+	const float ClampedSize = (std::max)(40.0f, (std::min)(Size, 120.0f));
+	BrowserContext.ContentSize = ImVec2(ClampedSize, ClampedSize + 20.0f);
 }
 
 void FEditorContentBrowserWidget::LoadFromSettings()
@@ -265,17 +268,18 @@ void FEditorContentBrowserWidget::DrawContents()
 	const float contentWidth = ImGui::GetContentRegionAvail().x;
 	const float itemWidth = BrowserContext.ContentSize.x;
 	const float itemHeight = BrowserContext.ContentSize.y;
+	const float MinGap = 10.0f;
 
-	int columnCount = static_cast<int>(contentWidth / itemWidth);
+	int columnCount = static_cast<int>((contentWidth + MinGap) / (itemWidth + MinGap));
 	if (columnCount < 1)
 	{
 		columnCount = 1;
 	}
 
-	float gapSize = 0.0f;
+	float gapSize = MinGap;
 	if (columnCount > 1)
 	{
-		gapSize = (contentWidth - itemWidth * columnCount) / (columnCount);
+		gapSize = (std::max)(MinGap, (contentWidth - itemWidth * columnCount) / (columnCount - 1));
 	}
 
 	ImVec2 startPos = ImGui::GetCursorPos();
@@ -286,14 +290,14 @@ void FEditorContentBrowserWidget::DrawContents()
 		int row = i / columnCount;
 
 		float x = startPos.x + column * (itemWidth + gapSize);
-		float y = startPos.y + row * (itemHeight + gapSize * 2.f);
+		float y = startPos.y + row * (itemHeight + gapSize);
 
 		ImGui::SetCursorPos(ImVec2(x, y));
 		CachedBrowserElements[i]->Render(BrowserContext);
 	}
 
 	int rowCount = (elementCount + columnCount - 1) / columnCount;
-	ImGui::SetCursorPos(ImVec2(startPos.x, startPos.y + rowCount * itemHeight));
+	ImGui::SetCursorPos(ImVec2(startPos.x, startPos.y + rowCount * itemHeight + (rowCount > 0 ? (rowCount - 1) * gapSize : 0.0f)));
 }
 
 TArray<FContentItem> FEditorContentBrowserWidget::ReadDirectory(std::wstring Path)

@@ -201,9 +201,9 @@ struct FGizmoConstants
 	FVector4 ColorTint;
 	uint32 bIsInnerGizmo;
 	uint32 bClicking;
-	uint32 SelectedAxis;
+	uint32 SelectedAxis;  // 0=X, 1=Y, 2=Z, 3=Center
 	float HoveredAxisOpacity;
-	uint32 AxisMask;       // 비트 0=X, 1=Y, 2=Z — 1이면 표시, 0이면 숨김. 0x7=전부 표시
+	uint32 AxisMask;       // 비트 0=X, 1=Y, 2=Z — center handle is always visible
 	uint32 _pad[3];
 };
 

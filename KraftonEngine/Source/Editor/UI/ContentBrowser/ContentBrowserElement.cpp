@@ -16,13 +16,14 @@ bool ContentBrowserElement::RenderSelectSpace(ContentBrowserContext& Context)
 
 	ImFont* font = ImGui::GetFont();
 	float fontSize = ImGui::GetFontSize();
-	Max.y -= fontSize;
-	Max.x -= fontSize * 0.5f;
-	Min.x += fontSize * 0.5f;
-	DrawList->AddImage(Icon, Min, Max);
+	const float Padding = 6.0f;
+	const float LabelHeight = fontSize + 6.0f;
+	ImVec2 ImageMin(Min.x + Padding, Min.y + Padding);
+	ImVec2 ImageMax(Max.x - Padding, Max.y - LabelHeight);
+	DrawList->AddImage(Icon, ImageMin, ImageMax);
 
-	ImVec2 TextPos(Min.x, Max.y);
-	FString Text = EllipsisText(FPaths::ToUtf8(ContentItem.Name), Context.ContentSize.x);
+	ImVec2 TextPos(Min.x + 2.0f, Max.y - LabelHeight + 2.0f);
+	FString Text = EllipsisText(FPaths::ToUtf8(ContentItem.Name), Context.ContentSize.x - 4.0f);
 	DrawList->AddText(TextPos, ImGui::GetColorU32(ImGuiCol_Text), Text.c_str());
 	ImGui::PopID();
 

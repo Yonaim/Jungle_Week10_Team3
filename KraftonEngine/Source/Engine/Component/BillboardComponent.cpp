@@ -1,4 +1,4 @@
-﻿#include "BillboardComponent.h"
+#include "BillboardComponent.h"
 #include "GameFramework/World.h"
 #include "Component/CameraComponent.h"
 #include "Render/Proxy/BillboardSceneProxy.h"
@@ -7,10 +7,53 @@
 #include "GameFramework/AActor.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialManager.h"
+#include "Resource/ResourceManager.h"
+#include "Texture/Texture2D.h"
+#include "Engine/Runtime/Engine.h"
+#include "Platform/Paths.h"
+
+#include <algorithm>
+#include <cwctype>
+#include <filesystem>
 
 #include <cstring>
 
 IMPLEMENT_CLASS(UBillboardComponent, UPrimitiveComponent)
+
+namespace
+{
+FString ResolveLegacyBillboardTexturePath(const FString& InPath)
+{
+	const FString FileName = std::filesystem::path(InPath).filename().string();
+
+	if (FileName == "AmbientLight.mat")
+	{
+		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.AmbientLight"));
+	}
+	if (FileName == "DirectionalLight.mat")
+	{
+		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.DirectionalLight"));
+	}
+	if (FileName == "PointLight.mat")
+	{
+		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.PointLight"));
+	}
+	if (FileName == "SpotLight.mat")
+	{
+		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.SpotLight"));
+	}
+	if (FileName == "HeightFog.mat")
+	{
+		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.HeightFog"));
+	}
+	if (FileName == "Decal.mat")
+	{
+		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.Decal"));
+	}
+
+	return InPath;
+}
+}
 
 FPrimitiveSceneProxy* UBillboardComponent::CreateSceneProxy()
 {
@@ -21,7 +64,7 @@ void UBillboardComponent::Serialize(FArchive& Ar)
 {
 	UPrimitiveComponent::Serialize(Ar);
 	Ar << bIsBillboard;
-	Ar << MaterialSlot.Path;
+	Ar << TextureSlot.Path;
 	Ar << Width;
 	Ar << Height;
 }
@@ -30,36 +73,49 @@ void UBillboardComponent::PostDuplicate()
 {
 	UPrimitiveComponent::PostDuplicate();
 
-	if (!MaterialSlot.Path.empty() && MaterialSlot.Path != "None")
+	if (!TextureSlot.Path.empty() && TextureSlot.Path != "None")
 	{
-		UMaterial* LoadedMat = FMaterialManager::Get().GetOrCreateMaterial(MaterialSlot.Path);
-		if (LoadedMat)
-		{
-			SetMaterial(LoadedMat);
-		}
+		ResolveTextureFromPath(TextureSlot.Path);
 	}
+}
+
+void UBillboardComponent::SetTexture(UTexture2D* InTexture)
+{
+	Texture = InTexture;
+	if (Texture)
+	{
+		TextureSlot.Path = Texture->GetSourcePath();
+	}
+	else
+	{
+		TextureSlot.Path = "None";
+	}
+	// ?띿뒪泥?蹂寃????뚮뜑 ?ㅽ뀒?댄듃? ?꾨줉??媛깆떊
+	MarkProxyDirty(EDirtyFlag::Material);
+	MarkProxyDirty(EDirtyFlag::Mesh);
 }
 
 void UBillboardComponent::SetMaterial(UMaterial* InMaterial)
 {
-	Material = InMaterial;
-	if (Material)
+	UTexture2D* PreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(InMaterial);
+	if (PreviewTexture)
 	{
-		MaterialSlot.Path = Material->GetAssetPathFileName();
+		SetTexture(PreviewTexture);
 	}
 	else
 	{
-		MaterialSlot.Path = "None";
+		SetTexture(nullptr);
+		if (InMaterial)
+		{
+			TextureSlot.Path = InMaterial->GetAssetPathFileName();
+		}
 	}
-	// 머티리얼 변경 시 렌더 스테이트와 프록시 갱신
-	MarkProxyDirty(EDirtyFlag::Material);
-	MarkProxyDirty(EDirtyFlag::Mesh);
 }
 
 void UBillboardComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
 	UPrimitiveComponent::GetEditableProperties(OutProps);
-	OutProps.push_back({ "Material", EPropertyType::MaterialSlot, &MaterialSlot });
+	OutProps.push_back({ "Texture", EPropertyType::TextureSlot, &TextureSlot });
 	OutProps.push_back({ "Width",  EPropertyType::Float, &Width,  0.1f, 100.0f, 0.1f });
 	OutProps.push_back({ "Height", EPropertyType::Float, &Height, 0.1f, 100.0f, 0.1f });
 }
@@ -68,25 +124,21 @@ void UBillboardComponent::PostEditProperty(const char* PropertyName)
 {
 	UPrimitiveComponent::PostEditProperty(PropertyName);
 
-	if (strcmp(PropertyName, "Material") == 0)
+	if (strcmp(PropertyName, "Texture") == 0)
 	{
-		if (MaterialSlot.Path == "None" || MaterialSlot.Path.empty())
+		if (TextureSlot.Path == "None" || TextureSlot.Path.empty())
 		{
-			SetMaterial(nullptr);
+			SetTexture(nullptr);
 		}
 		else
 		{
-			UMaterial* LoadedMat = FMaterialManager::Get().GetOrCreateMaterial(MaterialSlot.Path);
-			if (LoadedMat)
-			{
-				SetMaterial(LoadedMat);
-			}
+			ResolveTextureFromPath(TextureSlot.Path);
 		}
 		MarkRenderStateDirty();
 	}
 	else if (strcmp(PropertyName, "Width") == 0 || strcmp(PropertyName, "Height") == 0)
 	{
-		// Width/Height는 빌보드 쿼드 크기를 결정하므로 트랜스폼/월드 바운드 모두 갱신해야 한다.
+		// Width/Height??鍮뚮낫??荑쇰뱶 ?ш린瑜?寃곗젙?섎?濡??몃옖?ㅽ뤌/?붾뱶 諛붿슫??紐⑤몢 媛깆떊?댁빞 ?쒕떎.
 		MarkProxyDirty(EDirtyFlag::Transform);
 		MarkWorldBoundsDirty();
 	}
@@ -106,7 +158,7 @@ void UBillboardComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 
 	if (std::abs(Forward.Dot(WorldUp)) > 0.99f)
 	{
-		WorldUp = FVector(0.0f, 1.0f, 0.0f); // 임시 Up축 변경
+		WorldUp = FVector(0.0f, 1.0f, 0.0f); // ?꾩떆 Up異?蹂寃?
 	}
 
 	FVector Right = WorldUp.Cross(Forward).Normalized();
@@ -122,7 +174,7 @@ void UBillboardComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 
 FMatrix UBillboardComponent::ComputeBillboardMatrix(const FVector& CameraForward) const
 {
-	// TickComponent와 동일한 로직
+	// TickComponent? ?숈씪??濡쒖쭅
 	FVector Forward = (CameraForward * -1.0f).Normalized();
 	FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
 
@@ -138,4 +190,48 @@ FMatrix UBillboardComponent::ComputeBillboardMatrix(const FVector& CameraForward
 	RotMatrix.SetAxes(Forward, Right, Up);
 
 	return FMatrix::MakeScaleMatrix(GetWorldScale()) * RotMatrix * FMatrix::MakeTranslationMatrix(GetWorldLocation());
+}
+
+bool UBillboardComponent::ResolveTextureFromPath(const FString& InPath)
+{
+	if (InPath.empty() || InPath == "None")
+	{
+		SetTexture(nullptr);
+		return true;
+	}
+
+	const FString ResolvedPath = ResolveLegacyBillboardTexturePath(InPath);
+	const std::filesystem::path Path(FPaths::ToWide(ResolvedPath));
+	std::wstring Ext = Path.extension().wstring();
+	std::transform(Ext.begin(), Ext.end(), Ext.begin(), towlower);
+
+	if (Ext == L".mat")
+	{
+		UMaterial* LoadedMat = FMaterialManager::Get().GetOrCreateMaterial(ResolvedPath);
+		if (!LoadedMat)
+		{
+			return false;
+		}
+
+		UTexture2D* PreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(LoadedMat);
+		if (!PreviewTexture)
+		{
+			SetTexture(nullptr);
+			TextureSlot.Path = ResolvedPath;
+			return false;
+		}
+
+		SetTexture(PreviewTexture);
+		return true;
+	}
+
+	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+	UTexture2D* LoadedTexture = UTexture2D::LoadFromFile(ResolvedPath, Device);
+	if (!LoadedTexture)
+	{
+		return false;
+	}
+
+	SetTexture(LoadedTexture);
+	return true;
 }

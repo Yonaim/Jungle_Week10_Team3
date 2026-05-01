@@ -3,11 +3,18 @@
 #include "Object/Object.h"
 #include "Core/CoreTypes.h"
 
+#include <filesystem>
 #include <map>
 #include <string>
 
 struct ID3D11Device;
 struct ID3D11ShaderResourceView;
+
+struct FTextureAssetListItem
+{
+	FString DisplayName;
+	FString FullPath;
+};
 
 // UTexture2D — 텍스처 에셋 (SRV를 소유하는 UObject)
 // 같은 경로의 텍스처는 캐시를 통해 하나의 UTexture2D를 공유합니다.
@@ -25,6 +32,9 @@ public:
 
 	// 캐시된 모든 텍스처의 GPU 리소스 해제 (Shutdown 시 Device 해제 전 호출)
 	static void ReleaseAllGPU();
+	static void ScanTextureAssets();
+	static const TArray<FTextureAssetListItem>& GetAvailableTextureFiles();
+	static bool IsSupportedTextureExtension(const std::filesystem::path& Path);
 
 	ID3D11ShaderResourceView* GetSRV() const { return SRV; }
 	const FString& GetSourcePath() const { return SourceFilePath; }
@@ -43,4 +53,5 @@ private:
 
 	// path → UTexture2D* 캐시 (소유권은 UObjectManager)
 	static std::map<FString, UTexture2D*> TextureCache;
+	static TArray<FTextureAssetListItem> AvailableTextureFiles;
 };

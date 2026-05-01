@@ -55,13 +55,12 @@ public:
 	struct FUIVisibility
 	{
 		bool bConsole = true;
-		bool bControl = true;
 		bool bProperty = true;
 		bool bScene = true;
+		bool bPlaceActors = true;
 		bool bStat = false;
 		bool bContentBrowser = true;
 		bool bImGUISettings = false;
-		bool bEditorDebug = false;
 		bool bShadowMapDebug = false;
 	} UI;
 

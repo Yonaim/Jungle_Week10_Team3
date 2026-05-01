@@ -458,3 +458,4 @@ FodyWeavers.xsd
 
 #Rider CMake Project for Showing Dependency diagram
 CMakeLists.txt
+.clang-format

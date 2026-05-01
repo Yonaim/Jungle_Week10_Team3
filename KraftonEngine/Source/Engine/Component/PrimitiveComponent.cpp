@@ -274,12 +274,7 @@ void UPrimitiveComponent::OnTransformDirty()
 	// (basis 동일 + translation만 바뀐 경우 UpdateWorldMatrix가 이전 AABB를 평행이동만 적용)
 	bWorldAABBDirty = true;
 	MarkRenderTransformDirty();
-
-	// Check Collision
-	// Broad phase (OBB)
-
-	// Narrow phase
-
+	Owner->MarkOverlappingDirty();
 }
 
 void UPrimitiveComponent::EnsureWorldAABBUpdated() const
@@ -295,6 +290,13 @@ const TArray<FOverlapInfo>& UPrimitiveComponent::GetOverlapInfos() const {
 	return OverlapInfo;
 }
 
+void UPrimitiveComponent::BeginComponentOverlap(const FOverlapInfo& OtherOverlap, bool bDoNotifies) {
+	if (!OtherOverlap.HitResult.Component) return;
+	for (const FOverlapInfo& Existing : OverlapInfo)
+		if (Existing.HitResult.Component == OtherOverlap.HitResult.Component) return;
+	OverlapInfo.push_back(OtherOverlap);
+}
+
 void UPrimitiveComponent::EndComponentOverlap(const UPrimitiveComponent* Other) {
 	for (uint32 i = 0; i < OverlapInfo.size(); i++) {
 		if (OverlapInfo[i].HitResult.Component && OverlapInfo[i].HitResult.Component == Other) {
@@ -304,17 +306,20 @@ void UPrimitiveComponent::EndComponentOverlap(const UPrimitiveComponent* Other) 
 	}
 }
 
-bool UPrimitiveComponent::IsOverlappingActor(const AActor* Other) {
-	if (!Other) return false;
-	for (auto* OtherComp : Other->GetPrimitiveComponents()) {
-		if (!OtherComp) continue;
-
-		FOverlapInfo Info;
-		if (IsOverlappingComponent(OtherComp, Info)) {
-			OverlapInfo.push_back(Info);
-			return true;
+bool UPrimitiveComponent::IsOverlappingComponent(const UPrimitiveComponent* Other) {
+	for (auto& Info : OverlapInfo) {
+		if (Info.HitResult.Component) {
+			if (Info.HitResult.Component == Other) return true;
 		}
 	}
+	return false;
+}
 
+bool UPrimitiveComponent::IsOverlappingActor(const AActor* Other) {
+	for (auto& Info : OverlapInfo) {
+		if (Info.HitResult.GetActor()) {
+			if (Info.HitResult.GetActor() == Other) return true;
+		}
+	}
 	return false;
 }

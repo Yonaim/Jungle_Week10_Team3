@@ -9,8 +9,26 @@
 #include "Viewport/Viewport.h"
 
 #include "ImGui/imgui.h"
+#include "ImGui/imgui_internal.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
+#include "Resource/ResourceManager.h"
+
+namespace
+{
+	void ApplyEditorTabStyle()
+	{
+		ImGuiStyle& Style = ImGui::GetStyle();
+		Style.TabRounding = (std::max)(Style.TabRounding, 6.0f);
+		Style.TabBorderSize = (std::max)(Style.TabBorderSize, 1.0f);
+
+		Style.Colors[ImGuiCol_Tab] = ImVec4(0.18f, 0.18f, 0.20f, 1.0f);
+		Style.Colors[ImGuiCol_TabHovered] = ImVec4(0.27f, 0.27f, 0.31f, 1.0f);
+		Style.Colors[ImGuiCol_TabSelected] = ImVec4(0.24f, 0.24f, 0.27f, 1.0f);
+		Style.Colors[ImGuiCol_TabDimmed] = ImVec4(0.16f, 0.16f, 0.18f, 1.0f);
+		Style.Colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.22f, 0.22f, 0.25f, 1.0f);
+	}
+}
 
 void FObjViewerPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, UObjViewerEngine* InEngine)
 {
@@ -19,11 +37,24 @@ void FObjViewerPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, UO
 
 	ImGuiIO& IO = ImGui::GetIO();
 	IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+	ApplyEditorTabStyle();
 
 	Window = InWindow;
 	Engine = InEngine;
 
-	IO.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\malgun.ttf", 16.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
+	ImGuiStyle& Style = ImGui::GetStyle();
+	Style.WindowPadding.x = (std::max)(Style.WindowPadding.x, 12.0f);
+	Style.WindowPadding.y = (std::max)(Style.WindowPadding.y, 10.0f);
+	Style.FramePadding.x = (std::max)(Style.FramePadding.x, 8.0f);
+	Style.FramePadding.y = (std::max)(Style.FramePadding.y, 6.0f);
+	Style.ItemSpacing.x = (std::max)(Style.ItemSpacing.x, 10.0f);
+	Style.ItemSpacing.y = (std::max)(Style.ItemSpacing.y, 8.0f);
+	Style.CellPadding.x = (std::max)(Style.CellPadding.x, 8.0f);
+	Style.CellPadding.y = (std::max)(Style.CellPadding.y, 6.0f);
+
+	const FString FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
+	IO.Fonts->AddFontFromFileTTF(FontPath.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
 
 	ImGui_ImplWin32_Init((void*)InWindow->GetHWND());
 	ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());
@@ -42,7 +73,9 @@ void FObjViewerPanel::Render(float DeltaTime)
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+	ImGuiWindowClass DockspaceWindowClass{};
+	DockspaceWindowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton;
+	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
 
 	RenderMeshList();
 	RenderImportPopup();
