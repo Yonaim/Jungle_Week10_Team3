@@ -21,7 +21,7 @@
 #define LUA_RESTORE_CHECKF_MACRO
 #endif
 
-#include <sol/sol.hpp>
+#include "sol/sol.hpp"
 
 // Sol.hpp include 완료 후 복구
 #ifdef LUA_RESTORE_CHECKF_MACRO
