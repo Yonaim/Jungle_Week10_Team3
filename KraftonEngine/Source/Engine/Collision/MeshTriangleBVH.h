@@ -19,7 +19,7 @@ public:
 	bool RaycastLocal(const FVector& LocalOrigin, 
 		const FVector& LocalDirection, 
 		const FStaticMesh& Mesh, 
-		FHitResult& OutHitResult
+		FRayHitResult& OutHitResult
 		) const;
 	
 	// 월드 primitive BVH와 dirty 플래그 의미가 겹쳐 혼동을 줄 수 있어,

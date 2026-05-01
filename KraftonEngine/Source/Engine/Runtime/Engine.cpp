@@ -18,6 +18,7 @@
 #include "GameFramework/GameInstance.h"
 
 #include "Core/TickFunction.h"
+#include "Collision/CollisionDispatcher.h"
 
 DEFINE_CLASS(UEngine, UObject)
 
@@ -80,6 +81,7 @@ void UEngine::Init(FWindowsWindow* InWindow)
 
 	FLogManager::Get().Initialize();
 	FDirectoryWatcher::Get().Initialize();
+	FCollisionDispatcher::Get().Init();
 }
 
 void UEngine::Shutdown()

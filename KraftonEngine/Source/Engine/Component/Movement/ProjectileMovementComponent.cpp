@@ -156,7 +156,7 @@ FVector UProjectileMovementComponent::ComputeEffectiveVelocity() const
 	return EffectiveVelocity;
 }
 
-bool UProjectileMovementComponent::HandleBlockingHit(USceneComponent* UpdatedSceneComponent, const FVector& CurrentLocation, const FVector& MoveDelta, const FHitResult& HitResult)
+bool UProjectileMovementComponent::HandleBlockingHit(USceneComponent* UpdatedSceneComponent, const FVector& CurrentLocation, const FVector& MoveDelta, const FRayHitResult& HitResult)
 {
 	(void)UpdatedSceneComponent;
 	(void)CurrentLocation;

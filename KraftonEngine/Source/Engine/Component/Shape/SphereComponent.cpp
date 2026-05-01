@@ -1,0 +1,20 @@
+﻿#include "SphereComponent.h"
+#include "GameFramework/World.h"
+
+IMPLEMENT_CLASS(USphereComponent, UShapeComponent)
+
+void USphereComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) {
+	USceneComponent::GetEditableProperties(OutProps);
+	OutProps.push_back({ "Sphere Radius", EPropertyType::Float, &SphereRadius, 0.0f, 2048.f, 0.1f });
+}
+
+void USphereComponent::DrawDebugShape(FScene& Scene) const {
+	if (SphereRadius <= 0.f) return;
+	constexpr uint32 Segments = 24;
+	
+	FVector Center = GetWorldLocation();
+
+	DrawDebugRing(Center, SphereRadius, FVector(1, 0, 0), FVector(0, 1, 0), Segments, false, Scene);
+	DrawDebugRing(Center, SphereRadius, FVector(1, 0, 0), FVector(0, 0, 1), Segments, false, Scene);
+	DrawDebugRing(Center, SphereRadius, FVector(0, 1, 0), FVector(0, 0, 1), Segments, false, Scene);
+}

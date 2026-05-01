@@ -378,3 +378,15 @@ const TArray<UPrimitiveComponent*>& AActor::GetPrimitiveComponents() const
 	}
 	return PrimitiveCache;
 }
+
+bool AActor::IsOverlappingActor(const AActor* Other) const {
+	for (UActorComponent* OwnedComp : OwnedComponents) {
+		if (UPrimitiveComponent* PrimComp = Cast<UPrimitiveComponent>(OwnedComp)) {
+			if ((PrimComp->GetOverlapInfos().size() > 0) && PrimComp->IsOverlappingActor(Other)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}

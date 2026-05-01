@@ -23,7 +23,7 @@ public:
 	DECLARE_CLASS(UGizmoComponent, UPrimitiveComponent)
 	UGizmoComponent();
 
-	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult) override;
+	bool LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult) override;
 
 	FVector GetVectorForAxis(int32 Axis) const;
 	void RenderGizmo() {}

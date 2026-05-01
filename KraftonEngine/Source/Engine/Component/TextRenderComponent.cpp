@@ -39,7 +39,7 @@ void UTextRenderComponent::UpdateWorldAABB() const
 	WorldAABBMaxLocation = WorldCenter + Extent;
 }
 
-bool UTextRenderComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult)
+bool UTextRenderComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
 	// Ray 방향으로 빌보드 행렬을 계산 (CachedWorldMatrix는 active 카메라 기준이라 다른 뷰포트에서 틀림)
 	FMatrix PerRayBillboard = ComputeBillboardMatrix(Ray.Direction);

@@ -180,7 +180,6 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -201,7 +200,6 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -222,7 +220,6 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -243,7 +240,6 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -279,9 +275,11 @@
     <ClCompile Include="Source\Editor\UI\ContentBrowser\EditorPrefabWidget.cpp" />
     <ClCompile Include="Source\Editor\Viewport\EditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayout.cpp" />
+    <ClCompile Include="Source\Engine\Collision\CollisionDispatcher.cpp" />
     <ClCompile Include="Source\Engine\Collision\ConvexVolume.cpp" />
     <ClCompile Include="Source\Engine\Collision\MeshTriangleBVH.cpp" />
     <ClCompile Include="Source\Engine\Collision\Octree.cpp" />
+    <ClCompile Include="Source\Engine\Collision\OverlapInfo.cpp" />
     <ClCompile Include="Source\Engine\Collision\RayUtils.cpp" />
     <ClCompile Include="Source\Engine\Collision\RayUtilsSIMD.cpp" />
     <ClCompile Include="Source\Engine\Collision\SpatialPartition.cpp" />
@@ -310,6 +308,10 @@
     <ClCompile Include="Source\Engine\Component\Movement\PendulumMovementComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Movement\ProjectileMovementComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\Movement\RotatingMovementComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Shape\BoxComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Shape\CapsuleComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Shape\ShapeComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\Shape\SphereComponent.cpp" />
     <ClCompile Include="Source\Engine\Core\EngineTypes.cpp" />
     <ClCompile Include="Source\Engine\Core\Log.cpp" />
     <ClCompile Include="Source\Engine\Core\Notification.cpp" />
@@ -460,10 +462,12 @@
     <ClInclude Include="Source\Editor\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Viewport\FLevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\Viewport\LevelEditorViewportClient.h" />
+    <ClInclude Include="Source\Engine\Collision\CollisionDispatcher.h" />
     <ClInclude Include="Source\Engine\Collision\ConvexVolume.h" />
     <ClInclude Include="Source\Engine\Collision\MeshTriangleBVH.h" />
     <ClInclude Include="Source\Engine\Collision\OBB.h" />
     <ClInclude Include="Source\Engine\Collision\Octree.h" />
+    <ClInclude Include="Source\Engine\Collision\OverlapInfo.h" />
     <ClInclude Include="Source\Engine\Collision\RayUtils.h" />
     <ClInclude Include="Source\Engine\Collision\RayUtilsSIMD.h" />
     <ClInclude Include="Source\Engine\Collision\SpatialPartition.h" />
@@ -492,10 +496,16 @@
     <ClInclude Include="Source\Engine\Component\Movement\PendulumMovementComponent.h" />
     <ClInclude Include="Source\Engine\Component\Movement\ProjectileMovementComponent.h" />
     <ClInclude Include="Source\Engine\Component\Movement\RotatingMovementComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Shape\BoxComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Shape\CapsuleComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Shape\ShapeComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Shape\SphereComponent.h" />
     <ClInclude Include="Source\Engine\Core\ClassTypes.h" />
+    <ClInclude Include="Source\Engine\Core\CollisionEventTypes.h" />
     <ClInclude Include="Source\Engine\Core\CollisionTypes.h" />
     <ClInclude Include="Source\Engine\Core\Common.h" />
     <ClInclude Include="Source\Engine\Core\CoreTypes.h" />
+    <ClInclude Include="Source\Engine\Core\Delegate.h" />
     <ClInclude Include="Source\Engine\Core\EngineTypes.h" />
     <ClInclude Include="Source\Engine\Core\Log.h" />
     <ClInclude Include="Source\Engine\Core\Notification.h" />
@@ -650,6 +660,123 @@
     <ClInclude Include="ThirdParty\ImGui\imstb_textedit.h" />
     <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h" />
     <ClInclude Include="ThirdParty\SimpleJSON\json.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\abort.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\as_args.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\as_returns.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\assert.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\base_traits.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\bind_traits.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\bytecode.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\call.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\compatibility.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\config.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\coroutine.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\debug.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\demangle.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\deprecate.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\dump_handler.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\ebco.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\environment.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\epilogue.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\error.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\error_handler.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\forward.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\forward_as.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\forward_detail.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function_result.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function_types.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function_types_core.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function_types_overloaded.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function_types_stateful.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function_types_stateless.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\function_types_templated.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\in_place.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\inheritance.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\load_result.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\lua_table.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\lua_value.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\make_reference.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\metatable.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\object.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\object_base.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\optional.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\optional_implementation.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\overload.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\packaged_coroutine.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\pairs_iterator.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\pointer_like.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\policies.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\prologue.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\property.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\protect.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\protected_function.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\protected_function_result.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\protected_handler.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\proxy_base.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\raii.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\reference.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\resolve.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\sol.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_check.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_check_get.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_check_get_qualified.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_check_get_unqualified.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_check_qualified.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_check_unqualified.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_core.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_field.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_get.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_get_qualified.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_get_unqualified.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_guard.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_iterator.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_pop.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_probe.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_proxy.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_proxy_base.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_push.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack_reference.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\state.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\state_handling.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\state_view.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\string_view.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\table.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\table_core.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\table_iterator.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\table_proxy.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\thread.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\tie.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\traits.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\trampoline.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\tuple.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\types.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\unicode.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\unique_usertype_traits.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\unreachable.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\unsafe_function.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\unsafe_function_result.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\userdata.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\usertype.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\usertype_container.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\usertype_container_launch.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\usertype_core.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\usertype_proxy.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\usertype_storage.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\usertype_traits.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\variadic_args.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\variadic_results.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\version.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\wrapper.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\compatibility\compat-5.3.c.h" />
+    <ClInclude Include="ThirdParty\sol2\sol\compatibility\compat-5.3.h" />
+    <ClInclude Include="ThirdParty\sol2\sol\compatibility\compat-5.4.h" />
+    <ClInclude Include="ThirdParty\sol2\sol\compatibility\lua_version.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\detail\build_version.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\stack\detail\pairs.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\utility\is_integer.hpp" />
+    <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common\ConstantBuffers.hlsli">
@@ -854,19 +981,14 @@
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets" Condition="Exists('packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets')" />
-    <Import Project="packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets" Condition="Exists('packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets'))" />
-    <Error Condition="!Exists('packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets'))" />
   </Target>
 </Project>

@@ -90,6 +90,10 @@ public:
 	void SetQueuedForPartitionUpdate(bool bQueued) { bQueuedForPartitionUpdate = bQueued; }
 	
 	FActorTickFunction PrimaryActorTick;
+
+	// Overlap
+	bool IsOverlappingActor(const AActor* Other) const;
+
 protected:
 	virtual void TickActor( float DeltaSeconds, ELevelTick TickType, FActorTickFunction& ThisTickFunction );
 	

@@ -25,6 +25,7 @@ UWorld* FEditorViewportClient::GetWorld() const
 #include "Editor/Selection/SelectionManager.h"
 #include "Editor/EditorEngine.h"
 #include "GameFramework/AActor.h"
+#include "Viewport/GameViewportClient.h"
 #include "ImGui/imgui.h"
 #include "Component/Light/LightComponentBase.h"
 
@@ -140,6 +141,35 @@ void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
 void FEditorViewportClient::Tick(float DeltaTime)
 {
 	if (!bIsActive) return;
+
+	if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+	{
+		if (EditorEngine->IsPlayingInEditor())
+		{
+			InputSystem& Input = InputSystem::Get();
+			const FInputSystemSnapshot InputSnapshot = Input.MakeSnapshot();
+			if (InputSnapshot.WasPressed(VK_ESCAPE))
+			{
+				EditorEngine->RequestEndPlayMap();
+				return;
+			}
+			if (InputSnapshot.WasPressed(VK_F8))
+			{
+				EditorEngine->TogglePIEControlMode();
+			}
+
+			if (EditorEngine->IsPIEPossessedMode())
+			{
+				if (UGameViewportClient* GameViewportClient = EditorEngine->GetGameViewportClient())
+				{
+					GameViewportClient->SetDrivingCamera(Camera);
+					GameViewportClient->SetViewport(Viewport);
+					GameViewportClient->ProcessPIEInput(InputSnapshot, DeltaTime);
+				}
+				return;
+			}
+		}
+	}
 
 	SyncCameraSmoothingTarget();
 
@@ -510,7 +540,7 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
 	
 	FRay Ray = Camera->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
-	FHitResult HitResult;
+	FRayHitResult HitResult;
 
 	// 기즈모 hovering 효과를 주석처리해 일단 fps를 개선합니다
 	FRayUtils::RaycastComponent(Gizmo, Ray, HitResult);
@@ -616,7 +646,7 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 {
 	FScopeCycleCounter PickCounter; //시간측정용 카운터 시작
 
-	FHitResult HitResult{};
+	FRayHitResult HitResult{};
 	//먼저 Ray와 기즈모의 충돌을 감지하고 
 	if (FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
 	{
@@ -708,7 +738,7 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 	// 활성 뷰포트 테두리 강조
 	if (bIsActiveViewport)
 	{
-		DrawList->AddRect(Min, Max, IM_COL32(255, 200, 0, 200), 0.0f, 0, 2.0f);
+		DrawList->AddRect(Min, Max, IM_COL32(255, 165, 0, 220), 0.0f, 0, 2.0f);
 	}
 
 	// Marquee Selection 사각형 렌더링

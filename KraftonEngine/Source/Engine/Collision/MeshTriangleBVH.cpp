@@ -86,7 +86,7 @@ void FMeshTriangleBVH::EnsureBuilt(const FStaticMesh& Mesh)
 	BuildNow(Mesh);
 }
 
-bool FMeshTriangleBVH::RaycastLocal(const FVector& LocalOrigin, const FVector& LocalDirection, const FStaticMesh& Mesh, FHitResult& OutHitResult) const
+bool FMeshTriangleBVH::RaycastLocal(const FVector& LocalOrigin, const FVector& LocalDirection, const FStaticMesh& Mesh, FRayHitResult& OutHitResult) const
 {
 	//로컬 공간 ray로 메시 BVH를 front-to-back 순회하면서 가장 가까운 삼각형 hit를 찾습니다
 	struct FTraversalEntry

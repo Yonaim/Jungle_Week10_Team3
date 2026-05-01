@@ -157,7 +157,7 @@ void UWorld::WarmupPickingData() const
 	BuildWorldPrimitivePickingBVHNow();
 }
 
-bool UWorld::RaycastPrimitives(const FRay& Ray, FHitResult& OutHitResult, AActor*& OutActor) const
+bool UWorld::RaycastPrimitives(const FRay& Ray, FRayHitResult& OutHitResult, AActor*& OutActor) const
 {
 	//혹시라도 BVH 트리가 업데이트 되지 않았다면 업데이트
 	WorldPrimitivePickingBVH.EnsureBuilt(GetActors());

@@ -52,6 +52,8 @@ void UPrimitiveComponent::Serialize(FArchive& Ar)
 	Ar << bIsVisible;
 	Ar << bCastShadow;
 	Ar << bCastShadowAsTwoSided;
+	Ar << bCollisionEnabled;
+	Ar << bGenerateOverlapEvents;
 	// LocalExtents는 메시 등에서 재계산되므로 직렬화 제외.
 }
 
@@ -107,6 +109,8 @@ void UPrimitiveComponent::GetEditableProperties(TArray<FPropertyDescriptor>& Out
 	OutProps.push_back({ "Visible", EPropertyType::Bool, &bIsVisible });
 	OutProps.push_back({ "Cast Shadow", EPropertyType::Bool, &bCastShadow });
 	OutProps.push_back({ "Two Sided Shadow", EPropertyType::Bool, &bCastShadowAsTwoSided });
+	OutProps.push_back({ "Is Collidable", EPropertyType::Bool, &bCollisionEnabled });
+	OutProps.push_back({ "Generates Overlap Event", EPropertyType::Bool, &bGenerateOverlapEvents });
 }
 
 void UPrimitiveComponent::PostEditProperty(const char* PropertyName)
@@ -163,7 +167,7 @@ void UPrimitiveComponent::UpdateWorldAABB() const
 }
 
 /* 현재 쓰이지 않는 코드입니다*/
-bool UPrimitiveComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult)
+bool UPrimitiveComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
 	FMeshDataView View = GetMeshDataView();
 	if (!View.IsValid()) return false;
@@ -270,6 +274,12 @@ void UPrimitiveComponent::OnTransformDirty()
 	// (basis 동일 + translation만 바뀐 경우 UpdateWorldMatrix가 이전 AABB를 평행이동만 적용)
 	bWorldAABBDirty = true;
 	MarkRenderTransformDirty();
+
+	// Check Collision
+	// Broad phase (OBB)
+
+	// Narrow phase
+
 }
 
 void UPrimitiveComponent::EnsureWorldAABBUpdated() const
@@ -279,4 +289,32 @@ void UPrimitiveComponent::EnsureWorldAABBUpdated() const
 	{
 		UpdateWorldAABB();
 	}
+}
+
+const TArray<FOverlapInfo>& UPrimitiveComponent::GetOverlapInfos() const {
+	return OverlapInfo;
+}
+
+void UPrimitiveComponent::EndComponentOverlap(const UPrimitiveComponent* Other) {
+	for (uint32 i = 0; i < OverlapInfo.size(); i++) {
+		if (OverlapInfo[i].HitResult.Component && OverlapInfo[i].HitResult.Component == Other) {
+			OverlapInfo.erase(OverlapInfo.begin() + i);
+			break;
+		}
+	}
+}
+
+bool UPrimitiveComponent::IsOverlappingActor(const AActor* Other) {
+	if (!Other) return false;
+	for (auto* OtherComp : Other->GetPrimitiveComponents()) {
+		if (!OtherComp) continue;
+
+		FOverlapInfo Info;
+		if (IsOverlappingComponent(OtherComp, Info)) {
+			OverlapInfo.push_back(Info);
+			return true;
+		}
+	}
+
+	return false;
 }
