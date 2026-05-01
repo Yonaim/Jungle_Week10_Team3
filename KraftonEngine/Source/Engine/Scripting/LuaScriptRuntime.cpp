@@ -366,7 +366,7 @@ void FLuaScriptRuntime::OnScriptsChanged(const TSet<FString>& ChangedFiles)
 		ScriptComponents.erase(StaleComponent);
 	}
 }
-
+// TODO: 어쩔 수 없이 하드코딩으로 바인딩 -> 추후 구조 개선 고려
 void FLuaScriptRuntime::BindVectorType()
 {
 	sol::state& Lua = GetLuaState();
@@ -388,10 +388,32 @@ void FLuaScriptRuntime::BindVectorType()
 		return Scalar == 0.0f ? FVector(0.0f, 0.0f, 0.0f) : (A / Scalar);
 	});
 
+	// Vector Generator
 	Lua.set_function("MakeVector", [](float X, float Y, float Z)
 	{
 		return FVector(X, Y, Z);
 	});
+
+	// Print
+	Lua.set_function("print", [](sol::variadic_args Args)
+		{
+			FString Message;
+
+			for (auto Arg : Args)
+			{
+				if (!Message.empty())
+				{
+					Message += " ";
+				}
+
+				Message += Arg.as<FString>();
+			}
+
+			UE_LOG("[Lua] %s", Message.c_str());
+		});
+
+	// C++에서 함수 호출 예시
+	// Lua["print"]("Hello Lua!");
 }
 
 void FLuaScriptRuntime::BindActorProxyType()
