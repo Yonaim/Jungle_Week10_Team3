@@ -60,6 +60,15 @@ UWorld* UWorld::DuplicateAs(EWorldType InWorldType) const
 	return NewWorld;
 }
 
+void UWorld::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+	if (PersistentLevel)
+	{
+		PersistentLevel->Serialize(Ar);
+	}
+}
+
 void UWorld::DestroyActor(AActor* Actor)
 {
 	// remove and clean up

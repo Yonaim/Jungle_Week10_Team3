@@ -660,7 +660,18 @@ bool UEditorEngine::LoadSceneFromPath(const FString& InScenePath)
 
 	FWorldContext LoadContext;
 	FPerspectiveCameraData CameraData;
-	FSceneSaveManager::LoadSceneFromJSON(InScenePath, LoadContext, CameraData);
+	if (InScenePath.ends_with(".Scene")||InScenePath.ends_with(".scene"))
+	{
+		FSceneSaveManager::LoadSceneFromJSON(InScenePath, LoadContext, CameraData);
+	}
+	else if (InScenePath.ends_with(".bin"))
+	{
+		LoadContext.World = UObjectManager::Get().CreateObject<UWorld>();
+		FSceneSaveManager::LoadWorldFromBinary(InScenePath, LoadContext.World);
+		LoadContext.WorldType = EWorldType::Editor;
+		LoadContext.ContextName = "Loaded Binary Scene";
+		LoadContext.ContextHandle = FName("Loaded Binary Scene");
+	}
 	if (!LoadContext.World)
 	{
 		return false;

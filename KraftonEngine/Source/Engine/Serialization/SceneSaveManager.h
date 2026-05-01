@@ -44,7 +44,8 @@ public:
 
 	static void SaveSceneAsJSON(const string& SceneName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
 	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
-
+	static void SaveWorldToBinary(const FString& FilePath, UWorld* World);
+	static void LoadWorldFromBinary(const FString& FilePath, UWorld* World);
 	static TArray<FString> GetSceneFileList();
 
 private:

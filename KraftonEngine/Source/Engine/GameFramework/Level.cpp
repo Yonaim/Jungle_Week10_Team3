@@ -1,7 +1,7 @@
 ﻿#include "GameFramework/Level.h"
 #include "Object/ObjectFactory.h"
 #include <GameFramework/World.h>
-
+#include "Serialization/Archive.h"
 IMPLEMENT_CLASS(ULevel, UObject)
 
 ULevel::ULevel(UWorld* OwingWorld)
@@ -68,6 +68,44 @@ void ULevel::Tick(float DeltaTime) {
 		if (Actor)
 		{
 			Actor->Tick(DeltaTime);
+		}
+	}
+}
+
+void ULevel::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+	if (Ar.IsSaving())
+	{
+		int32 ActorCount = static_cast<int32>(Actors.size());
+		Ar << ActorCount;
+
+		for (AActor* actor : Actors)
+		{
+			FString ClassName = actor->GetClass()->GetName();
+			Ar << ClassName;
+			actor->Serialize(Ar);
+		}
+
+	}
+	else if (Ar.IsLoading())
+	{
+		int32 ActorCount = 0;
+		Ar << ActorCount;
+
+		for (int i = 0; i < ActorCount; ++i)
+		{
+			FString ClassName;
+			Ar << ClassName;
+
+			UObject* Obj = FObjectFactory::Get().Create(ClassName, this);
+			AActor * NewActor = Cast<AActor>(Obj);
+
+			if (NewActor)
+			{
+				NewActor->Serialize(Ar);
+				AddActor(NewActor);
+			}
 		}
 	}
 }

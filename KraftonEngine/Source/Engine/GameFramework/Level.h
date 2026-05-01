@@ -5,7 +5,7 @@
 class AActor;
 class UWorld;
 class FSpatialPartition;
-
+class FArchive;
 class ULevel :
     public UObject
 {
@@ -24,7 +24,7 @@ public:
 	const TArray<AActor*>& GetActors() const { return Actors; }
 	UWorld* GetWorld() const { return OwingWorld; }
 	void SetWorld(UWorld* World) { OwingWorld = World;}
-
+	void Serialize(FArchive& Ar);
 	void BeginPlay();
 	void EndPlay();
 	void Tick(float DeltaTime);

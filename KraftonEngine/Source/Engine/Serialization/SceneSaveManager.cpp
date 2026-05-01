@@ -21,7 +21,7 @@
 #include "Core/PropertyTypes.h"
 #include "Object/FName.h"
 #include "Profiling/PlatformTime.h"
-
+#include "Engine/Serialization/WindowsArchive.h"
 // ---- JSON vector helpers ---------------------------------------------------
 
 static void WriteVec3(json::JSON& Obj, const char* Key, const FVector& V)
@@ -612,6 +612,45 @@ void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext&
 	OutWorldContext.ContextHandle = FName(ContextHandle);
 }
 
+void FSceneSaveManager::SaveWorldToBinary(const FString& FilePath, UWorld* World)
+{
+	if (!World)
+		return;
+	FWindowsBinWriter Ar(FilePath);
+	if (Ar.IsValid())
+	{
+		World->Serialize(Ar);
+	}
+	else
+	{
+		std::cerr << "Failed to open file for writing: " << FilePath << std::endl;
+	}
+}
+
+void FSceneSaveManager::LoadWorldFromBinary(const FString& FilePath, UWorld* World)
+{
+	if (!World)
+		return;
+	FWindowsBinReader Ar(FilePath);
+	if (Ar.IsValid())
+	{
+		//World data Initialize
+		World->EndPlay();
+		World->InitWorld();
+		//load world data
+		World->Serialize(Ar);
+
+		if (World->GetWorldType()== EWorldType::Game|| World->GetWorldType() == EWorldType::PIE)
+		{
+			World->BeginPlay();
+		}
+	}
+	else
+	{
+		std::cerr << "Failed to open file for reading: " << FilePath << std::endl;
+	}
+}
+
 USceneComponent* FSceneSaveManager::DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner)
 {
 	string ClassName = Node[SceneKeys::ClassName].ToString();
@@ -817,9 +856,11 @@ TArray<FString> FSceneSaveManager::GetSceneFileList()
 
 	for (auto& Entry : std::filesystem::directory_iterator(SceneDir))
 	{
-		if (Entry.is_regular_file() && Entry.path().extension() == SceneExtension)
+		if (Entry.is_regular_file())
 		{
-			Result.push_back(FPaths::ToUtf8(Entry.path().stem().wstring()));
+			auto Ext = Entry.path().extension().wstring();
+			if (Ext == SceneExtension||Ext == L".bin")
+				Result.push_back(FPaths::ToUtf8(Entry.path().stem().wstring()));
 		}
 	}
 	return Result;

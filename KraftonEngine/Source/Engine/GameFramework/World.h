@@ -11,6 +11,7 @@
 #include "Render/Types/LODContext.h"
 #include <Collision/Octree.h>
 #include <Collision/SpatialPartition.h>
+#include "Serialization/Archive.h"
 
 class UCameraComponent;
 class UPrimitiveComponent;
@@ -34,6 +35,7 @@ public:
 	// EditorOnly 컴포넌트의 CreateRenderState()에서 올바르게 판별 가능.
 	UWorld* DuplicateAs(EWorldType InWorldType) const;
 
+	void Serialize(FArchive& Ar) override;
 	// Actor lifecycle
 	template<typename T>
 	T* SpawnActor();
@@ -71,8 +73,7 @@ public:
 	void InsertActorToOctree(AActor* actor);
 	void RemoveActorToOctree(AActor* actor);
 	void UpdateActorInOctree(AActor* actor);
-
-private:
+	  
 	//TArray<AActor*> Actors;
 	ULevel* PersistentLevel;
 	AGameModeBase* AuthorGameMode = nullptr;
