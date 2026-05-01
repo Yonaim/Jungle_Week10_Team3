@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <chrono>
 
@@ -14,12 +14,13 @@ public:
 	float GetFPS() const { return DeltaTime > 0.0f ? 1.0f / DeltaTime : 0.0f; }
 	float GetDisplayFPS() const { return SmoothedFPS; }
 	float GetFrameTimeMs() const { return DeltaTime * 1000.0f; }
-
+	float GetTimeSinceLastTick() const;
 	void SetMaxFPS(float InMaxFPS);
 	float GetMaxFPS() const { return MaxFPS; }
 
 private:
-	using Clock = std::chrono::high_resolution_clock;
+	// instead of using std::chrono::steady_clock
+	using Clock = std::chrono::steady_clock;
 	Clock::time_point LastTime = {};
 	float DeltaTime = 0.0f;
 	double TotalTime = 0.0;

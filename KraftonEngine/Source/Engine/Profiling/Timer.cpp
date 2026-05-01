@@ -1,4 +1,4 @@
-#include "Engine/Profiling/Timer.h"
+﻿#include "Engine/Profiling/Timer.h"
 
 void FTimer::Initialize()
 {
@@ -7,16 +7,18 @@ void FTimer::Initialize()
 
 void FTimer::Tick()
 {
-	if (TargetFrameTime > 0.0f)
-	{
-		Clock::time_point Now;
-		float Elapsed;
-		do
-		{
-			Now = Clock::now();
-			Elapsed = std::chrono::duration<float>(Now - LastTime).count();
-		} while (Elapsed < TargetFrameTime);
-	}
+	// now don't do this, because it can cause inaccurate timing if the sleep/ wait is not precise.
+	
+	//if (TargetFrameTime > 0.0f)
+	//{
+	//	Clock::time_point Now;
+	//	float Elapsed;
+	//	do
+	//	{
+	//		Now = Clock::now();
+	//		Elapsed = std::chrono::duration<float>(Now - LastTime).count();
+	//	} while (Elapsed < TargetFrameTime);
+	//}
 
 	Clock::time_point CurrentTime = Clock::now();
 	DeltaTime = std::chrono::duration<float>(CurrentTime - LastTime).count();
@@ -29,6 +31,14 @@ void FTimer::Tick()
 	SmoothedFPS = (SmoothedFPS == 0.0f)
 		? CurrentFPS
 		: SmoothedFPS + (CurrentFPS - SmoothedFPS) * Smoothing;
+}
+
+float FTimer::GetTimeSinceLastTick() const
+{
+	Clock::time_point Now = Clock::now();
+	float Elapsed = std::chrono::duration<float>(Now - LastTime).count();
+
+	return Elapsed;
 }
 
 void FTimer::SetMaxFPS(float InMaxFPS)

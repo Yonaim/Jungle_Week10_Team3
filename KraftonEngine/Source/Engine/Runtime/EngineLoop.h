@@ -1,9 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsApplication.h"
 #include "Engine/Profiling/Timer.h"
+#include <mmsystem.h>
 
+#pragma comment(lib, "Winmm.lib")
 class FEngineLoop
 {
 public:

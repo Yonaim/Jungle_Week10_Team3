@@ -6,7 +6,7 @@
 #include "Render/Types/LODContext.h"
 #include <algorithm>
 #include "Profiling/Stats.h"
-
+#include "GameFramework/GameModeBase.h"
 IMPLEMENT_CLASS(UWorld, UObject)
 
 
@@ -220,16 +220,19 @@ void UWorld::InitWorld()
 	Partition.Reset(FBoundingBox());
 	PersistentLevel = UObjectManager::Get().CreateObject<ULevel>(this);
 	PersistentLevel->SetWorld(this);
+	AuthorGameMode = SpawnActor<AGameModeBase>();
+
 }
 
 void UWorld::BeginPlay()
 {
 	bHasBegunPlay = true;
-
 	if (PersistentLevel)
 	{
 		PersistentLevel->BeginPlay();
 	}
+	if (AuthorGameMode)
+		AuthorGameMode->StartPlay();
 }
 
 void UWorld::Tick(float DeltaTime, ELevelTick TickType)

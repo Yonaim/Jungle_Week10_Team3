@@ -64,6 +64,8 @@ bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 
 int FEngineLoop::Run()
 {
+	timeBeginPeriod(1);
+	const float TargetDeltaTime = 1.f / 60.f;
 	while (!Application.IsExitRequested())
 	{
 		Application.PumpMessages();
@@ -74,9 +76,25 @@ int FEngineLoop::Run()
 		}
 
 		Timer.Tick();
-		GEngine->Tick(Timer.GetDeltaTime());
-	}
+		float DeltaTime = Timer.GetDeltaTime();
+		GEngine->Tick(DeltaTime);
 
+		float FrameProcessTime = Timer.GetTimeSinceLastTick();
+		if (FrameProcessTime < TargetDeltaTime)
+		{
+			float RemainingTimeMS = (TargetDeltaTime - FrameProcessTime) * 1000.f;
+			if (RemainingTimeMS > 2.0f)
+			{
+				Sleep(static_cast<DWORD>(RemainingTimeMS -1.f));
+			}
+			while (Timer.GetTimeSinceLastTick() < TargetDeltaTime)
+			{
+				_mm_pause();
+			}
+		}
+
+	}
+	timeEndPeriod(1);
 	return 0;
 }
 

@@ -15,6 +15,8 @@
 #include "Texture/Texture2D.h"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/GameInstance.h"
+
 #include "Core/TickFunction.h"
 
 DEFINE_CLASS(UEngine, UObject)
@@ -45,7 +47,7 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	// 싱글턴 초기화 순서 보장
 	FNamePool::Get();
 	FObjectFactory::Get();
-
+	GameInstance = UObjectManager::Get().CreateObject<UGameInstance>();
 	InputSystem::Get().SetOwnerWindow(Window->GetHWND());
 
 	{
@@ -74,6 +76,7 @@ void UEngine::Init(FWindowsWindow* InWindow)
 		SCOPE_STARTUP_STAT("RenderPipeline::Create");
 		SetRenderPipeline(std::make_unique<FDefaultRenderPipeline>(this, Renderer));
 	}
+	GameInstance->Init();
 
 	FLogManager::Get().Initialize();
 	FDirectoryWatcher::Get().Initialize();

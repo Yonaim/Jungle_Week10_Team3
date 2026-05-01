@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Object/Object.h"
 #include "GameFramework/World.h"
@@ -8,6 +8,7 @@
 
 #include <memory>
 
+class UGameInstance;
 class FWindowsWindow;
 class FTimer;
 class UCameraComponent;
@@ -77,6 +78,7 @@ protected:
 
 private:
 	std::unique_ptr<IRenderPipeline> RenderPipeline;
+	UGameInstance* GameInstance = nullptr;
 };
 
 extern UEngine* GEngine;

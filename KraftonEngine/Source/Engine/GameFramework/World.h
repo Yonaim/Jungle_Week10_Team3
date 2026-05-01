@@ -14,7 +14,7 @@
 
 class UCameraComponent;
 class UPrimitiveComponent;
-
+class AGameModeBase;
 class UWorld : public UObject {
 public:
 	DECLARE_CLASS(UWorld, UObject)
@@ -75,6 +75,7 @@ public:
 private:
 	//TArray<AActor*> Actors;
 	ULevel* PersistentLevel;
+	AGameModeBase* AuthorGameMode = nullptr;
 
 	UCameraComponent* ActiveCamera = nullptr;
 	UCameraComponent* LastLODUpdateCamera = nullptr;
@@ -89,7 +90,6 @@ private:
 	FVector LastFullLODUpdateCameraPos = FVector(0, 0, 0);
 	FScene Scene;
 	FTickManager TickManager;
-
 	FSpatialPartition Partition;
 };
 
