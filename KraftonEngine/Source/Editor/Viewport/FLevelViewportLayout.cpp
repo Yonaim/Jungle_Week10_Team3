@@ -1885,7 +1885,7 @@ bool FLevelViewportLayout::TryComputePlacementLocation(int32 SlotIndex, const FP
 	{
 		if (UWorld* World = Editor->GetWorld())
 		{
-			FHitResult HitResult{};
+			FRayHitResult HitResult{};
 			AActor* HitActor = nullptr;
 			if (World->RaycastPrimitives(Ray, HitResult, HitActor))
 			{

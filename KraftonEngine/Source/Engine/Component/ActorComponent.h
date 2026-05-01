@@ -58,6 +58,7 @@ public:
 	// 선택된 프록시의 소유 액터 컴포넌트가 디버그 시각화를 FScene에 기여
 	// FPrimitiveSceneProxy::CollectSelectedVisuals 에서 호출됨
 	virtual void ContributeSelectedVisuals(FScene& Scene) const { (void)Scene; }
+	virtual void ContributeVisuals(FScene& Scene) const { (void)Scene; }
 	
 	FActorComponentTickFunction PrimaryComponentTick;
 

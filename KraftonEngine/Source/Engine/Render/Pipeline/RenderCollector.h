@@ -26,6 +26,7 @@ public:
 	void CollectOctreeDebug(const FOctree* Node, FScene& Scene, uint32 Depth = 0);
 
 private:
-	void FilterVisibleProxies(const FFrameContext& Frame, FScene& Scene, FCollectOutput& Output);
+	void FilterVisibleProxies(const FFrameContext& Frame, FScene& Scene, FCollectOutput& Output, UWorld* World);
 	void CollectSelectedActorVisuals(FScene& Scene);
+	void CollectActorVisuals(UWorld* World, FScene& Scene);
 };

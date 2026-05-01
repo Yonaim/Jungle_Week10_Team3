@@ -151,7 +151,7 @@ void UStaticMeshComponent::UpdateWorldAABB() const
 	bHasValidWorldAABB = true;
 }
 
-bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult)
+bool UStaticMeshComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
 	const FMatrix& WorldMatrix = GetWorldMatrix();
 	const FMatrix& WorldInverse = GetWorldInverseMatrix();
@@ -162,7 +162,7 @@ bool UStaticMeshComponent::LineTraceStaticMeshFast(
 	const FRay& Ray,
 	const FMatrix& WorldMatrix,
 	const FMatrix& WorldInverse,
-	FHitResult& OutHitResult)
+	FRayHitResult& OutHitResult)
 {
 	if (!StaticMesh) return false;
 

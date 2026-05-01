@@ -60,7 +60,7 @@ void FRenderCollector::Collect(UWorld* World, const FFrameContext& Frame, FColle
 		World->GetPartition().QueryFrustumAllProxies(Frame.FrustumVolume, Output.FrustumVisibleProxies);
 	}
 
-	FilterVisibleProxies(Frame, Scene, Output);
+	FilterVisibleProxies(Frame, Scene, Output, World);
 }
 
 void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, FScene& Scene)
@@ -120,7 +120,7 @@ void FRenderCollector::CollectOctreeDebug(const FOctree* Node, FScene& Scene, ui
 // ============================================================
 // FilterVisibleProxies — visibility/occlusion 필터 → RenderableProxies
 // ============================================================
-void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& Scene, FCollectOutput& Output)
+void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& Scene, FCollectOutput& Output, UWorld* World)
 {
 	if (!Frame.RenderOptions.ShowFlags.bPrimitives) return;
 
@@ -169,6 +169,8 @@ void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& 
 
 	// 선택된 Actor의 컴포넌트 디버그 시각화 (빛 등 프록시 없는 Comp 포함)
 	CollectSelectedActorVisuals(Scene);
+	// 항상 표시되는 컴포넌트 시각화 (bDrawOnlyIfSelected == false)
+	CollectActorVisuals(World, Scene);
 
 	if (OcclusionMut && OcclusionMut->IsInitialized())
 		OcclusionMut->EndGatherAABB();
@@ -186,6 +188,22 @@ void FRenderCollector::CollectSelectedActorVisuals(FScene& Scene)
 		{
 			if (Comp)
 				Comp->ContributeSelectedVisuals(Scene);
+		}
+	}
+}
+
+// ============================================================
+// CollectActorVisuals — 모든 Actor의 항상-표시 컴포넌트 시각화
+// ============================================================
+void FRenderCollector::CollectActorVisuals(UWorld* World, FScene& Scene)
+{
+	for (AActor* Actor : World->GetActors())
+	{
+		if (!Actor) continue;
+		for (UActorComponent* Comp : Actor->GetComponents())
+		{
+			if (Comp)
+				Comp->ContributeVisuals(Scene);
 		}
 	}
 }

@@ -29,7 +29,7 @@ struct FRayUtils
 		uint32 PositionStride,
 		const uint32* IndexData,
 		uint32 IndexCount,
-		FHitResult& OutHitResult);
+		FRayHitResult& OutHitResult);
 
 	static bool RaycastTriangles(
 		const FRay& WorldRay,
@@ -38,8 +38,8 @@ struct FRayUtils
 		const void* PositionData,
 		uint32 PositionStride,
 		const TArray<uint32>& Indices,
-		FHitResult& OutHitResult);
+		FRayHitResult& OutHitResult);
 
 	// 컴포넌트 단위 레이캐스트 (AABB 필터링 + LineTraceComponent)
-	static bool RaycastComponent(UPrimitiveComponent* Component, const FRay& Ray, FHitResult& OutHitResult);
+	static bool RaycastComponent(UPrimitiveComponent* Component, const FRay& Ray, FRayHitResult& OutHitResult);
 };

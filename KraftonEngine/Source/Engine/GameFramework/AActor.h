@@ -90,6 +90,15 @@ public:
 	void SetQueuedForPartitionUpdate(bool bQueued) { bQueuedForPartitionUpdate = bQueued; }
 	
 	FActorTickFunction PrimaryActorTick;
+
+	bool IsActorSelected() const { return bIsSelected; }
+	void SetActorSelected(bool InFlag) { bIsSelected = InFlag; }
+
+	// Overlap
+	void MarkOverlappingDirty() { bIsOverlappingDirty; }
+	bool IsOverlappingDirty() const { return bIsOverlappingDirty; }
+	bool IsOverlappingActor(const AActor* Other) const;
+
 protected:
 	virtual void TickActor( float DeltaSeconds, ELevelTick TickType, FActorTickFunction& ThisTickFunction );
 	
@@ -107,4 +116,8 @@ protected:
 	mutable bool bPrimitiveCacheDirty = true;
 	bool bQueuedForPartitionUpdate = false;
 	bool bActorHasBegunPlay = false;
+
+protected:
+	bool bIsOverlappingDirty = false;
+	bool bIsSelected = false;
 };

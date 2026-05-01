@@ -90,7 +90,7 @@ bool FRayUtils::RaycastTriangles(
 	uint32 PositionStride,
 	const uint32* IndexData,
 	uint32 IndexCount,
-	FHitResult& OutHitResult)
+	FRayHitResult& OutHitResult)
 {
 	if (!PositionData || !IndexData || IndexCount == 0) return false;
 
@@ -141,7 +141,7 @@ bool FRayUtils::RaycastTriangles(
 	const void* PositionData,
 	uint32 PositionStride,
 	const TArray<uint32>& Indices,
-	FHitResult& OutHitResult)
+	FRayHitResult& OutHitResult)
 {
 	return RaycastTriangles(WorldRay, WorldMatrix, InverseWorldMatrix,
 		PositionData, PositionStride,
@@ -151,7 +151,7 @@ bool FRayUtils::RaycastTriangles(
 
 //component 단위의 공통 raycast 진입점입니다.
 //visibility와 world AABB broad phase를 먼저 통과한 경우에만 실제 검사 함수를 호출합니다.
-bool FRayUtils::RaycastComponent(UPrimitiveComponent* Component, const FRay& Ray, FHitResult& OutHitResult)
+bool FRayUtils::RaycastComponent(UPrimitiveComponent* Component, const FRay& Ray, FRayHitResult& OutHitResult)
 {
 	if (!Component || !Component->IsVisible())
 		return false;

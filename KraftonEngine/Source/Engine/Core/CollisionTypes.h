@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "Math/Vector.h" // 필요한 최소한의 수학 라이브러리만
 
-struct FHitResult 
+struct FRayHitResult 
 {
     class UPrimitiveComponent* HitComponent = nullptr;
 

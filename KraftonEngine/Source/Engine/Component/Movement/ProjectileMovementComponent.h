@@ -37,7 +37,7 @@ public:
 protected:
 	FVector ComputeEffectiveVelocity() const;
 	virtual EProjectileHitBehavior GetHitBehavior() const;
-	virtual bool HandleBlockingHit(USceneComponent* UpdatedSceneComponent, const FVector& CurrentLocation, const FVector& MoveDelta, const FHitResult& HitResult);
+	virtual bool HandleBlockingHit(USceneComponent* UpdatedSceneComponent, const FVector& CurrentLocation, const FVector& MoveDelta, const FRayHitResult& HitResult);
 
 	FVector Velocity = FVector(0.0f, 0.0f, 0.0f);
 	float InitialSpeed = 10.0f;

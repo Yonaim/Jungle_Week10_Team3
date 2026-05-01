@@ -1,6 +1,7 @@
 ﻿#include "GameFramework/World.h"
 #include "Object/ObjectFactory.h"
-#include "Component/PrimitiveComponent.h"
+#include "Collision/CollisionDispatcher.h"
+#include "Component/Shape/ShapeComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Engine/Component/CameraComponent.h"
 #include "Render/Types/LODContext.h"
@@ -157,7 +158,7 @@ void UWorld::WarmupPickingData() const
 	BuildWorldPrimitivePickingBVHNow();
 }
 
-bool UWorld::RaycastPrimitives(const FRay& Ray, FHitResult& OutHitResult, AActor*& OutActor) const
+bool UWorld::RaycastPrimitives(const FRay& Ray, FRayHitResult& OutHitResult, AActor*& OutActor) const
 {
 	//혹시라도 BVH 트리가 업데이트 되지 않았다면 업데이트
 	WorldPrimitivePickingBVH.EnsureBuilt(GetActors());
@@ -242,6 +243,49 @@ void UWorld::Tick(float DeltaTime, ELevelTick TickType)
 	Scene.GetDebugDrawQueue().Tick(DeltaTime);
 
 	TickManager.Tick(this, DeltaTime, TickType);
+	UpdateOverlaps();
+}
+
+void UWorld::UpdateOverlaps() {
+	const FOctree* Octree = GetOctree();
+	if (!Octree) return;
+
+	for (auto* Actor : PersistentLevel->GetActors()) {
+		if (!Actor) continue;
+
+		for (auto* Component : Actor->GetComponents()) {
+			UShapeComponent* Shape = dynamic_cast<UShapeComponent*>(Component);
+			if (!Shape || !Shape->IsCollisionEnabled() || !Shape->CanGenerateOverlapEvents()) continue;
+
+			// End overlaps that are no longer valid
+			TArray<FOverlapInfo> Prev = Shape->GetOverlapInfos();
+			for (const FOverlapInfo& PrevInfo : Prev) {
+				UShapeComponent* Other = dynamic_cast<UShapeComponent*>(PrevInfo.HitResult.Component);
+				if (!Other || !FCollisionDispatcher::Get().CheckCollision(Shape, Other)) {
+					Shape->EndComponentOverlap(PrevInfo.HitResult.Component);
+					Shape->ShapeColor = FColor(0, 0, 255);
+				}
+			}
+
+			// Broad phase
+			TArray<UPrimitiveComponent*> Broad;
+			Octree->QueryAABB(Shape->GetWorldBoundingBox(), Broad);
+
+			// Narrow phase
+			for (auto* Candidate : Broad) {
+				if (!Candidate || Candidate == Shape) continue;
+				UShapeComponent* Other = dynamic_cast<UShapeComponent*>(Candidate);
+				if (!Other || !Other->IsCollisionEnabled() || !Other->CanGenerateOverlapEvents()) continue;
+
+				FOverlapInfo Info;
+				Info.HitResult.Component = Other;
+				if (FCollisionDispatcher::Get().CheckCollision(Shape, Other, Info)) {
+					Shape->BeginComponentOverlap(Info, true);
+					Shape->ShapeColor = FColor(255, 0, 0);
+				}
+			}
+		}
+	}
 }
 
 void UWorld::EndPlay()

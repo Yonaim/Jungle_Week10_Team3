@@ -410,7 +410,7 @@ void UGizmoComponent::SetTargetScale(FVector NewScale)
 	TargetComponent->SetRelativeScale(SafeScale);
 }
 
-bool UGizmoComponent::LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult)
+bool UGizmoComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
 	OutHitResult = {};
 	if (!MeshData || MeshData->Indices.empty())

@@ -175,7 +175,7 @@ void UStaticMesh::EnsureMeshTrianglePickingBVHBuilt() const
 	MeshTrianglePickingBVH.EnsureBuilt(*StaticMeshAsset);
 }
 
-bool UStaticMesh::RaycastMeshTrianglesWithBVHLocal(const FVector& LocalOrigin, const FVector& LocalDirection, FHitResult& OutHitResult) const
+bool UStaticMesh::RaycastMeshTrianglesWithBVHLocal(const FVector& LocalOrigin, const FVector& LocalDirection, FRayHitResult& OutHitResult) const
 {
 	if (!StaticMeshAsset)
 	{

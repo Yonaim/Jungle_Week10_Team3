@@ -21,8 +21,8 @@ public:
 
 	FMeshBuffer* GetMeshBuffer() const override;
 	FMeshDataView GetMeshDataView() const override;
-	bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult) override;
-	bool LineTraceStaticMeshFast(const FRay& Ray, const FMatrix& WorldMatrix, const FMatrix& WorldInverse, FHitResult& OutHitResult);
+	bool LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult) override;
+	bool LineTraceStaticMeshFast(const FRay& Ray, const FMatrix& WorldMatrix, const FMatrix& WorldInverse, FRayHitResult& OutHitResult);
 	void UpdateWorldAABB() const override;
 
 	// 구체 프록시 생성 (FStaticMeshSceneProxy)

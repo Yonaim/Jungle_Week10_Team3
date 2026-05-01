@@ -5,6 +5,7 @@
 #include "Render/Types/RenderTypes.h"
 #include "Core/RayTypes.h"
 #include "Core/CollisionTypes.h"
+#include "Collision/OverlapInfo.h"
 #include "Core/EngineTypes.h"
 #include "Render/Types/VertexTypes.h"
 #include "Render/Proxy/DirtyFlag.h"
@@ -42,7 +43,7 @@ public:
 
 	//Collision
 	virtual void UpdateWorldAABB() const;
-	virtual bool LineTraceComponent(const FRay& Ray, FHitResult& OutHitResult);
+	virtual bool LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult);
 	void UpdateWorldMatrix() const override;
 
 	virtual bool SupportsOutline() const { return true; }
@@ -83,10 +84,24 @@ public:
 		bInOctreeOverflow = false;
 	}
 
+	// Overlap
+	bool IsTransformDirty() const { return bTransformDirty; }
+	bool IsCollisionEnabled() const { return bCollisionEnabled; }
+	void SetCollisionEnabled(bool bInCollisionFlag) { bCollisionEnabled = bInCollisionFlag; }
+	bool CanGenerateOverlapEvents() const { return bGenerateOverlapEvents; }
+	void SetGenerateOverlapEvents(bool bShouldGenerateOverlapEvents) { bGenerateOverlapEvents = bShouldGenerateOverlapEvents; }
+
+	const TArray<FOverlapInfo>& GetOverlapInfos() const;
+	void  BeginComponentOverlap(const FOverlapInfo& OtherOverlap, bool bDoNotifies);
+	void  EndComponentOverlap(const UPrimitiveComponent* Other);
+	bool  IsOverlappingComponent(const UPrimitiveComponent* Other);
+	bool  IsOverlappingActor(const AActor* Other);
+
 protected:
 	void OnTransformDirty() override;
 	void EnsureWorldAABBUpdated() const;
 
+protected:
 	FVector LocalExtents = { 0.5f, 0.5f, 0.5f };
 	mutable FVector WorldAABBMinLocation;
 	mutable FVector WorldAABBMaxLocation;
@@ -99,4 +114,10 @@ protected:
 	
 	FOctree* OctreeNode = nullptr;
 	bool bInOctreeOverflow = false;
+
+	bool bCollisionEnabled		= true;
+	bool bGenerateOverlapEvents = true;
+	bool bBlockComponent		= false;
+
+	TArray<FOverlapInfo> OverlapInfo;
 };
