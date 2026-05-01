@@ -1,6 +1,6 @@
 ﻿#include "ObjViewer/ObjViewerViewportClient.h"
 
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputManager.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Component/CameraComponent.h"
 #include "Viewport/Viewport.h"
@@ -76,10 +76,11 @@ void FObjViewerViewportClient::Tick(float DeltaTime)
 void FObjViewerViewportClient::TickInput(float DeltaTime)
 {
 	if (!Camera) return;
-	if (InputSystem::Get().GetGuiInputState().bUsingKeyboard) return;
+	//if (InputSystem::Get().GetGuiInputState().bUsingKeyboard) return;
 
 	// 마우스가 뷰포트 영역 안에 있는지 확인
-	POINT MousePos = InputSystem::Get().GetMousePos();
+	POINT MousePos;
+	GetCursorPos(&MousePos);
 	if (Window)
 	{
 		MousePos = Window->ScreenToClientPoint(MousePos);
@@ -92,11 +93,10 @@ void FObjViewerViewportClient::TickInput(float DeltaTime)
 
 	if (!bMouseInViewport) return;
 
-	// 우클릭 드래그 → 오빗 회전
-	if (InputSystem::Get().GetKey(VK_RBUTTON))
+	if (FInputManager::Get().IsMouseButtonDown(FInputManager::MOUSE_RIGHT))
 	{
-		float DeltaX = static_cast<float>(InputSystem::Get().MouseDeltaX());
-		float DeltaY = static_cast<float>(InputSystem::Get().MouseDeltaY());
+		float DeltaX = static_cast<float>(FInputManager::Get().GetMouseDeltaX());
+		float DeltaY = static_cast<float>(FInputManager::Get().GetMouseDeltaY());
 
 		OrbitYaw += DeltaX * 0.3f;
 		OrbitPitch += DeltaY * 0.3f;
@@ -104,10 +104,10 @@ void FObjViewerViewportClient::TickInput(float DeltaTime)
 	}
 
 	// 중클릭 드래그 → 팬
-	if (InputSystem::Get().GetKey(VK_MBUTTON))
+	if (FInputManager::Get().IsMouseButtonDown(FInputManager::MOUSE_MIDDLE))
 	{
-		float DeltaX = static_cast<float>(InputSystem::Get().MouseDeltaX());
-		float DeltaY = static_cast<float>(InputSystem::Get().MouseDeltaY());
+		float DeltaX = static_cast<float>(FInputManager::Get().GetMouseDeltaX());
+		float DeltaY = static_cast<float>(FInputManager::Get().GetMouseDeltaY());
 
 		float PanScale = OrbitDistance * 0.002f;
 		FVector Right = Camera->GetRightVector();
@@ -116,12 +116,12 @@ void FObjViewerViewportClient::TickInput(float DeltaTime)
 	}
 
 	// 스크롤 → 줌
-	float ScrollNotches = InputSystem::Get().GetScrollNotches();
-	if (ScrollNotches != 0.0f)
-	{
-		OrbitDistance -= ScrollNotches * OrbitDistance * 0.1f;
-		OrbitDistance = Clamp(OrbitDistance, 0.1f, 500.0f);
-	}
+	//float ScrollNotches = InputSystem::Get().GetScrollNotches();
+	//if (ScrollNotches != 0.0f)
+	//{
+	//	OrbitDistance -= ScrollNotches * OrbitDistance * 0.1f;
+	//	OrbitDistance = Clamp(OrbitDistance, 0.1f, 500.0f);
+	//}
 }
 
 void FObjViewerViewportClient::SetViewportRect(float X, float Y, float Width, float Height)

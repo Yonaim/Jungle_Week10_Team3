@@ -1,5 +1,6 @@
 ﻿#include "Input/InputManager.h"
 #include <cstring>
+FInputManager* FInputManager::Instance = nullptr;
 // Function : ProcessMessage handle raw input from windows 
 //and store input event to event queue
 void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LParam)

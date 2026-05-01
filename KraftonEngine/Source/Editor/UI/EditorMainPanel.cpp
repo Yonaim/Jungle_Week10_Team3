@@ -15,7 +15,7 @@
 #include "ImGui/imgui_impl_win32.h"
 
 #include "Render/Pipeline/Renderer.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputManager.h"
 
 #include "Editor/UI/ImGuiSetting.h"
 #include "Editor/UI/NotificationToast.h"
@@ -300,9 +300,9 @@ void FEditorMainPanel::Update()
 			bWantKeyboard = false;
 		}
 	}
-	InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
-	InputSystem::Get().GetGuiInputState().bUsingKeyboard = bWantKeyboard;
-	InputSystem::Get().GetGuiInputState().bUsingTextInput = IO.WantTextInput;
+	// InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
+	// InputSystem::Get().GetGuiInputState().bUsingKeyboard = bWantKeyboard;
+	// InputSystem::Get().GetGuiInputState().bUsingTextInput = IO.WantTextInput;
 
 	// IME는 ImGui가 텍스트 입력을 원할 때만 활성화.
 	if (Window)
@@ -336,22 +336,22 @@ void FEditorMainPanel::HandleGlobalShortcuts()
 		return;
 	}
 
-	InputSystem& Input = InputSystem::Get();
-	if (!Input.GetKey(VK_CONTROL))
+	FInputManager& Input = FInputManager::Get();
+	if (!Input.IsKeyDown(VK_CONTROL))
 	{
 		return;
 	}
 
-	const bool bShift = Input.GetKey(VK_SHIFT);
-	if (Input.GetKeyDown('N'))
+	const bool bShift = Input.IsKeyDown(VK_SHIFT);
+	if (Input.IsKeyPressed('N'))
 	{
 		EditorEngine->NewScene();
 	}
-	else if (Input.GetKeyDown('O'))
+	else if (Input.IsKeyPressed('O'))
 	{
 		EditorEngine->LoadSceneWithDialog();
 	}
-	else if (Input.GetKeyDown('S'))
+	else if (Input.IsKeyPressed('S'))
 	{
 		if (bShift)
 		{
@@ -414,3 +414,4 @@ void FEditorMainPanel::RestoreEditorWindowsAfterPIE()
 {
 	ShowEditorWindows();
 }
+

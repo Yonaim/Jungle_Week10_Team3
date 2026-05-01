@@ -2,7 +2,7 @@
 
 #include "Component/ScriptComponent.h"
 #include "Core/Log.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputManager.h"
 #include "GameFramework/AActor.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
@@ -635,19 +635,19 @@ void FLuaScriptInstance::BindInputFunctions()
 	Impl->Env.set_function("GetKey", [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? InputSystem::Get().GetKey(VirtualKey) : false;
+		return TryParseVirtualKey(KeyName, VirtualKey) ? FInputManager::Get().IsKeyDown(VirtualKey) : false;
 	});
 
 	Impl->Env.set_function("GetKeyDown", [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? InputSystem::Get().GetKeyDown(VirtualKey) : false;
+		return TryParseVirtualKey(KeyName, VirtualKey) ? FInputManager::Get().IsKeyPressed(VirtualKey) : false;
 	});
 
 	Impl->Env.set_function("GetKeyUp", [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? InputSystem::Get().GetKeyUp(VirtualKey) : false;
+		return TryParseVirtualKey(KeyName, VirtualKey) ? FInputManager::Get().IsKeyReleased(VirtualKey) : false;
 	});
 }
 

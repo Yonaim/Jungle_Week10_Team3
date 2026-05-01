@@ -23,8 +23,20 @@ struct FInputEvent
 class FInputManager
 {
 public:
-	FInputManager() = default;
-	~FInputManager() = default;
+	static FInputManager& Get()
+	{
+		if (Instance == nullptr)
+			Instance = new FInputManager();
+		return *Instance;
+	}
+	static void Shutdown()
+	{
+		if (Instance)
+		{
+			delete Instance;
+			Instance = nullptr;
+		}
+	}
 
 	FInputManager(const FInputManager&) = delete;
 	FInputManager(FInputManager&&) = delete;
@@ -50,6 +62,9 @@ public:
 	static constexpr int32 MOUSE_MIDDLE = 2;
 
 private:
+	FInputManager() = default;
+	~FInputManager() = default;
+
 	static constexpr int32 MAX_KEYS = 256;
 	static constexpr int32 MAX_MOUSE_BUTTONS = 3;
 
@@ -66,5 +81,7 @@ private:
 	float MouseDeltaY = 0.0f;
 	POINT LastMousePos = {};
 	bool bTrackingMouse = false;
+
+	static FInputManager* Instance;
 };
 

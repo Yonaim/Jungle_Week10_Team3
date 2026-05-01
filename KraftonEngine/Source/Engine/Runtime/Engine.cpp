@@ -6,7 +6,7 @@
 #include "Engine/Platform/DirectoryWatcher.h"
 #include "Profiling/Stats.h"
 #include "Profiling/StartupProfiler.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputManager.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Resource/ResourceManager.h"
 #include "Render/Pipeline/DefaultRenderPipeline.h"
@@ -49,7 +49,7 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	FNamePool::Get();
 	FObjectFactory::Get();
 	GameInstance = UObjectManager::Get().CreateObject<UGameInstance>();
-	InputSystem::Get().SetOwnerWindow(Window->GetHWND());
+// FInputManager does not have SetOwnerWindow in the provided code, so remove it or replace if needed.
 
 	{
 		SCOPE_STARTUP_STAT("Renderer::Create");
@@ -122,7 +122,7 @@ void UEngine::Tick(float DeltaTime)
 {
 	FDirectoryWatcher::Get().ProcessChanges();
 	FNotificationManager::Get().Tick(DeltaTime);
-	InputSystem::Get().Tick();
+	FInputManager::Get().Tick();
 	WorldTick(DeltaTime);
 	Render(DeltaTime);
 }

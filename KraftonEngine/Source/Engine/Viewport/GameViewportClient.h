@@ -55,13 +55,13 @@ public:
 	void UnPossess();
 	UCameraComponent* GetPossessedTarget() const { return PossessedCamera; }
 	bool HasPossessedTarget() const { return PossessedCamera != nullptr; }
-	bool Tick(float DeltaTime, const FInputSystemSnapshot& Snapshot);
-	bool ProcessPIEInput(const FInputSystemSnapshot& Snapshot, float DeltaTime);
+	// bool Tick(float DeltaTime, const FInputSystemSnapshot& Snapshot);
+	// bool ProcessPIEInput(const FInputSystemSnapshot& Snapshot, float DeltaTime);
 
 private:
-	bool ApplyInputToCameraOrActor(float DeltaTime, const FInputSystemSnapshot& Snapshot);
-	bool ApplyMovementInput(float DeltaTime, const FInputSystemSnapshot& Snapshot);
-	bool ApplyLookInput(const FInputSystemSnapshot& Snapshot);
+	// bool ApplyInputToCameraOrActor(float DeltaTime, const FInputSystemSnapshot& Snapshot);
+	// bool ApplyMovementInput(float DeltaTime, const FInputSystemSnapshot& Snapshot);
+	// bool ApplyLookInput(const FInputSystemSnapshot& Snapshot);
 	void SetCursorCaptured(bool bCaptured);
 	void ApplyCursorClip();
 

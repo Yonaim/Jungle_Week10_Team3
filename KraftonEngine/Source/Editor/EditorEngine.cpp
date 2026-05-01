@@ -15,7 +15,7 @@
 #include "Object/ObjectFactory.h"
 #include "Mesh/ObjManager.h"
 #include "Core/ProjectSettings.h"
-#include "Input/InputSystem.h"
+#include "Engine/Input/InputManager.h"
 #include "GameFramework/AActor.h"
 #include "Materials/MaterialManager.h"
 #include "Engine/Platform/Paths.h"
@@ -173,9 +173,7 @@ void UEditorEngine::Tick(float DeltaTime)
 	ApplyTransformSettingsToGizmo();
 	FDirectoryWatcher::Get().ProcessChanges();
 	FNotificationManager::Get().Tick(DeltaTime);
-	InputSystem::Get().Tick();
 	MainPanel.Update();
-	InputSystem::Get().RefreshSnapshot();
 
 	for (FEditorViewportClient* VC : ViewportLayout.GetAllViewportClients())
 	{
@@ -279,8 +277,8 @@ void UEditorEngine::StartQueuedPlaySessionRequest()
 
 void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams& Params)
 {
-	InputSystem::Get().ResetAllKeyStates();
-	InputSystem::Get().ResetTransientState();
+	// InputSystem::Get().ResetAllKeyStates();
+	// InputSystem::Get().ResetTransientState();
 
 	// 1) 현재 에디터 월드를 복제해 PIE 월드 생성 (UE의 CreatePIEWorldByDuplication 대응).
 	UWorld* EditorWorld = GetWorld();
@@ -451,7 +449,7 @@ void UEditorEngine::EndPlayMap()
 
 	PlayInEditorSessionInfo.reset();
 	PIEControlMode = EPIEControlMode::Possessed;
-	InputSystem::Get().ResetCaptureStateForPIEEnd();
+	// InputSystem::Get().ResetCaptureStateForPIEEnd();
 }
 
 bool UEditorEngine::TogglePIEControlMode()
@@ -477,9 +475,9 @@ bool UEditorEngine::EnterPIEPossessedMode()
 
 	PIEControlMode = EPIEControlMode::Possessed;
 	SyncGameViewportPIEControlState(true);
-	InputSystem::Get().SetUseRawMouse(true);
-	InputSystem::Get().ResetAllKeyStates();
-	InputSystem::Get().ResetTransientState();
+	// InputSystem::Get().SetUseRawMouse(true);
+	// InputSystem::Get().ResetAllKeyStates();
+	// InputSystem::Get().ResetTransientState();
 	return true;
 }
 
@@ -492,9 +490,9 @@ bool UEditorEngine::EnterPIEEjectedMode()
 
 	PIEControlMode = EPIEControlMode::Ejected;
 	SyncGameViewportPIEControlState(false);
-	InputSystem::Get().SetUseRawMouse(false);
-	InputSystem::Get().ResetAllKeyStates();
-	InputSystem::Get().ResetTransientState();
+	// InputSystem::Get().SetUseRawMouse(false);
+	// InputSystem::Get().ResetAllKeyStates();
+	// InputSystem::Get().ResetTransientState();
 	return true;
 }
 

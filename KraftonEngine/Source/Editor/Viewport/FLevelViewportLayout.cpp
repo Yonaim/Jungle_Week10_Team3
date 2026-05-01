@@ -6,7 +6,7 @@
 #include "Core/ProjectSettings.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Engine/Runtime/WindowsWindow.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputManager.h"
 #include "GameFramework/DecalActor.h"
 #include "GameFramework/HeightFogActor.h"
 #include "GameFramework/Light/AmbientLightActor.h"
@@ -1764,8 +1764,8 @@ void FLevelViewportLayout::HandleViewportContextMenuInput(const FPoint& MousePos
 		const bool bClickCandidate =
 			bReleasedOverSameSlot &&
 			ContextMenuState.RightClickTravelSq[i] <= RightClickPopupThresholdSq &&
-			!InputSystem::Get().GetRightDragging() &&
-			!InputSystem::Get().GetRightDragEnd();
+			!FInputManager::Get().IsMouseButtonDown(FInputManager::MOUSE_RIGHT) &&
+			!FInputManager::Get().IsMouseButtonReleased(FInputManager::MOUSE_RIGHT);
 		const ImGuiIO& IO = ImGui::GetIO();
 		const bool bNoModifiers = !IO.KeyCtrl && !IO.KeyShift && !IO.KeyAlt && !IO.KeySuper;
 

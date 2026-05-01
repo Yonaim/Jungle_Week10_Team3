@@ -3,7 +3,7 @@
 #include "ObjViewer/ObjViewerEngine.h"
 #include "ObjViewer/ObjViewerViewportClient.h"
 #include "Engine/Runtime/WindowsWindow.h"
-#include "Engine/Input/InputSystem.h"
+#include "Engine/Input/InputManager.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Mesh/ObjManager.h"
 #include "Viewport/Viewport.h"
@@ -98,9 +98,9 @@ void FObjViewerPanel::Update()
 		// (뷰포트 ImGui::Image 위에 InvisibleButton이 있으므로 그걸로 판단)
 		bWantMouse = IO.WantCaptureMouse;
 	}
-	InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
-	InputSystem::Get().GetGuiInputState().bUsingKeyboard = IO.WantCaptureKeyboard;
-	InputSystem::Get().GetGuiInputState().bUsingTextInput = IO.WantTextInput;
+	// InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
+	// InputSystem::Get().GetGuiInputState().bUsingKeyboard = IO.WantCaptureKeyboard;
+	// InputSystem::Get().GetGuiInputState().bUsingTextInput = IO.WantTextInput;
 }
 
 void FObjViewerPanel::RenderMeshList()
@@ -246,7 +246,7 @@ void FObjViewerPanel::RenderPreviewViewport(float DeltaTime)
 			ImGui::InvisibleButton("##PreviewViewport", Size);
 			if (ImGui::IsItemHovered())
 			{
-				InputSystem::Get().GetGuiInputState().bUsingMouse = false;
+				// InputSystem::Get().GetGuiInputState().bUsingMouse = false;
 			}
 		}
 	}

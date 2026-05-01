@@ -177,7 +177,7 @@ void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTim
 		{
 			if (It->second != ETriggerState::None)
 			{
-				// 매핑이 사라진 Action → Completed/Canceled
+				// 매핑이 사라진 Action -> Completed/Canceled
 				ETriggerEvent Event = (It->second == ETriggerState::Triggered)
 					? ETriggerEvent::Completed
 					: ETriggerEvent::Canceled;
