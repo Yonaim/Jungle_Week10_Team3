@@ -374,6 +374,9 @@
     <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayout.cpp">
       <Filter>Source\Editor\Viewport</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Collision\CollisionDispatcher.cpp">
+      <Filter>Source\Engine\Collision</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Collision\ConvexVolume.cpp">
       <Filter>Source\Engine\Collision</Filter>
     </ClCompile>
@@ -925,6 +928,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Viewport\LevelEditorViewportClient.h">
       <Filter>Source\Editor\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Collision\CollisionDispatcher.h">
+      <Filter>Source\Engine\Collision</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Collision\ConvexVolume.h">
       <Filter>Source\Engine\Collision</Filter>
