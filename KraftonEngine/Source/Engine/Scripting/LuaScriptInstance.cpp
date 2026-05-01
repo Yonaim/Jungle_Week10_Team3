@@ -47,7 +47,7 @@ struct FLuaScriptInstance::FInstanceImpl
 	// 실행 중이거나 다음 프레임에 다시 resume될 coroutine 상태를 묶는다.
 	struct FRunningCoroutine
 	{
-		FString FunctionName;			// 에러난 함수 이름
+		FString FunctionName;			// 코루틴 시작된 함수 이름
 		sol::thread Thread;				// Lua Thread
 		sol::coroutine Coroutine;		// Resume할 Lua Coroutine 객체
 		float WaitRemaining = 0.0f;		// Wait까지 남은 시간
@@ -444,6 +444,7 @@ bool FLuaScriptInstance::StartCoroutine(const FString& FunctionName)
 	sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
 
 	// coroutine마다 별도 Lua thread를 만들어 서로의 yield/resume 상태를 분리한다.
+	// 진짜 thread가 아닌 coroutine 실행을 위한 별도 Lua stack을 가진 실행 컨텍스트
 	sol::thread Thread = sol::thread::create(Lua.lua_state());
 	sol::state_view ThreadState = Thread.state();
 	constexpr const char* CoroutineEntryName = "__script_coroutine_entry";
@@ -496,7 +497,7 @@ void FLuaScriptInstance::TickCoroutines(float DeltaTime)
 
 	Impl->bTickingCoroutines = true;
 
-	// coroutine 배열을 직접 순회하면서 완료/실패한 항목은 즉시 제거한다.
+	// coroutine 배열을 직접 순회하면서 완료/실패한 항목은 즉시 제거한다
 	for (size_t Index = 0; Index < Impl->Coroutines.size();)
 	{
 		FInstanceImpl::FRunningCoroutine& CoroutineEntry = Impl->Coroutines[Index];

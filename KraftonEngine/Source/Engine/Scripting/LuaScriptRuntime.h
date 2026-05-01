@@ -18,6 +18,7 @@ namespace sol
 // - Lua Script 작성자가 엔진 내부 규칙을 몰라도 사용 가능하게 한다
 // - Lua에서 Actor정보에 바로 접근하지 않고, Proxy를 통해서 거치게 한다
 // - Proxy를 통해 함수 커스텀 가능
+// - 너무 비대해질 경우, 상속을 통한 여러 type 두기 고려
 // =================================================
 struct FLuaActorProxy
 {
@@ -36,6 +37,7 @@ struct FLuaActorProxy
 	void PrintLocation() const;
 	void Destroy();
 };
+
 // =================================================================
 // Lua 의 Runtime 수명 주기를 관리하는 Manager 클래스
 // =================================================================
@@ -71,6 +73,7 @@ private:
 
 	void BindVectorType();		// Vector
 	void BindActorProxyType();	// ActorProxy
+	void BindColorType();		// Color
 
 	// Scripts/ 폴더 watcher를 붙였다가 떼는 수명 관리 함수
 	void InitializeHotReload();

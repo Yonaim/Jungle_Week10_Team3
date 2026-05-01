@@ -258,6 +258,7 @@ void FLuaScriptRuntime::RegisterBindings()
 	// 런타임 레벨에서 공통으로 노출할 타입은 모두 여기서 한 번만 등록한다.
 	BindVectorType();
 	BindActorProxyType();
+	BindColorType();
 }
 
 void FLuaScriptRuntime::InitializeHotReload()
@@ -389,12 +390,12 @@ void FLuaScriptRuntime::BindVectorType()
 	});
 
 	// Vector Generator
-	Lua.set_function("MakeVector", [](float X, float Y, float Z)
+	Lua.set_function("Vector", [](float X, float Y, float Z)
 	{
 		return FVector(X, Y, Z);
 	});
 
-	// Print
+	// Print - sol library base에서 지원할 수 있지만, winMain 환경에서 안될 수 도 있음
 	Lua.set_function("print", [](sol::variadic_args Args)
 		{
 			FString Message;
@@ -427,6 +428,32 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"Location", sol::property(&FLuaActorProxy::GetLocation, &FLuaActorProxy::SetLocation),
 		"Velocity", sol::property(&FLuaActorProxy::GetVelocity, &FLuaActorProxy::SetVelocity),
 		"AddWorldOffset", &FLuaActorProxy::AddWorldOffset,
+		"AddWorldOffset", sol::overload(
+			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::AddWorldOffset),
+			[](FLuaActorProxy& Self, float X, float Y, float Z)
+			{
+				Self.AddWorldOffset(FVector(X, Y, Z));
+			}
+		),
 		"PrintLocation", &FLuaActorProxy::PrintLocation,
 		"Destroy", &FLuaActorProxy::Destroy);
+}
+
+void FLuaScriptRuntime::BindColorType()
+{
+	sol::state& Lua = GetLuaState();
+
+	Lua.new_usertype<FColor>(
+		"Color",
+		sol::constructors<FColor(), FColor(int32, int32, int32, int32)>(),
+		"r", sol::property([](const FColor& Value) { return Value.R; }, [](FColor& Value, int32 InR) { Value.R = InR; }),
+		"g", sol::property([](const FColor& Value) { return Value.G; }, [](FColor& Value, int32 InG) { Value.G = InG; }),
+		"b", sol::property([](const FColor& Value) { return Value.B; }, [](FColor& Value, int32 InB) { Value.B = InB; }),
+		"a", sol::property([](const FColor& Value) { return Value.A; }, [](FColor& Value, int32 InA) { Value.A = InA; })
+	);
+
+	Lua.set_function("MakeColor", [](int32 R, int32 G, int32 B, int32 A)
+		{
+			return FColor(R, G, B, A);
+		});
 }
