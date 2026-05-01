@@ -5,8 +5,16 @@ IMPLEMENT_CLASS(UCapsuleComponent, UShapeComponent)
 
 void UCapsuleComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) {
 	USceneComponent::GetEditableProperties(OutProps);
-	OutProps.push_back({ "Capsule Radius",		EPropertyType::Float, &CapsuleRadius,	  0.0f, 500.0f, 0.1f });
-	OutProps.push_back({ "Capsule Half-Height", EPropertyType::Float, &CapsuleHalfHeight, 0.0f, 500.0f, 0.1f });
+	OutProps.push_back({ "Capsule Radius",		EPropertyType::Float, &CapsuleRadius,	  0.0f, 2048.f, 0.1f });
+	OutProps.push_back({ "Capsule Half-Height", EPropertyType::Float, &CapsuleHalfHeight, 0.0f, 2048.f, 0.1f });
+}
+
+void UCapsuleComponent::PostEditProperty(const char* PropertyName) {
+	if (strcmp(PropertyName, "Capsule Radius") == 0)
+		CapsuleRadius = CapsuleRadius < CapsuleHalfHeight ? CapsuleRadius : CapsuleHalfHeight;
+	else if (strcmp(PropertyName, "Capsule Half-Height") == 0)
+		CapsuleHalfHeight = CapsuleHalfHeight > CapsuleRadius ? CapsuleHalfHeight : CapsuleRadius;
+	UShapeComponent::PostEditProperty(PropertyName);
 }
 
 void UCapsuleComponent::DrawDebugShape(FScene& Scene) const {
@@ -16,8 +24,10 @@ void UCapsuleComponent::DrawDebugShape(FScene& Scene) const {
 	FVector Up        = GetUpVector().Normalized();
 	FVector Fwd       = GetForwardVector().Normalized();
 	FVector Right     = GetRightVector().Normalized();
-	FVector TopCenter = Center + Up * CapsuleHalfHeight;
-	FVector BotCenter = Center - Up * CapsuleHalfHeight;
+
+	float BiasedHeight = CapsuleHalfHeight > CapsuleRadius ? (CapsuleHalfHeight - CapsuleRadius) : 0.f;
+	FVector TopCenter = Center + Up * BiasedHeight;
+	FVector BotCenter = Center - Up * BiasedHeight;
 	FVector NegUp     = Up * -1.f;
 
 	constexpr uint32 Segments     = 24;

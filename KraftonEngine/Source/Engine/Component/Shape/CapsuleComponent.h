@@ -11,12 +11,13 @@ public:
 
 	float GetCapsuleHalfHeight() const { return CapsuleHalfHeight; }
 	float GetCapsuleRadius() const { return CapsuleRadius; }
-	void  SetCapsuleHalfHeight(float InHalfHeight) { CapsuleHalfHeight = InHalfHeight; }
-	void  SetCapsuleRadius(float InRadius) { CapsuleRadius = InRadius; }
+	void  SetCapsuleHalfHeight(float InHalfHeight) { CapsuleHalfHeight = CapsuleHalfHeight > CapsuleRadius ? CapsuleHalfHeight : CapsuleRadius; }
+	void  SetCapsuleRadius(float InRadius) { CapsuleRadius = CapsuleRadius < CapsuleHalfHeight ? CapsuleRadius : CapsuleHalfHeight; }
+	void  PostEditProperty(const char* PropertyName) override;
 
 	void DrawDebugShape(FScene& Scene) const override;
 
 private:
-	float CapsuleHalfHeight = 1.f;
+	float CapsuleHalfHeight = 2.f;
 	float CapsuleRadius		= 1.f;
 };

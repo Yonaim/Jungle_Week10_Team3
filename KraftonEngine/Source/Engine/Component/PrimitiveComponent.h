@@ -85,10 +85,16 @@ public:
 	}
 
 	// Overlap
+	bool IsCollisionEnabled() const { return bCollisionEnabled; }
+	void SetCollisionEnabled(bool bInCollisionFlag) { bCollisionEnabled = bInCollisionFlag; }
+	bool CanGenerateOverlapEvents() const { return bGenerateOverlapEvents; }
+	void SetGenerateOverlapEvents(bool bShouldGenerateOverlapEvents) { bGenerateOverlapEvents = bShouldGenerateOverlapEvents; }
+
 	const TArray<FOverlapInfo>& GetOverlapInfos() const;
-	virtual bool  IsOverlappingComponent(const UPrimitiveComponent* Other) const { return false; };
-	virtual bool  IsOverlappingComponent(const UPrimitiveComponent& Other) const { return false; };
-	bool  IsOverlappingActor(const AActor* Other) const;
+	void  EndComponentOverlap(const UPrimitiveComponent* Other);
+	virtual bool IsOverlappingComponent(UPrimitiveComponent* Other, FOverlapInfo& InInfo) { return false; };
+	virtual bool IsOverlappingComponent(UPrimitiveComponent& Other, FOverlapInfo& InInfo) { return false; };
+	bool  IsOverlappingActor(const AActor* Other);
 
 protected:
 	void OnTransformDirty() override;
@@ -108,7 +114,8 @@ protected:
 	FOctree* OctreeNode = nullptr;
 	bool bInOctreeOverflow = false;
 
-	bool bGenerateOverlapEvents = false;
+	bool bCollisionEnabled		= true;
+	bool bGenerateOverlapEvents = true;
 	bool bBlockComponent		= false;
 
 	TArray<FOverlapInfo> OverlapInfo;

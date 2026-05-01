@@ -5,7 +5,8 @@ class AActor;
 class UPrimitiveComponent;
 
 struct FHitResult {
-	bool	bBlockingHit;
+	FVector Location;
+	FVector ImpactLocation;
 	FVector ImpactNormal;
 
 	UPrimitiveComponent* Component = nullptr;
