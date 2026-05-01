@@ -1,10 +1,13 @@
 ﻿#include "Scripting/LuaScriptRuntime.h"
 
+#include "Component/ActorComponent.h"
 #include "Component/ScriptComponent.h"
+#include "Component/StaticMeshComponent.h"
 #include "Core/Log.h"
 #include "Core/Notification.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
+#include "Math/Rotator.h"
 #include "Object/Object.h"
 #include "Platform/DirectoryWatcher.h"
 #include "Platform/Paths.h"
@@ -40,6 +43,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <filesystem>
 
 struct FLuaScriptRuntime::FRuntimeImpl
@@ -49,11 +53,121 @@ struct FLuaScriptRuntime::FRuntimeImpl
 	sol::state Lua;
 };
 
+struct FLuaActorProxy::FLuaActorTaskState
+{
+	// MoveTo/MoveToActor는 Lua 호출 즉시 블로킹하지 않고,
+	// C++ Tick에서 목표까지 조금씩 이동하기 위해 상태만 기록한다.
+	bool bMoveActive = false;
+	bool bMoveToActor = false;
+	FVector MoveTargetLocation = FVector(0.0f, 0.0f, 0.0f);
+	AActor* MoveTargetActor = nullptr;
+	float MoveSpeed = 300.0f;
+	float MoveAcceptRadius = 1.0f;
+
+	// AnimationDone wait 조건을 테스트하기 위한 mock 상태이다.
+	// 실제 애니메이션 시스템이 붙으면 이 필드는 애니메이션 컴포넌트 조회로 대체할 수 있다.
+	bool bAnimationPlaying = false;
+	FString PlayingAnimationName;
+	float AnimationTimeRemaining = 0.0f;
+};
+
 namespace
 {
 	AActor* ResolveAliveActor(AActor* Actor)
 	{
 		return (Actor && IsAliveObject(Actor)) ? Actor : nullptr;
+	}
+
+	UActorComponent* ResolveAliveComponent(UActorComponent* Component)
+	{
+		if (!Component || !IsAliveObject(Component))
+		{
+			return nullptr;
+		}
+
+		// ComponentProxy는 Component만 살아 있는 것으로 충분하지 않다.
+		// Owner Actor가 파괴되었거나 소유 목록에서 빠진 Component라면 Lua 호출이 엔진 내부 상태를 건드리지 못하게 실패시킨다.
+		AActor* OwnerActor = ResolveAliveActor(Component->GetOwner());
+		if (!OwnerActor)
+		{
+			return nullptr;
+		}
+
+		const TArray<UActorComponent*>& OwnerComponents = OwnerActor->GetComponents();
+		const auto It = std::find(OwnerComponents.begin(), OwnerComponents.end(), Component);
+		return (It != OwnerComponents.end()) ? Component : nullptr;
+	}
+
+	FLuaComponentProxy MakeComponentProxy(UActorComponent* Component)
+	{
+		FLuaComponentProxy Proxy;
+		// Lua에 넘기는 순간에도 한 번 거르지만, Proxy가 복사되어 오래 살아남을 수 있으므로 실제 안전성은 각 함수의 재검증이 책임진다.
+		Proxy.Component = ResolveAliveComponent(Component);
+		return Proxy;
+	}
+
+	FString StripLuaClassPrefix(const FString& Name)
+	{
+		// C++ class 이름은 UStaticMeshComponent처럼 U prefix를 갖지만,
+		// Lua 작성자는 StaticMeshComponent처럼 엔진 접두어를 빼고 쓰는 경우가 많으므로 비교용으로만 완화한다.
+		if (Name.size() > 1 && Name[0] == 'U')
+		{
+			return Name.substr(1);
+		}
+
+		return Name;
+	}
+
+	bool IsLuaNameMatch(const FString& RequestedName, const FString& CandidateName)
+	{
+		if (RequestedName.empty() || CandidateName.empty())
+		{
+			return false;
+		}
+
+		return RequestedName == CandidateName
+			|| StripLuaClassPrefix(RequestedName) == StripLuaClassPrefix(CandidateName);
+	}
+
+	bool IsComponentNameMatch(const UActorComponent* Component, const FString& ComponentName)
+	{
+		if (!Component || ComponentName.empty())
+		{
+			return false;
+		}
+
+		// GetComponent는 실제 객체 이름과 class 이름을 모두 받는다.
+		// 예: "UStaticMeshComponent_0" 같은 UObject 이름, 또는 "StaticMeshComponent" 같은 Lua 친화적 class 이름.
+		if (IsLuaNameMatch(ComponentName, Component->GetFName().ToString()))
+		{
+			return true;
+		}
+
+		UClass* ComponentClass = Component->GetClass();
+		return ComponentClass && IsLuaNameMatch(ComponentName, ComponentClass->GetName());
+	}
+
+	UClass* FindComponentClassByLuaName(const FString& TypeName)
+	{
+		if (TypeName.empty())
+		{
+			return nullptr;
+		}
+
+		for (UClass* Class : UClass::GetAllClasses())
+		{
+			if (!Class || !Class->IsA(UActorComponent::StaticClass()))
+			{
+				continue;
+			}
+
+			if (IsLuaNameMatch(TypeName, Class->GetName()))
+			{
+				return Class;
+			}
+		}
+
+		return nullptr;
 	}
 
 	bool IsLuaScriptFile(const FString& Path)
@@ -80,28 +194,88 @@ namespace
 // - 단순 호출만 하면 안되고 bind까지 해줘야함.
 // ================================================================
 
+FLuaActorProxy::FLuaActorProxy()
+	: TaskState(std::make_shared<FLuaActorTaskState>())
+{
+}
+
+bool FLuaActorProxy::IsValid() const
+{
+	// Lua가 들고 있는 Proxy는 Actor를 소유하지 않는다.
+	// 따라서 매 호출마다 UObject 생존 목록을 확인해야 hot-reload, Destroy, World 종료 이후의 dangling pointer 접근을 막을 수 있다.
+	return GetActor() != nullptr;
+}
+
+AActor* FLuaActorProxy::GetActor() const
+{
+	// Proxy는 실제 AActor*를 Lua에 직접 노출하지 않는 얇은 허브다.
+	// 모든 기능은 이 안전 조회를 통과한 뒤에만 실행되므로 죽은 Actor는 조용히 실패한다.
+	return ResolveAliveActor(Actor);
+}
+
+FString FLuaActorProxy::GetName() const
+{
+	AActor* TargetActor = GetActor();
+	return TargetActor ? TargetActor->GetFName().ToString() : FString();
+}
+
 uint32 FLuaActorProxy::GetUUID() const
 {
 	// Proxy는 항상 안전한 Actor 조회를 거친 뒤에만 실제 기능을 호출한다.
-	AActor* TargetActor = ResolveAliveActor(Actor);
+	AActor* TargetActor = GetActor();
 	return TargetActor ? TargetActor->GetUUID() : 0u;
 }
 
 FVector FLuaActorProxy::GetLocation() const
 {
-	AActor* TargetActor = ResolveAliveActor(Actor);
+	AActor* TargetActor = GetActor();
 	return TargetActor ? TargetActor->GetActorLocation() : FVector(0.0f, 0.0f, 0.0f);
 }
 
 void FLuaActorProxy::SetLocation(const FVector& InLocation)
 {
-	AActor* TargetActor = ResolveAliveActor(Actor);
+	AActor* TargetActor = GetActor();
 	if (!TargetActor)
 	{
 		return;
 	}
 
 	TargetActor->SetActorLocation(InLocation);
+}
+
+FVector FLuaActorProxy::GetRotation() const
+{
+	AActor* TargetActor = GetActor();
+	return TargetActor ? TargetActor->GetActorRotation().ToVector() : FVector(0.0f, 0.0f, 0.0f);
+}
+
+void FLuaActorProxy::SetRotation(const FVector& InRotation)
+{
+	AActor* TargetActor = GetActor();
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	// 엔진의 FRotator는 FVector(Roll, Pitch, Yaw) 변환 규칙을 제공하므로 Lua에는 Vector 하나로 단순화해 노출한다.
+	TargetActor->SetActorRotation(InRotation);
+}
+
+FVector FLuaActorProxy::GetScale() const
+{
+	AActor* TargetActor = GetActor();
+	return TargetActor ? TargetActor->GetActorScale() : FVector(1.0f, 1.0f, 1.0f);
+}
+
+void FLuaActorProxy::SetScale(const FVector& InScale)
+{
+	AActor* TargetActor = GetActor();
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	TargetActor->SetActorScale(InScale);
 }
 
 FVector FLuaActorProxy::GetVelocity() const
@@ -116,13 +290,301 @@ void FLuaActorProxy::SetVelocity(const FVector& InVelocity)
 
 void FLuaActorProxy::AddWorldOffset(const FVector& Delta)
 {
-	AActor* TargetActor = ResolveAliveActor(Actor);
+	AActor* TargetActor = GetActor();
 	if (!TargetActor)
 	{
 		return;
 	}
 
 	TargetActor->AddActorWorldOffset(Delta);
+}
+
+void FLuaActorProxy::AddWorldOffsetXYZ(float X, float Y, float Z)
+{
+	AddWorldOffset(FVector(X, Y, Z));
+}
+
+void FLuaActorProxy::MoveTo(const FVector& Target)
+{
+	if (!TaskState)
+	{
+		TaskState = std::make_shared<FLuaActorTaskState>();
+	}
+
+	// MoveTo는 방향 벡터가 아니라 월드 좌표 목표를 저장한다.
+	// 실제 위치 변경은 TickMovement에서 생존 체크 후 처리해야 Destroy된 Actor를 건드리지 않는다.
+	TaskState->bMoveActive = true;
+	TaskState->bMoveToActor = false;
+	TaskState->MoveTargetLocation = Target;
+	TaskState->MoveTargetActor = nullptr;
+}
+
+void FLuaActorProxy::MoveTo2D(float X, float Y)
+{
+	const FVector CurrentLocation = GetLocation();
+	MoveTo(FVector(X, Y, CurrentLocation.Z));
+}
+
+void FLuaActorProxy::MoveTo3D(float X, float Y, float Z)
+{
+	MoveTo(FVector(X, Y, Z));
+}
+
+void FLuaActorProxy::MoveBy(const FVector& Delta)
+{
+	MoveTo(GetLocation() + Delta);
+}
+
+void FLuaActorProxy::MoveBy2D(float X, float Y)
+{
+	MoveBy(FVector(X, Y, 0.0f));
+}
+
+void FLuaActorProxy::MoveBy3D(float X, float Y, float Z)
+{
+	MoveBy(FVector(X, Y, Z));
+}
+
+void FLuaActorProxy::MoveToActor(const FLuaActorProxy& TargetActor)
+{
+	if (!TaskState)
+	{
+		TaskState = std::make_shared<FLuaActorTaskState>();
+	}
+
+	// Lua에는 raw AActor*를 넘기지 않고 Proxy만 받는다.
+	// 단, target Actor는 나중에 파괴될 수 있으므로 여기서 얻은 포인터도 Tick마다 다시 IsAliveObject로 검증한다.
+	TaskState->bMoveActive = true;
+	TaskState->bMoveToActor = true;
+	TaskState->MoveTargetActor = TargetActor.GetActor();
+	TaskState->MoveTargetLocation = TargetActor.GetLocation();
+}
+
+void FLuaActorProxy::StopMove()
+{
+	if (!TaskState)
+	{
+		return;
+	}
+
+	// 이동을 멈출 때 target actor 포인터도 같이 지워야 이후 프레임에서 죽은 Actor를 다시 검사하지 않는다.
+	TaskState->bMoveActive = false;
+	TaskState->bMoveToActor = false;
+	TaskState->MoveTargetActor = nullptr;
+}
+
+bool FLuaActorProxy::IsMoveDone() const
+{
+	return !TaskState || !TaskState->bMoveActive;
+}
+
+void FLuaActorProxy::SetMoveSpeed(float InSpeed)
+{
+	if (!TaskState)
+	{
+		TaskState = std::make_shared<FLuaActorTaskState>();
+	}
+
+	// 음수/비정상 속도는 이동 방향을 뒤집거나 NaN을 퍼뜨릴 수 있으므로 0 이상으로 제한한다.
+	TaskState->MoveSpeed = (std::max)(0.0f, std::isfinite(InSpeed) ? InSpeed : 0.0f);
+}
+
+float FLuaActorProxy::GetMoveSpeed() const
+{
+	return TaskState ? TaskState->MoveSpeed : 0.0f;
+}
+
+void FLuaActorProxy::PlayAnimation(const FString& AnimName)
+{
+	if (!TaskState)
+	{
+		TaskState = std::make_shared<FLuaActorTaskState>();
+	}
+
+	// 아직 실제 Animation system과 연결하지 않았으므로, 이름만 기록하고 1초 뒤 완료되는 mock으로 처리한다.
+	// wait_anim_done 테스트와 스크립트 흐름 검증을 먼저 가능하게 하는 임시 구현이다.
+	TaskState->bAnimationPlaying = true;
+	TaskState->PlayingAnimationName = AnimName;
+	TaskState->AnimationTimeRemaining = 1.0f;
+}
+
+bool FLuaActorProxy::IsAnimationDone(const FString& AnimName) const
+{
+	if (!TaskState || !TaskState->bAnimationPlaying)
+	{
+		return true;
+	}
+
+	// 다른 애니메이션 이름을 기다리는 경우 현재 mock이 그 조건을 만족하지 않으므로 계속 대기한다.
+	return TaskState->PlayingAnimationName != AnimName;
+}
+
+FLuaComponentProxy FLuaActorProxy::GetComponent(const FString& ComponentName)
+{
+	AActor* TargetActor = GetActor();
+	if (!TargetActor || ComponentName.empty())
+	{
+		return FLuaComponentProxy();
+	}
+
+	// Lua에는 UActorComponent*를 직접 반환하지 않는다.
+	// 이름이 맞는 Component를 찾더라도 반드시 FLuaComponentProxy로 한 번 감싸서 이후 호출마다 생존 체크가 수행되게 한다.
+	for (UActorComponent* Component : TargetActor->GetComponents())
+	{
+		if (!ResolveAliveComponent(Component))
+		{
+			continue;
+		}
+
+		if (IsComponentNameMatch(Component, ComponentName))
+		{
+			return MakeComponentProxy(Component);
+		}
+	}
+
+	return FLuaComponentProxy();
+}
+
+FLuaComponentProxy FLuaActorProxy::GetComponentByType(const FString& TypeName)
+{
+	AActor* TargetActor = GetActor();
+	if (!TargetActor || TypeName.empty())
+	{
+		return FLuaComponentProxy();
+	}
+
+	UClass* RequestedClass = FindComponentClassByLuaName(TypeName);
+	for (UActorComponent* Component : TargetActor->GetComponents())
+	{
+		if (!ResolveAliveComponent(Component))
+		{
+			continue;
+		}
+
+		UClass* ComponentClass = Component->GetClass();
+		if (!ComponentClass)
+		{
+			continue;
+		}
+
+		// 등록된 class를 찾은 경우 상속 관계까지 허용한다.
+		// 예를 들어 "PrimitiveComponent" 검색으로 StaticMeshComponent를 찾을 수 있어야 타입 기반 조회로서 자연스럽다.
+		if (RequestedClass)
+		{
+			if (ComponentClass->IsA(RequestedClass))
+			{
+				return MakeComponentProxy(Component);
+			}
+			continue;
+		}
+
+		// class registry에서 못 찾은 이름은 exact class 이름 비교만 fallback으로 수행한다.
+		// 오타나 아직 로드되지 않은 타입이 Component 포인터 노출로 이어지지 않도록 실패 시 빈 Proxy를 돌려준다.
+		if (IsLuaNameMatch(TypeName, ComponentClass->GetName()))
+		{
+			return MakeComponentProxy(Component);
+		}
+	}
+
+	return FLuaComponentProxy();
+}
+
+FLuaComponentProxy FLuaActorProxy::GetScriptComponent()
+{
+	// Script 전용 Proxy가 생기기 전까지는 공통 ComponentProxy로 반환한다.
+	// TODO: ScriptComponent 전용 Lua API가 필요해지면 FLuaScriptComponentProxy로 분리한다.
+	return GetComponentByType("ScriptComponent");
+}
+
+FLuaComponentProxy FLuaActorProxy::GetStaticMeshComponent()
+{
+	// StaticMesh 전용 기능(SetVisible, SetMaterial 등)은 아직 노출하지 않고, 이번 단계에서는 공통 활성화/소유자 API까지만 제공한다.
+	// TODO: Mesh 조작 요구가 확정되면 FLuaStaticMeshComponentProxy를 추가해 전용 함수만 선별 노출한다.
+	return GetComponentByType("StaticMeshComponent");
+}
+
+void FLuaActorProxy::TickLuaTasks(float DeltaTime)
+{
+	// ActorProxy는 Lua 스크립팅의 기본 허브이므로, 이동과 애니메이션 mock 같은 Lua 전용 비동기 작업을 한 곳에서 갱신한다.
+	TickMovement(DeltaTime);
+	TickAnimationMock(DeltaTime);
+}
+
+void FLuaActorProxy::TickMovement(float DeltaTime)
+{
+	if (!TaskState || !TaskState->bMoveActive)
+	{
+		return;
+	}
+
+	AActor* TargetActor = GetActor();
+	if (!TargetActor)
+	{
+		// 자기 Actor가 죽었으면 Lua Proxy가 더 이상 할 수 있는 일이 없으므로 이동 상태를 정리한다.
+		StopMove();
+		return;
+	}
+
+	FVector TargetLocation = TaskState->MoveTargetLocation;
+	if (TaskState->bMoveToActor)
+	{
+		AActor* MoveTargetActor = ResolveAliveActor(TaskState->MoveTargetActor);
+		if (!MoveTargetActor)
+		{
+			// MoveToActor는 대상 Actor가 언제든 Destroy될 수 있다.
+			// 그래서 매 프레임 생존 여부를 다시 확인하고, 죽었다면 안전하게 이동을 중단한다.
+			StopMove();
+			return;
+		}
+
+		// 대상 Actor가 움직일 수 있으므로 시작 시점 위치를 고정하지 않고 매 프레임 최신 위치를 목표로 사용한다.
+		TargetLocation = MoveTargetActor->GetActorLocation();
+		TaskState->MoveTargetLocation = TargetLocation;
+	}
+
+	const FVector CurrentLocation = TargetActor->GetActorLocation();
+	const FVector ToTarget = TargetLocation - CurrentLocation;
+	const float Distance = ToTarget.Length();
+	if (Distance <= TaskState->MoveAcceptRadius)
+	{
+		TargetActor->SetActorLocation(TargetLocation);
+		StopMove();
+		return;
+	}
+
+	const float Step = TaskState->MoveSpeed * (std::max)(0.0f, DeltaTime);
+	if (Step <= 0.0f)
+	{
+		return;
+	}
+
+	if (Step >= Distance)
+	{
+		TargetActor->SetActorLocation(TargetLocation);
+		StopMove();
+		return;
+	}
+
+	FVector Direction = ToTarget;
+	Direction.Normalize();
+	TargetActor->SetActorLocation(CurrentLocation + Direction * Step);
+}
+
+void FLuaActorProxy::TickAnimationMock(float DeltaTime)
+{
+	if (!TaskState || !TaskState->bAnimationPlaying)
+	{
+		return;
+	}
+
+	TaskState->AnimationTimeRemaining -= (std::max)(0.0f, DeltaTime);
+	if (TaskState->AnimationTimeRemaining <= 0.0f)
+	{
+		// mock 애니메이션은 완료 시 playing 상태를 내려 wait_anim_done 조건을 만족시킨다.
+		TaskState->bAnimationPlaying = false;
+		TaskState->PlayingAnimationName.clear();
+		TaskState->AnimationTimeRemaining = 0.0f;
+	}
 }
 
 void FLuaActorProxy::PrintLocation() const
@@ -134,7 +596,7 @@ void FLuaActorProxy::PrintLocation() const
 void FLuaActorProxy::Destroy()
 {
 	// Lua에서 Destroy를 호출해도 실제 파괴는 World를 통해 진행한다.
-	AActor* TargetActor = ResolveAliveActor(Actor);
+	AActor* TargetActor = GetActor();
 	if (!TargetActor)
 	{
 		return;
@@ -148,6 +610,66 @@ void FLuaActorProxy::Destroy()
 
 	World->DestroyActor(TargetActor);
 	Actor = nullptr;
+	StopMove();
+}
+
+// ================================================================
+// LuaComponentProxy Section
+// - Component raw pointer는 Lua로 노출하지 않고, 이 Proxy를 통해 허용된 기능만 제공한다.
+// - Component와 Owner Actor는 언제든 파괴될 수 있으므로 모든 함수가 안전 조회를 먼저 수행한다.
+// ================================================================
+
+bool FLuaComponentProxy::IsValid() const
+{
+	// Proxy는 Component를 소유하지 않는 약한 참조다.
+	// Component 자체와 Owner Actor가 모두 살아 있고, 여전히 Owner의 소유 목록에 있을 때만 유효하다고 본다.
+	return GetComponent() != nullptr;
+}
+
+UActorComponent* FLuaComponentProxy::GetComponent() const
+{
+	// Lua에 전달된 Proxy가 오래 보관된 뒤 호출될 수 있으므로 매번 UObject 생존 목록과 Owner 관계를 다시 확인한다.
+	return ResolveAliveComponent(Component);
+}
+
+FString FLuaComponentProxy::GetName() const
+{
+	UActorComponent* TargetComponent = GetComponent();
+	return TargetComponent ? TargetComponent->GetFName().ToString() : FString();
+}
+
+FLuaActorProxy FLuaComponentProxy::GetOwner() const
+{
+	FLuaActorProxy OwnerProxy;
+
+	UActorComponent* TargetComponent = GetComponent();
+	if (!TargetComponent)
+	{
+		return OwnerProxy;
+	}
+
+	// Owner도 ActorProxy로 감싸서 반환한다.
+	// 이렇게 해야 Lua가 Component에서 역으로 Actor를 얻더라도 AActor*에 직접 접근하지 못한다.
+	OwnerProxy.Actor = ResolveAliveActor(TargetComponent->GetOwner());
+	return OwnerProxy;
+}
+
+void FLuaComponentProxy::SetActive(bool bActive)
+{
+	UActorComponent* TargetComponent = GetComponent();
+	if (!TargetComponent)
+	{
+		return;
+	}
+
+	// 실제 활성화 구현은 Component가 갖고 있으므로 Proxy는 생존 체크와 API 제한만 담당한다.
+	TargetComponent->SetActive(bActive);
+}
+
+bool FLuaComponentProxy::IsActive() const
+{
+	UActorComponent* TargetComponent = GetComponent();
+	return TargetComponent ? TargetComponent->IsActive() : false;
 }
 
 // ================================================================
@@ -257,6 +779,7 @@ void FLuaScriptRuntime::RegisterBindings()
 {
 	// 런타임 레벨에서 공통으로 노출할 타입은 모두 여기서 한 번만 등록한다.
 	BindVectorType();
+	BindComponentProxyType();
 	BindActorProxyType();
 	BindColorType();
 }
@@ -390,7 +913,7 @@ void FLuaScriptRuntime::BindVectorType()
 	});
 
 	// Vector Generator
-	Lua.set_function("Vector", [](float X, float Y, float Z)
+	Lua.set_function("vec3", [](float X, float Y, float Z)
 	{
 		return FVector(X, Y, Z);
 	});
@@ -417,6 +940,21 @@ void FLuaScriptRuntime::BindVectorType()
 	// Lua["print"]("Hello Lua!");
 }
 
+void FLuaScriptRuntime::BindComponentProxyType()
+{
+	sol::state& Lua = GetLuaState();
+
+	// ComponentProxy는 UActorComponent*를 Lua에 직접 공개하지 않기 위한 얇은 접근 계층이다.
+	// 각 함수 내부에서 Component와 Owner Actor 생존 여부를 다시 확인하므로, Lua가 Proxy 값을 오래 들고 있어도 안전하게 실패한다.
+	Lua.new_usertype<FLuaComponentProxy>(
+		"ComponentProxy",
+		"IsValid", &FLuaComponentProxy::IsValid,
+		"Name", sol::property(&FLuaComponentProxy::GetName),
+		"Owner", sol::property(&FLuaComponentProxy::GetOwner),
+		"SetActive", &FLuaComponentProxy::SetActive,
+		"IsActive", &FLuaComponentProxy::IsActive);
+}
+
 void FLuaScriptRuntime::BindActorProxyType()
 {
 	sol::state& Lua = GetLuaState();
@@ -424,17 +962,35 @@ void FLuaScriptRuntime::BindActorProxyType()
 	// 실제 Actor 전체를 노출하지 않고, 스크립트에 허용한 조작만 Proxy에 제한해서 공개한다.
 	Lua.new_usertype<FLuaActorProxy>(
 		"ActorProxy",
+		"IsValid", &FLuaActorProxy::IsValid,
+		"Name", sol::property(&FLuaActorProxy::GetName),
 		"UUID", sol::property(&FLuaActorProxy::GetUUID),
 		"Location", sol::property(&FLuaActorProxy::GetLocation, &FLuaActorProxy::SetLocation),
+		"Rotation", sol::property(&FLuaActorProxy::GetRotation, &FLuaActorProxy::SetRotation),
+		"Scale", sol::property(&FLuaActorProxy::GetScale, &FLuaActorProxy::SetScale),
 		"Velocity", sol::property(&FLuaActorProxy::GetVelocity, &FLuaActorProxy::SetVelocity),
-		"AddWorldOffset", &FLuaActorProxy::AddWorldOffset,
 		"AddWorldOffset", sol::overload(
 			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::AddWorldOffset),
-			[](FLuaActorProxy& Self, float X, float Y, float Z)
-			{
-				Self.AddWorldOffset(FVector(X, Y, Z));
-			}
-		),
+			&FLuaActorProxy::AddWorldOffsetXYZ),
+		"MoveTo", sol::overload(
+			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::MoveTo),
+			&FLuaActorProxy::MoveTo2D,
+			&FLuaActorProxy::MoveTo3D),
+		"MoveBy", sol::overload(
+			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::MoveBy),
+			&FLuaActorProxy::MoveBy2D,
+			&FLuaActorProxy::MoveBy3D),
+		"MoveToActor", &FLuaActorProxy::MoveToActor,
+		"StopMove", &FLuaActorProxy::StopMove,
+		"IsMoveDone", &FLuaActorProxy::IsMoveDone,
+		"SetMoveSpeed", &FLuaActorProxy::SetMoveSpeed,
+		"GetMoveSpeed", &FLuaActorProxy::GetMoveSpeed,
+		"PlayAnimation", &FLuaActorProxy::PlayAnimation,
+		"IsAnimationDone", &FLuaActorProxy::IsAnimationDone,
+		"GetComponent", &FLuaActorProxy::GetComponent,
+		"GetComponentByType", &FLuaActorProxy::GetComponentByType,
+		"GetScriptComponent", &FLuaActorProxy::GetScriptComponent,
+		"GetStaticMeshComponent", &FLuaActorProxy::GetStaticMeshComponent,
 		"PrintLocation", &FLuaActorProxy::PrintLocation,
 		"Destroy", &FLuaActorProxy::Destroy);
 }
