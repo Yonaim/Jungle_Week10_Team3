@@ -95,6 +95,36 @@ void UWorld::AddActor(AActor* Actor)
 	}
 }
 
+bool UWorld::MoveActorBefore(AActor* ActorToMove, AActor* BeforeActor)
+{
+	if (!PersistentLevel)
+	{
+		return false;
+	}
+
+	const bool bMoved = PersistentLevel->MoveActorBefore(ActorToMove, BeforeActor);
+	if (bMoved)
+	{
+		MarkWorldPrimitivePickingBVHDirty();
+	}
+	return bMoved;
+}
+
+bool UWorld::MoveActorToIndex(AActor* ActorToMove, size_t TargetIndex)
+{
+	if (!PersistentLevel)
+	{
+		return false;
+	}
+
+	const bool bMoved = PersistentLevel->MoveActorToIndex(ActorToMove, TargetIndex);
+	if (bMoved)
+	{
+		MarkWorldPrimitivePickingBVHDirty();
+	}
+	return bMoved;
+}
+
 void UWorld::MarkWorldPrimitivePickingBVHDirty()
 {
 	if (DeferredPickingBVHUpdateDepth > 0)

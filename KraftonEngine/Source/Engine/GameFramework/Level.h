@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Object/Object.h"
+#include <cstddef>
 #include <memory>
 
 class AActor;
@@ -19,6 +20,8 @@ public:
 
 	void AddActor(AActor* Actor);
 	void RemoveActor(AActor* Actor);
+	bool MoveActorBefore(AActor* ActorToMove, AActor* BeforeActor);
+	bool MoveActorToIndex(AActor* ActorToMove, size_t TargetIndex);
 	void Clear();
 
 	const TArray<AActor*>& GetActors() const { return Actors; }

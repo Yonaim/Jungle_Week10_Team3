@@ -16,6 +16,8 @@ public:
 	FEditorMaterialInspector() = default;
 	FEditorMaterialInspector(std::filesystem::path InPath);
 	void Render();
+	void SetVisible(bool bInVisible) { bVisible = bInVisible; }
+	bool IsVisible() const { return bVisible; }
 
 private:
 	void RenderPreview();
@@ -25,7 +27,8 @@ private:
 private:
 	std::filesystem::path MaterialPath;
 	json::JSON CachedJson;
-	UMaterial* CachedMaterial;
+	UMaterial* CachedMaterial = nullptr;
+	bool bVisible = false;
 
 	TMap<FString, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> CachedSRVs;
 };

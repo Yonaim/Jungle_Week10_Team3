@@ -34,4 +34,5 @@ struct FPathResource
 };
 
 using FMeshResource = FPathResource;
+using FMaterialResource = FPathResource;
 using FGenericPathResource = FPathResource;

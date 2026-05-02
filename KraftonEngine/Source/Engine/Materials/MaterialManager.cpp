@@ -8,11 +8,13 @@
 #include "Texture/Texture2D.h"
 #include "Render/Pipeline/Renderer.h"
 
+#include <algorithm>
+
 void FMaterialManager::ScanMaterialAssets()
 {
 	AvailableMaterialFiles.clear();
 
-	const std::filesystem::path MaterialRoot = FPaths::RootDir() + L"Asset\\Materials\\";
+	const std::filesystem::path MaterialRoot = std::filesystem::path(FPaths::RootDir()) / L"Asset" / L"Content" / L"Materials";
 
 	if (!std::filesystem::exists(MaterialRoot))
 	{
@@ -35,6 +37,14 @@ void FMaterialManager::ScanMaterialAssets()
 		Item.FullPath = FPaths::ToUtf8(Path.lexically_relative(ProjectRoot).generic_wstring());
 		AvailableMaterialFiles.push_back(std::move(Item));
 	}
+
+	std::sort(
+		AvailableMaterialFiles.begin(),
+		AvailableMaterialFiles.end(),
+		[](const FMaterialAssetListItem& A, const FMaterialAssetListItem& B)
+		{
+			return A.DisplayName < B.DisplayName;
+		});
 }
 
 UTexture2D* FMaterialManager::GetMaterialPreviewTexture(UMaterial* Material) const

@@ -64,6 +64,7 @@ struct FObjImporter
 {
 	static bool Import(const FString& ObjFilePath, FStaticMesh& OutMesh, TArray<FStaticMaterial>& OutMaterials);
 	static bool Import(const FString& ObjFilePath, const FImportOptions& Options, FStaticMesh& OutMesh, TArray<FStaticMaterial>& OutMaterials);
+	static bool ImportMtl(const FString& MtlFilePath, TArray<FString>* OutGeneratedMatPaths = nullptr);
 private:
 	static bool ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo);
 	static bool ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>& OutMaterials);

@@ -6,6 +6,7 @@
 #include "Collision/RayUtils.h"
 #include "Mesh/StaticMeshAsset.h"
 #include "Engine/Runtime/Engine.h"
+#include "Materials/MaterialManager.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Texture/Texture2D.h"
 #include "Render/Proxy/StaticMeshSceneProxy.h"
@@ -13,6 +14,74 @@
 #include "Serialization/Archive.h"
 
 IMPLEMENT_CLASS(UStaticMeshComponent, UMeshComponent)
+
+namespace
+{
+	int32 GetRequiredMaterialSlotCount(const UStaticMesh* StaticMesh)
+	{
+		if (!StaticMesh)
+		{
+			return 0;
+		}
+
+		const TArray<FStaticMaterial>& DefaultMaterials = StaticMesh->GetStaticMaterials();
+		if (!DefaultMaterials.empty())
+		{
+			return static_cast<int32>(DefaultMaterials.size());
+		}
+
+		const FStaticMesh* MeshAsset = StaticMesh->GetStaticMeshAsset();
+		if (MeshAsset && (!MeshAsset->Sections.empty() || !MeshAsset->Indices.empty()))
+		{
+			return 1;
+		}
+
+		return 0;
+	}
+
+	void EnsureMaterialSlotStorage(UStaticMesh* StaticMesh, TArray<UMaterial*>& OverrideMaterials, TArray<FMaterialSlot>& MaterialSlots)
+	{
+		const int32 RequiredSlotCount = GetRequiredMaterialSlotCount(StaticMesh);
+		if (RequiredSlotCount <= 0)
+		{
+			return;
+		}
+
+		const int32 PreviousOverrideCount = static_cast<int32>(OverrideMaterials.size());
+		const int32 PreviousSlotCount = static_cast<int32>(MaterialSlots.size());
+		if (PreviousOverrideCount >= RequiredSlotCount && PreviousSlotCount >= RequiredSlotCount)
+		{
+			return;
+		}
+
+		const TArray<FStaticMaterial>& DefaultMaterials = StaticMesh ? StaticMesh->GetStaticMaterials() : TArray<FStaticMaterial>{};
+
+		OverrideMaterials.resize(RequiredSlotCount, nullptr);
+		MaterialSlots.resize(RequiredSlotCount);
+
+		for (int32 i = 0; i < RequiredSlotCount; ++i)
+		{
+			if (i >= PreviousOverrideCount)
+			{
+				if (i < static_cast<int32>(DefaultMaterials.size()))
+				{
+					OverrideMaterials[i] = DefaultMaterials[i].MaterialInterface;
+				}
+				else
+				{
+					OverrideMaterials[i] = FMaterialManager::Get().GetOrCreateMaterial("None");
+				}
+			}
+
+			if (i >= PreviousSlotCount || MaterialSlots[i].Path.empty())
+			{
+				MaterialSlots[i].Path = OverrideMaterials[i]
+					? OverrideMaterials[i]->GetAssetPathFileName()
+					: "None";
+			}
+		}
+	}
+}
 
 FPrimitiveSceneProxy* UStaticMeshComponent::CreateSceneProxy()
 {
@@ -25,20 +94,9 @@ void UStaticMeshComponent::SetStaticMesh(UStaticMesh* InMesh)
 	if (InMesh)
 	{
 		StaticMeshPath = InMesh->GetAssetPathFileName();
-		const TArray<FStaticMaterial>& DefaultMaterials = StaticMesh->GetStaticMaterials();
-
-		OverrideMaterials.resize(DefaultMaterials.size());
-		MaterialSlots.resize(DefaultMaterials.size());
-
-		for (int32 i = 0; i < (int32)DefaultMaterials.size(); ++i)
-		{
-			OverrideMaterials[i] = DefaultMaterials[i].MaterialInterface;
-
-			if (OverrideMaterials[i])
-				MaterialSlots[i].Path = OverrideMaterials[i]->GetAssetPathFileName();
-			else
-				MaterialSlots[i].Path = "None";
-		}
+		OverrideMaterials.clear();
+		MaterialSlots.clear();
+		EnsureMaterialSlotStorage(StaticMesh, OverrideMaterials, MaterialSlots);
 	}
 	else
 	{
@@ -74,9 +132,35 @@ UStaticMesh* UStaticMeshComponent::GetStaticMesh() const
 	return StaticMesh;
 }
 
+void UStaticMeshComponent::EnsureMaterialSlotsForEditing()
+{
+	EnsureMaterialSlotStorage(StaticMesh, OverrideMaterials, MaterialSlots);
+}
+
 void UStaticMeshComponent::SetMaterial(int32 ElementIndex, UMaterial* InMaterial)
 {
-	if (ElementIndex >= 0 && ElementIndex < static_cast<int32>(OverrideMaterials.size()))
+	if (ElementIndex < 0)
+	{
+		return;
+	}
+
+	const int32 RequiredSlotCount = GetRequiredMaterialSlotCount(StaticMesh);
+	if (ElementIndex >= static_cast<int32>(OverrideMaterials.size()) && ElementIndex < RequiredSlotCount)
+	{
+		const int32 NewSlotCount = std::max(RequiredSlotCount, ElementIndex + 1);
+		OverrideMaterials.resize(NewSlotCount, nullptr);
+		MaterialSlots.resize(NewSlotCount);
+
+		for (int32 SlotIndex = 0; SlotIndex < NewSlotCount; ++SlotIndex)
+		{
+			if (MaterialSlots[SlotIndex].Path.empty())
+			{
+				MaterialSlots[SlotIndex].Path = "None";
+			}
+		}
+	}
+
+	if (ElementIndex < static_cast<int32>(OverrideMaterials.size()))
 	{
 		OverrideMaterials[ElementIndex] = InMaterial;
 
@@ -100,6 +184,21 @@ UMaterial* UStaticMeshComponent::GetMaterial(int32 ElementIndex) const
 		return OverrideMaterials[ElementIndex];
 	}
 	return nullptr;
+}
+
+FMaterialSlot* UStaticMeshComponent::GetMaterialSlot(int32 ElementIndex)
+{
+	EnsureMaterialSlotsForEditing();
+	return (ElementIndex >= 0 && ElementIndex < static_cast<int32>(MaterialSlots.size()))
+		? &MaterialSlots[ElementIndex]
+		: nullptr;
+}
+
+const FMaterialSlot* UStaticMeshComponent::GetMaterialSlot(int32 ElementIndex) const
+{
+	return (ElementIndex >= 0 && ElementIndex < static_cast<int32>(MaterialSlots.size()))
+		? &MaterialSlots[ElementIndex]
+		: nullptr;
 }
 
 FMeshBuffer* UStaticMeshComponent::GetMeshBuffer() const
@@ -260,6 +359,8 @@ void UStaticMeshComponent::PostDuplicate()
 
 void UStaticMeshComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
+	EnsureMaterialSlotsForEditing();
+
 	UPrimitiveComponent::GetEditableProperties(OutProps);
 	OutProps.push_back({ "Static Mesh", EPropertyType::StaticMeshRef, &StaticMeshPath });
 

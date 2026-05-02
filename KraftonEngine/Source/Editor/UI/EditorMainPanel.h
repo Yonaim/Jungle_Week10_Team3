@@ -12,6 +12,7 @@
 class FRenderer;
 class UEditorEngine;
 class FWindowsWindow;
+struct ImFont;
 
 class FEditorMainPanel
 {
@@ -33,11 +34,14 @@ public:
 
 private:
 	void RenderMainMenuBar();
+	void RenderProjectSettingsWindow();
 	void RenderShortcutOverlay();
 	void HandleGlobalShortcuts();
 
 	FWindowsWindow* Window = nullptr;
 	UEditorEngine* EditorEngine = nullptr;
+	ImFont* TitleBarFont = nullptr;
+	ImFont* WindowControlIconFont = nullptr;
 	FEditorConsoleWidget ConsoleWidget;
 	FEditorDetailsWidget DetailsWidget;
 	FEditorOutlinerWidget OutlinerWidget;
@@ -47,6 +51,7 @@ private:
 	EditorShadowMapDebugWidget ShadowMapDebugWidget;
 	bool bShowWidgetList = false;
 	bool bShowShortcutOverlay = false;
+	bool bShowProjectSettings = false;
 	bool bHideEditorWindows = false;
 	bool bHasSavedUIVisibility = false;
 	bool bSavedShowWidgetList = false;

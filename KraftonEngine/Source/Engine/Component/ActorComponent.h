@@ -37,6 +37,8 @@ public:
 
 	bool IsHiddenInComponentTree() const { return bHiddenInComponentTree; }
 	void SetHiddenInComponentTree(bool bHidden) { bHiddenInComponentTree = bHidden; }
+	bool CanDeleteFromDetails() const { return bCanDeleteFromDetails; }
+	void SetCanDeleteFromDetails(bool bCanDelete) { bCanDeleteFromDetails = bCanDelete; }
 
 	void SetActive(bool bNewActive);
 	inline void SetAutoActivate(bool bNewAutoActivate) { bAutoActivate = bNewAutoActivate; }
@@ -74,4 +76,5 @@ private:
 	bool bIsActive = true;
 	bool bAutoActivate = true;
 	bool bHiddenInComponentTree = false;
+	bool bCanDeleteFromDetails = true;
 };

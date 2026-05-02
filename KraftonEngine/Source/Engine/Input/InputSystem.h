@@ -71,6 +71,7 @@ public:
     void AddRawMouseDelta(int DeltaX, int DeltaY);
     void ResetTransientState();
     void ResetAllKeyStates();
+    void ResetKeyboardKeyStates();
     void ResetMouseDelta();
     void ResetWheelDelta();
     void ResetCaptureStateForPIEEnd();

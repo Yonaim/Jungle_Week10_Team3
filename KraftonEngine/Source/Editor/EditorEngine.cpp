@@ -20,6 +20,7 @@
 #include "Materials/MaterialManager.h"
 #include "Engine/Platform/Paths.h"
 #include "Texture/Texture2D.h"
+#include "Object/Object.h"
 #include <filesystem>
 
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
@@ -79,6 +80,7 @@ bool ImportAssetFile(
 	OutImportedRelativePath = FPaths::ToUtf8(DestinationPath.lexically_relative(ProjectRoot).generic_wstring());
 	return true;
 }
+
 }
 
 void UEditorEngine::Init(FWindowsWindow* InWindow)
@@ -196,6 +198,15 @@ UCameraComponent* UEditorEngine::GetCamera() const
 	return nullptr;
 }
 
+bool UEditorEngine::FocusActorInViewport(AActor* Actor)
+{
+	if (FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport())
+	{
+		return ActiveVC->FocusActor(Actor);
+	}
+	return false;
+}
+
 void UEditorEngine::RenderUI(float DeltaTime)
 {
 	MainPanel.Render(DeltaTime);
@@ -279,6 +290,7 @@ void UEditorEngine::StartQueuedPlaySessionRequest()
 
 void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams& Params)
 {
+	SetGamePaused(false);
 	InputSystem::Get().ResetAllKeyStates();
 	InputSystem::Get().ResetTransientState();
 
@@ -382,6 +394,7 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams& Pa
 
 void UEditorEngine::EndPlayMap()
 {
+	SetGamePaused(false);
 	if (!PlayInEditorSessionInfo.has_value())
 	{
 		return;
@@ -478,7 +491,7 @@ bool UEditorEngine::EnterPIEPossessedMode()
 	PIEControlMode = EPIEControlMode::Possessed;
 	SyncGameViewportPIEControlState(true);
 	InputSystem::Get().SetUseRawMouse(true);
-	InputSystem::Get().ResetAllKeyStates();
+	InputSystem::Get().ResetKeyboardKeyStates();
 	InputSystem::Get().ResetTransientState();
 	return true;
 }
@@ -493,7 +506,7 @@ bool UEditorEngine::EnterPIEEjectedMode()
 	PIEControlMode = EPIEControlMode::Ejected;
 	SyncGameViewportPIEControlState(false);
 	InputSystem::Get().SetUseRawMouse(false);
-	InputSystem::Get().ResetAllKeyStates();
+	InputSystem::Get().ResetKeyboardKeyStates();
 	InputSystem::Get().ResetTransientState();
 	return true;
 }
@@ -578,6 +591,16 @@ void UEditorEngine::LoadStartLevel()
 void UEditorEngine::ClearScene()
 {
 	StopPlayInEditorImmediate();
+	DestroyCurrentSceneWorlds(true, true);
+}
+
+void UEditorEngine::DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath)
+{
+	if (bClearHistory)
+	{
+		ClearTrackedTransformHistory();
+	}
+
 	SelectionManager.ClearSelection();
 	SelectionManager.SetWorld(nullptr);
 
@@ -593,9 +616,233 @@ void UEditorEngine::ClearScene()
 
 	WorldList.clear();
 	ActiveWorldHandle = FName::None;
-	CurrentLevelFilePath.clear();
+	if (bResetLevelPath)
+	{
+		CurrentLevelFilePath.clear();
+	}
 
 	ViewportLayout.DestroyAllCameras();
+}
+
+void UEditorEngine::BeginTrackedSceneChange()
+{
+	if (bTrackingSceneChange || IsPlayingInEditor())
+	{
+		return;
+	}
+
+	const FTrackedSceneSnapshot Snapshot = CaptureTrackedSceneSnapshot();
+	if (Snapshot.SerializedScene.empty())
+	{
+		return;
+	}
+
+	PendingTrackedSceneBefore = Snapshot;
+	bTrackingSceneChange = true;
+}
+
+void UEditorEngine::CommitTrackedSceneChange()
+{
+	if (!bTrackingSceneChange || !PendingTrackedSceneBefore.has_value())
+	{
+		return;
+	}
+
+	const FTrackedSceneSnapshot Before = *PendingTrackedSceneBefore;
+	const FTrackedSceneSnapshot After = CaptureTrackedSceneSnapshot();
+
+	PendingTrackedSceneBefore.reset();
+	bTrackingSceneChange = false;
+
+	if (!HasMeaningfulSceneDelta(Before, After))
+	{
+		return;
+	}
+
+	if (SceneHistoryCursor + 1 < static_cast<int32>(SceneHistory.size()))
+	{
+		SceneHistory.erase(SceneHistory.begin() + (SceneHistoryCursor + 1), SceneHistory.end());
+	}
+
+	SceneHistory.push_back({ Before, After });
+	if (SceneHistory.size() > 10)
+	{
+		SceneHistory.erase(SceneHistory.begin());
+	}
+	SceneHistoryCursor = static_cast<int32>(SceneHistory.size()) - 1;
+}
+
+void UEditorEngine::CancelTrackedSceneChange()
+{
+	PendingTrackedSceneBefore.reset();
+	bTrackingSceneChange = false;
+}
+
+bool UEditorEngine::CanUndoSceneChange() const
+{
+	return SceneHistoryCursor >= 0 && SceneHistoryCursor < static_cast<int32>(SceneHistory.size());
+}
+
+bool UEditorEngine::CanRedoSceneChange() const
+{
+	return SceneHistoryCursor + 1 < static_cast<int32>(SceneHistory.size());
+}
+
+void UEditorEngine::UndoTrackedSceneChange()
+{
+	if (!CanUndoSceneChange())
+	{
+		return;
+	}
+
+	const FTrackedSceneChange& Change = SceneHistory[SceneHistoryCursor];
+	ApplyTrackedSceneSnapshot(Change.Before);
+	--SceneHistoryCursor;
+}
+
+void UEditorEngine::RedoTrackedSceneChange()
+{
+	if (!CanRedoSceneChange())
+	{
+		return;
+	}
+
+	const int32 RedoIndex = SceneHistoryCursor + 1;
+	ApplyTrackedSceneSnapshot(SceneHistory[RedoIndex].After);
+	SceneHistoryCursor = RedoIndex;
+}
+
+void UEditorEngine::ClearTrackedTransformHistory()
+{
+	SceneHistory.clear();
+	SceneHistoryCursor = -1;
+	PendingTrackedSceneBefore.reset();
+	bTrackingSceneChange = false;
+}
+
+void UEditorEngine::BeginTrackedTransformChange()
+{
+	BeginTrackedSceneChange();
+}
+
+void UEditorEngine::CommitTrackedTransformChange()
+{
+	CommitTrackedSceneChange();
+}
+
+bool UEditorEngine::CanUndoTransformChange() const
+{
+	return CanUndoSceneChange();
+}
+
+bool UEditorEngine::CanRedoTransformChange() const
+{
+	return CanRedoSceneChange();
+}
+
+void UEditorEngine::UndoTrackedTransformChange()
+{
+	UndoTrackedSceneChange();
+}
+
+void UEditorEngine::RedoTrackedTransformChange()
+{
+	RedoTrackedSceneChange();
+}
+
+bool UEditorEngine::HasMeaningfulSceneDelta(const FTrackedSceneSnapshot& Before, const FTrackedSceneSnapshot& After) const
+{
+	return Before.SerializedScene != After.SerializedScene;
+}
+
+UEditorEngine::FTrackedSceneSnapshot UEditorEngine::CaptureTrackedSceneSnapshot() const
+{
+	FTrackedSceneSnapshot Snapshot;
+
+	if (!GetWorld())
+	{
+		return Snapshot;
+	}
+
+	const FWorldContext* Context = GetWorldContextFromHandle(GetActiveWorldHandle());
+	if (!Context || !Context->World)
+	{
+		return Snapshot;
+	}
+
+	FWorldContext MutableContext = *Context;
+	Snapshot.SerializedScene = FSceneSaveManager::SerializeWorldToJSONString(MutableContext, FindSceneViewportCamera());
+	if (UCameraComponent* Camera = FindSceneViewportCamera())
+	{
+		Snapshot.CameraData.Location = Camera->GetWorldLocation();
+		const FRotator Rotation = Camera->GetRelativeRotation();
+		Snapshot.CameraData.Rotation = FVector(Rotation.Roll, Rotation.Pitch, Rotation.Yaw);
+		const FCameraState CameraState = Camera->GetCameraState();
+		Snapshot.CameraData.FOV = CameraState.FOV;
+		Snapshot.CameraData.NearClip = CameraState.NearZ;
+		Snapshot.CameraData.FarClip = CameraState.FarZ;
+		Snapshot.CameraData.bValid = true;
+	}
+
+	for (AActor* Actor : SelectionManager.GetSelectedActors())
+	{
+		if (!Actor)
+		{
+			continue;
+		}
+
+		Snapshot.SelectedActorUUIDs.push_back(Actor->GetUUID());
+	}
+
+	return Snapshot;
+}
+
+void UEditorEngine::ApplyTrackedSceneSnapshot(const FTrackedSceneSnapshot& Snapshot)
+{
+	if (Snapshot.SerializedScene.empty() || IsPlayingInEditor())
+	{
+		return;
+	}
+
+	DestroyCurrentSceneWorlds(false, false);
+
+	FWorldContext LoadContext;
+	FPerspectiveCameraData CameraData = Snapshot.CameraData;
+	FSceneSaveManager::LoadSceneFromJSONString(Snapshot.SerializedScene, LoadContext, CameraData);
+	if (!LoadContext.World)
+	{
+		return;
+	}
+
+	WorldList.push_back(LoadContext);
+	SetActiveWorld(LoadContext.ContextHandle);
+	SelectionManager.SetWorld(LoadContext.World);
+	LoadContext.World->WarmupPickingData();
+	ResetViewport();
+	RestoreViewportCamera(CameraData);
+
+	TArray<AActor*> RestoredSelection;
+	for (uint32 SelectedUUID : Snapshot.SelectedActorUUIDs)
+	{
+		if (AActor* Actor = Cast<AActor>(UObjectManager::Get().FindByUUID(SelectedUUID)))
+		{
+			RestoredSelection.push_back(Actor);
+		}
+	}
+
+	if (!RestoredSelection.empty())
+	{
+		SelectionManager.SelectActors(RestoredSelection);
+	}
+	else
+	{
+		SelectionManager.ClearSelection();
+	}
+
+	if (UGizmoComponent* Gizmo = GetGizmo())
+	{
+		Gizmo->UpdateGizmoTransform();
+	}
 }
 
 UCameraComponent* UEditorEngine::FindSceneViewportCamera() const

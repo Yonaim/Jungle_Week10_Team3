@@ -23,8 +23,23 @@ class FProjectSettings : public TSingleton<FProjectSettings>
 		uint32 MaxPointAtlasPages  = 4;		// Point Light Atlas 최대 page 수
 	};
 
+	struct FLightCullingOption
+	{
+		uint32 Mode = 2; // ELightCullingMode::Cluster
+		float HeatMapMax = 20.0f;
+		bool bEnable25DCulling = true;
+	};
+
+	struct FSceneDepthOption
+	{
+		uint32 Mode = 0; // 0 = Power, 1 = Linear
+		float Exponent = 128.0f;
+	};
+
 public:
 	FShadowOption Shadow;
+	FLightCullingOption LightCulling;
+	FSceneDepthOption SceneDepth;
 
 	// --- 직렬화 ---
 	void SaveToFile(const FString& Path) const;

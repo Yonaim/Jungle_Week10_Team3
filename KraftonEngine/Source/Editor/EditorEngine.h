@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Engine/Runtime/Engine.h"
+#include "Engine/Serialization/SceneSaveManager.h"
 
 #include "Editor/Viewport/FLevelViewportLayout.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
@@ -38,6 +39,7 @@ public:
 	// Editor-specific API
 	UGizmoComponent* GetGizmo() const { return SelectionManager.GetGizmo(); }
 	UCameraComponent* GetCamera() const;
+	bool FocusActorInViewport(AActor* Actor);
 
 	void ClearScene();
 	void ResetViewport();
@@ -62,6 +64,19 @@ public:
 	bool IsWorldCoordSystem() const { return FEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
 	void ToggleCoordSystem();
 	void ApplyTransformSettingsToGizmo();
+	void BeginTrackedSceneChange();
+	void CommitTrackedSceneChange();
+	void CancelTrackedSceneChange();
+	bool CanUndoSceneChange() const;
+	bool CanRedoSceneChange() const;
+	void UndoTrackedSceneChange();
+	void RedoTrackedSceneChange();
+	void BeginTrackedTransformChange();
+	void CommitTrackedTransformChange();
+	bool CanUndoTransformChange() const;
+	bool CanRedoTransformChange() const;
+	void UndoTrackedTransformChange();
+	void RedoTrackedTransformChange();
 
 	// GPU Occlusion readback 스테이징 데이터 무효화 — 액터 삭제 시 dangling proxy 방지
 	void InvalidateOcclusionResults() { if (auto* P = GetRenderPipeline()) P->OnSceneCleared(); }
@@ -129,6 +144,25 @@ private:
 	void LoadStartLevel();
 	UCameraComponent* FindSceneViewportCamera() const;
 	void RestoreViewportCamera(const FPerspectiveCameraData& CamData);
+	void DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath);
+	void ClearTrackedTransformHistory();
+
+	struct FTrackedSceneSnapshot
+	{
+		FString SerializedScene;
+		FPerspectiveCameraData CameraData;
+		TArray<uint32> SelectedActorUUIDs;
+	};
+
+	struct FTrackedSceneChange
+	{
+		FTrackedSceneSnapshot Before;
+		FTrackedSceneSnapshot After;
+	};
+
+	bool HasMeaningfulSceneDelta(const FTrackedSceneSnapshot& Before, const FTrackedSceneSnapshot& After) const;
+	FTrackedSceneSnapshot CaptureTrackedSceneSnapshot() const;
+	void ApplyTrackedSceneSnapshot(const FTrackedSceneSnapshot& Snapshot);
 
 	FSelectionManager SelectionManager;
 	FEditorMainPanel MainPanel;
@@ -143,5 +177,9 @@ private:
 	bool bRequestEndPlayMapQueued = false;
 	EPIEControlMode PIEControlMode = EPIEControlMode::Possessed;
 	FString CurrentLevelFilePath;
+	TArray<FTrackedSceneChange> SceneHistory;
+	int32 SceneHistoryCursor = -1;
+	std::optional<FTrackedSceneSnapshot> PendingTrackedSceneBefore;
+	bool bTrackingSceneChange = false;
 
 };

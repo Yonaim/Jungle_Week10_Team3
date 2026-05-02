@@ -15,6 +15,7 @@ class UWorld;
 class UCameraComponent;
 class UGizmoComponent;
 class ULightComponentBase;
+class AActor;
 class FEditorSettings;
 class FWindowsWindow;
 class FSelectionManager;
@@ -47,6 +48,7 @@ public:
 	void DestroyCamera();
 	void ResetCamera();
 	UCameraComponent* GetCamera() const { return Camera; }
+	bool FocusActor(AActor* Actor);
 
 	void Tick(float DeltaTime);
 

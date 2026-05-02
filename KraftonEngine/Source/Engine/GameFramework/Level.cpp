@@ -49,6 +49,52 @@ void ULevel::RemoveActor(AActor* Actor)
 	Actors.erase(It);
 }
 
+bool ULevel::MoveActorBefore(AActor* ActorToMove, AActor* BeforeActor)
+{
+	if (!ActorToMove || !BeforeActor || ActorToMove == BeforeActor)
+	{
+		return false;
+	}
+
+	auto MoveIt = std::find(Actors.begin(), Actors.end(), ActorToMove);
+	auto BeforeIt = std::find(Actors.begin(), Actors.end(), BeforeActor);
+	if (MoveIt == Actors.end() || BeforeIt == Actors.end())
+	{
+		return false;
+	}
+
+	AActor* MovedActor = *MoveIt;
+	Actors.erase(MoveIt);
+	BeforeIt = std::find(Actors.begin(), Actors.end(), BeforeActor);
+	Actors.insert(BeforeIt, MovedActor);
+	return true;
+}
+
+bool ULevel::MoveActorToIndex(AActor* ActorToMove, size_t TargetIndex)
+{
+	if (!ActorToMove)
+	{
+		return false;
+	}
+
+	auto MoveIt = std::find(Actors.begin(), Actors.end(), ActorToMove);
+	if (MoveIt == Actors.end())
+	{
+		return false;
+	}
+
+	AActor* MovedActor = *MoveIt;
+	Actors.erase(MoveIt);
+
+	if (TargetIndex > Actors.size())
+	{
+		TargetIndex = Actors.size();
+	}
+
+	Actors.insert(Actors.begin() + static_cast<std::ptrdiff_t>(TargetIndex), MovedActor);
+	return true;
+}
+
 void ULevel::Clear()
 {
 	for (AActor* Actor : Actors)

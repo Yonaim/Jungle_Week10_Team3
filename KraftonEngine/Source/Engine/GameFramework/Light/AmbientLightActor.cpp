@@ -9,7 +9,12 @@ IMPLEMENT_CLASS(AAmbientLightActor, AActor)
 void AAmbientLightActor::InitDefaultComponents()
 {
 	LightComponent = AddComponent<UAmbientLightComponent>();
+	LightComponent->SetCanDeleteFromDetails(false);
 	SetRootComponent(LightComponent);
 
 	BillboardComponent = LightComponent->EnsureEditorBillboard();
+	if (BillboardComponent)
+	{
+		BillboardComponent->SetCanDeleteFromDetails(false);
+	}
 }

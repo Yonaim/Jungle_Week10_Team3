@@ -19,6 +19,12 @@ public:
 	float GetHeight() const { return Height; }
 
 	void OnResized(unsigned int InWidth, unsigned int InHeight);
+	void Minimize() const;
+	void ToggleMaximize() const;
+	void Close() const;
+	void StartWindowDrag() const;
+	bool IsWindowMaximized() const;
+	float GetTopFrameInset() const;
 
 	/** ScreenToClient 래핑 — 스크린 좌표를 클라이언트 좌표로 변환 */
 	POINT ScreenToClientPoint(POINT ScreenPoint) const;

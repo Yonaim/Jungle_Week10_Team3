@@ -3,11 +3,14 @@
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Core/ProjectSettings.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Input/InputSystem.h"
 #include "GameFramework/DecalActor.h"
+#include "GameFramework/PawnActor.h"
+#include "GameFramework/CharacterActor.h"
 #include "GameFramework/HeightFogActor.h"
 #include "GameFramework/Light/AmbientLightActor.h"
 #include "GameFramework/Light/DirectionalLightActor.h"
@@ -27,9 +30,261 @@
 #include "GameFramework/StaticMeshActor.h"
 
 #include <algorithm>
+#include <cctype>
+#include <string>
 
 namespace
 {
+constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
+constexpr ImVec4 CameraPopupPanelBgColor = ImVec4(0.11f, 0.11f, 0.12f, 1.0f);
+constexpr ImVec4 CameraPopupFieldBgColor = ImVec4(0.05f, 0.05f, 0.06f, 1.0f);
+constexpr ImVec4 CameraPopupFieldHoverBgColor = ImVec4(0.08f, 0.08f, 0.10f, 1.0f);
+constexpr ImVec4 CameraPopupFieldActiveBgColor = ImVec4(0.10f, 0.10f, 0.12f, 1.0f);
+constexpr ImVec4 CameraPopupFieldBorderColor = ImVec4(0.22f, 0.22f, 0.24f, 1.0f);
+constexpr ImVec4 CameraPopupLabelColor = ImVec4(0.87f, 0.88f, 0.90f, 1.0f);
+constexpr ImVec4 CameraPopupHintColor = ImVec4(0.60f, 0.63f, 0.68f, 1.0f);
+constexpr ImVec2 PopupComfortWindowPadding = ImVec2(10.0f, 10.0f);
+constexpr ImVec2 PopupComfortFramePadding = ImVec2(7.0f, 5.0f);
+constexpr ImVec2 PopupComfortItemSpacing = ImVec2(6.0f, 6.0f);
+constexpr ImVec2 PopupComfortItemInnerSpacing = ImVec2(5.0f, 4.0f);
+constexpr float CameraPopupLabelWidth = 68.0f;
+constexpr float CameraPopupFieldOffset = 78.0f;
+constexpr float CameraPopupMinFieldWidth = 88.0f;
+constexpr float CameraPopupMaxScalarFieldWidth = 112.0f;
+constexpr float CameraPopupMaxAxisFieldWidth = 52.0f;
+constexpr ImVec4 SnapPopupPanelBgColor = ImVec4(0.13f, 0.14f, 0.16f, 0.98f);
+constexpr ImVec4 SnapPopupBorderColor = ImVec4(0.30f, 0.31f, 0.35f, 1.0f);
+constexpr ImVec4 SnapPopupSelectedColor = ImVec4(0.20f, 0.44f, 0.78f, 0.98f);
+constexpr ImVec4 SnapPopupSelectedHoverColor = ImVec4(0.25f, 0.50f, 0.86f, 1.0f);
+constexpr ImVec4 SnapPopupSelectedActiveColor = ImVec4(0.16f, 0.37f, 0.68f, 1.0f);
+constexpr ImVec4 SnapPopupSelectedTextColor = ImVec4(0.97f, 0.98f, 1.0f, 1.0f);
+constexpr ImVec4 SnapPopupSelectedCheckColor = ImVec4(0.97f, 0.98f, 1.0f, 1.0f);
+constexpr ImVec4 SnapPopupTabSelectedColor = ImVec4(0.17f, 0.41f, 0.78f, 1.0f);
+constexpr ImVec4 SnapPopupTabSelectedHoverColor = ImVec4(0.22f, 0.48f, 0.87f, 1.0f);
+constexpr ImVec4 SnapPopupTabSelectedActiveColor = ImVec4(0.13f, 0.34f, 0.67f, 1.0f);
+constexpr ImVec4 SnapPopupTabSelectedTextColor = ImVec4(0.97f, 0.98f, 1.0f, 1.0f);
+
+void DrawPopupSectionHeader(const char* Label);
+
+enum class ESnapPopupType : uint8
+{
+	None,
+	Location,
+	Rotation,
+	Scale
+};
+
+ESnapPopupType GSnapPopupTab[FLevelViewportLayout::MaxViewportSlots] = {};
+
+void ApplyProjectViewportSettings(FViewportRenderOptions& Opts)
+{
+	const FProjectSettings& ProjectSettings = FProjectSettings::Get();
+	Opts.LightCullingMode = static_cast<ELightCullingMode>(ProjectSettings.LightCulling.Mode);
+	Opts.HeatMapMax = ProjectSettings.LightCulling.HeatMapMax;
+	Opts.Enable25DCulling = ProjectSettings.LightCulling.bEnable25DCulling;
+	Opts.SceneDepthVisMode = static_cast<int32>(ProjectSettings.SceneDepth.Mode);
+	Opts.Exponent = ProjectSettings.SceneDepth.Exponent;
+}
+
+void PushCameraPopupFieldStyle()
+{
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, CameraPopupFieldBgColor);
+	ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, CameraPopupFieldHoverBgColor);
+	ImGui::PushStyleColor(ImGuiCol_FrameBgActive, CameraPopupFieldActiveBgColor);
+	ImGui::PushStyleColor(ImGuiCol_Border, CameraPopupFieldBorderColor);
+}
+
+bool DrawCameraPopupScalarRow(const char* Id, const char* Label, float& Value, float Speed, float Min, float Max, const char* Format)
+{
+	ImGui::PushID(Id);
+
+	ImGui::AlignTextToFramePadding();
+	ImGui::PushStyleColor(ImGuiCol_Text, CameraPopupLabelColor);
+	ImGui::TextUnformatted(Label);
+	ImGui::PopStyleColor();
+
+	ImGui::SameLine(CameraPopupFieldOffset);
+	const float InputWidth = (std::min)(
+		CameraPopupMaxScalarFieldWidth,
+		(std::max)(CameraPopupMinFieldWidth, ImGui::GetContentRegionAvail().x));
+	ImGui::SetNextItemWidth(InputWidth);
+
+	PushCameraPopupFieldStyle();
+	const bool bChanged = ImGui::DragFloat("##Value", &Value, Speed, Min, Max, Format);
+	ImGui::PopStyleColor(4);
+
+	ImGui::PopID();
+	return bChanged;
+}
+
+bool DrawCameraPopupVectorRow(const char* Id, const char* Label, float Values[3], float Speed)
+{
+	static const char* AxisLabels[3] = { "X", "Y", "Z" };
+
+	ImGui::PushID(Id);
+
+	ImGui::AlignTextToFramePadding();
+	ImGui::PushStyleColor(ImGuiCol_Text, CameraPopupLabelColor);
+	ImGui::TextUnformatted(Label);
+	ImGui::PopStyleColor();
+
+	const float TotalSpacing = ImGui::GetStyle().ItemSpacing.x * 2.0f;
+	ImGui::SameLine(CameraPopupFieldOffset);
+	const float AvailableWidth = (std::max)(CameraPopupMinFieldWidth * 3.0f, ImGui::GetContentRegionAvail().x);
+	const float AxisInputWidth = (std::min)(CameraPopupMaxAxisFieldWidth, (AvailableWidth - TotalSpacing) / 3.0f);
+	bool bChanged = false;
+
+	for (int32 Axis = 0; Axis < 3; ++Axis)
+	{
+		ImGui::PushID(Axis);
+		if (Axis > 0)
+		{
+			ImGui::SameLine();
+		}
+
+		ImGui::SetNextItemWidth(AxisInputWidth);
+		PushCameraPopupFieldStyle();
+		bChanged |= ImGui::DragFloat(AxisLabels[Axis], &Values[Axis], Speed, 0.0f, 0.0f, "%.3f");
+		ImGui::PopStyleColor(4);
+		ImGui::PopID();
+	}
+
+	ImGui::PopID();
+	return bChanged;
+}
+
+void DrawCameraPopupContent(UCameraComponent* Camera, FEditorSettings& Settings)
+{
+	DrawPopupSectionHeader("CAMERA");
+	ImGui::PushStyleColor(ImGuiCol_Text, CameraPopupHintColor);
+	ImGui::TextUnformatted("Tune movement and lens values, then place the camera precisely.");
+	ImGui::PopStyleColor();
+	ImGui::Spacing();
+
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, CameraPopupPanelBgColor);
+	ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, PopupComfortWindowPadding);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, PopupComfortFramePadding);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, PopupComfortItemSpacing);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, PopupComfortItemInnerSpacing);
+	ImGui::BeginGroup();
+	{
+		float CameraSpeed = Settings.CameraSpeed;
+		if (DrawCameraPopupScalarRow("Speed", "Speed", CameraSpeed, 0.1f, 0.1f, 1000.0f, "%.1f"))
+		{
+			Settings.CameraSpeed = Clamp(CameraSpeed, 0.1f, 1000.0f);
+		}
+
+		if (Camera)
+		{
+			ImGui::Spacing();
+			float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
+			if (DrawCameraPopupScalarRow("FOV", "Field of View", CameraFOV_Deg, 0.5f, 1.0f, 170.0f, "%.1f"))
+			{
+				Camera->SetFOV(Clamp(CameraFOV_Deg, 1.0f, 170.0f) * DEG_TO_RAD);
+			}
+
+			float OrthoWidth = Camera->GetOrthoWidth();
+			if (DrawCameraPopupScalarRow("OrthoWidth", "Ortho Width", OrthoWidth, 0.1f, 0.1f, 100000.0f, "%.1f"))
+			{
+				Camera->SetOrthoWidth(Clamp(OrthoWidth, 0.1f, 100000.0f));
+			}
+
+			ImGui::Spacing();
+			FVector CamPos = Camera->GetWorldLocation();
+			float CameraLocation[3] = { CamPos.X, CamPos.Y, CamPos.Z };
+			if (DrawCameraPopupVectorRow("Location", "Location", CameraLocation, 0.1f))
+			{
+				Camera->SetWorldLocation(FVector(CameraLocation[0], CameraLocation[1], CameraLocation[2]));
+			}
+
+			ImGui::Spacing();
+			FRotator CamRot = Camera->GetRelativeRotation();
+			float CameraRotation[3] = { CamRot.Roll, CamRot.Pitch, CamRot.Yaw };
+			if (DrawCameraPopupVectorRow("Rotation", "Rotation", CameraRotation, 0.1f))
+			{
+				Camera->SetRelativeRotation(FRotator(CameraRotation[1], CameraRotation[2], CameraRotation[0]));
+			}
+		}
+	}
+	ImGui::EndGroup();
+	ImGui::PopStyleVar(6);
+	ImGui::PopStyleColor();
+}
+
+void DrawPopupSectionHeader(const char* Label)
+{
+	ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
+	ImGui::SeparatorText(Label);
+	ImGui::PopStyleColor();
+}
+
+bool BeginPopupSection(const char* Label, ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_DefaultOpen)
+{
+	ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
+	const bool bOpen = ImGui::CollapsingHeader(Label, Flags);
+	ImGui::PopStyleColor();
+	return bOpen;
+}
+
+void DrawCompactPopupSectionLabel(const char* Label)
+{
+	ImGui::Dummy(ImVec2(0.0f, 3.0f));
+	ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
+	ImGui::TextUnformatted(Label);
+	ImGui::PopStyleColor();
+	ImGui::Separator();
+}
+
+void DrawShowFlagsPopupContent(FViewportRenderOptions& Opts)
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, PopupComfortFramePadding);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(PopupComfortItemSpacing.x, 10.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, PopupComfortItemInnerSpacing);
+
+	ImGui::BeginGroup();
+	{
+		DrawCompactPopupSectionLabel("COMMON SHOW FLAGS");
+		ImGui::Checkbox("Primitives", &Opts.ShowFlags.bPrimitives);
+		ImGui::Checkbox("Billboard Text", &Opts.ShowFlags.bBillboardText);
+
+		DrawCompactPopupSectionLabel("ACTOR HELPERS");
+		ImGui::Checkbox("Grid", &Opts.ShowFlags.bGrid);
+		if (Opts.ShowFlags.bGrid)
+		{
+			ImGui::SliderFloat("Grid Spacing", &Opts.GridSpacing, 0.1f, 10.0f, "%.1f");
+			ImGui::SliderInt("Grid Half Line Count", &Opts.GridHalfLineCount, 10, 500);
+		}
+
+		ImGui::Checkbox("World Axis", &Opts.ShowFlags.bWorldAxis);
+		ImGui::Checkbox("Gizmo", &Opts.ShowFlags.bGizmo);
+
+		DrawCompactPopupSectionLabel("DEBUG");
+		ImGui::Checkbox("Bounding Volume", &Opts.ShowFlags.bBoundingVolume);
+		ImGui::Checkbox("Debug Draw", &Opts.ShowFlags.bDebugDraw);
+		ImGui::Checkbox("Octree", &Opts.ShowFlags.bOctree);
+		ImGui::Checkbox("Shadow Frustum", &Opts.ShowFlags.bShowShadowFrustum);
+
+		DrawCompactPopupSectionLabel("LIGHTING");
+		ImGui::TextDisabled("Project-wide lighting settings moved to Edit > Project Settings...");
+
+		DrawCompactPopupSectionLabel("POST-PROCESSING");
+		ImGui::Checkbox("Height Distance Fog", &Opts.ShowFlags.bFog);
+		ImGui::Checkbox("Anti-Aliasing (FXAA)", &Opts.ShowFlags.bFXAA);
+		if (Opts.ShowFlags.bFXAA)
+		{
+			ImGui::SliderFloat("FXAA Edge Threshold", &Opts.EdgeThreshold, 0.06f, 0.333f, "%.3f");
+			ImGui::SliderFloat("FXAA Edge Threshold Min", &Opts.EdgeThresholdMin, 0.0312f, 0.0833f, "%.4f");
+		}
+
+		DrawCompactPopupSectionLabel("SCENE DEPTH");
+		ImGui::TextDisabled("Scene Depth settings moved to Edit > Project Settings...");
+	}
+	ImGui::EndGroup();
+	ImGui::PopStyleVar(3);
+}
+
 enum class EToolbarIcon : int32
 {
 	Menu = 0,
@@ -45,6 +300,20 @@ enum class EToolbarIcon : int32
 	ScaleSnap,
 	CameraSettings,
 	ShowFlag,
+	ViewModeLit,
+	ViewModeUnlit,
+	ViewModeWireframe,
+	ViewModeSceneDepth,
+	ViewModeWorldNormal,
+	ViewModeLightCulling,
+	ViewportPerspective,
+	ViewportTop,
+	ViewportBottom,
+	ViewportLeft,
+	ViewportRight,
+	ViewportFront,
+	ViewportBack,
+	ViewportFreeOrtho,
 	Count
 };
 
@@ -65,6 +334,20 @@ const char* GetToolbarIconResourceKey(EToolbarIcon Icon)
 	case EToolbarIcon::ScaleSnap: return "Editor.ToolIcon.ScaleSnap";
 	case EToolbarIcon::CameraSettings: return "Editor.ToolIcon.Camera";
 	case EToolbarIcon::ShowFlag: return "Editor.ToolIcon.ShowFlag";
+	case EToolbarIcon::ViewModeLit: return "Editor.ToolIcon.ViewMode.Lit";
+	case EToolbarIcon::ViewModeUnlit: return "Editor.ToolIcon.ViewMode.Unlit";
+	case EToolbarIcon::ViewModeWireframe: return "Editor.ToolIcon.ViewMode.Wireframe";
+	case EToolbarIcon::ViewModeSceneDepth: return "Editor.ToolIcon.ViewMode.SceneDepth";
+	case EToolbarIcon::ViewModeWorldNormal: return "Editor.ToolIcon.ViewMode.WorldNormal";
+	case EToolbarIcon::ViewModeLightCulling: return "Editor.ToolIcon.ViewMode.LightCulling";
+	case EToolbarIcon::ViewportPerspective: return "Editor.ToolIcon.Viewport.Perspective";
+	case EToolbarIcon::ViewportTop: return "Editor.ToolIcon.Viewport.Top";
+	case EToolbarIcon::ViewportBottom: return "Editor.ToolIcon.Viewport.Bottom";
+	case EToolbarIcon::ViewportLeft: return "Editor.ToolIcon.Viewport.Left";
+	case EToolbarIcon::ViewportRight: return "Editor.ToolIcon.Viewport.Right";
+	case EToolbarIcon::ViewportFront: return "Editor.ToolIcon.Viewport.Front";
+	case EToolbarIcon::ViewportBack: return "Editor.ToolIcon.Viewport.Back";
+	case EToolbarIcon::ViewportFreeOrtho: return "Editor.ToolIcon.Viewport.FreeOrtho";
 	default: return "";
 	}
 }
@@ -157,7 +440,7 @@ ImVec2 GetToolbarIconRenderSize(EToolbarIcon Icon, float FallbackSize, float Max
 	return IconSize;
 }
 
-bool DrawToolbarIconButton(const char* Id, EToolbarIcon Icon, const char* FallbackLabel, float FallbackSize, float MaxIconSize)
+bool DrawToolbarIconButton(const char* Id, EToolbarIcon Icon, const char* FallbackLabel, float FallbackSize, float MaxIconSize, ImU32 IconTint = IM_COL32_WHITE)
 {
 	ID3D11ShaderResourceView* IconSRV = GetToolbarIconTable()[static_cast<int32>(Icon)];
 	if (!IconSRV)
@@ -166,7 +449,341 @@ bool DrawToolbarIconButton(const char* Id, EToolbarIcon Icon, const char* Fallba
 	}
 
 	const ImVec2 IconSize = GetToolbarIconRenderSize(Icon, FallbackSize, MaxIconSize);
-	return ImGui::ImageButton(Id, reinterpret_cast<ImTextureID>(IconSRV), IconSize);
+	return ImGui::ImageButton(Id, reinterpret_cast<ImTextureID>(IconSRV), IconSize, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), ImVec4(0, 0, 0, 0), ImGui::ColorConvertU32ToFloat4(IconTint));
+}
+
+bool DrawToolbarIconLabelButton(const char* Id, EToolbarIcon Icon, const char* Label, float Width, float Height, float FallbackSize, float MaxIconSize, ImU32 IconTint = IM_COL32_WHITE)
+{
+	constexpr float LabelLeftPadding = 6.0f;
+	constexpr float LabelSpacing = 4.0f;
+	constexpr float DropdownArrowReserve = 28.0f;
+	constexpr float LabelRightPadding = 4.0f;
+
+	const bool bClicked = ImGui::Button(Id, ImVec2(Width, Height));
+
+	ImDrawList* DrawList = ImGui::GetWindowDrawList();
+	const ImVec2 RectMin = ImGui::GetItemRectMin();
+	const ImVec2 RectMax = ImGui::GetItemRectMax();
+
+	const ImVec2 IconSize = GetToolbarIconRenderSize(Icon, FallbackSize, MaxIconSize);
+	const float IconY = RectMin.y + ((RectMax.y - RectMin.y) - IconSize.y) * 0.5f;
+	const float IconX = RectMin.x + LabelLeftPadding;
+
+	if (ID3D11ShaderResourceView* IconSRV = GetToolbarIconTable()[static_cast<int32>(Icon)])
+	{
+		DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(IconX, IconY), ImVec2(IconX + IconSize.x, IconY + IconSize.y), ImVec2(0, 0), ImVec2(1, 1), IconTint);
+	}
+
+	const ImVec2 TextSize = ImGui::CalcTextSize(Label);
+	const float TextX = IconX + IconSize.x + LabelSpacing;
+	const float TextY = RectMin.y + ((RectMax.y - RectMin.y) - TextSize.y) * 0.5f;
+	const float TextClipMaxX = RectMax.x - DropdownArrowReserve - LabelRightPadding;
+	if (TextClipMaxX > TextX)
+	{
+		DrawList->PushClipRect(ImVec2(TextX, RectMin.y), ImVec2(TextClipMaxX, RectMax.y), true);
+		DrawList->AddText(ImVec2(TextX, TextY), ImGui::GetColorU32(ImGuiCol_Text), Label);
+		DrawList->PopClipRect();
+	}
+
+	return bClicked;
+}
+
+bool DrawToolbarIconDropdownButton(const char* Id, EToolbarIcon Icon, float Width, float Height, float FallbackSize, float MaxIconSize, ImU32 IconTint = IM_COL32_WHITE)
+{
+	const bool bClicked = ImGui::Button(Id, ImVec2(Width, Height));
+
+	ImDrawList* DrawList = ImGui::GetWindowDrawList();
+	const ImVec2 RectMin = ImGui::GetItemRectMin();
+	const ImVec2 RectMax = ImGui::GetItemRectMax();
+	const ImVec2 IconSize = GetToolbarIconRenderSize(Icon, FallbackSize, MaxIconSize);
+	const float ArrowReserve = 12.0f;
+	const float LeftPadding = 8.0f;
+	const float AvailableWidth = (RectMax.x - RectMin.x) - ArrowReserve - LeftPadding;
+	const float IconX = RectMin.x + LeftPadding + (std::max)(0.0f, (AvailableWidth - IconSize.x) * 0.5f);
+	const float IconY = RectMin.y + ((RectMax.y - RectMin.y) - IconSize.y) * 0.5f;
+
+	if (ID3D11ShaderResourceView* IconSRV = GetToolbarIconTable()[static_cast<int32>(Icon)])
+	{
+		DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(IconX, IconY), ImVec2(IconX + IconSize.x, IconY + IconSize.y), ImVec2(0, 0), ImVec2(1, 1), IconTint);
+	}
+
+	return bClicked;
+}
+
+bool DrawSelectedToolbarIconDropdownButton(const char* Id, EToolbarIcon Icon, bool bSelected, float Width, float Height, float FallbackSize, float MaxIconSize, ImU32 SelectedTint = IM_COL32(70, 170, 255, 255))
+{
+	const ImU32 Tint = bSelected ? SelectedTint : IM_COL32_WHITE;
+	return DrawToolbarIconDropdownButton(Id, Icon, Width, Height, FallbackSize, MaxIconSize, Tint);
+}
+
+float GetToolbarIconLabelButtonWidth(EToolbarIcon Icon, const char* Label, float FallbackSize, float MaxIconSize)
+{
+	constexpr float LabelLeftPadding = 6.0f;
+	constexpr float LabelSpacing = 4.0f;
+	constexpr float DropdownArrowReserve = 28.0f;
+	constexpr float LabelRightPadding = 4.0f;
+
+	const ImVec2 IconSize = GetToolbarIconRenderSize(Icon, FallbackSize, MaxIconSize);
+	const float TextWidth = (Label && Label[0] != '\0') ? ImGui::CalcTextSize(Label).x : 0.0f;
+	const float EffectiveLabelSpacing = (TextWidth > 0.0f) ? LabelSpacing : 0.0f;
+	return LabelLeftPadding + IconSize.x + EffectiveLabelSpacing + TextWidth + DropdownArrowReserve + LabelRightPadding;
+}
+
+void DrawToolbarDropdownArrowForLastItem()
+{
+	ImDrawList* DrawList = ImGui::GetWindowDrawList();
+	const ImVec2 RectMin = ImGui::GetItemRectMin();
+	const ImVec2 RectMax = ImGui::GetItemRectMax();
+	const float ArrowWidth = 7.0f;
+	const float ArrowHeight = 4.0f;
+	const float ArrowRightPadding = 7.0f;
+	const float ArrowBottomPadding = 7.0f;
+	const ImVec2 Center(
+		RectMax.x - ArrowRightPadding - ArrowWidth * 0.5f,
+		RectMax.y - ArrowBottomPadding - ArrowHeight * 0.5f);
+	const ImU32 ArrowColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+
+	DrawList->AddTriangleFilled(
+		ImVec2(Center.x - ArrowWidth * 0.5f, Center.y - ArrowHeight * 0.5f),
+		ImVec2(Center.x + ArrowWidth * 0.5f, Center.y - ArrowHeight * 0.5f),
+		ImVec2(Center.x, Center.y + ArrowHeight * 0.5f),
+		ArrowColor);
+}
+
+EToolbarIcon GetViewModeToolbarIcon(EViewMode ViewMode)
+{
+	switch (ViewMode)
+	{
+	case EViewMode::Unlit: return EToolbarIcon::ViewModeUnlit;
+	case EViewMode::Wireframe: return EToolbarIcon::ViewModeWireframe;
+	case EViewMode::SceneDepth: return EToolbarIcon::ViewModeSceneDepth;
+	case EViewMode::WorldNormal: return EToolbarIcon::ViewModeWorldNormal;
+	case EViewMode::LightCulling: return EToolbarIcon::ViewModeLightCulling;
+	case EViewMode::Lit_Gouraud:
+	case EViewMode::Lit_Lambert:
+	case EViewMode::Lit_Phong:
+	default: return EToolbarIcon::ViewModeLit;
+	}
+}
+
+EToolbarIcon GetViewportTypeToolbarIcon(ELevelViewportType ViewportType)
+{
+	switch (ViewportType)
+	{
+	case ELevelViewportType::Top: return EToolbarIcon::ViewportTop;
+	case ELevelViewportType::Bottom: return EToolbarIcon::ViewportBottom;
+	case ELevelViewportType::Left: return EToolbarIcon::ViewportLeft;
+	case ELevelViewportType::Right: return EToolbarIcon::ViewportRight;
+	case ELevelViewportType::Front: return EToolbarIcon::ViewportFront;
+	case ELevelViewportType::Back: return EToolbarIcon::ViewportBack;
+	case ELevelViewportType::FreeOrthographic: return EToolbarIcon::ViewportFreeOrtho;
+	case ELevelViewportType::Perspective:
+	default: return EToolbarIcon::ViewportPerspective;
+	}
+}
+
+void PushToolbarButtonStyle()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 7.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.20f, 0.96f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.25f, 0.28f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.32f, 0.32f, 0.36f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.35f, 0.39f, 0.9f));
+}
+
+void PopToolbarButtonStyle()
+{
+	ImGui::PopStyleColor(4);
+	ImGui::PopStyleVar(2);
+}
+
+void ShowItemTooltip(const char* Tooltip)
+{
+	if (Tooltip && Tooltip[0] != '\0' && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 6.0f));
+		ImGui::BeginTooltip();
+		ImGui::TextUnformatted(Tooltip);
+		ImGui::EndTooltip();
+		ImGui::PopStyleVar();
+	}
+}
+
+void DrawSnapPopupOptions(const char* Label, bool& bEnabled, float& Value, const float* Options, int32 OptionCount, const char* Format)
+{
+	ImGui::PushID(Label);
+	ImGui::PushStyleColor(ImGuiCol_Text, CameraPopupLabelColor);
+	ImGui::TextUnformatted(Label);
+	ImGui::PopStyleColor();
+	ImGui::Spacing();
+
+	ImGui::Checkbox("Enabled", &bEnabled);
+	ImGui::Spacing();
+
+	for (int32 Index = 0; Index < OptionCount; ++Index)
+	{
+		char ChoiceLabel[32];
+		snprintf(ChoiceLabel, sizeof(ChoiceLabel), Format, Options[Index]);
+		const float Delta = Value - Options[Index];
+		const bool bSelected = (Delta < 0.0f ? -Delta : Delta) < 0.0001f;
+		if (bSelected)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, SnapPopupSelectedColor);
+			ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, SnapPopupSelectedHoverColor);
+			ImGui::PushStyleColor(ImGuiCol_FrameBgActive, SnapPopupSelectedActiveColor);
+			ImGui::PushStyleColor(ImGuiCol_Text, SnapPopupSelectedTextColor);
+			ImGui::PushStyleColor(ImGuiCol_CheckMark, SnapPopupSelectedCheckColor);
+		}
+
+		if (ImGui::RadioButton(ChoiceLabel, bSelected))
+		{
+			Value = Options[Index];
+		}
+
+		if (bSelected)
+		{
+			ImGui::PopStyleColor(5);
+		}
+	}
+
+	ImGui::PopID();
+}
+
+void RenderSnapPopupContent(int32 SlotIndex, FEditorSettings& Settings, float FallbackSize, float MaxIconSize)
+{
+	static const float TranslationSnapSizes[] = { 1.0f, 5.0f, 10.0f, 50.0f, 100.0f, 500.0f, 1000.0f, 5000.0f, 10000.0f };
+	static const float RotationSnapSizes[] = { 5.0f, 10.0f, 15.0f, 30.0f, 45.0f, 60.0f, 90.0f, 120.0f };
+	static const float ScaleSnapSizes[] = { 0.03125f, 0.0625f, 0.1f, 0.125f, 0.25f, 0.5f, 1.0f, 10.0f };
+
+	if (GSnapPopupTab[SlotIndex] == ESnapPopupType::None)
+	{
+		GSnapPopupTab[SlotIndex] = ESnapPopupType::Location;
+	}
+
+	const float ButtonHeight = 26.0f;
+	const float LocationWidth = GetToolbarIconLabelButtonWidth(EToolbarIcon::TranslateSnap, "Location", FallbackSize, MaxIconSize);
+	const float RotationWidth = GetToolbarIconLabelButtonWidth(EToolbarIcon::RotateSnap, "Rotation", FallbackSize, MaxIconSize);
+	const float ScaleWidth = GetToolbarIconLabelButtonWidth(EToolbarIcon::ScaleSnap, "Scale", FallbackSize, MaxIconSize);
+
+	auto DrawSnapTabButton = [&](const char* Id, EToolbarIcon Icon, const char* Label, ESnapPopupType Type, float Width)
+	{
+		const bool bSelected = GSnapPopupTab[SlotIndex] == Type;
+		if (bSelected)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, SnapPopupTabSelectedColor);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, SnapPopupTabSelectedHoverColor);
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, SnapPopupTabSelectedActiveColor);
+			ImGui::PushStyleColor(ImGuiCol_Text, SnapPopupTabSelectedTextColor);
+			ImGui::PushStyleColor(ImGuiCol_TextDisabled, SnapPopupTabSelectedTextColor);
+		}
+
+		if (DrawToolbarIconLabelButton(Id, Icon, Label, Width, ButtonHeight, FallbackSize, MaxIconSize, bSelected ? IM_COL32(255, 255, 255, 255) : IM_COL32_WHITE))
+		{
+			GSnapPopupTab[SlotIndex] = Type;
+		}
+		DrawToolbarDropdownArrowForLastItem();
+
+		if (bSelected)
+		{
+			ImGui::PopStyleColor(5);
+		}
+	};
+
+	DrawSnapTabButton("##SnapTabLocation", EToolbarIcon::TranslateSnap, "Location", ESnapPopupType::Location, LocationWidth);
+	ImGui::SameLine(0.0f, 8.0f);
+	DrawSnapTabButton("##SnapTabRotation", EToolbarIcon::RotateSnap, "Rotation", ESnapPopupType::Rotation, RotationWidth);
+	ImGui::SameLine(0.0f, 8.0f);
+	DrawSnapTabButton("##SnapTabScale", EToolbarIcon::ScaleSnap, "Scale", ESnapPopupType::Scale, ScaleWidth);
+
+	ImGui::Spacing();
+	ImGui::Separator();
+	ImGui::Spacing();
+
+	switch (GSnapPopupTab[SlotIndex])
+	{
+	case ESnapPopupType::Location:
+		DrawSnapPopupOptions("Location", Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, TranslationSnapSizes, 9, "%.0f");
+		break;
+	case ESnapPopupType::Rotation:
+		DrawSnapPopupOptions("Rotation", Settings.bEnableRotationSnap, Settings.RotationSnapSize, RotationSnapSizes, 8, "%.0f deg");
+		break;
+	case ESnapPopupType::Scale:
+		DrawSnapPopupOptions("Scale", Settings.bEnableScaleSnap, Settings.ScaleSnapSize, ScaleSnapSizes, 8, "%.5g");
+		break;
+	default:
+		break;
+	}
+}
+
+void RenderSnapToolbarButton(int32 SlotIndex, FEditorSettings& Settings, float Width, float FallbackSize, float MaxIconSize)
+{
+	char ButtonId[64];
+	char PopupId[64];
+	snprintf(ButtonId, sizeof(ButtonId), "##SnapSettings_%d", SlotIndex);
+	snprintf(PopupId, sizeof(PopupId), "SnapPopup_%d", SlotIndex);
+
+	const bool bAnySnapEnabled = Settings.bEnableTranslationSnap || Settings.bEnableRotationSnap || Settings.bEnableScaleSnap;
+	if (DrawSelectedToolbarIconDropdownButton(ButtonId, EToolbarIcon::TranslateSnap, bAnySnapEnabled, Width, 26.0f, FallbackSize, MaxIconSize))
+	{
+		if (GSnapPopupTab[SlotIndex] == ESnapPopupType::None)
+		{
+			GSnapPopupTab[SlotIndex] = ESnapPopupType::Location;
+		}
+		ImGui::OpenPopup(PopupId);
+	}
+	DrawToolbarDropdownArrowForLastItem();
+	ShowItemTooltip("Snap Settings");
+
+	ImGui::SetNextWindowSize(ImVec2(0.0f, 0.0f), ImGuiCond_Appearing);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 12.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, SnapPopupPanelBgColor);
+	ImGui::PushStyleColor(ImGuiCol_Border, SnapPopupBorderColor);
+	if (ImGui::BeginPopup(PopupId))
+	{
+		RenderSnapPopupContent(SlotIndex, Settings, FallbackSize, MaxIconSize);
+		ImGui::EndPopup();
+	}
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(3);
+}
+
+bool DrawSearchInputWithIcon(const char* Id, const char* Hint, char* Buffer, size_t BufferSize, float Width)
+{
+	ImGuiStyle& Style = ImGui::GetStyle();
+	ImGui::SetNextItemWidth(Width);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 11.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(Style.FramePadding.x + 20.0f, Style.FramePadding.y));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.42f, 0.42f, 0.45f, 0.90f));
+	const std::string PaddedHint = std::string("   ") + Hint;
+	const bool bChanged = ImGui::InputTextWithHint(Id, PaddedHint.c_str(), Buffer, BufferSize);
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(3);
+
+	if (ID3D11ShaderResourceView* SearchIcon = FResourceManager::Get().FindLoadedTexture(
+		FResourceManager::Get().ResolvePath(FName("Editor.Icon.Search"))).Get())
+	{
+		const ImVec2 Min = ImGui::GetItemRectMin();
+		const float IconSize = ImGui::GetFrameHeight() - 12.0f;
+		const float IconY = Min.y + (ImGui::GetFrameHeight() - IconSize) * 0.5f;
+		ImGui::GetWindowDrawList()->AddImage(
+			reinterpret_cast<ImTextureID>(SearchIcon),
+			ImVec2(Min.x + 7.0f, IconY),
+			ImVec2(Min.x + 7.0f + IconSize, IconY + IconSize),
+			ImVec2(1.0f, 0.0f),
+			ImVec2(0.0f, 1.0f),
+			IM_COL32(210, 210, 210, 255));
+	}
+
+	return bChanged;
+}
+
+float GetViewportPaneToolbarHeight(float PaneWidth)
+{
+	return 38.0f;
 }
 
 FString GetRegisteredMeshPath(const char* MeshKey)
@@ -219,6 +836,26 @@ const char* GetLayoutIconResourceKey(EViewportLayout Layout)
 	}
 }
 
+const char* GetLayoutDisplayName(EViewportLayout Layout)
+{
+	switch (Layout)
+	{
+	case EViewportLayout::OnePane: return "One Pane";
+	case EViewportLayout::TwoPanesHoriz: return "Two Panes Horizontal";
+	case EViewportLayout::TwoPanesVert: return "Two Panes Vertical";
+	case EViewportLayout::ThreePanesLeft: return "Three Panes Left";
+	case EViewportLayout::ThreePanesRight: return "Three Panes Right";
+	case EViewportLayout::ThreePanesTop: return "Three Panes Top";
+	case EViewportLayout::ThreePanesBottom: return "Three Panes Bottom";
+	case EViewportLayout::FourPanes2x2: return "Four Panes 2x2";
+	case EViewportLayout::FourPanesLeft: return "Four Panes Left";
+	case EViewportLayout::FourPanesRight: return "Four Panes Right";
+	case EViewportLayout::FourPanesTop: return "Four Panes Top";
+	case EViewportLayout::FourPanesBottom: return "Four Panes Bottom";
+	default: return "Viewport Layout";
+	}
+}
+
 // ??? ?꾩씠肄?濡쒕뱶/?댁젣 ????????????????????????????????????????
 
 void FLevelViewportLayout::LoadLayoutIcons(ID3D11Device* Device)
@@ -259,9 +896,9 @@ void FLevelViewportLayout::Initialize(UEditorEngine* InEditor, FWindowsWindow* I
 
 	// ?꾩씠肄?濡쒕뱶
 	LoadLayoutIcons(InRenderer.GetFD3DDevice().GetDevice());
+	PlayToolbar.Initialize(InEditor, InRenderer.GetFD3DDevice().GetDevice());
 
 	// Play/Stop ?대컮 珥덇린??
-	PlayToolbar.Initialize(InEditor, InRenderer.GetFD3DDevice().GetDevice());
 
 	// LevelViewportClient ?앹꽦 (?⑥씪 酉고룷??
 	auto* LevelVC = new FLevelEditorViewportClient();
@@ -281,6 +918,7 @@ void FLevelViewportLayout::Initialize(UEditorEngine* InEditor, FWindowsWindow* I
 
 	LevelVC->CreateCamera();
 	LevelVC->ResetCamera();
+	ApplyProjectViewportSettings(LevelVC->GetRenderOptions());
 
 	AllViewportClients.push_back(LevelVC);
 	LevelViewportClients.push_back(LevelVC);
@@ -446,6 +1084,7 @@ void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
 
 		LevelVC->CreateCamera();
 		LevelVC->ResetCamera();
+		ApplyProjectViewportSettings(LevelVC->GetRenderOptions());
 
 		AllViewportClients.push_back(LevelVC);
 		LevelViewportClients.push_back(LevelVC);
@@ -1005,7 +1644,10 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 	UpdateLayoutTransition(DeltaTime);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-	ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_None);
+	constexpr const char* PanelIconKey = "Editor.Icon.Panel.Viewport";
+	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Viewport", PanelIconKey);
+	ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_None);
+	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
 
 	ImVec2 ContentPos = ImGui::GetCursorScreenPos();
 	ImVec2 ContentSize = ImGui::GetContentRegionAvail();
@@ -1020,9 +1662,11 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			{
 				FContentItem ContentItem = *reinterpret_cast<const FContentItem*>(payload->Data);
 
+				Editor->BeginTrackedSceneChange();
 				AStaticMeshActor* NewActor = Cast<AStaticMeshActor>(FObjectFactory::Get().Create(AStaticMeshActor::StaticClass()->GetName(), Editor->GetWorld()));
 				NewActor->InitDefaultComponents(FPaths::ToUtf8(ContentItem.Path));
 				Editor->GetWorld()->AddActor(NewActor);
+				Editor->CommitTrackedSceneChange();
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -1031,16 +1675,23 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 	if (ContentSize.x > 0 && ContentSize.y > 0)
 	{
 		// ?곷떒??Play/Stop ?대컮 ?곸뿭 ?뺣낫 ???섎㉧吏瑜?酉고룷?몄뿉 ?좊떦
-		const float ToolbarHeight = PlayToolbar.GetDesiredHeight();
+		for (FLevelEditorViewportClient* VC : LevelViewportClients)
+		{
+			if (VC)
+			{
+				ApplyProjectViewportSettings(VC->GetRenderOptions());
+			}
+		}
+
+		const float MainToolbarHeight = PlayToolbar.GetDesiredHeight();
 		ImGui::SetCursorScreenPos(ContentPos);
 		PlayToolbar.Render(ContentSize.x);
-		RenderSharedGizmoToolbar(ContentPos.x, ContentPos.y);
 
 		FRect ContentRect = {
 			ContentPos.x,
-			ContentPos.y + ToolbarHeight,
+			ContentPos.y + MainToolbarHeight,
 			ContentSize.x,
-			ContentSize.y - ToolbarHeight
+			ContentSize.y - MainToolbarHeight
 		};
 		auto IsSlotVisibleEnough = [&](int32 SlotIndex) -> bool
 		{
@@ -1067,6 +1718,12 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 		{
 			if (i < static_cast<int32>(LevelViewportClients.size()) && IsSlotVisibleEnough(i))
 			{
+				ViewportToolbarRects[i] = ViewportWindows[i]->GetRect();
+				FRect RenderRect = ViewportToolbarRects[i];
+				const float ViewportToolbarHeight = GetViewportPaneToolbarHeight(RenderRect.Width);
+				RenderRect.Y += ViewportToolbarHeight;
+				RenderRect.Height = (std::max)(0.0f, RenderRect.Height - ViewportToolbarHeight);
+				ViewportWindows[i]->SetRect(RenderRect);
 				FLevelEditorViewportClient* VC = LevelViewportClients[i];
 				VC->UpdateLayoutRect();
 				VC->RenderViewportImage(VC == ActiveViewportClient);
@@ -1081,7 +1738,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 				(LayoutTransition == EViewportLayoutTransition::None || i == TransitionSourceSlot);
 			if (bShowPaneToolbar)
 			{
-				RenderPaneToolbar(i);
+				RenderViewportToolbar(i);
 			}
 		}
 
@@ -1092,7 +1749,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			SSplitter::CollectSplitters(RootSplitter, AllSplitters);
 
 			ImDrawList* DrawList = ImGui::GetWindowDrawList();
-			ImU32 BarColor = IM_COL32(80, 80, 80, 255);
+			ImU32 BarColor = IM_COL32(0, 0, 0, 255);
 
 			for (SSplitter* S : AllSplitters)
 			{
@@ -1190,8 +1847,12 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
 // ??? 媛?酉고룷???⑥씤 ?대컮 ?ㅻ쾭?덉씠 ??????????????????????????
 
-void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float ToolbarTop)
+void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop)
 {
+	(void)ToolbarLeft;
+	(void)ToolbarTop;
+	return;
+
 	if (!Editor)
 	{
 		return;
@@ -1205,34 +1866,38 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 
 	EnsureToolbarIconsLoaded(RendererPtr);
 
-	constexpr float ToolbarHeight = 28.0f;
-	constexpr float IconSize = 16.0f;
+	constexpr float ToolbarHeight = 40.0f;
+	constexpr float IconSize = 18.0f;
 	constexpr float ButtonPadding = (ToolbarHeight - IconSize) * 0.5f;
-	constexpr float ButtonSpacing = 4.0f;
+	constexpr float ButtonSpacing = 6.0f;
 	constexpr float PlayStopButtonWidth = 24.0f;
-	constexpr float GroupSpacing = 12.0f;
-	constexpr float ToolbarFallbackIconSize = 14.0f;
-	constexpr float ToolbarMaxIconSize = 16.0f;
+	constexpr float GroupSpacing = 14.0f;
+	constexpr float ToolbarFallbackIconSize = 16.0f;
+	constexpr float ToolbarMaxIconSize = 18.0f;
 
 	ImGui::SetCursorScreenPos(ImVec2(
 		ToolbarLeft + ButtonPadding + (PlayStopButtonWidth * 2.0f) + ButtonSpacing + GroupSpacing,
-		ToolbarTop + ButtonPadding));
+		ToolbarTop));
 
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.15f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.3f));
+	ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.10f, 0.11f, 0.92f));
+	ImGui::BeginChild("##MainToolbarBar", ImVec2(540.0f, ToolbarHeight), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+	ImGui::SetCursorPos(ImVec2(10.0f, ButtonPadding));
+	PushToolbarButtonStyle();
 
 	auto DrawGizmoIcon = [&](const char* Id, EToolbarIcon Icon, EGizmoMode TargetMode, const char* FallbackLabel) -> bool
 	{
 		const bool bSelected = (Gizmo->GetMode() == TargetMode);
 		if (bSelected)
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.5f, 0.8f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.43f, 0.72f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.31f, 0.49f, 0.78f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.21f, 0.38f, 0.64f, 1.0f));
 		}
 		const bool bClicked = DrawToolbarIconButton(Id, Icon, FallbackLabel, ToolbarFallbackIconSize, ToolbarMaxIconSize);
 		if (bSelected)
 		{
-			ImGui::PopStyleColor();
+			ImGui::PopStyleColor(3);
 		}
 		return bClicked;
 	};
@@ -1263,24 +1928,26 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 			}
 		}
 	}
+	ShowItemTooltip("Place Actor");
 
 	ImGui::SameLine(0.0f, GroupSpacing);
 	if (DrawGizmoIcon("##SharedTranslateToolIcon", EToolbarIcon::Translate, EGizmoMode::Translate, "Translate"))
 	{
 		Gizmo->SetTranslateMode();
 	}
+	ShowItemTooltip("Translate");
 	ImGui::SameLine(0.0f, ButtonSpacing);
 	if (DrawGizmoIcon("##SharedRotateToolIcon", EToolbarIcon::Rotate, EGizmoMode::Rotate, "Rotate"))
 	{
 		Gizmo->SetRotateMode();
 	}
+	ShowItemTooltip("Rotate");
 	ImGui::SameLine(0.0f, ButtonSpacing);
 	if (DrawGizmoIcon("##SharedScaleToolIcon", EToolbarIcon::Scale, EGizmoMode::Scale, "Scale"))
 	{
 		Gizmo->SetScaleMode();
 	}
-
-	ImGui::PopStyleColor(3);
+	ShowItemTooltip("Scale");
 
 	FEditorSettings& Settings = Editor->GetSettings();
 
@@ -1288,7 +1955,9 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 	const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
 	if (bWorldCoord)
 	{
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.5f, 0.8f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.43f, 0.72f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.31f, 0.49f, 0.78f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.21f, 0.38f, 0.64f, 1.0f));
 	}
 	if (DrawToolbarIconButton("##SharedCoordSystemIcon",
 		bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace,
@@ -1298,9 +1967,10 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 	{
 		Editor->ToggleCoordSystem();
 	}
+	ShowItemTooltip(bWorldCoord ? "World Space" : "Local Space");
 	if (bWorldCoord)
 	{
-		ImGui::PopStyleColor();
+		ImGui::PopStyleColor(3);
 	}
 
 	// ?ㅻ깄 ?좉?怨??섏튂瑜?媛숈? ?먮━?먯꽌 諛붽씀怨?利됱떆 Gizmo ?ㅼ젙??諛섏쁺?쒕떎.
@@ -1311,14 +1981,15 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 		const bool bWasEnabled = bEnabled;
 		if (bWasEnabled)
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.5f, 0.8f, 1.0f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.38f, 0.58f, 0.88f, 1.0f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.22f, 0.42f, 0.72f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.43f, 0.72f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.31f, 0.49f, 0.78f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.21f, 0.38f, 0.64f, 1.0f));
 		}
 		if (DrawToolbarIconButton("##SnapToggle", Icon, FallbackLabel, ToolbarFallbackIconSize, ToolbarMaxIconSize))
 		{
 			bEnabled = !bEnabled;
 		}
+		ShowItemTooltip(FallbackLabel);
 		if (bWasEnabled)
 		{
 			ImGui::PopStyleColor(3);
@@ -1332,43 +2003,432 @@ void FLevelViewportLayout::RenderSharedGizmoToolbar(float ToolbarLeft, float Too
 		ImGui::PopID();
 	};
 
-	DrawSnapControl("TranslateSnap", EToolbarIcon::TranslateSnap, "T", Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, 0.001f);
-	DrawSnapControl("RotateSnap", EToolbarIcon::RotateSnap, "R", Settings.bEnableRotationSnap, Settings.RotationSnapSize, 0.001f);
-	DrawSnapControl("ScaleSnap", EToolbarIcon::ScaleSnap, "S", Settings.bEnableScaleSnap, Settings.ScaleSnapSize, 0.001f);
+	DrawSnapControl("TranslateSnap", EToolbarIcon::TranslateSnap, "Translation Snap", Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, 0.001f);
+	DrawSnapControl("RotateSnap", EToolbarIcon::RotateSnap, "Rotation Snap", Settings.bEnableRotationSnap, Settings.RotationSnapSize, 0.001f);
+	DrawSnapControl("ScaleSnap", EToolbarIcon::ScaleSnap, "Scale Snap", Settings.bEnableScaleSnap, Settings.ScaleSnapSize, 0.001f);
 
 	Editor->ApplyTransformSettingsToGizmo();
+	PopToolbarButtonStyle();
+	ImGui::EndChild();
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar();
 }
 
-void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
+void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
 {
 	if (SlotIndex >= MaxViewportSlots || !ViewportWindows[SlotIndex]) return;
 
-	const FRect& PaneRect = ViewportWindows[SlotIndex]->GetRect();
-	if (PaneRect.Width <= 0 || PaneRect.Height <= 0) return;
+	FRect PaneRect = ViewportToolbarRects[SlotIndex];
+	if (PaneRect.Width <= 0.0f || PaneRect.Height <= 0.0f)
+	{
+		PaneRect = ViewportWindows[SlotIndex]->GetRect();
+	}
+	if (PaneRect.Width <= 0.0f || PaneRect.Height <= 0.0f) return;
 
 	EnsureToolbarIconsLoaded(RendererPtr);
 	constexpr float PaneToolbarFallbackIconSize = 14.0f;
 	constexpr float PaneToolbarMaxIconSize = 16.0f;
+	const float PaneToolbarHeight = GetViewportPaneToolbarHeight(PaneRect.Width);
+	constexpr float PaneToolbarPaddingX = 8.0f;
+	constexpr float PaneToolbarPaddingY = 6.0f;
+	constexpr float PaneToolbarButtonSpacing = 6.0f;
 
 	// ?⑥씤 ?곷떒???ㅻ쾭?덉씠 ?덈룄??
 	char OverlayID[64];
 	snprintf(OverlayID, sizeof(OverlayID), "##PaneToolbar_%d", SlotIndex);
 
 	ImGui::SetNextWindowPos(ImVec2(PaneRect.X, PaneRect.Y));
-	ImGui::SetNextWindowBgAlpha(0.4f);
-	ImGui::SetNextWindowSize(ImVec2(0, 0)); // auto-size
+	ImGui::SetNextWindowSize(ImVec2(PaneRect.Width, PaneToolbarHeight));
 
 	ImGuiWindowFlags OverlayFlags =
 		ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_AlwaysAutoResize |
 		ImGuiWindowFlags_NoSavedSettings |
 		ImGuiWindowFlags_NoFocusOnAppearing |
 		ImGuiWindowFlags_NoNav |
 		ImGuiWindowFlags_NoMove;
 
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(PaneToolbarPaddingX, PaneToolbarPaddingY));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.10f, 0.10f, 0.11f, 0.92f));
 	ImGui::Begin(OverlayID, nullptr, OverlayFlags);
 	{
 		ImGui::PushID(SlotIndex);
+		PushToolbarButtonStyle();
+		{
+			if (SlotIndex < static_cast<int32>(LevelViewportClients.size()))
+			{
+				FLevelEditorViewportClient* VC = LevelViewportClients[SlotIndex];
+				FViewportRenderOptions& Opts = VC->GetRenderOptions();
+				UCameraComponent* Camera = VC->GetCamera();
+				UGizmoComponent* Gizmo = Editor ? Editor->GetGizmo() : nullptr;
+				FEditorSettings& Settings = Editor->GetSettings();
+				const bool bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
+				const bool bUseCompactToolbarLayout = PaneRect.Width < 520.0f;
+				const float EffectiveButtonSpacing = bUseCompactToolbarLayout ? 3.0f : PaneToolbarButtonSpacing;
+				const bool bShowTranslateButton = PaneRect.Width >= 150.0f;
+				const bool bShowRotateButton = PaneRect.Width >= 185.0f;
+				const bool bShowScaleButton = PaneRect.Width >= 220.0f;
+				bool bShowCoordButton = PaneRect.Width >= 255.0f;
+				bool bShowSnapButton = PaneRect.Width >= 292.0f;
+				bool bShowViewModeButton = PaneRect.Width >= 340.0f;
+				bool bShowCameraMenu = PaneRect.Width >= 385.0f;
+				bool bShowShowMenu = PaneRect.Width >= 430.0f;
+				bool bShowLayoutButton = PaneRect.Width >= 475.0f;
+				const bool bShowToggleButton = PaneRect.Width >= 540.0f;
+
+				auto DrawSelectedToolbarIcon = [&](const char* Id, EToolbarIcon Icon, bool bSelected, const char* Tooltip) -> bool
+				{
+					const ImU32 Tint = bSelected ? IM_COL32(70, 170, 255, 255) : IM_COL32_WHITE;
+					const bool bClicked = DrawToolbarIconButton(Id, Icon, Tooltip, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize, Tint);
+					ShowItemTooltip(Tooltip);
+					return bClicked;
+				};
+
+				auto DrawDropdownToolbarButton = [&](const char* Id, EToolbarIcon Icon, const char* Label, const char* Tooltip, float Width, bool bShowLabel) -> bool
+				{
+					const bool bClicked = !bShowLabel
+						? DrawToolbarIconDropdownButton(Id, Icon, Width, 26.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize)
+						: DrawToolbarIconLabelButton(Id, Icon, Label, Width, 26.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
+					DrawToolbarDropdownArrowForLastItem();
+					ShowItemTooltip(Tooltip);
+					return bClicked;
+				};
+
+				static const char* ViewModeNames[] = { "Lit", "Unlit", "Lit", "Lit", "Wireframe", "Scene Depth", "World Normal", "Light Culling" };
+				static const char* ViewportTypeNames[] = { "Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Ortho" };
+				const char* CurrentViewModeName = ViewModeNames[static_cast<int32>(Opts.ViewMode)];
+				const char* CurrentViewportTypeName = ViewportTypeNames[static_cast<int32>(Opts.ViewportType)];
+				const bool bShowViewportLabel = PaneRect.Width >= 560.0f;
+				const bool bShowViewModeLabel = PaneRect.Width >= 680.0f;
+				bool bHasToolbarItem = false;
+				auto BeginToolbarItem = [&](float Spacing)
+				{
+					if (bHasToolbarItem)
+					{
+						ImGui::SameLine(0.0f, Spacing);
+					}
+					bHasToolbarItem = true;
+				};
+
+				if (Gizmo)
+				{
+					if (bShowTranslateButton)
+					{
+						BeginToolbarItem(EffectiveButtonSpacing);
+						if (DrawSelectedToolbarIcon("##TranslateTool", EToolbarIcon::Translate, Gizmo->GetMode() == EGizmoMode::Translate, "Translate"))
+						{
+							Gizmo->SetTranslateMode();
+						}
+					}
+					if (bShowRotateButton)
+					{
+						BeginToolbarItem(EffectiveButtonSpacing);
+						if (DrawSelectedToolbarIcon("##RotateTool", EToolbarIcon::Rotate, Gizmo->GetMode() == EGizmoMode::Rotate, "Rotate"))
+						{
+							Gizmo->SetRotateMode();
+						}
+					}
+					if (bShowScaleButton)
+					{
+						BeginToolbarItem(EffectiveButtonSpacing);
+						if (DrawSelectedToolbarIcon("##ScaleTool", EToolbarIcon::Scale, Gizmo->GetMode() == EGizmoMode::Scale, "Scale"))
+						{
+							Gizmo->SetScaleMode();
+						}
+					}
+				}
+
+				const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
+				if (bShowCoordButton)
+				{
+					BeginToolbarItem(bUseCompactToolbarLayout ? 5.0f : 10.0f);
+					if (DrawSelectedToolbarIcon("##CoordSystem", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace, bWorldCoord, bWorldCoord ? "World Space" : "Local Space"))
+					{
+						Editor->ToggleCoordSystem();
+					}
+				}
+
+				if (bShowSnapButton)
+				{
+					BeginToolbarItem(EffectiveButtonSpacing);
+					RenderSnapToolbarButton(SlotIndex, Settings, bUseCompactToolbarLayout ? 30.0f : 36.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
+				}
+
+				const float PopupButtonWidth = PaneRect.Width >= 700.0f ? 46.0f : (bUseCompactToolbarLayout ? 30.0f : 36.0f);
+				const float RightButtonSpacing = PaneRect.Width >= 700.0f ? PaneToolbarButtonSpacing : (bUseCompactToolbarLayout ? 0.0f : 2.0f);
+				const float ToggleButtonWidth = ImGui::GetFrameHeight();
+				const float EffectiveViewportWidth = bShowViewportLabel
+					? GetToolbarIconLabelButtonWidth(GetViewportTypeToolbarIcon(Opts.ViewportType), CurrentViewportTypeName, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize)
+					: PopupButtonWidth;
+				const float EffectiveViewModeWidth = bShowViewModeButton
+					? (bShowViewModeLabel
+						? GetToolbarIconLabelButtonWidth(GetViewModeToolbarIcon(Opts.ViewMode), CurrentViewModeName, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize)
+						: PopupButtonWidth)
+					: 0.0f;
+				float RightGroupWidth = 0.0f;
+				bool bHasRightGroupItem = false;
+				auto AccumulateRightGroupWidth = [&](bool bShowButton, float ButtonWidth, float Spacing)
+				{
+					if (!bShowButton)
+					{
+						return;
+					}
+					if (bHasRightGroupItem)
+					{
+						RightGroupWidth += Spacing;
+					}
+					RightGroupWidth += ButtonWidth;
+					bHasRightGroupItem = true;
+				};
+				AccumulateRightGroupWidth(bShowCameraMenu, PopupButtonWidth, RightButtonSpacing);
+				AccumulateRightGroupWidth(true, EffectiveViewportWidth, RightButtonSpacing);
+				AccumulateRightGroupWidth(bShowViewModeButton, EffectiveViewModeWidth, RightButtonSpacing);
+				AccumulateRightGroupWidth(bShowShowMenu, PopupButtonWidth, RightButtonSpacing);
+				AccumulateRightGroupWidth(bShowLayoutButton, PopupButtonWidth, RightButtonSpacing);
+				AccumulateRightGroupWidth(bShowToggleButton, ToggleButtonWidth, EffectiveButtonSpacing);
+				if (bHasRightGroupItem)
+				{
+					const float RightStartX = ImGui::GetWindowWidth() - PaneToolbarPaddingX - RightGroupWidth;
+					const float MinStartX = ImGui::GetCursorPosX() + EffectiveButtonSpacing;
+					ImGui::SameLine((std::max)(RightStartX, MinStartX), 0.0f);
+				}
+				bool bHasDrawnRightItem = false;
+				auto BeginRightToolbarItem = [&](float Spacing)
+				{
+					if (bHasDrawnRightItem)
+					{
+						ImGui::SameLine(0.0f, Spacing);
+					}
+					bHasDrawnRightItem = true;
+				};
+
+				char CameraPopupID[64];
+				snprintf(CameraPopupID, sizeof(CameraPopupID), "CameraPopup_%d", SlotIndex);
+				if (bShowCameraMenu)
+				{
+					BeginRightToolbarItem(RightButtonSpacing);
+					if (DrawDropdownToolbarButton("##CameraSettingsIcon", EToolbarIcon::CameraSettings, "Camera", "Camera Settings", PopupButtonWidth, false))
+					{
+						ImGui::OpenPopup(CameraPopupID);
+					}
+				}
+				ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Appearing);
+				if (bShowCameraMenu && ImGui::BeginPopup(CameraPopupID))
+				{
+					DrawCameraPopupContent(Camera, Settings);
+
+					ImGui::EndPopup();
+				}
+
+				char ViewportPopupID[64];
+				snprintf(ViewportPopupID, sizeof(ViewportPopupID), "ViewportPopup_%d", SlotIndex);
+				BeginRightToolbarItem(RightButtonSpacing);
+				if (DrawDropdownToolbarButton("##ViewportTypeIcon", GetViewportTypeToolbarIcon(Opts.ViewportType), CurrentViewportTypeName, "Viewport Type", EffectiveViewportWidth, bShowViewportLabel))
+				{
+					ImGui::OpenPopup(ViewportPopupID);
+				}
+				if (ImGui::BeginPopup(ViewportPopupID))
+				{
+					auto DrawViewportTypeOptions = [&](const char* SectionLabel, int32 StartIndex, int32 EndIndex)
+					{
+						DrawPopupSectionHeader(SectionLabel);
+						for (int32 TypeIndex = StartIndex; TypeIndex < EndIndex; ++TypeIndex)
+						{
+							const bool bSelected = static_cast<int32>(Opts.ViewportType) == TypeIndex;
+							ImGui::PushID(TypeIndex);
+							if (ImGui::Selectable("##ViewportTypeOption", bSelected, 0, ImVec2(220.0f, 24.0f)))
+							{
+								VC->SetViewportType(static_cast<ELevelViewportType>(TypeIndex));
+								ImGui::CloseCurrentPopup();
+							}
+							const ImVec2 Min = ImGui::GetItemRectMin();
+							ImDrawList* DrawList = ImGui::GetWindowDrawList();
+							if (ID3D11ShaderResourceView* IconSRV = GetToolbarIconTable()[static_cast<int32>(GetViewportTypeToolbarIcon(static_cast<ELevelViewportType>(TypeIndex)))])
+							{
+								DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f), ImVec2(Min.x + 18.0f, Min.y + 18.0f));
+							}
+							DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text), ViewportTypeNames[TypeIndex]);
+							ImGui::PopID();
+						}
+					};
+
+					DrawViewportTypeOptions("PERSPECTIVE", 0, 1);
+					DrawViewportTypeOptions("ORTHOGRAPHIC", 1, 8);
+					ImGui::EndPopup();
+				}
+
+				char ViewModePopupID[64];
+				snprintf(ViewModePopupID, sizeof(ViewModePopupID), "ViewModePopup_%d", SlotIndex);
+				if (bShowViewModeButton)
+				{
+					BeginRightToolbarItem(RightButtonSpacing);
+					if (DrawDropdownToolbarButton("##ViewModeIcon", GetViewModeToolbarIcon(Opts.ViewMode), CurrentViewModeName, "View Mode", EffectiveViewModeWidth, bShowViewModeLabel))
+					{
+						ImGui::OpenPopup(ViewModePopupID);
+					}
+				}
+				if (bShowViewModeButton && ImGui::BeginPopup(ViewModePopupID))
+				{
+					DrawPopupSectionHeader("VIEW MODE");
+					int32 CurrentMode = static_cast<int32>(Opts.ViewMode);
+
+					auto DrawViewModeOption = [&](const char* Label, EViewMode Mode, EToolbarIcon Icon)
+					{
+						const bool bSelected = CurrentMode == static_cast<int32>(Mode);
+						ImGui::PushID(Label);
+						if (ImGui::Selectable("##ViewModeOption", bSelected, 0, ImVec2(260.0f, 24.0f)))
+						{
+							CurrentMode = static_cast<int32>(Mode);
+							ImGui::CloseCurrentPopup();
+						}
+						const ImVec2 Min = ImGui::GetItemRectMin();
+						ImDrawList* DrawList = ImGui::GetWindowDrawList();
+						if (ID3D11ShaderResourceView* IconSRV = GetToolbarIconTable()[static_cast<int32>(Icon)])
+						{
+							DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f), ImVec2(Min.x + 18.0f, Min.y + 18.0f));
+						}
+						DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text), Label);
+						ImGui::PopID();
+					};
+
+					DrawViewModeOption("Lit", EViewMode::Lit_Phong, EToolbarIcon::ViewModeLit);
+					DrawViewModeOption("Unlit", EViewMode::Unlit, EToolbarIcon::ViewModeUnlit);
+					DrawViewModeOption("Wireframe", EViewMode::Wireframe, EToolbarIcon::ViewModeWireframe);
+					DrawViewModeOption("Lit Gouraud", EViewMode::Lit_Gouraud, EToolbarIcon::ViewModeLit);
+					DrawViewModeOption("Lit Lambert", EViewMode::Lit_Lambert, EToolbarIcon::ViewModeLit);
+					DrawViewModeOption("Scene Depth", EViewMode::SceneDepth, EToolbarIcon::ViewModeSceneDepth);
+					DrawViewModeOption("World Normal", EViewMode::WorldNormal, EToolbarIcon::ViewModeWorldNormal);
+					DrawViewModeOption("Light Culling", EViewMode::LightCulling, EToolbarIcon::ViewModeLightCulling);
+
+					Opts.ViewMode = static_cast<EViewMode>(CurrentMode);
+					ImGui::EndPopup();
+				}
+
+				char SettingsPopupID[64];
+				snprintf(SettingsPopupID, sizeof(SettingsPopupID), "SettingsPopup_%d", SlotIndex);
+				if (bShowShowMenu)
+				{
+					BeginRightToolbarItem(RightButtonSpacing);
+					if (DrawDropdownToolbarButton("##SettingsIcon", EToolbarIcon::ShowFlag, "Show", "Show", PopupButtonWidth, false))
+					{
+						ImGui::OpenPopup(SettingsPopupID);
+					}
+				}
+				ImGui::SetNextWindowSize(ImVec2(286.0f, 0.0f), ImGuiCond_Always);
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f, 2.0f));
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 3.0f));
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(4.0f, 3.0f));
+				if (bShowShowMenu && ImGui::BeginPopup(SettingsPopupID))
+				{
+					DrawShowFlagsPopupContent(Opts);
+					ImGui::EndPopup();
+				}
+				ImGui::PopStyleVar(4);
+
+				char LayoutPopupID[64];
+				snprintf(LayoutPopupID, sizeof(LayoutPopupID), "LayoutPopup_%d", SlotIndex);
+				if (bShowLayoutButton)
+				{
+					BeginRightToolbarItem(RightButtonSpacing);
+					if (DrawDropdownToolbarButton("##Layout", EToolbarIcon::Menu, "Layout", "Viewport Layout", PopupButtonWidth, false))
+					{
+						ImGui::OpenPopup(LayoutPopupID);
+					}
+				}
+				if (bShowLayoutButton && ImGui::BeginPopup(LayoutPopupID))
+				{
+					constexpr int32 LayoutCount = static_cast<int32>(EViewportLayout::MAX);
+					constexpr int32 Columns = 4;
+					constexpr float IconSize = 32.0f;
+
+					for (int32 i = 0; i < LayoutCount; ++i)
+					{
+						ImGui::PushID(i);
+						const bool bSelected = (static_cast<EViewportLayout>(i) == CurrentLayout);
+						if (bSelected)
+						{
+							ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.5f, 0.8f, 1.0f));
+						}
+
+						bool bClicked = false;
+						if (LayoutIcons[i])
+						{
+							bClicked = ImGui::ImageButton("##icon", reinterpret_cast<ImTextureID>(LayoutIcons[i]), ImVec2(IconSize, IconSize));
+						}
+						else
+						{
+							char Label[4];
+							snprintf(Label, sizeof(Label), "%d", i);
+							bClicked = ImGui::Button(Label, ImVec2(IconSize + 8, IconSize + 8));
+						}
+						ShowItemTooltip(GetLayoutDisplayName(static_cast<EViewportLayout>(i)));
+
+						if (bSelected)
+						{
+							ImGui::PopStyleColor();
+						}
+
+						if (bClicked)
+						{
+							SetLayout(static_cast<EViewportLayout>(i));
+							ImGui::CloseCurrentPopup();
+						}
+
+						if ((i + 1) % Columns != 0 && i + 1 < LayoutCount)
+						{
+							ImGui::SameLine();
+						}
+
+						ImGui::PopID();
+					}
+
+					ImGui::EndPopup();
+				}
+
+				if (bShowToggleButton)
+				{
+					BeginRightToolbarItem(PaneToolbarButtonSpacing);
+					constexpr float ToggleIconSize = 16.0f;
+					const int32 ToggleIdx = (CurrentLayout == EViewportLayout::OnePane)
+						? static_cast<int32>(EViewportLayout::FourPanes2x2)
+						: static_cast<int32>(EViewportLayout::OnePane);
+					if (bIsTransitioning)
+					{
+						ImGui::BeginDisabled();
+					}
+					if (LayoutIcons[ToggleIdx])
+					{
+						if (ImGui::ImageButton("##toggle", reinterpret_cast<ImTextureID>(LayoutIcons[ToggleIdx]), ImVec2(ToggleIconSize, ToggleIconSize)))
+						{
+							ToggleViewportSplit(SlotIndex);
+						}
+					}
+					else
+					{
+						const char* ToggleLabel = (CurrentLayout == EViewportLayout::OnePane) ? "Split" : "Merge";
+						if (ImGui::Button(ToggleLabel))
+						{
+							ToggleViewportSplit(SlotIndex);
+						}
+					}
+					ShowItemTooltip((CurrentLayout == EViewportLayout::OnePane) ? "Split Viewports" : "Merge Viewports");
+					if (bIsTransitioning)
+					{
+						ImGui::EndDisabled();
+					}
+				}
+
+				Editor->ApplyTransformSettingsToGizmo();
+			}
+
+			PopToolbarButtonStyle();
+			ImGui::PopID();
+		}
+		ImGui::End();
+		ImGui::PopStyleColor();
+		ImGui::PopStyleVar(2);
+		return;
 
 		const bool bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
 
@@ -1381,6 +2441,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 		{
 			ImGui::OpenPopup(PopupID);
 		}
+		ShowItemTooltip("Viewport Layout");
 		//if (bIsTransitioning) ImGui::EndDisabled();
 
 		if (ImGui::BeginPopup(PopupID))
@@ -1410,6 +2471,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 					snprintf(Label, sizeof(Label), "%d", i);
 					bClicked = ImGui::Button(Label, ImVec2(IconSize + 8, IconSize + 8));
 				}
+				ShowItemTooltip(GetLayoutDisplayName(static_cast<EViewportLayout>(i)));
 
 				if (bSelected)
 				{
@@ -1445,6 +2507,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			{
 				ToggleViewportSplit(SlotIndex);
 			}
+			ShowItemTooltip((CurrentLayout == EViewportLayout::OnePane) ? "Split Viewports" : "Merge Viewports");
 		}
 		else
 		{
@@ -1453,6 +2516,7 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			{
 				ToggleViewportSplit(SlotIndex);
 			}
+			ShowItemTooltip((CurrentLayout == EViewportLayout::OnePane) ? "Split Viewports" : "Merge Viewports");
 		}
 		//if (bIsTransitioning) ImGui::EndDisabled();
 
@@ -1462,27 +2526,126 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			FLevelEditorViewportClient* VC = LevelViewportClients[SlotIndex];
 			FViewportRenderOptions& Opts = VC->GetRenderOptions();
 			UCameraComponent* Camera = VC->GetCamera();
+			UGizmoComponent* Gizmo = Editor ? Editor->GetGizmo() : nullptr;
+			FEditorSettings& Settings = Editor->GetSettings();
+
+			auto DrawSelectedToolbarIcon = [&](const char* Id, EToolbarIcon Icon, bool bSelected, const char* Tooltip) -> bool
+			{
+				if (bSelected)
+				{
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.43f, 0.72f, 1.0f));
+					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.31f, 0.49f, 0.78f, 1.0f));
+					ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.21f, 0.38f, 0.64f, 1.0f));
+				}
+				const bool bClicked = DrawToolbarIconButton(Id, Icon, Tooltip, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
+				if (bSelected)
+				{
+					ImGui::PopStyleColor(3);
+				}
+				ShowItemTooltip(Tooltip);
+				return bClicked;
+			};
+
+			ImGui::SameLine(0.0f, 10.0f);
+			if (DrawSelectedToolbarIcon("##PlaceActor", EToolbarIcon::AddActor, false, "Place Actor"))
+			{
+				const FPoint MousePos = { ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y };
+				ContextMenuState.PendingPopupPos = MousePos;
+				ContextMenuState.PendingPopupSlot = SlotIndex;
+				ContextMenuState.PendingSpawnSlot = SlotIndex;
+				ContextMenuState.PendingSpawnPos = {
+					PaneRect.X + PaneRect.Width * 0.5f,
+					PaneRect.Y + PaneRect.Height * 0.5f
+				};
+			}
+
+			if (Gizmo)
+			{
+				ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
+				if (DrawSelectedToolbarIcon("##TranslateTool", EToolbarIcon::Translate, Gizmo->GetMode() == EGizmoMode::Translate, "Translate"))
+				{
+					Gizmo->SetTranslateMode();
+				}
+				ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
+				if (DrawSelectedToolbarIcon("##RotateTool", EToolbarIcon::Rotate, Gizmo->GetMode() == EGizmoMode::Rotate, "Rotate"))
+				{
+					Gizmo->SetRotateMode();
+				}
+				ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
+				if (DrawSelectedToolbarIcon("##ScaleTool", EToolbarIcon::Scale, Gizmo->GetMode() == EGizmoMode::Scale, "Scale"))
+				{
+					Gizmo->SetScaleMode();
+				}
+			}
+
+			const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
+			ImGui::SameLine(0.0f, 10.0f);
+			if (DrawSelectedToolbarIcon("##CoordSystem", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace, bWorldCoord, bWorldCoord ? "World Space" : "Local Space"))
+			{
+				Editor->ToggleCoordSystem();
+			}
+
+			ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
+			RenderSnapToolbarButton(SlotIndex, Settings, 36.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
+
+			const float ViewModeButtonWidth = 138.0f;
+			const float ViewportButtonWidth = 138.0f;
+			const float CameraButtonWidth = 32.0f;
+			const float ShowButtonWidth = 32.0f;
+			const float RightGroupWidth = ViewModeButtonWidth + ViewportButtonWidth + CameraButtonWidth + ShowButtonWidth + PaneToolbarButtonSpacing * 3.0f;
+			const float RightX = ImGui::GetWindowWidth() - PaneToolbarPaddingX - RightGroupWidth;
+			ImGui::SameLine((std::max)(RightX, 0.0f), 0.0f);
 
 			// ?? View Mode ?앹뾽 ??
-			ImGui::SameLine();
-
-			static const char* ViewModeNames[] = { "Phong", "Unlit", "Gouraud", "Lambert", "Wireframe", "SceneDepth", "WorldNormal", "LightCulling" };
+			static const char* ViewModeNames[] = { "Lit", "Unlit", "Lit", "Lit", "Wireframe", "Scene Depth", "World Normal", "Light Culling" };
+			static const char* ViewportTypeNames[] = { "Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Ortho" };
 			const char* CurrentViewModeName = ViewModeNames[static_cast<int32>(Opts.ViewMode)];
+			const char* CurrentViewportTypeName = ViewportTypeNames[static_cast<int32>(Opts.ViewportType)];
 
 			char ViewModePopupID[64];
 			snprintf(ViewModePopupID, sizeof(ViewModePopupID), "ViewModePopup_%d", SlotIndex);
 
-			if (DrawToolbarIconButton("##ViewModeIcon", EToolbarIcon::WorldSpace, CurrentViewModeName, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
+			if (DrawToolbarIconLabelButton("##ViewModeIcon", GetViewModeToolbarIcon(Opts.ViewMode), CurrentViewModeName, ViewModeButtonWidth, 26.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
 			{
 				ImGui::OpenPopup(ViewModePopupID);
 			}
+			ShowItemTooltip("View Mode");
 
 			if (ImGui::BeginPopup(ViewModePopupID))
 			{
-				ImGui::Text("View Mode");
+				ImGui::SeparatorText("View Mode");
 				int32 CurrentMode = static_cast<int32>(Opts.ViewMode);
 
-				if (ImGui::BeginTable("ViewModeTable", 3, ImGuiTableFlags_SizingStretchSame))
+				auto DrawViewModeOption = [&](const char* Label, EViewMode Mode, EToolbarIcon Icon)
+				{
+					const bool bSelected = CurrentMode == static_cast<int32>(Mode);
+					ImGui::PushID(Label);
+					if (ImGui::Selectable("##ViewModeOption", bSelected, 0, ImVec2(260.0f, 24.0f)))
+					{
+						CurrentMode = static_cast<int32>(Mode);
+						ImGui::CloseCurrentPopup();
+					}
+					const ImVec2 Min = ImGui::GetItemRectMin();
+					const ImVec2 Max = ImGui::GetItemRectMax();
+					ImDrawList* DrawList = ImGui::GetWindowDrawList();
+					DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text), Label);
+					if (ID3D11ShaderResourceView* IconSRV = GetToolbarIconTable()[static_cast<int32>(Icon)])
+					{
+						DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f), ImVec2(Min.x + 18.0f, Min.y + 18.0f));
+					}
+					ImGui::PopID();
+				};
+
+				DrawViewModeOption("Lit", EViewMode::Lit_Phong, EToolbarIcon::ViewModeLit);
+				DrawViewModeOption("Unlit", EViewMode::Unlit, EToolbarIcon::ViewModeUnlit);
+				DrawViewModeOption("Wireframe", EViewMode::Wireframe, EToolbarIcon::ViewModeWireframe);
+				DrawViewModeOption("Lit Gouraud", EViewMode::Lit_Gouraud, EToolbarIcon::ViewModeLit);
+				DrawViewModeOption("Lit Lambert", EViewMode::Lit_Lambert, EToolbarIcon::ViewModeLit);
+				DrawViewModeOption("Scene Depth", EViewMode::SceneDepth, EToolbarIcon::ViewModeSceneDepth);
+				DrawViewModeOption("World Normal", EViewMode::WorldNormal, EToolbarIcon::ViewModeWorldNormal);
+				DrawViewModeOption("Light Culling", EViewMode::LightCulling, EToolbarIcon::ViewModeLightCulling);
+
+				if (false && ImGui::BeginTable("ViewModeTable", 3, ImGuiTableFlags_SizingStretchSame))
 				{
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -1518,7 +2681,48 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			}
 
 			// ?? Camera ?앹뾽 ??
-			ImGui::SameLine();
+			ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
+
+			char ViewportPopupID[64];
+			snprintf(ViewportPopupID, sizeof(ViewportPopupID), "ViewportPopup_%d", SlotIndex);
+
+			if (DrawToolbarIconLabelButton("##ViewportTypeIcon", GetViewportTypeToolbarIcon(Opts.ViewportType), CurrentViewportTypeName, ViewportButtonWidth, 26.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
+			{
+				ImGui::OpenPopup(ViewportPopupID);
+			}
+			ShowItemTooltip("Viewport Type");
+
+			if (ImGui::BeginPopup(ViewportPopupID))
+			{
+				auto DrawViewportTypeOptions = [&](const char* SectionLabel, int32 StartIndex, int32 EndIndex)
+				{
+					DrawPopupSectionHeader(SectionLabel);
+					for (int32 TypeIndex = StartIndex; TypeIndex < EndIndex; ++TypeIndex)
+					{
+						const bool bSelected = static_cast<int32>(Opts.ViewportType) == TypeIndex;
+						ImGui::PushID(TypeIndex);
+						if (ImGui::Selectable("##ViewportTypeOption", bSelected, 0, ImVec2(220.0f, 24.0f)))
+						{
+							VC->SetViewportType(static_cast<ELevelViewportType>(TypeIndex));
+							ImGui::CloseCurrentPopup();
+						}
+						const ImVec2 Min = ImGui::GetItemRectMin();
+						ImDrawList* DrawList = ImGui::GetWindowDrawList();
+						if (ID3D11ShaderResourceView* IconSRV = GetToolbarIconTable()[static_cast<int32>(GetViewportTypeToolbarIcon(static_cast<ELevelViewportType>(TypeIndex)))])
+						{
+							DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f), ImVec2(Min.x + 18.0f, Min.y + 18.0f));
+						}
+						DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text), ViewportTypeNames[TypeIndex]);
+						ImGui::PopID();
+					}
+				};
+
+				DrawViewportTypeOptions("PERSPECTIVE", 0, 1);
+				DrawViewportTypeOptions("ORTHOGRAPHIC", 1, 8);
+				ImGui::EndPopup();
+			}
+
+			ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
 
 			char CameraPopupID[64];
 			snprintf(CameraPopupID, sizeof(CameraPopupID), "CameraPopup_%d", SlotIndex);
@@ -1527,77 +2731,19 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			{
 				ImGui::OpenPopup(CameraPopupID);
 			}
+			ShowItemTooltip("Camera Settings");
 
+			ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Appearing);
 			if (ImGui::BeginPopup(CameraPopupID))
 			{
-				static const char* ViewportTypeNames[] = {
-					"Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Orthographic"
-				};
-				constexpr int32 ViewportTypeCount = sizeof(ViewportTypeNames) / sizeof(ViewportTypeNames[0]);
-				int32 CurrentTypeIdx = static_cast<int32>(Opts.ViewportType);
-
-				ImGui::Text("Camera");
-				ImGui::Separator();
-
-				if (ImGui::BeginCombo("View", ViewportTypeNames[CurrentTypeIdx]))
-				{
-					for (int32 t = 0; t < ViewportTypeCount; ++t)
-					{
-						const bool bSelected = (t == CurrentTypeIdx);
-						if (ImGui::Selectable(ViewportTypeNames[t], bSelected))
-						{
-							VC->SetViewportType(static_cast<ELevelViewportType>(t));
-							CurrentTypeIdx = t;
-						}
-						if (bSelected)
-						{
-							ImGui::SetItemDefaultFocus();
-						}
-					}
-					ImGui::EndCombo();
-				}
-
 				FEditorSettings& Settings = FEditorSettings::Get();
-				float CameraSpeed = Settings.CameraSpeed;
-				if (ImGui::DragFloat("Speed", &CameraSpeed, 0.1f, 0.1f, 1000.0f, "%.1f"))
-				{
-					Settings.CameraSpeed = Clamp(CameraSpeed, 0.1f, 1000.0f);
-				}
-
-				if (Camera)
-				{
-					float CameraFOV_Deg = Camera->GetFOV() * RAD_TO_DEG;
-					if (ImGui::DragFloat("FOV", &CameraFOV_Deg, 0.5f, 1.0f, 170.0f, "%.1f"))
-					{
-						Camera->SetFOV(Clamp(CameraFOV_Deg, 1.0f, 170.0f) * DEG_TO_RAD);
-					}
-
-					float OrthoWidth = Camera->GetOrthoWidth();
-					if (ImGui::DragFloat("Ortho Width", &OrthoWidth, 0.1f, 0.1f, 100000.0f, "%.1f"))
-					{
-						Camera->SetOrthoWidth(Clamp(OrthoWidth, 0.1f, 100000.0f));
-					}
-
-					FVector CamPos = Camera->GetWorldLocation();
-					float CameraLocation[3] = { CamPos.X, CamPos.Y, CamPos.Z };
-					if (ImGui::DragFloat3("Location", CameraLocation, 0.1f))
-					{
-						Camera->SetWorldLocation(FVector(CameraLocation[0], CameraLocation[1], CameraLocation[2]));
-					}
-
-					FRotator CamRot = Camera->GetRelativeRotation();
-					float CameraRotation[3] = { CamRot.Roll, CamRot.Pitch, CamRot.Yaw };
-					if (ImGui::DragFloat3("Rotation", CameraRotation, 0.1f))
-					{
-						Camera->SetRelativeRotation(FRotator(CameraRotation[1], CameraRotation[2], CameraRotation[0]));
-					}
-				}
+				DrawCameraPopupContent(Camera, Settings);
 
 				ImGui::EndPopup();
 			}
 
 			// ?? Settings ?앹뾽 ??
-			ImGui::SameLine();
+			ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
 
 			char SettingsPopupID[64];
 			snprintf(SettingsPopupID, sizeof(SettingsPopupID), "SettingsPopup_%d", SlotIndex);
@@ -1606,100 +2752,29 @@ void FLevelViewportLayout::RenderPaneToolbar(int32 SlotIndex)
 			{
 				ImGui::OpenPopup(SettingsPopupID);
 			}
+			ShowItemTooltip("Show");
 
+			ImGui::SetNextWindowSize(ImVec2(286.0f, 0.0f), ImGuiCond_Always);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f, 2.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 3.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(4.0f, 3.0f));
 			if (ImGui::BeginPopup(SettingsPopupID))
 			{
-				// Show Flags
-				ImGui::Text("Show");
-				if (ImGui::BeginTable("ShowFlagsTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchSame))
-				{
-					ImGui::TableNextRow();
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Primitives", &Opts.ShowFlags.bPrimitives);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("BillboardText", &Opts.ShowFlags.bBillboardText);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Grid", &Opts.ShowFlags.bGrid);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("World Axis", &Opts.ShowFlags.bWorldAxis);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Gizmo", &Opts.ShowFlags.bGizmo);
-
-					ImGui::TableNextRow();
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Bounding Volume", &Opts.ShowFlags.bBoundingVolume);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Debug Draw", &Opts.ShowFlags.bDebugDraw);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Octree", &Opts.ShowFlags.bOctree);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Fog", &Opts.ShowFlags.bFog);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("FXAA", &Opts.ShowFlags.bFXAA);
-
-					ImGui::TableNextRow();
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Visualize2.5D", &Opts.ShowFlags.bVisualize25DCulling);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Shadows", &FProjectSettings::Get().Shadow.bEnabled);
-					ImGui::TableNextColumn();
-					ImGui::Checkbox("Shadow Frustum", &Opts.ShowFlags.bShowShadowFrustum);
-
-					ImGui::EndTable();
-				}
-
-				ImGui::Separator();
-
-				if (ImGui::CollapsingHeader("Viewport Utility Settings (Grid , Camera , SceneDepth , FXAA)"))
-				{
-					// Grid Settings
-					ImGui::Text("Grid");
-					ImGui::SliderFloat("Spacing", &Opts.GridSpacing, 0.1f, 10.0f, "%.1f");
-					ImGui::SliderInt("Half Line Count", &Opts.GridHalfLineCount, 10, 500);
-
-					ImGui::Separator();
-
-					// Camera Sensitivity
-					ImGui::Text("Camera");
-					ImGui::SliderFloat("Move Sensitivity", &Opts.CameraMoveSensitivity, 0.1f, 5.0f, "%.1f");
-					ImGui::SliderFloat("Rotate Sensitivity", &Opts.CameraRotateSensitivity, 0.1f, 5.0f, "%.1f");
-
-					ImGui::Separator();
-
-					// SceneDepth Settings
-					ImGui::Text("SceneDepth");
-					ImGui::SliderFloat("Exponent", &Opts.Exponent, 1.0f, 512.0f, "%.0f");
-					ImGui::Combo("Mode", &Opts.SceneDepthVisMode, "Power\0Linear\0");
-
-					ImGui::Text("FXAA");
-					ImGui::SliderFloat("EdgeThreshold", &Opts.EdgeThreshold, 0.06f, 0.333f, "%.3f");
-					ImGui::SliderFloat("EdgeThresholdMin", &Opts.EdgeThresholdMin, 0.0312f, 0.0833f, "%.4f");
-				}
-
-				ImGui::Separator();
-
-				// Light Culling Setting
-				if (ImGui::CollapsingHeader("Light Culling Settings"))
-				{
-					int32 CullingMode = static_cast<int32>(Opts.LightCullingMode);
-					ImGui::RadioButton("Off", &CullingMode, static_cast<int32>(ELightCullingMode::Off));
-					ImGui::SameLine();
-					ImGui::RadioButton("Tile", &CullingMode, static_cast<int32>(ELightCullingMode::Tile));
-					ImGui::SameLine();
-					ImGui::RadioButton("Cluster", &CullingMode, static_cast<int32>(ELightCullingMode::Cluster));
-					Opts.LightCullingMode = static_cast<ELightCullingMode>(CullingMode);
-					ImGui::SliderFloat("HeatMapMax", &Opts.HeatMapMax, 1.0f, 100.0f, "%.0f");
-					ImGui::Checkbox("Enable2.5DCulling", &Opts.Enable25DCulling);
-					ImGui::Checkbox("Visualize2.5DCulling", &Opts.ShowFlags.bVisualize25DCulling);
-				}
-
+				DrawShowFlagsPopupContent(Opts);
 				ImGui::EndPopup();
 			}
+			ImGui::PopStyleVar(4);
+
+			Editor->ApplyTransformSettingsToGizmo();
 		} // SlotIndex guard
 
+		PopToolbarButtonStyle();
 		ImGui::PopID();
 	}
 	ImGui::End();
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(2);
 }
 
 void FLevelViewportLayout::HandleViewportContextMenuInput(const FPoint& MousePos)
@@ -1799,8 +2874,10 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		ContextMenuState.PendingPopupSlot = -1;
 	}
 
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
 	if (!ImGui::BeginPopup(PopupId))
 	{
+		ImGui::PopStyleVar();
 		return;
 	}
 
@@ -1825,7 +2902,10 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		};
 
 		PlaceActorMenuItem("Cube", EViewportPlaceActorType::Cube);
-		PlaceActorMenuItem("Static Mesh Actor", EViewportPlaceActorType::StaticMeshActor);
+		PlaceActorMenuItem("Actor", EViewportPlaceActorType::Actor);
+		PlaceActorMenuItem("Pawn", EViewportPlaceActorType::Pawn);
+		PlaceActorMenuItem("Character", EViewportPlaceActorType::Character);
+		PlaceActorMenuItem("Static Mesh", EViewportPlaceActorType::StaticMeshActor);
 		PlaceActorMenuItem("Sphere", EViewportPlaceActorType::Sphere);
 		PlaceActorMenuItem("Cylinder", EViewportPlaceActorType::Cylinder);
 		PlaceActorMenuItem("Cone", EViewportPlaceActorType::Cone);
@@ -1841,6 +2921,25 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 	}
 
 	const bool bCanDelete = SelectionManager && !SelectionManager->IsEmpty();
+	AActor* PrimarySelection = SelectionManager ? SelectionManager->GetPrimarySelection() : nullptr;
+	bool bLockMovement = PrimarySelection ? PrimarySelection->IsActorMovementLocked() : false;
+
+	if (!PrimarySelection)
+	{
+		ImGui::BeginDisabled();
+	}
+	if (ImGui::MenuItem("Lock Actor Movement", nullptr, &bLockMovement))
+	{
+		if (PrimarySelection)
+		{
+			PrimarySelection->SetActorMovementLocked(bLockMovement);
+		}
+	}
+	if (!PrimarySelection)
+	{
+		ImGui::EndDisabled();
+	}
+
 	if (!bCanDelete)
 	{
 		ImGui::BeginDisabled();
@@ -1856,6 +2955,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 	}
 
 	ImGui::EndPopup();
+	ImGui::PopStyleVar();
 }
 
 bool FLevelViewportLayout::TryComputePlacementLocation(int32 SlotIndex, const FPoint& ClientPos, FVector& OutLocation) const
@@ -1932,6 +3032,26 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 	case EViewportPlaceActorType::Actor:
 	{
 		SpawnedActor = World->SpawnActor<AActor>();
+		break;
+	}
+	case EViewportPlaceActorType::Pawn:
+	{
+		APawnActor* Actor = World->SpawnActor<APawnActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::Character:
+	{
+		ACharacterActor* Actor = World->SpawnActor<ACharacterActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+		}
 		break;
 	}
 	case EViewportPlaceActorType::StaticMeshActor:
@@ -2070,6 +3190,8 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		return nullptr;
 	}
 
+	SpawnedActor->EnsureEditorBillboardForActor();
+
 	// 諛곗튂 吏곹썑 ?붾뱶/?ν듃由??좏깮 ?곹깭瑜??④퍡 媛깆떊???먮뵒???쇰뱶諛깆쓣 利됱떆 留욎텣??
 	SpawnedActor->SetActorLocation(SpawnLocation);
 	World->InsertActorToOctree(SpawnedActor);
@@ -2083,7 +3205,22 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 
 AActor* FLevelViewportLayout::SpawnPlaceActor(EViewportPlaceActorType Type, const FVector& Location)
 {
-	return SpawnActorFromViewportMenu(Type, Location);
+	if (!Editor)
+	{
+		return SpawnActorFromViewportMenu(Type, Location);
+	}
+
+	Editor->BeginTrackedSceneChange();
+	AActor* SpawnedActor = SpawnActorFromViewportMenu(Type, Location);
+	if (SpawnedActor)
+	{
+		Editor->CommitTrackedSceneChange();
+	}
+	else
+	{
+		Editor->CancelTrackedSceneChange();
+	}
+	return SpawnedActor;
 }
 
 // ??? FEditorSettings ??酉고룷???곹깭 ?숆린????????????????????
@@ -2172,6 +3309,7 @@ void FLevelViewportLayout::LoadFromSettings()
 	{
 		FLevelEditorViewportClient* VC = LevelViewportClients[i];
 		VC->GetRenderOptions() = S.SlotOptions[i];
+		ApplyProjectViewportSettings(VC->GetRenderOptions());
 
 		// ViewportType???곕씪 移대찓??ortho/諛⑺뼢 ?ㅼ젙
 		VC->SetViewportType(S.SlotOptions[i].ViewportType);

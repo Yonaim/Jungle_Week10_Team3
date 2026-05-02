@@ -74,6 +74,8 @@ public:
 	enum class EViewportPlaceActorType : uint8
 	{
 		Actor,
+		Pawn,
+		Character,
 		StaticMeshActor,
 		Cube,
 		Sphere,
@@ -131,8 +133,8 @@ private:
 	bool UpdateLayoutTransition(float DeltaTime);
 	bool ConfigureCollapseToSlot(SSplitter* Node, SWindow* TargetWindow, bool bAnimate);
 	bool SubtreeContainsWindow(SWindow* Node, SWindow* TargetWindow) const;
-	void RenderSharedGizmoToolbar(float ToolbarLeft, float ToolbarTop);
-	void RenderPaneToolbar(int32 SlotIndex);
+	void RenderMainToolbar(float ToolbarLeft, float ToolbarTop);
+	void RenderViewportToolbar(int32 SlotIndex);
 	void HandleViewportContextMenuInput(const FPoint& MousePos);
 	void RenderViewportPlaceActorPopup();
 	bool TryComputePlacementLocation(int32 SlotIndex, const FPoint& ClientPos, FVector& OutLocation) const;
@@ -170,8 +172,8 @@ private:
 
 	// 레이아웃 아이콘 SRV (EViewportLayout::MAX 개)
 	ID3D11ShaderResourceView* LayoutIcons[static_cast<int>(EViewportLayout::MAX)] = {};
+	FRect ViewportToolbarRects[MaxViewportSlots] = {};
 
-	// 뷰포트 상단 Play/Stop 툴바
 	FEditorPlayToolbarWidget PlayToolbar;
 	FViewportContextMenuState ContextMenuState;
 	bool bHasSavedWorldAxisVisibility = false;

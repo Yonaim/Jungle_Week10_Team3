@@ -1,5 +1,7 @@
 #include "Editor/UI/EditorShadowMapDebugWidget.h"
 #include "Editor/EditorEngine.h"
+#include "Editor/Settings/EditorSettings.h"
+#include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Runtime/Engine.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Render/Resource/RenderResources.h"
@@ -13,6 +15,9 @@
 #include "GameFramework/Light/DirectionalLightActor.h"
 #include "Object/Object.h"
 #include "ImGui/imgui.h"
+
+#include <algorithm>
+#include <string>
 
 static const char* FaceNames[] = { "+X", "-X", "+Y", "-Y", "+Z", "-Z" };
 
@@ -260,7 +265,18 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
 {
 	(void)DeltaTime;
 
-	if (!ImGui::Begin("Shadow Map Debug"))
+	FEditorSettings& Settings = FEditorSettings::Get();
+	if (!Settings.UI.bShadowMapDebug)
+	{
+		return;
+	}
+
+	constexpr const char* PanelIconKey = "Editor.Icon.Panel.ShadowMapDebug";
+	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Shadow Map Debug", PanelIconKey);
+	const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
+	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Shadow Map Debug", Settings.UI.bShadowMapDebug, "x##CloseShadow");
+	if (!bIsOpen)
 	{
 		ImGui::End();
 		return;

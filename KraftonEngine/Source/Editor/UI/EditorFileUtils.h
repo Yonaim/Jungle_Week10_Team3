@@ -2,6 +2,8 @@
 
 #include "Core/CoreTypes.h"
 
+#include <filesystem>
+
 struct FEditorFileDialogOptions
 {
 	const wchar_t* Filter = L"All Files (*.*)\0*.*\0";
@@ -20,4 +22,7 @@ namespace FEditorFileUtils
 {
 	FString OpenFileDialog(const FEditorFileDialogOptions& InOptions);
 	FString SaveFileDialog(const FEditorFileDialogOptions& InOptions);
+	bool OpenPath(const std::filesystem::path& InPath);
+	bool RevealInExplorer(const std::filesystem::path& InPath);
+	bool DeletePath(const std::filesystem::path& InPath);
 }

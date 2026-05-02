@@ -4,6 +4,7 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#include <shellapi.h>
 #include <shobjidl.h>
 
 #include <filesystem>
@@ -162,5 +163,65 @@ namespace FEditorFileUtils
 	FString SaveFileDialog(const FEditorFileDialogOptions& InOptions)
 	{
 		return RunFileDialog(InOptions, false);
+	}
+
+	bool OpenPath(const std::filesystem::path& InPath)
+	{
+		const std::filesystem::path NormalizedPath = InPath.lexically_normal();
+		if (!std::filesystem::exists(NormalizedPath))
+		{
+			return false;
+		}
+
+		const HINSTANCE Result = ShellExecuteW(
+			nullptr,
+			L"open",
+			NormalizedPath.c_str(),
+			nullptr,
+			nullptr,
+			SW_SHOWNORMAL);
+
+		return reinterpret_cast<INT_PTR>(Result) > 32;
+	}
+
+	bool RevealInExplorer(const std::filesystem::path& InPath)
+	{
+		const std::filesystem::path NormalizedPath = InPath.lexically_normal();
+		if (!std::filesystem::exists(NormalizedPath))
+		{
+			return false;
+		}
+
+		const std::wstring Parameters = L"/select,\"" + NormalizedPath.wstring() + L"\"";
+		const HINSTANCE Result = ShellExecuteW(
+			nullptr,
+			L"open",
+			L"explorer.exe",
+			Parameters.c_str(),
+			nullptr,
+			SW_SHOWNORMAL);
+
+		return reinterpret_cast<INT_PTR>(Result) > 32;
+	}
+
+	bool DeletePath(const std::filesystem::path& InPath)
+	{
+		const std::filesystem::path NormalizedPath = InPath.lexically_normal();
+		if (!std::filesystem::exists(NormalizedPath))
+		{
+			return false;
+		}
+
+		std::error_code ErrorCode;
+		if (std::filesystem::is_directory(NormalizedPath))
+		{
+			std::filesystem::remove_all(NormalizedPath, ErrorCode);
+		}
+		else
+		{
+			std::filesystem::remove(NormalizedPath, ErrorCode);
+		}
+
+		return !ErrorCode && !std::filesystem::exists(NormalizedPath);
 	}
 }

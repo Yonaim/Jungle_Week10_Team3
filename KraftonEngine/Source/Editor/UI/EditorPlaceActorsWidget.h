@@ -18,6 +18,7 @@ public:
 	{
 		const char* Label = "";
 		const char* SearchKey = "";
+		const char* IconKey = "";
 		FLevelViewportLayout::EViewportPlaceActorType Type = FLevelViewportLayout::EViewportPlaceActorType::Cube;
 		EPlaceActorCategory Category = EPlaceActorCategory::Basic;
 	};

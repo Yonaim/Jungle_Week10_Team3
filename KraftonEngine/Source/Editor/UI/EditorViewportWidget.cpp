@@ -1,6 +1,7 @@
 ﻿#include "Editor/UI/EditorViewportWidget.h"
 
 #include "Editor/EditorEngine.h"
+#include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Viewport/Viewport.h"
 #include "ImGui/imgui.h"
@@ -23,7 +24,10 @@ void FEditorViewportWidget::Render(float DeltaTime)
 	(void)DeltaTime;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-	ImGui::Begin(WindowName.c_str(), nullptr, ImGuiWindowFlags_MenuBar);
+	constexpr const char* PanelIconKey = "Editor.Icon.Panel.Viewport";
+	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle(WindowName.c_str(), PanelIconKey);
+	ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_MenuBar);
+	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
 
 	// 메뉴 바에 Split/Merge 토글 버튼
 	if (ImGui::BeginMenuBar())

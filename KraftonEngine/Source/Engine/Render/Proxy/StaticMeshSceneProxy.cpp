@@ -3,6 +3,7 @@
 #include "Mesh/StaticMesh.h"
 #include "Mesh/StaticMeshAsset.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialManager.h"
 
 #include <algorithm>
 
@@ -101,6 +102,39 @@ void FStaticMeshSceneProxy::RebuildSectionDraws()
 
 	const auto& Slots = Mesh->GetStaticMaterials();
 	const auto& Overrides = SMC->GetOverrideMaterials();
+	UMaterial* FallbackMaterial = nullptr;
+
+	auto ResolveMaterialForSection = [&](const FStaticMeshSection& Section) -> UMaterial*
+	{
+		const int32 SectionMaterialIndex = Section.MaterialIndex;
+		if (SectionMaterialIndex >= 0 && SectionMaterialIndex < static_cast<int32>(Slots.size()))
+		{
+			if (SectionMaterialIndex < static_cast<int32>(Overrides.size()) && Overrides[SectionMaterialIndex])
+			{
+				return Overrides[SectionMaterialIndex];
+			}
+			if (Slots[SectionMaterialIndex].MaterialInterface)
+			{
+				return Slots[SectionMaterialIndex].MaterialInterface;
+			}
+		}
+
+		if (!Overrides.empty() && Overrides[0])
+		{
+			return Overrides[0];
+		}
+		if (!Slots.empty() && Slots[0].MaterialInterface)
+		{
+			return Slots[0].MaterialInterface;
+		}
+
+		if (!FallbackMaterial)
+		{
+			FallbackMaterial = FMaterialManager::Get().GetOrCreateMaterial("None");
+		}
+		return FallbackMaterial;
+	};
+
 	LODCount = Mesh->GetLODCount();
 
 	// 각 LOD별 SectionDraws + MeshBuffer 구축
@@ -111,20 +145,24 @@ void FStaticMeshSceneProxy::RebuildSectionDraws()
 		LODData[lod].SectionDraws.clear();
 		LODData[lod].SectionDraws.reserve(Sections.size());
 
+		if (Sections.empty() && LODData[lod].MeshBuffer)
+		{
+			FMeshSectionDraw Draw;
+			Draw.Material = !Overrides.empty() && Overrides[0]
+				? Overrides[0]
+				: (!Slots.empty() && Slots[0].MaterialInterface ? Slots[0].MaterialInterface : FMaterialManager::Get().GetOrCreateMaterial("None"));
+			Draw.FirstIndex = 0;
+			Draw.IndexCount = LODData[lod].MeshBuffer->GetIndexBuffer().GetIndexCount();
+			LODData[lod].SectionDraws.push_back(Draw);
+			continue;
+		}
+
 		for (const FStaticMeshSection& Section : Sections)
 		{
 			FMeshSectionDraw Draw;
 			Draw.FirstIndex = Section.FirstIndex;
 			Draw.IndexCount = Section.NumTriangles * 3;
-
-			int32 i = Section.MaterialIndex;
-			if (i >= 0 && i < static_cast<int32>(Slots.size()))
-			{
-				if (i < static_cast<int32>(Overrides.size()) && Overrides[i])
-					Draw.Material = Overrides[i];
-				else if (Slots[i].MaterialInterface)
-					Draw.Material = Slots[i].MaterialInterface;
-			}
+			Draw.Material = ResolveMaterialForSection(Section);
 
 			LODData[lod].SectionDraws.push_back(Draw);
 		}

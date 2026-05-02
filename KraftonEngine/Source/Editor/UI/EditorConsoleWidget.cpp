@@ -1,6 +1,8 @@
 ﻿#include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/EditorEngine.h"
+#include "Editor/Settings/EditorSettings.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
+#include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Object/Object.h"
 #include "Render/Types/ShadowSettings.h"
 #include "Render/Types/LightFrustumUtils.h"
@@ -273,7 +275,18 @@ void FEditorConsoleWidget::Render(float DeltaTime)
 	(void)DeltaTime;
 
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-	if (!ImGui::Begin("Console"))
+	FEditorSettings& Settings = FEditorSettings::Get();
+	if (!Settings.UI.bConsole)
+	{
+		return;
+	}
+
+	constexpr const char* PanelIconKey = "Editor.Icon.Panel.Console";
+	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Console", PanelIconKey);
+	const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
+	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Console", Settings.UI.bConsole, "x##CloseConsole");
+	if (!bIsOpen)
 	{
 		ImGui::End();
 		return;

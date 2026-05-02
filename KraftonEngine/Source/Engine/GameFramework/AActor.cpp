@@ -2,15 +2,126 @@
 #include "Object/ObjectFactory.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/ActorComponent.h"
+#include "Component/BillboardComponent.h"
 #include "Component/Movement/MovementComponent.h"
+#include "Component/StaticMeshComponent.h"
 #include "Math/Rotator.h"
 #include "GameFramework/Level.h"
 #include "GameFramework/World.h"
 #include "Serialization/Archive.h"
+#include "Engine/Runtime/Engine.h"
+#include "Resource/ResourceManager.h"
+#include "Texture/Texture2D.h"
 
 #include <algorithm>
 
 IMPLEMENT_CLASS(AActor, UObject)
+
+namespace
+{
+const char* GetDefaultEditorBillboardIconKey(const AActor* Actor)
+{
+	if (!Actor)
+	{
+		return "Editor.Icon.Actor";
+	}
+
+	const FString ClassName = Actor->GetClass()->GetName();
+	if (ClassName.find("Character") != FString::npos)
+	{
+		return "Editor.Icon.Character";
+	}
+	if (ClassName.find("Pawn") != FString::npos)
+	{
+		return "Editor.Icon.Pawn";
+	}
+	if (ClassName.find("SpotLight") != FString::npos)
+	{
+		return "Editor.Icon.SpotLight";
+	}
+	if (ClassName.find("PointLight") != FString::npos)
+	{
+		return "Editor.Icon.PointLight";
+	}
+	if (ClassName.find("DirectionalLight") != FString::npos)
+	{
+		return "Editor.Icon.DirectionalLight";
+	}
+	if (ClassName.find("AmbientLight") != FString::npos)
+	{
+		return "Editor.Icon.AmbientLight";
+	}
+	if (ClassName.find("HeightFog") != FString::npos)
+	{
+		return "Editor.Icon.HeightFog";
+	}
+	if (ClassName.find("Decal") != FString::npos)
+	{
+		return "Editor.Icon.Decal";
+	}
+	if (ClassName.find("StaticMeshActor") != FString::npos)
+	{
+		return "Editor.Icon.StaticMeshActor";
+	}
+
+	if (const USceneComponent* RootComponent = Actor->GetRootComponent())
+	{
+		if (RootComponent->IsA<UStaticMeshComponent>())
+		{
+			return "Editor.Icon.StaticMeshActor";
+		}
+	}
+
+	return "Editor.Icon.Actor";
+}
+
+bool ActorHasVisibleStaticMesh(const AActor* Actor)
+{
+	if (!Actor)
+	{
+		return false;
+	}
+
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(Component);
+		if (StaticMeshComponent && StaticMeshComponent->GetStaticMesh())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+}
+
+UBillboardComponent* AActor::FindEditorOnlyBillboardComponent() const
+{
+	for (UActorComponent* Component : OwnedComponents)
+	{
+		UBillboardComponent* BillboardComponent = Cast<UBillboardComponent>(Component);
+		if (BillboardComponent && BillboardComponent->IsEditorOnlyComponent())
+		{
+			return BillboardComponent;
+		}
+	}
+
+	return nullptr;
+}
+
+bool AActor::HasNonEditorOnlyPrimitiveComponent() const
+{
+	for (UActorComponent* Component : OwnedComponents)
+	{
+		UPrimitiveComponent* PrimitiveComponent = Cast<UPrimitiveComponent>(Component);
+		if (PrimitiveComponent && !PrimitiveComponent->IsEditorOnlyComponent())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
 
 AActor::AActor()
 {
@@ -55,6 +166,7 @@ UActorComponent* AActor::AddComponentByClass(UClass* Class)
 	bPrimitiveCacheDirty = true;
 	Comp->CreateRenderState();
 	MarkPickingDirty();
+	SyncEditorBillboardVisibility();
 	return Comp;
 }
 
@@ -70,6 +182,7 @@ void AActor::RegisterComponent(UActorComponent* Comp)
 		bPrimitiveCacheDirty = true;
 		MarkPickingDirty();
 		Comp->CreateRenderState();
+		SyncEditorBillboardVisibility();
 	}
 }
 
@@ -107,6 +220,7 @@ void AActor::RemoveComponent(UActorComponent* Component)
 	if (RootComponent == Component)
 		RootComponent = nullptr;
 
+	SyncEditorBillboardVisibility();
 	UObjectManager::Get().DestroyObject(Component);
 }
 
@@ -114,6 +228,72 @@ void AActor::SetRootComponent(USceneComponent* Comp)
 {
 	if (!Comp) return;
 	RootComponent = Comp;
+}
+
+void AActor::EnsureEditorBillboardForActor()
+{
+	UBillboardComponent* BillboardComponent = FindEditorOnlyBillboardComponent();
+	if (!BillboardComponent && HasNonEditorOnlyPrimitiveComponent())
+	{
+		return;
+	}
+
+	if (!BillboardComponent)
+	{
+		BillboardComponent = AddComponent<UBillboardComponent>();
+		if (!BillboardComponent)
+		{
+			return;
+		}
+	}
+
+	BillboardComponent->SetCanDeleteFromDetails(false);
+	BillboardComponent->SetEditorOnlyComponent(true);
+	BillboardComponent->SetHiddenInComponentTree(true);
+	BillboardComponent->SetAbsoluteScale(true);
+	BillboardComponent->SetSpriteSize(1.0f, 1.0f);
+
+	if (!RootComponent)
+	{
+		SetRootComponent(BillboardComponent);
+	}
+	else if (BillboardComponent != RootComponent && BillboardComponent->GetParent() == nullptr)
+	{
+		BillboardComponent->AttachToComponent(RootComponent);
+	}
+
+	if (BillboardComponent->GetTexture() == nullptr)
+	{
+		const FString& TexturePath = BillboardComponent->GetTexturePath();
+		if (!TexturePath.empty() && TexturePath != "None")
+		{
+			BillboardComponent->PostEditProperty("Texture");
+		}
+	}
+
+	if (BillboardComponent->GetTexture() == nullptr)
+	{
+		ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+		const FString IconTexturePath = FResourceManager::Get().ResolvePath(FName(GetDefaultEditorBillboardIconKey(this)));
+		if (UTexture2D* Texture = UTexture2D::LoadFromFile(IconTexturePath, Device))
+		{
+			BillboardComponent->SetTexture(Texture);
+		}
+	}
+
+	SyncEditorBillboardVisibility();
+}
+
+void AActor::SyncEditorBillboardVisibility()
+{
+	UBillboardComponent* BillboardComponent = FindEditorOnlyBillboardComponent();
+	if (!BillboardComponent)
+	{
+		return;
+	}
+
+	const bool bShouldShowBillboard = !HasNonEditorOnlyPrimitiveComponent() && !ActorHasVisibleStaticMesh(this);
+	BillboardComponent->SetVisibility(bShouldShowBillboard);
 }
 
 UWorld* AActor::GetWorld() const
@@ -164,6 +344,11 @@ FVector AActor::GetActorLocation() const
 
 void AActor::SetActorLocation(const FVector& NewLocation)
 {
+	if (bLockActorMovement)
+	{
+		return;
+	}
+
 	PendingActorLocation = NewLocation;
 
 	if (RootComponent)
@@ -174,6 +359,11 @@ void AActor::SetActorLocation(const FVector& NewLocation)
 
 void AActor::AddActorWorldOffset(const FVector& Delta)
 {
+	if (bLockActorMovement)
+	{
+		return;
+	}
+
 	if (RootComponent)
 	{
 		RootComponent->AddWorldOffset(Delta);
@@ -234,6 +424,11 @@ FRotator AActor::GetActorRotation() const
 
 void AActor::SetActorRotation(const FRotator& NewRotation)
 {
+	if (bLockActorMovement)
+	{
+		return;
+	}
+
 	if (RootComponent)
 	{
 		RootComponent->SetRelativeRotation(NewRotation);
@@ -242,6 +437,11 @@ void AActor::SetActorRotation(const FRotator& NewRotation)
 
 void AActor::SetActorRotation(const FVector& EulerRotation)
 {
+	if (bLockActorMovement)
+	{
+		return;
+	}
+
 	if (RootComponent)
 	{
 		RootComponent->SetRelativeRotation(EulerRotation);
@@ -255,6 +455,11 @@ FVector AActor::GetActorScale() const
 
 void AActor::SetActorScale(const FVector& NewScale)
 {
+	if (bLockActorMovement)
+	{
+		return;
+	}
+
 	if (RootComponent)
 	{
 		RootComponent->SetRelativeScale(NewScale);
@@ -277,6 +482,7 @@ void AActor::Serialize(FArchive& Ar)
 	// 소유 포인터(OwnedComponents/RootComponent/Outer)는 직렬화 제외 — 복제 단계에서 재구성.
 	Ar << bVisible;
 	Ar << bNeedsTick;
+	Ar << FolderPath;
 }
 
 // SceneComponent 서브트리를 재귀 복제. 부모 → 자식 순으로 만들되,

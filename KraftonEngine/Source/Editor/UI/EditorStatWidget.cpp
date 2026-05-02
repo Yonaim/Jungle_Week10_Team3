@@ -1,21 +1,32 @@
 #include "Editor/UI/EditorStatWidget.h"
 
 #include "Editor/Settings/EditorSettings.h"
+#include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Profiling/Stats.h"
 #include "Profiling/GPUProfiler.h"
 #include "ImGui/imgui.h"
 
 #include <algorithm>
 #include <sstream>
+#include <string>
 
 void FEditorStatWidget::Render(float DeltaTime)
 {
 #if STATS
 	(void)DeltaTime;
+	FEditorSettings& Settings = FEditorSettings::Get();
+	if (!Settings.UI.bStat)
+	{
+		return;
+	}
 
 	ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(700.0f, 500.0f), ImGuiCond_Once);
-	ImGui::Begin("Stat Profiler");
+	constexpr const char* PanelIconKey = "Editor.Icon.Panel.Stat";
+	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Stat Profiler", PanelIconKey);
+	ImGui::Begin(WindowTitle.c_str());
+	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Stat Profiler", Settings.UI.bStat, "x##CloseStat");
 
 	// Pause / Resume 버튼
 	if (bPaused)

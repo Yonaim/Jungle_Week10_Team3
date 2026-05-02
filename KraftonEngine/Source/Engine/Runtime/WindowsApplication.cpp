@@ -6,8 +6,24 @@
 
 #include "Engine/Input/InputSystem.h"
 
-// ImGui Win32 메시지 핸들러
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam);
+
+namespace
+{
+	constexpr LONG WindowedStyle = WS_POPUP | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_VISIBLE;
+	constexpr UINT ResizeRedrawTimerId = 1;
+	constexpr UINT ResizeRedrawIntervalMs = 16;
+	int GetResizeBorderForWindow(HWND hWnd)
+	{
+		if (!hWnd)
+		{
+			return 0;
+		}
+
+		const UINT Dpi = GetDpiForWindow(hWnd);
+		return GetSystemMetricsForDpi(SM_CXFRAME, Dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, Dpi);
+	}
+}
 
 LRESULT CALLBACK FWindowsApplication::StaticWndProc(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam)
 {
@@ -37,6 +53,52 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 
 	switch (Msg)
 	{
+	case WM_NCCALCSIZE:
+		return 0;
+	case WM_GETMINMAXINFO:
+	{
+		MONITORINFO MonitorInfo{};
+		MonitorInfo.cbSize = sizeof(MONITORINFO);
+		if (GetMonitorInfoW(MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST), &MonitorInfo))
+		{
+			MINMAXINFO* MinMaxInfo = reinterpret_cast<MINMAXINFO*>(lParam);
+			const RECT& WorkArea = MonitorInfo.rcWork;
+			const RECT& MonitorArea = MonitorInfo.rcMonitor;
+
+			MinMaxInfo->ptMaxPosition.x = WorkArea.left - MonitorArea.left;
+			MinMaxInfo->ptMaxPosition.y = WorkArea.top - MonitorArea.top;
+			MinMaxInfo->ptMaxSize.x = WorkArea.right - WorkArea.left;
+			MinMaxInfo->ptMaxSize.y = WorkArea.bottom - WorkArea.top;
+		}
+		return 0;
+	}
+	case WM_NCHITTEST:
+	{
+		POINT Cursor = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		RECT WindowRect{};
+		GetWindowRect(hWnd, &WindowRect);
+		const int ResizeBorderThickness = GetResizeBorderForWindow(hWnd);
+		const bool bAllowResize = !IsZoomed(hWnd) && ResizeBorderThickness > 0;
+
+		if (bAllowResize)
+		{
+			const bool bLeft = Cursor.x >= WindowRect.left && Cursor.x < WindowRect.left + ResizeBorderThickness;
+			const bool bRight = Cursor.x < WindowRect.right && Cursor.x >= WindowRect.right - ResizeBorderThickness;
+			const bool bBottom = Cursor.y < WindowRect.bottom && Cursor.y >= WindowRect.bottom - ResizeBorderThickness;
+			const bool bTop = Cursor.y >= WindowRect.top && Cursor.y < WindowRect.top + ResizeBorderThickness;
+
+			if (bTop && bLeft) return HTTOPLEFT;
+			if (bTop && bRight) return HTTOPRIGHT;
+			if (bBottom && bLeft) return HTBOTTOMLEFT;
+			if (bBottom && bRight) return HTBOTTOMRIGHT;
+			if (bTop) return HTTOP;
+			if (bLeft) return HTLEFT;
+			if (bRight) return HTRIGHT;
+			if (bBottom) return HTBOTTOM;
+		}
+
+		return HTCLIENT;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
@@ -80,16 +142,27 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 		return 0;
 	case WM_ENTERSIZEMOVE:
 		bIsResizing = true;
+		SetTimer(hWnd, ResizeRedrawTimerId, ResizeRedrawIntervalMs, nullptr);
 		return 0;
 	case WM_EXITSIZEMOVE:
 		bIsResizing = false;
+		KillTimer(hWnd, ResizeRedrawTimerId);
 		return 0;
 	case WM_SIZING:
 		if (OnSizingCallback)
 		{
 			OnSizingCallback();
 		}
+		RedrawWindow(hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
 		return 0;
+	case WM_TIMER:
+		if (wParam == ResizeRedrawTimerId && bIsResizing && OnSizingCallback)
+		{
+			OnSizingCallback();
+			RedrawWindow(hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+			return 0;
+		}
+		break;
 	default:
 		break;
 	}
@@ -102,7 +175,7 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 	HInstance = InHInstance;
 
 	WCHAR WindowClass[] = L"JungleWindowClass";
-	WCHAR Title[] = L"Game Tech Lab";
+	WCHAR Title[] = L"Lunatic Engine";
 	WNDCLASSEXW WndClass = {};
 	WndClass.cbSize = sizeof(WNDCLASSEXW);
 	WndClass.lpfnWndProc = StaticWndProc;
@@ -118,7 +191,7 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 		0,
 		WindowClass,
 		Title,
-		WS_POPUP | WS_VISIBLE | WS_OVERLAPPEDWINDOW,
+		WindowedStyle,
 		CW_USEDEFAULT, CW_USEDEFAULT,
 		1920, 1080,
 		nullptr, nullptr, HInstance, this);

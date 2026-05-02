@@ -70,6 +70,45 @@ void FSelectionManager::Select(AActor* Actor)
 	SyncGizmo();
 }
 
+void FSelectionManager::SelectActors(const TArray<AActor*>& Actors)
+{
+	for (AActor* Prev : SelectedActors)
+	{
+		SetActorProxiesSelected(Prev, false);
+		if (Prev)
+		{
+			Prev->SetActorSelected(false);
+		}
+	}
+
+	SelectedActors.clear();
+	SelectedComponent = nullptr;
+
+	for (AActor* Actor : Actors)
+	{
+		if (!Actor)
+		{
+			continue;
+		}
+
+		if (std::find(SelectedActors.begin(), SelectedActors.end(), Actor) != SelectedActors.end())
+		{
+			continue;
+		}
+
+		Actor->SetActorSelected(true);
+		SelectedActors.push_back(Actor);
+		SetActorProxiesSelected(Actor, true);
+	}
+
+	if (!SelectedActors.empty())
+	{
+		SelectedComponent = SelectedActors.front()->GetRootComponent();
+	}
+
+	SyncGizmo();
+}
+
 void FSelectionManager::SelectRange(AActor* ClickedActor, const TArray<AActor*>& ActorList)
 {
 	if (!ClickedActor) return;
@@ -108,7 +147,13 @@ void FSelectionManager::SelectRange(AActor* ClickedActor, const TArray<AActor*>&
 
 	// 기존 선택 해제
 	for (AActor* Prev : SelectedActors)
+	{
 		SetActorProxiesSelected(Prev, false);
+		if (Prev)
+		{
+			Prev->SetActorSelected(false);
+		}
+	}
 
 	SelectedActors.clear();
 	SelectedComponent = nullptr;
@@ -117,6 +162,7 @@ void FSelectionManager::SelectRange(AActor* ClickedActor, const TArray<AActor*>&
 	{
 		if (ActorList[i])
 		{
+			ActorList[i]->SetActorSelected(true);
 			SelectedActors.push_back(ActorList[i]);
 			SetActorProxiesSelected(ActorList[i], true);
 		}
@@ -138,6 +184,7 @@ void FSelectionManager::ToggleSelect(AActor* Actor)
 	if (It != SelectedActors.end())
 	{
 		SetActorProxiesSelected(Actor, false);
+		Actor->SetActorSelected(false);
 		SelectedActors.erase(It);
 		if (SelectedComponent && SelectedComponent->GetOwner() == Actor)
 		{
@@ -146,6 +193,7 @@ void FSelectionManager::ToggleSelect(AActor* Actor)
 	}
 	else
 	{
+		Actor->SetActorSelected(true);
 		SelectedActors.push_back(Actor);
 		SetActorProxiesSelected(Actor, true);
 		if (SelectedActors.size() == 1)
@@ -162,6 +210,7 @@ void FSelectionManager::Deselect(AActor* Actor)
 	if (It != SelectedActors.end())
 	{
 		SetActorProxiesSelected(Actor, false);
+		Actor->SetActorSelected(false);
 		SelectedActors.erase(It);
 		if (SelectedComponent && SelectedComponent->GetOwner() == Actor)
 		{
@@ -179,7 +228,13 @@ void FSelectionManager::ClearSelection()
 	}
 
 	for (AActor* Actor : SelectedActors)
+	{
 		SetActorProxiesSelected(Actor, false);
+		if (Actor)
+		{
+			Actor->SetActorSelected(false);
+		}
+	}
 
 	SelectedActors.clear();
 	SelectedComponent = nullptr;

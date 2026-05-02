@@ -135,6 +135,21 @@ void InputSystem::ResetAllKeyStates()
     UpdateCurrentSnapshot();
 }
 
+void InputSystem::ResetKeyboardKeyStates()
+{
+    for (int VK = 0; VK < 256; ++VK)
+    {
+        if (VK == VK_LBUTTON || VK == VK_RBUTTON || VK == VK_MBUTTON || VK == VK_XBUTTON1 || VK == VK_XBUTTON2)
+        {
+            continue;
+        }
+
+        CurrentStates[VK] = false;
+        PrevStates[VK] = false;
+    }
+    UpdateCurrentSnapshot();
+}
+
 void InputSystem::ResetMouseDelta()
 {
     GetCursorPos(&MousePos);

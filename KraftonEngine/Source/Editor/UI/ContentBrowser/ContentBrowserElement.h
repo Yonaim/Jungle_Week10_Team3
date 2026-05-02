@@ -20,11 +20,17 @@ public:
 	std::wstring GetFileName() { return ContentItem.Path.filename(); }
 
 protected:
-	FString EllipsisText(const FString& text, float maxWidth);
+	virtual ImU32 GetIconTint() const { return IM_COL32_WHITE; }
 	virtual const char* GetDragItemType() { return "ParkSangHyeok"; }
+	virtual bool UseCardLayout() const { return true; }
+	FString GetDisplayName() const;
+	FString GetSubtitleText() const;
+	virtual bool IsTexturePreview() const { return false; }
+	virtual bool CanDelete() const;
+	virtual void DrawContextMenu(ContentBrowserContext& Context);
 
 	virtual void OnLeftClicked(ContentBrowserContext& Context) { (void)Context; };
-	virtual void OnDoubleLeftClicked(ContentBrowserContext& Context) { ShellExecuteW(nullptr, L"open", ContentItem.Path.c_str(), nullptr, nullptr, SW_SHOWNORMAL); };
+	virtual void OnDoubleLeftClicked(ContentBrowserContext& Context);
 	virtual void OnDrag(ContentBrowserContext& Context) { (void)Context; }
 
 protected:
@@ -37,6 +43,7 @@ class DirectoryElement final : public ContentBrowserElement
 {
 public:
 	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
+	ImU32 GetIconTint() const override { return IM_COL32(184, 140, 58, 255); }
 };
 
 class SceneElement final : public ContentBrowserElement
@@ -55,6 +62,7 @@ class PNGElement final : public ContentBrowserElement
 {
 public:
 	virtual const char* GetDragItemType() override { return "PNGElement"; }
+	bool IsTexturePreview() const override { return true; }
 };
 
 #include "Editor/UI/EditorMaterialInspector.h"
@@ -67,4 +75,10 @@ public:
 
 private:
 	FEditorMaterialInspector MaterialInspector;
+};
+
+class MtlElement final : public ContentBrowserElement
+{
+public:
+	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
 };

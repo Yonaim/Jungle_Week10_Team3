@@ -19,11 +19,24 @@
 
 #include "Editor/UI/ImGuiSetting.h"
 #include "Editor/UI/NotificationToast.h"
+#include "Editor/UI/EditorPanelTitleUtils.h"
+#include "Core/ProjectSettings.h"
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
 
+#include <filesystem>
+
 namespace
 {
+	constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
+
+	void DrawPopupSectionHeader(const char* Label)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
+		ImGui::SeparatorText(Label);
+		ImGui::PopStyleColor();
+	}
+
 	void ApplyEditorTabStyle()
 	{
 		ImGuiStyle& Style = ImGui::GetStyle();
@@ -36,6 +49,72 @@ namespace
 		Style.Colors[ImGuiCol_TabDimmed] = ImVec4(0.16f, 0.16f, 0.18f, 1.0f);
 		Style.Colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.22f, 0.22f, 0.25f, 1.0f);
 	}
+
+	void ApplyEditorColorTheme()
+	{
+		ImGuiStyle& Style = ImGui::GetStyle();
+		Style.Colors[ImGuiCol_WindowBg] = ImVec4(0.09f, 0.09f, 0.10f, 1.0f);
+		Style.Colors[ImGuiCol_ChildBg] = ImVec4(0.12f, 0.12f, 0.13f, 1.0f);
+		Style.Colors[ImGuiCol_PopupBg] = ImVec4(0.13f, 0.13f, 0.14f, 0.98f);
+		Style.Colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.10f, 0.11f, 1.0f);
+		Style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.12f, 0.12f, 0.13f, 1.0f);
+		Style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.08f, 0.08f, 0.09f, 1.0f);
+		Style.Colors[ImGuiCol_FrameBg] = ImVec4(0.11f, 0.11f, 0.12f, 1.0f);
+		Style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.18f, 0.18f, 0.20f, 1.0f);
+		Style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.22f, 0.22f, 0.24f, 1.0f);
+		Style.Colors[ImGuiCol_Button] = ImVec4(0.18f, 0.18f, 0.19f, 1.0f);
+		Style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.26f, 0.26f, 0.28f, 1.0f);
+		Style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.32f, 0.32f, 0.35f, 1.0f);
+		Style.Colors[ImGuiCol_Header] = ImVec4(0.18f, 0.18f, 0.20f, 1.0f);
+		Style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.24f, 0.24f, 0.27f, 1.0f);
+		Style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.28f, 0.28f, 0.31f, 1.0f);
+	Style.Colors[ImGuiCol_Separator] = ImVec4(0.20f, 0.20f, 0.22f, 1.0f);
+	Style.Colors[ImGuiCol_Border] = ImVec4(0.22f, 0.22f, 0.24f, 1.0f);
+	}
+
+	FString GetSceneTitleLabel(UEditorEngine* EditorEngine)
+	{
+		if (!EditorEngine || !EditorEngine->HasCurrentLevelFilePath())
+		{
+			return "Untitled.Scene";
+		}
+
+		const std::filesystem::path ScenePath(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath()));
+		const std::wstring FileName = ScenePath.filename().wstring();
+		return FileName.empty() ? FString("Untitled.Scene") : FPaths::ToUtf8(FileName);
+	}
+
+	float GetCustomTitleBarHeight()
+	{
+		return 42.0f;
+	}
+
+	float GetWindowTopContentInset(FWindowsWindow* Window)
+	{
+		(void)Window;
+		return 0.0f;
+	}
+
+	const char* GetWindowControlIconMinimize()
+	{
+		return "\xEE\xA4\xA1";
+	}
+
+	const char* GetWindowControlIconMaximize()
+	{
+		return "\xEE\xA4\xA2";
+	}
+
+	const char* GetWindowControlIconRestore()
+	{
+		return "\xEE\xA4\xA3";
+	}
+
+	const char* GetWindowControlIconClose()
+	{
+		return "\xEE\xA2\xBB";
+	}
+
 }
 
 void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, UEditorEngine* InEditorEngine)
@@ -48,6 +127,7 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 	IO.IniFilename = "Settings/imgui.ini";
 	IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+	ApplyEditorColorTheme();
 	ApplyEditorTabStyle();
 
 	Window = InWindow;
@@ -57,7 +137,7 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 	Style.WindowPadding.x = (std::max)(Style.WindowPadding.x, 12.0f);
 	Style.WindowPadding.y = (std::max)(Style.WindowPadding.y, 10.0f);
 	Style.FramePadding.x = (std::max)(Style.FramePadding.x, 8.0f);
-	Style.FramePadding.y = (std::max)(Style.FramePadding.y, 6.0f);
+	Style.FramePadding.y = (std::max)(Style.FramePadding.y, 5.0f);
 	Style.ItemSpacing.x = (std::max)(Style.ItemSpacing.x, 10.0f);
 	Style.ItemSpacing.y = (std::max)(Style.ItemSpacing.y, 8.0f);
 	Style.CellPadding.x = (std::max)(Style.CellPadding.x, 8.0f);
@@ -65,6 +145,14 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 
 	const FString FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
 	IO.Fonts->AddFontFromFileTTF(FontPath.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
+	TitleBarFont = IO.Fonts->AddFontFromFileTTF(FontPath.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
+	EditorPanelTitleUtils::EnsurePanelChromeIconFontLoaded();
+	if (std::filesystem::exists("C:/Windows/Fonts/segmdl2.ttf"))
+	{
+		ImFontConfig IconFontConfig{};
+		IconFontConfig.PixelSnapH = true;
+		WindowControlIconFont = IO.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segmdl2.ttf", 13.0f, &IconFontConfig);
+	}
 
 	ImGui_ImplWin32_Init((void*)InWindow->GetHWND());
 	ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());
@@ -96,11 +184,41 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+	EditorPanelTitleUtils::BeginPanelDecorationFrame();
 
+	RenderMainMenuBar();
+
+	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+	const float TitleBarHeight = GetCustomTitleBarHeight();
+	const float TopFrameInset = GetWindowTopContentInset(Window);
 	ImGuiWindowClass DockspaceWindowClass{};
 	DockspaceWindowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton;
-	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
-	RenderMainMenuBar();
+	ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x, MainViewport->Pos.y + TopFrameInset + TitleBarHeight + 1.0f), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(MainViewport->Size.x, MainViewport->Size.y - TopFrameInset - TitleBarHeight - 1.0f), ImGuiCond_Always);
+	ImGui::SetNextWindowViewport(MainViewport->ID);
+	ImGuiWindowFlags DockspaceWindowFlags =
+		ImGuiWindowFlags_NoTitleBar |
+		ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoDocking |
+		ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus |
+		ImGuiWindowFlags_NoBackground;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 1.0f));
+	if (ImGui::Begin("##EditorDockSpaceHost", nullptr, DockspaceWindowFlags))
+	{
+		ImGui::DockSpace(ImGui::GetID("##EditorDockSpace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
+		ImDrawList* DrawList = ImGui::GetWindowDrawList();
+		const ImVec2 WindowMin = ImGui::GetWindowPos();
+		const ImVec2 WindowMax(WindowMin.x + ImGui::GetWindowSize().x, WindowMin.y + ImGui::GetWindowSize().y);
+		DrawList->AddRect(WindowMin, WindowMax, IM_COL32(12, 12, 12, 255), 0.0f, 0, 2.0f);
+	}
+	ImGui::End();
+	ImGui::PopStyleVar(4);
 
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
 	if (EditorEngine)
@@ -162,7 +280,10 @@ void FEditorMainPanel::Render(float DeltaTime)
 		ShadowMapDebugWidget.Render(DeltaTime);
 	}
 
+	RenderProjectSettingsWindow();
+
 	RenderShortcutOverlay();
+	EditorPanelTitleUtils::FlushPanelDecorations();
 
 	// 토스트 알림 (항상 최상위에 표시)
 	FNotificationToast::Render();
@@ -173,86 +294,303 @@ void FEditorMainPanel::Render(float DeltaTime)
 
 void FEditorMainPanel::RenderMainMenuBar()
 {
-	if (!ImGui::BeginMainMenuBar())
+	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+	const float TitleBarHeight = GetCustomTitleBarHeight();
+	const float TopFrameInset = GetWindowTopContentInset(Window);
+	const float LogoSize = 36.0f;
+	const float ButtonWidth = 38.0f;
+	const float WindowControlHeight = 24.0f;
+	const float ButtonSpacing = 2.0f;
+	const float RightControlsWidth = ButtonWidth * 3.0f + ButtonSpacing * 2.0f;
+	const float TitleBarPaddingY = 2.0f;
+	const float LeftContentInset = 8.0f;
+	const float MenuVerticalOffset = -6.0f;
+	const float SceneTabVerticalOffset = -5.0f;
+	const float WindowControlsVerticalOffset = -5.0f;
+	const float LogoVerticalOffset = -2.0f;
+
+	ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x, MainViewport->Pos.y + TopFrameInset), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(MainViewport->Size.x, TitleBarHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowViewport(MainViewport->ID);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f + LeftContentInset, TitleBarPaddingY));
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 0.0f));
+	const ImGuiWindowFlags TitleBarFlags =
+		ImGuiWindowFlags_NoTitleBar |
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_MenuBar |
+		ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoScrollWithMouse |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoDocking |
+		ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus;
+	if (!ImGui::Begin("##EditorCustomTitleBar", nullptr, TitleBarFlags))
 	{
+		ImGui::End();
+		ImGui::PopStyleVar(4);
 		return;
 	}
 
 	FEditorSettings& Settings = FEditorSettings::Get();
+	ID3D11ShaderResourceView* LogoTexture = FResourceManager::Get().FindLoadedTexture(
+		FResourceManager::Get().ResolvePath(FName("Editor.Icon.AppLogo"))).Get();
 
-	if (ImGui::BeginMenu("File"))
+	float MenuEndX = 54.0f;
+	if (ImGui::BeginMenuBar())
 	{
-		if (ImGui::MenuItem("New Scene", "Ctrl+N") && EditorEngine)
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 7.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.0f, 0.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 6.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
+		if (TitleBarFont)
 		{
-			EditorEngine->NewScene();
+			ImGui::PushFont(TitleBarFont);
 		}
-		if (ImGui::MenuItem("Open Scene...", "Ctrl+O") && EditorEngine)
-		{
-			EditorEngine->LoadSceneWithDialog();
-		}
-		if (ImGui::MenuItem("Save Scene", "Ctrl+S") && EditorEngine)
-		{
-			EditorEngine->SaveScene();
-		}
-		if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S") && EditorEngine)
-		{
-			EditorEngine->SaveSceneAsWithDialog();
-		}
-		ImGui::Separator();
-		if (ImGui::MenuItem("Import Material...") && EditorEngine)
-		{
-			EditorEngine->ImportMaterialWithDialog();
-		}
-		if (ImGui::MenuItem("Import Texture...") && EditorEngine)
-		{
-			EditorEngine->ImportTextureWithDialog();
-		}
-
-		ImGui::Separator();
-		const char* CurrentSceneLabel = "Current: Unsaved Scene";
-		FString CurrentScenePath;
-		FString CurrentSceneText;
+		const float MenuRowY = (std::max)(0.0f, floorf((TitleBarHeight - ImGui::GetFrameHeight()) * 0.5f) + MenuVerticalOffset);
+		const float WindowControlsY = (std::max)(0.0f, floorf((TitleBarHeight - WindowControlHeight) * 0.5f) + WindowControlsVerticalOffset);
+		const FString SceneTabLabel = GetSceneTitleLabel(EditorEngine);
+		FString ScenePathTooltip = "Unsaved Scene";
 		if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
 		{
-			CurrentScenePath = EditorEngine->GetCurrentLevelFilePath();
-			CurrentSceneText = FString("Current: ") + CurrentScenePath;
-			CurrentSceneLabel = CurrentSceneText.c_str();
+			ScenePathTooltip = EditorEngine->GetCurrentLevelFilePath();
 		}
-		ImGui::BeginDisabled();
-		ImGui::MenuItem(CurrentSceneLabel, nullptr, false, false);
-		ImGui::EndDisabled();
-		ImGui::EndMenu();
+		const float SceneTabWidth = ImGui::CalcTextSize(SceneTabLabel.c_str()).x + 34.0f;
+		const float SceneTabHeight = 28.0f;
+		const float RightControlsStartX = ImGui::GetWindowWidth() - RightControlsWidth;
+		const float SceneTabX = RightControlsStartX - SceneTabWidth - 12.0f;
+		float MenuStartX = ImGui::GetStyle().WindowPadding.x;
+
+		if (LogoTexture)
+		{
+			const float LogoX = ImGui::GetStyle().WindowPadding.x;
+			const float LogoY = (std::max)(0.0f, floorf((TitleBarHeight - LogoSize) * 0.5f) + LogoVerticalOffset);
+			ImDrawList* DrawList = ImGui::GetForegroundDrawList(const_cast<ImGuiViewport*>(MainViewport));
+			const ImVec2 WindowPos = ImGui::GetWindowPos();
+			DrawList->AddImage(
+				LogoTexture,
+				ImVec2(WindowPos.x + LogoX, WindowPos.y + LogoY),
+				ImVec2(WindowPos.x + LogoX + LogoSize, WindowPos.y + LogoY + LogoSize));
+			MenuStartX = LogoX + LogoSize + 10.0f;
+		}
+
+		ImGui::SetCursorPos(ImVec2(MenuStartX, MenuRowY));
+
+		if (ImGui::BeginMenu("File"))
+		{
+			DrawPopupSectionHeader("SCENE");
+			if (ImGui::MenuItem("New Scene", "Ctrl+N") && EditorEngine)
+			{
+				EditorEngine->NewScene();
+			}
+			if (ImGui::MenuItem("Open Scene...", "Ctrl+O") && EditorEngine)
+			{
+				EditorEngine->LoadSceneWithDialog();
+			}
+			if (ImGui::MenuItem("Save Scene", "Ctrl+S") && EditorEngine)
+			{
+				EditorEngine->SaveScene();
+			}
+			if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S") && EditorEngine)
+			{
+				EditorEngine->SaveSceneAsWithDialog();
+			}
+			DrawPopupSectionHeader("IMPORT");
+			if (ImGui::MenuItem("Import Material...") && EditorEngine)
+			{
+				EditorEngine->ImportMaterialWithDialog();
+			}
+			if (ImGui::MenuItem("Import Texture...") && EditorEngine)
+			{
+				EditorEngine->ImportTextureWithDialog();
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Edit"))
+		{
+			const bool bCanUndo = EditorEngine && EditorEngine->CanUndoTransformChange();
+			const bool bCanRedo = EditorEngine && EditorEngine->CanRedoTransformChange();
+			if (!bCanUndo) ImGui::BeginDisabled();
+			if (ImGui::MenuItem("Undo", "Ctrl+Z") && EditorEngine) EditorEngine->UndoTrackedTransformChange();
+			if (!bCanUndo) ImGui::EndDisabled();
+			if (!bCanRedo) ImGui::BeginDisabled();
+			if (ImGui::MenuItem("Redo", "Ctrl+Y") && EditorEngine) EditorEngine->RedoTrackedTransformChange();
+			if (!bCanRedo) ImGui::EndDisabled();
+			ImGui::Separator();
+			if (ImGui::MenuItem("Project Settings..."))
+			{
+				bShowProjectSettings = true;
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Window"))
+		{
+			ImGui::Checkbox("Console", &Settings.UI.bConsole);
+			ImGui::Checkbox("Details", &Settings.UI.bProperty);
+			ImGui::Checkbox("Outliner", &Settings.UI.bScene);
+			ImGui::Checkbox("Place Actors", &Settings.UI.bPlaceActors);
+			ImGui::Checkbox("Stat Profiler", &Settings.UI.bStat);
+			ImGui::Checkbox("Content Browser", &Settings.UI.bContentBrowser);
+			ImGui::Checkbox("Shadow Map Debug", &Settings.UI.bShadowMapDebug);
+			ImGui::Separator();
+			ImGui::Checkbox("ImGuiSetting", &Settings.UI.bImGUISettings);
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Help"))
+		{
+			if (ImGui::MenuItem("Shortcut Help"))
+			{
+				bShowShortcutOverlay = !bShowShortcutOverlay;
+			}
+			ImGui::EndMenu();
+		}
+
+		MenuEndX = ImGui::GetCursorPosX();
+
+		ImGui::SetCursorPos(ImVec2(SceneTabX, (std::max)(0.0f, floorf((TitleBarHeight - SceneTabHeight) * 0.5f) + SceneTabVerticalOffset)));
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.03f, 0.03f, 0.03f, 1.0f));
+		ImGui::Button(SceneTabLabel.c_str(), ImVec2(SceneTabWidth, SceneTabHeight));
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+		{
+			ImGui::BeginTooltip();
+			ImGui::PushTextWrapPos(520.0f);
+			ImGui::Text("Current: %s", ScenePathTooltip.c_str());
+			ImGui::PopTextWrapPos();
+			ImGui::EndTooltip();
+		}
+		ImGui::PopStyleColor(4);
+		ImGui::PopStyleVar(2);
+
+		if (Window)
+		{
+			ImGui::SetCursorPos(ImVec2(RightControlsStartX, WindowControlsY));
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.20f, 0.22f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
+			if (WindowControlIconFont)
+			{
+				ImGui::PushFont(WindowControlIconFont);
+			}
+			if (ImGui::Button(GetWindowControlIconMinimize(), ImVec2(ButtonWidth, WindowControlHeight)))
+			{
+				Window->Minimize();
+			}
+			ImGui::SameLine(0.0f, ButtonSpacing);
+			if (ImGui::Button(Window->IsWindowMaximized() ? GetWindowControlIconRestore() : GetWindowControlIconMaximize(), ImVec2(ButtonWidth, WindowControlHeight)))
+			{
+				Window->ToggleMaximize();
+			}
+			ImGui::SameLine(0.0f, ButtonSpacing);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.72f, 0.16f, 0.16f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.58f, 0.10f, 0.10f, 1.0f));
+			if (ImGui::Button(GetWindowControlIconClose(), ImVec2(ButtonWidth, WindowControlHeight)))
+			{
+				Window->Close();
+			}
+			if (WindowControlIconFont)
+			{
+				ImGui::PopFont();
+			}
+			ImGui::PopStyleColor(2);
+			ImGui::PopStyleColor(3);
+			ImGui::PopStyleVar(2);
+		}
+
+		if (TitleBarFont)
+		{
+			ImGui::PopFont();
+		}
+		ImGui::PopStyleVar(4);
+		ImGui::EndMenuBar();
 	}
 
-	if (ImGui::MenuItem("Windows"))
+	const float SceneTabWidth = ImGui::CalcTextSize(GetSceneTitleLabel(EditorEngine).c_str()).x + 34.0f;
+	const float DragRegionStartX = MenuEndX + 8.0f;
+	const float DragRegionEndX = ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x - RightControlsWidth - SceneTabWidth - 20.0f;
+	const float DragRegionWidth = DragRegionEndX - DragRegionStartX;
+
+	if (Window && DragRegionWidth > 24.0f)
 	{
-		bShowWidgetList = true;
-		ImGui::OpenPopup("##WidgetListPopup");
-	}
-	if (ImGui::BeginPopup("##WidgetListPopup"))
-	{
-		ImGui::Checkbox("Console", &Settings.UI.bConsole);
-		ImGui::Checkbox("Details", &Settings.UI.bProperty);
-		ImGui::Checkbox("Outliner", &Settings.UI.bScene);
-		ImGui::Checkbox("Place Actors", &Settings.UI.bPlaceActors);
-		ImGui::Checkbox("Stat Profiler", &Settings.UI.bStat);
-		ImGui::Checkbox("Content Browser", &Settings.UI.bContentBrowser);
-		ImGui::Checkbox("Shadow Map Debug", &Settings.UI.bShadowMapDebug);
-		ImGui::Separator();
-		ImGui::Checkbox("ImGuiSetting", &Settings.UI.bImGUISettings);
-		ImGui::EndPopup();
-	}
-	else
-	{
-		bShowWidgetList = false;
+		ImGui::SetCursorPos(ImVec2(DragRegionStartX, 0.0f));
+		ImGui::InvisibleButton("##TitleDragRegion", ImVec2(DragRegionWidth, TitleBarHeight));
+		if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+		{
+			Window->ToggleMaximize();
+		}
+		else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		{
+			Window->StartWindowDrag();
+		}
 	}
 
-	if (ImGui::MenuItem("Shortcut"))
+	ImGui::End();
+	ImGui::PopStyleVar(4);
+}
+
+void FEditorMainPanel::RenderProjectSettingsWindow()
+{
+	if (!bShowProjectSettings)
 	{
-		bShowShortcutOverlay = !bShowShortcutOverlay;
+		return;
 	}
 
-	ImGui::EndMainMenuBar();
+	ImGui::SetNextWindowSize(ImVec2(560.0f, 460.0f), ImGuiCond_Appearing);
+	if (!ImGui::Begin("Project Settings", &bShowProjectSettings))
+	{
+		ImGui::End();
+		return;
+	}
+
+	FProjectSettings& ProjectSettings = FProjectSettings::Get();
+
+	DrawPopupSectionHeader("SHADOW");
+	ImGui::Checkbox("Enable Shadows", &ProjectSettings.Shadow.bEnabled);
+	ImGui::InputScalar("CSM Resolution", ImGuiDataType_U32, &ProjectSettings.Shadow.CSMResolution);
+	ImGui::InputScalar("Spot Atlas Resolution", ImGuiDataType_U32, &ProjectSettings.Shadow.SpotAtlasResolution);
+	ImGui::InputScalar("Point Atlas Resolution", ImGuiDataType_U32, &ProjectSettings.Shadow.PointAtlasResolution);
+	ImGui::InputScalar("Max Spot Atlas Pages", ImGuiDataType_U32, &ProjectSettings.Shadow.MaxSpotAtlasPages);
+	ImGui::InputScalar("Max Point Atlas Pages", ImGuiDataType_U32, &ProjectSettings.Shadow.MaxPointAtlasPages);
+
+	DrawPopupSectionHeader("LIGHT CULLING");
+	int32 LightCullingMode = static_cast<int32>(ProjectSettings.LightCulling.Mode);
+	ImGui::RadioButton("Off", &LightCullingMode, 0);
+	ImGui::SameLine();
+	ImGui::RadioButton("Tile", &LightCullingMode, 1);
+	ImGui::SameLine();
+	ImGui::RadioButton("Cluster", &LightCullingMode, 2);
+	ProjectSettings.LightCulling.Mode = static_cast<uint32>(LightCullingMode);
+	ImGui::SliderFloat("Heat Map Max", &ProjectSettings.LightCulling.HeatMapMax, 1.0f, 100.0f, "%.0f");
+	ImGui::Checkbox("Enable 2.5D Culling", &ProjectSettings.LightCulling.bEnable25DCulling);
+
+	DrawPopupSectionHeader("SCENE DEPTH");
+	int32 SceneDepthMode = static_cast<int32>(ProjectSettings.SceneDepth.Mode);
+	ImGui::Combo("Mode", &SceneDepthMode, "Power\0Linear\0");
+	ProjectSettings.SceneDepth.Mode = static_cast<uint32>(SceneDepthMode);
+	ImGui::SliderFloat("Exponent", &ProjectSettings.SceneDepth.Exponent, 1.0f, 512.0f, "%.0f");
+
+	if (ImGui::Button("Save"))
+	{
+		ProjectSettings.SaveToFile(FProjectSettings::GetDefaultPath());
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Close"))
+	{
+		bShowProjectSettings = false;
+	}
+
+	ImGui::End();
 }
 
 void FEditorMainPanel::RenderShortcutOverlay()
@@ -275,6 +613,10 @@ void FEditorMainPanel::RenderShortcutOverlay()
 	ImGui::TextUnformatted("Ctrl+O : Open Scene");
 	ImGui::TextUnformatted("Ctrl+S : Save Scene");
 	ImGui::TextUnformatted("Ctrl+Shift+S : Save Scene As");
+	ImGui::TextUnformatted("Ctrl+Z : Undo Scene Change");
+	ImGui::TextUnformatted("Ctrl+Y : Redo Scene Change");
+	ImGui::TextUnformatted("` : Toggle Console");
+	ImGui::TextUnformatted("Ctrl+Space : Toggle Content Browser");
 	ImGui::Separator();
 	ImGui::TextUnformatted("F : Focus on selection");
 	ImGui::TextUnformatted("Ctrl + LMB : Multi Picking (Toggle)");
@@ -337,12 +679,26 @@ void FEditorMainPanel::HandleGlobalShortcuts()
 	}
 
 	InputSystem& Input = InputSystem::Get();
+	FEditorSettings& Settings = FEditorSettings::Get();
+
+	if (Input.GetKeyDown(VK_OEM_3))
+	{
+		Settings.UI.bConsole = !Settings.UI.bConsole;
+		return;
+	}
+
 	if (!Input.GetKey(VK_CONTROL))
 	{
 		return;
 	}
 
 	const bool bShift = Input.GetKey(VK_SHIFT);
+	if (Input.GetKeyDown(VK_SPACE))
+	{
+		Settings.UI.bContentBrowser = !Settings.UI.bContentBrowser;
+		return;
+	}
+
 	if (Input.GetKeyDown('N'))
 	{
 		EditorEngine->NewScene();
@@ -361,6 +717,14 @@ void FEditorMainPanel::HandleGlobalShortcuts()
 		{
 			EditorEngine->SaveScene();
 		}
+	}
+	else if (Input.GetKeyDown('Z'))
+	{
+		EditorEngine->UndoTrackedTransformChange();
+	}
+	else if (Input.GetKeyDown('Y'))
+	{
+		EditorEngine->RedoTrackedTransformChange();
 	}
 }
 

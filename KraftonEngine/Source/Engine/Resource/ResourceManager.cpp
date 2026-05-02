@@ -10,6 +10,7 @@
 #include "Core/Log.h"
 #include "Profiling/MemoryStats.h"
 #include "Engine/Texture/Texture2D.h"
+#include "Materials/MaterialManager.h"
 
 
 namespace ResourceKey
@@ -18,6 +19,7 @@ namespace ResourceKey
 	constexpr const char* Particle = "Particle";
 	constexpr const char* Texture  = "Texture";
 	constexpr const char* Mesh     = "Mesh";
+	constexpr const char* Material = "Material";
 	constexpr const char* PathMap  = "Path";
 	constexpr const char* Path     = "Path";
 	constexpr const char* Columns  = "Columns";
@@ -104,6 +106,25 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 		}
 	}
 
+	// Material — { "Name": { "Path": "..." } }  (경로 레지스트리 + 기본 프리로드)
+	if (Root.hasKey(ResourceKey::Material))
+	{
+		JSON MaterialSection = Root[ResourceKey::Material];
+		for (auto& Pair : MaterialSection.ObjectRange())
+		{
+			JSON Entry = Pair.second;
+			FMaterialResource Resource;
+			Resource.Name = FName(Pair.first.c_str());
+			Resource.Path = Entry[ResourceKey::Path].ToString();
+			MaterialResources[Pair.first] = Resource;
+
+			FGenericPathResource PathResource;
+			PathResource.Name = Resource.Name;
+			PathResource.Path = Resource.Path;
+			PathResources[Pair.first] = PathResource;
+		}
+	}
+
 	if (Root.hasKey(ResourceKey::PathMap))
 	{
 		JSON PathSection = Root[ResourceKey::PathMap];
@@ -125,6 +146,11 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 	{
 		UE_LOG("Failed to Load Resources...");
 	}
+
+	for (const auto& [Key, Resource] : MaterialResources)
+	{
+		FMaterialManager::Get().GetOrCreateMaterial(Resource.Path);
+	}
 }
 
 void FResourceManager::LoadFromDirectory(const FString& Path, ID3D11Device* InDevice)
@@ -134,7 +160,12 @@ void FResourceManager::LoadFromDirectory(const FString& Path, ID3D11Device* InDe
 
 	for (const auto& Entry : std::filesystem::recursive_directory_iterator(FPaths::ToWide(Path)))
 	{
-		if (Entry.path().extension() != ".png")
+		FString Extension = Entry.path().extension().string();
+		for (char& C : Extension)
+		{
+			C = static_cast<char>(::tolower(static_cast<unsigned char>(C)));
+		}
+		if (Extension != ".png")
 			continue;
 
 		UTexture2D::LoadFromFile(FPaths::ToUtf8(Entry.path()), InDevice);
@@ -404,6 +435,39 @@ TArray<FString> FResourceManager::GetMeshNames() const
 	TArray<FString> Names;
 	Names.reserve(MeshResources.size());
 	for (const auto& [Key, _] : MeshResources)
+	{
+		Names.push_back(Key);
+	}
+	return Names;
+}
+
+FMaterialResource* FResourceManager::FindMaterial(const FName& MaterialName)
+{
+	auto It = MaterialResources.find(MaterialName.ToString());
+	return (It != MaterialResources.end()) ? &It->second : nullptr;
+}
+
+const FMaterialResource* FResourceManager::FindMaterial(const FName& MaterialName) const
+{
+	auto It = MaterialResources.find(MaterialName.ToString());
+	return (It != MaterialResources.end()) ? &It->second : nullptr;
+}
+
+void FResourceManager::RegisterMaterial(const FName& MaterialName, const FString& InPath)
+{
+	FMaterialResource Resource;
+	Resource.Name = MaterialName;
+	Resource.Path = InPath;
+	MaterialResources[MaterialName.ToString()] = Resource;
+
+	RegisterPath(MaterialName, InPath);
+}
+
+TArray<FString> FResourceManager::GetMaterialNames() const
+{
+	TArray<FString> Names;
+	Names.reserve(MaterialResources.size());
+	for (const auto& [Key, _] : MaterialResources)
 	{
 		Names.push_back(Key);
 	}

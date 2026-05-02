@@ -9,6 +9,7 @@
 #include "GameFramework/WorldContext.h"
 #include "Render/Scene/FScene.h"
 #include "Render/Types/LODContext.h"
+#include <cstddef>
 #include <Collision/Octree.h>
 #include <Collision/SpatialPartition.h>
 
@@ -39,6 +40,8 @@ public:
 	T* SpawnActor();
 	void DestroyActor(AActor* Actor);
 	void AddActor(AActor* Actor);
+	bool MoveActorBefore(AActor* ActorToMove, AActor* BeforeActor);
+	bool MoveActorToIndex(AActor* ActorToMove, size_t TargetIndex);
 	void MarkWorldPrimitivePickingBVHDirty();
 	void BuildWorldPrimitivePickingBVHNow() const;
 	void BeginDeferredPickingBVHUpdate();

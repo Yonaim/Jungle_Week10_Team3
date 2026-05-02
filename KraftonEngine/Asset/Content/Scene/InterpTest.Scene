@@ -136,7 +136,7 @@
               "Height" : 1.000000,
               "Location" : [0.000000, 0.000000, 0.000000],
               "Material" : {
-                "Path" : "Asset/Editor/Icons/S_DirectionalLight_256x.PNG"
+                "Path" : "Asset/Editor/S_DirectionalLight_256x.PNG"
               },
               "Rotation" : [0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],
@@ -178,7 +178,7 @@
               "Height" : 1.000000,
               "Location" : [0.000000, 0.000000, 0.000000],
               "Material" : {
-                "Path" : "Asset/Editor/Icons/S_AmbientLight_256x.png"
+                "Path" : "Asset/Editor/S_AmbientLight_256x.png"
               },
               "Rotation" : [0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],
@@ -233,7 +233,7 @@
               "Height" : 1.000000,
               "Location" : [0.000000, 0.000000, 0.000000],
               "Material" : {
-                "Path" : "Asset/Editor/Icons/S_PointLight_256x.PNG"
+                "Path" : "Asset/Editor/S_PointLight_256x.PNG"
               },
               "Rotation" : [0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],
@@ -252,7 +252,7 @@
                   "Height" : 1.000000,
                   "Location" : [0.000000, 0.000000, 0.000000],
                   "Material" : {
-                    "Path" : "Asset/Editor/Icons/S_PointLight_256x.PNG"
+                    "Path" : "Asset/Editor/S_PointLight_256x.PNG"
                   },
                   "Rotation" : [0.000000, 0.000000, 0.000000],
                   "Scale" : [1.000000, 1.000000, 1.000000],
@@ -329,7 +329,7 @@
               "Height" : 1.000000,
               "Location" : [0.000000, 0.000000, 0.000000],
               "Material" : {
-                "Path" : "Asset/Editor/Icons/S_SpotLight_256x.PNG"
+                "Path" : "Asset/Editor/S_SpotLight_256x.PNG"
               },
               "Rotation" : [0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],

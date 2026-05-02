@@ -12,7 +12,12 @@ AHeightFogActor::AHeightFogActor()
 void AHeightFogActor::InitDefaultComponents()
 {
 	FogComponent = AddComponent<UHeightFogComponent>();
+	FogComponent->SetCanDeleteFromDetails(false);
 	SetRootComponent(FogComponent);
 
 	BillboardComponent = FogComponent->EnsureEditorBillboard();
+	if (BillboardComponent)
+	{
+		BillboardComponent->SetCanDeleteFromDetails(false);
+	}
 }

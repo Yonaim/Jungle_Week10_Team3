@@ -180,7 +180,11 @@ void UEngine::WorldTick(float DeltaTime)
 			continue;
 		}
 
-		const ELevelTick TickType = ToLevelTickType(Ctx.WorldType);
+		ELevelTick TickType = ToLevelTickType(Ctx.WorldType);
+		if (bGamePaused && (Ctx.WorldType == EWorldType::PIE || Ctx.WorldType == EWorldType::Game))
+		{
+			TickType = LEVELTICK_PauseTick;
+		}
 
 		// 월드 단위 업데이트 (FlushPrimitive / VisibleProxies / DebugDraw /s TickManager)
 		World->Tick(DeltaTime, TickType);

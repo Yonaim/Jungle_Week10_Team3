@@ -27,9 +27,12 @@ public:
 private:
 	UEditorEngine* Editor = nullptr;
 	ID3D11ShaderResourceView* PlayIcon = nullptr;
+	ID3D11ShaderResourceView* PauseIcon = nullptr;
 	ID3D11ShaderResourceView* StopIcon = nullptr;
+	ID3D11ShaderResourceView* UndoIcon = nullptr;
+	ID3D11ShaderResourceView* RedoIcon = nullptr;
 
-	float ToolbarHeight = 28.0f;
-	float IconSize = 16.0f;
-	float ButtonSpacing = 4.0f;
+	float ToolbarHeight = 44.0f;
+	float IconSize = 20.0f;
+	float ButtonSpacing = 8.0f;
 };

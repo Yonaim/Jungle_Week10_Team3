@@ -2,10 +2,17 @@
 
 #include "ContentBrowserElement.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Editor/UI/EditorPanelTitleUtils.h"
+#include "Engine/Runtime/Engine.h"
+#include "Materials/MaterialManager.h"
+#include "Texture/Texture2D.h"
 #include "WICTextureLoader.h"
 #include "Resource/ResourceManager.h"
 
 #include <algorithm>
+#include <cctype>
+#include <fstream>
+#include <string>
 
 namespace
 {
@@ -41,11 +48,16 @@ namespace
 		return FPaths::ToUtf8(Path.wstring());
 	}
 
+	std::filesystem::path GetContentBrowserVirtualRoot();
+	std::filesystem::path GetPrimaryContentRoot();
+	std::filesystem::path GetScriptRoot();
+	bool IsContentBrowserTopLevelPath(const std::filesystem::path& Path);
+
 	std::wstring ResolveContentBrowserSettingsPath(const FString& SavedPath)
 	{
 		if (SavedPath.empty())
 		{
-			return FPaths::RootDir();
+			return GetContentBrowserVirtualRoot().wstring();
 		}
 
 		std::filesystem::path Path(FPaths::ToWide(SavedPath));
@@ -60,7 +72,7 @@ namespace
 			return Path.wstring();
 		}
 
-		return FPaths::RootDir();
+		return GetContentBrowserVirtualRoot().wstring();
 	}
 
 	bool IsSubPath(const std::filesystem::path& parent, const std::filesystem::path& child)
@@ -79,6 +91,172 @@ namespace
 
 		return pIt == p.end(); // parent ?앷퉴吏 ??留욎븯?쇰㈃ ?ы븿??
 	}
+	std::filesystem::path GetContentBrowserVirtualRoot()
+	{
+		return std::filesystem::path(FPaths::RootDir()).lexically_normal();
+	}
+
+	std::filesystem::path GetPrimaryContentRoot()
+	{
+		return (std::filesystem::path(FPaths::RootDir()) / L"Asset" / L"Content").lexically_normal();
+	}
+
+	std::filesystem::path GetScriptRoot()
+	{
+		return (std::filesystem::path(FPaths::RootDir()).parent_path() / L"Scripts").lexically_normal();
+	}
+
+	bool IsContentBrowserTopLevelPath(const std::filesystem::path& Path)
+	{
+		return Path.lexically_normal() == GetContentBrowserVirtualRoot();
+	}
+
+	std::string ToLowerUtf8(std::string Value)
+	{
+		std::transform(Value.begin(), Value.end(), Value.begin(),
+			[](unsigned char Character)
+			{
+				return static_cast<char>(std::tolower(Character));
+			});
+		return Value;
+	}
+
+	ID3D11ShaderResourceView* GetTexturePreviewSRV(const std::filesystem::path& Path)
+	{
+		const FString RelativePath = FPaths::ToUtf8(Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+		if (UTexture2D* CachedTexture = UTexture2D::LoadFromCached(RelativePath))
+		{
+			return CachedTexture->GetSRV();
+		}
+
+		if (!GEngine)
+		{
+			return nullptr;
+		}
+
+		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+		if (!Device)
+		{
+			return nullptr;
+		}
+
+		if (UTexture2D* Texture = UTexture2D::LoadFromFile(RelativePath, Device))
+		{
+			return Texture->GetSRV();
+		}
+
+		return nullptr;
+	}
+
+	ID3D11ShaderResourceView* GetMaterialPreviewSRV(const std::filesystem::path& Path)
+	{
+		const FString RelativePath = FPaths::ToUtf8(Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+		if (UTexture2D* PreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(RelativePath))
+		{
+			return PreviewTexture->GetSRV();
+		}
+
+		return nullptr;
+	}
+
+	FString TrimAscii(const FString& Value)
+	{
+		const size_t Start = Value.find_first_not_of(" \t\r\n");
+		if (Start == FString::npos)
+		{
+			return "";
+		}
+
+		const size_t End = Value.find_last_not_of(" \t\r\n");
+		return Value.substr(Start, End - Start + 1);
+	}
+
+	ID3D11ShaderResourceView* GetMtlPreviewSRV(const std::filesystem::path& Path)
+	{
+		if (!std::filesystem::exists(Path))
+		{
+			return nullptr;
+		}
+
+		std::ifstream File(Path);
+		if (!File.is_open())
+		{
+			return nullptr;
+		}
+
+		FString RelativeMtlPath = FPaths::ToUtf8(Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+		FString Line;
+		while (std::getline(File, Line))
+		{
+			const FString Trimmed = TrimAscii(Line);
+			if (Trimmed.empty() || Trimmed[0] == '#')
+			{
+				continue;
+			}
+
+			if (Trimmed.rfind("map_Kd", 0) != 0)
+			{
+				continue;
+			}
+
+			FString TextureSpec = TrimAscii(Trimmed.substr(6));
+			if (TextureSpec.empty())
+			{
+				continue;
+			}
+
+			while (!TextureSpec.empty() && TextureSpec[0] == '-')
+			{
+				size_t OptionEnd = TextureSpec.find_first_of(" \t");
+				if (OptionEnd == FString::npos)
+				{
+					TextureSpec.clear();
+					break;
+				}
+
+				const FString Option = TextureSpec.substr(0, OptionEnd);
+				TextureSpec = TrimAscii(TextureSpec.substr(OptionEnd + 1));
+
+				int32 ArgsToSkip = 0;
+				if (Option == "-s" || Option == "-o" || Option == "-t")
+				{
+					ArgsToSkip = 3;
+				}
+				else if (Option == "-mm")
+				{
+					ArgsToSkip = 2;
+				}
+				else if (Option == "-bm" || Option == "-boost" || Option == "-texres"
+					|| Option == "-blendu" || Option == "-blendv" || Option == "-clamp"
+					|| Option == "-cc" || Option == "-imfchan")
+				{
+					ArgsToSkip = 1;
+				}
+
+				for (int32 ArgIndex = 0; ArgIndex < ArgsToSkip && !TextureSpec.empty(); ++ArgIndex)
+				{
+					size_t ArgEnd = TextureSpec.find_first_of(" \t");
+					if (ArgEnd == FString::npos)
+					{
+						TextureSpec.clear();
+						break;
+					}
+					TextureSpec = TrimAscii(TextureSpec.substr(ArgEnd + 1));
+				}
+			}
+
+			if (TextureSpec.empty())
+			{
+				continue;
+			}
+
+			const FString ResolvedTexturePath = FPaths::ResolveAssetPath(RelativeMtlPath, TextureSpec);
+			const std::filesystem::path AbsoluteTexturePath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(ResolvedTexturePath);
+			return GetTexturePreviewSRV(AbsoluteTexturePath.lexically_normal());
+		}
+
+		return nullptr;
+	}
 }
 
 void FEditorContentBrowserWidget::Initialize(UEditorEngine* InEditor, ID3D11Device* InDevice)
@@ -88,12 +266,15 @@ void FEditorContentBrowserWidget::Initialize(UEditorEngine* InEditor, ID3D11Devi
 
 	ICons["Default"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Default"));
 	ICons["Directory"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Directory"));
+	ICons["FolderClosed"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.FolderClosed"));
+	ICons["FolderOpen"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.FolderOpen"));
 	ICons[".Scene"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Scene"));
-	ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Mesh"));
+	ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.Component.StaticMesh"));
 	ICons[".mat"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Material"));
+	ICons[".mtl"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Material"));
 
 	ContentBrowserContext Context;
-	Context.ContentSize = ImVec2(76.0f, 96.0f);
+	Context.ContentSize = ImVec2(92.0f, 126.0f);
 	Context.EditorEngine = InEditor;
 	BrowserContext = Context;
 	LoadFromSettings();
@@ -103,7 +284,18 @@ void FEditorContentBrowserWidget::Initialize(UEditorEngine* InEditor, ID3D11Devi
 
 void FEditorContentBrowserWidget::Render(float DeltaTime)
 {
-	if (!ImGui::Begin("Content Browser"))
+	FEditorSettings& Settings = FEditorSettings::Get();
+	if (!Settings.UI.bContentBrowser)
+	{
+		return;
+	}
+
+	constexpr const char* PanelIconKey = "Editor.Icon.Panel.ContentBrowser";
+	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Content Browser", PanelIconKey);
+	const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
+	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Content Browser", Settings.UI.bContentBrowser, "x##CloseContentBrowser");
+	if (!bIsOpen)
 	{
 		ImGui::End();
 		return;
@@ -112,17 +304,9 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
 	//if (ImGui::Button("Refresh") || BrowserContext.bIsNeedRefresh)
 	//	Refresh();
 
-	ImGui::SameLine();
-	std::wstring PathText = BrowserContext.CurrentPath;
-	if(BrowserContext.SelectedElement)
-		PathText += L"/" + BrowserContext.SelectedElement->GetFileName();
-
-	//ImGui::Text(FPaths::ToUtf8(PathText).c_str());
-
-	ImGui::SameLine();
 	int size = static_cast<int>(BrowserContext.ContentSize.x);
 	//ImGui::SliderInt("##slider", &size, 20, 100);
-	BrowserContext.ContentSize = ImVec2(static_cast<float>(size), static_cast<float>(size));
+	BrowserContext.ContentSize = ImVec2(static_cast<float>(size), static_cast<float>(size) + 46.0f);
 
 	if (!ImGui::BeginTable("ContentBrowserLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
 	{
@@ -135,10 +319,12 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
 
 	ImGui::TableNextColumn();
 	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 6.0f));
 		ImGui::BeginChild("DirectoryTree", ImVec2(0, 0), true);
 		DrawDirNode(RootNode);
 		BrowserContext.PendingRevealPath.clear();
 		ImGui::EndChild();
+		ImGui::PopStyleVar();
 	}
 
 	ImGui::TableNextColumn();
@@ -157,7 +343,7 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
 
 void FEditorContentBrowserWidget::Refresh()
 {
-	RootNode = BuildDirectoryTree(FPaths::RootDir());
+	RootNode = BuildDirectoryTree(GetContentBrowserVirtualRoot());
 	RefreshContent();
 
 	BrowserContext.bIsNeedRefresh = false;
@@ -165,8 +351,8 @@ void FEditorContentBrowserWidget::Refresh()
 
 void FEditorContentBrowserWidget::SetIconSize(float Size)
 {
-	const float ClampedSize = (std::max)(40.0f, (std::min)(Size, 120.0f));
-	BrowserContext.ContentSize = ImVec2(ClampedSize, ClampedSize + 20.0f);
+	const float ClampedSize = (std::max)(84.0f, (std::min)(Size, 124.0f));
+	BrowserContext.ContentSize = ImVec2(ClampedSize, ClampedSize + 34.0f);
 }
 
 void FEditorContentBrowserWidget::LoadFromSettings()
@@ -187,7 +373,7 @@ void FEditorContentBrowserWidget::RefreshContent()
 	for (const auto& Content : CurrentContents)
 	{
 		std::shared_ptr<ContentBrowserElement> element;
-		FString Extension = FPaths::ToUtf8(Content.Path.extension());
+		const std::string Extension = ToLowerUtf8(FPaths::ToUtf8(Content.Path.extension()));
 
 		if (Content.bIsDirectory)
 		{
@@ -195,25 +381,33 @@ void FEditorContentBrowserWidget::RefreshContent()
 			element.get()->SetIcon(ICons["Directory"].Get());
 
 		}
-		else if (Content.Path.extension() == ".Scene")
+		else if (Extension == ".scene")
 		{
 			element = std::make_shared<SceneElement>();
-			element.get()->SetIcon(ICons[Extension].Get());
+			element.get()->SetIcon(ICons[".Scene"].Get());
 		}
-		else if (Content.Path.extension() == ".obj")
+		else if (Extension == ".obj")
 		{
 			element = std::make_shared<ObjectElement>();
-			element.get()->SetIcon(ICons[Extension].Get());
+			element.get()->SetIcon(ICons[".obj"].Get());
 		}
-		else if (Content.Path.extension() == ".mat")
+		else if (Extension == ".mat")
 		{
 			element = std::make_shared<MaterialElement>();
-			element.get()->SetIcon(ICons[Extension].Get());
+			ID3D11ShaderResourceView* PreviewSRV = GetMaterialPreviewSRV(Content.Path);
+			element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".mat"].Get());
 		}
-		else if (Content.Path.extension() == ".png" || Content.Path.extension() == ".PNG")
+		else if (Extension == ".mtl")
+		{
+			element = std::make_shared<MtlElement>();
+			ID3D11ShaderResourceView* PreviewSRV = GetMtlPreviewSRV(Content.Path);
+			element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".mtl"].Get());
+		}
+		else if (UTexture2D::IsSupportedTextureExtension(Content.Path))
 		{
 			element = std::make_shared<PNGElement>();
-			element.get()->SetIcon(FResourceManager::Get().FindLoadedTexture(FPaths::ToUtf8(Content.Path.lexically_relative(FPaths::RootDir()).generic_wstring())).Get());
+			ID3D11ShaderResourceView* PreviewSRV = GetTexturePreviewSRV(Content.Path);
+			element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons["Default"].Get());
 		}
 		else
 		{
@@ -229,7 +423,8 @@ void FEditorContentBrowserWidget::RefreshContent()
 void FEditorContentBrowserWidget::DrawDirNode(FDirNode InNode)
 {
 	ImGuiTreeNodeFlags Flag =
-		InNode.Children.empty() ? ImGuiTreeNodeFlags_Leaf : ImGuiTreeNodeFlags_OpenOnArrow;
+		(InNode.Children.empty() ? ImGuiTreeNodeFlags_Leaf : ImGuiTreeNodeFlags_OpenOnArrow) |
+		ImGuiTreeNodeFlags_SpanAvailWidth;
 
 	if (InNode.Self.Path == BrowserContext.CurrentPath)
 	{
@@ -240,7 +435,34 @@ void FEditorContentBrowserWidget::DrawDirNode(FDirNode InNode)
 		ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 	}
 
-	bool bIsOpen = ImGui::TreeNodeEx(FPaths::ToUtf8(InNode.Self.Name).c_str(), Flag);
+	const std::string NodeId = "##" + FPaths::ToUtf8(InNode.Self.Path.generic_wstring());
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.66f, 0.66f, 0.68f, 1.0f));
+	bool bIsOpen = ImGui::TreeNodeEx(NodeId.c_str(), Flag);
+	ImGui::PopStyleColor();
+
+	const ImVec2 Min = ImGui::GetItemRectMin();
+	const float IconSize = 16.0f;
+	const float IconY = Min.y + (ImGui::GetTextLineHeight() - IconSize) * 0.5f;
+	const float ArrowWidth = 18.0f;
+	const float IconX = Min.x + ArrowWidth + 5.0f;
+	const float TextX = IconX + IconSize + 5.0f;
+	const float TextY = Min.y + (ImGui::GetTextLineHeight() - ImGui::CalcTextSize(FPaths::ToUtf8(InNode.Self.Name).c_str()).y) * 0.5f;
+	ID3D11ShaderResourceView* FolderIcon = bIsOpen ? ICons["FolderOpen"].Get() : ICons["FolderClosed"].Get();
+	if (FolderIcon)
+	{
+		ImGui::GetWindowDrawList()->AddImage(
+			reinterpret_cast<ImTextureID>(FolderIcon),
+			ImVec2(IconX, IconY),
+			ImVec2(IconX + IconSize, IconY + IconSize),
+			ImVec2(0.0f, 0.0f),
+			ImVec2(1.0f, 1.0f),
+			IM_COL32(184, 140, 58, 255));
+	}
+	const ImU32 TextColor = ImGui::GetColorU32(ImGuiCol_Text);
+	ImGui::GetWindowDrawList()->AddText(
+		ImVec2(TextX, TextY),
+		TextColor,
+		FPaths::ToUtf8(InNode.Self.Name).c_str());
 	if (ImGui::IsItemClicked())
 	{
 		BrowserContext.CurrentPath = InNode.Self.Path;
@@ -296,18 +518,46 @@ void FEditorContentBrowserWidget::DrawContents()
 		CachedBrowserElements[i]->Render(BrowserContext);
 	}
 
+	if (BrowserContext.bIsNeedRefresh)
+	{
+		Refresh();
+		SaveToSettings();
+	}
+
 	int rowCount = (elementCount + columnCount - 1) / columnCount;
-	ImGui::SetCursorPos(ImVec2(startPos.x, startPos.y + rowCount * itemHeight + (rowCount > 0 ? (rowCount - 1) * gapSize : 0.0f)));
+	const float TotalHeight = rowCount * itemHeight + (rowCount > 0 ? (rowCount - 1) * gapSize : 0.0f);
+	ImGui::SetCursorPos(startPos);
+	ImGui::Dummy(ImVec2((std::max)(itemWidth, contentWidth), TotalHeight));
 }
 
 TArray<FContentItem> FEditorContentBrowserWidget::ReadDirectory(std::wstring Path)
 {
 	TArray<FContentItem> Items;
+	const std::filesystem::path CurrentPath = std::filesystem::path(Path).lexically_normal();
 
-	if (!std::filesystem::exists(Path) || !std::filesystem::is_directory(Path))
+	if (IsContentBrowserTopLevelPath(CurrentPath))
+	{
+		for (const std::filesystem::path& Root : { GetPrimaryContentRoot(), GetScriptRoot() })
+		{
+			if (!std::filesystem::exists(Root) || !std::filesystem::is_directory(Root))
+			{
+				continue;
+			}
+
+			FContentItem Item;
+			Item.Path = Root;
+			Item.Name = Root.filename().wstring();
+			Item.bIsDirectory = true;
+			Items.push_back(Item);
+		}
+
+		return Items;
+	}
+
+	if (!std::filesystem::exists(CurrentPath) || !std::filesystem::is_directory(CurrentPath))
 		return Items;
 
-	for (const auto& Entry : std::filesystem::directory_iterator(Path))
+	for (const auto& Entry : std::filesystem::directory_iterator(CurrentPath))
 	{
 		std::wstring Name = Entry.path().filename().wstring();
 		if (Entry.is_directory())
@@ -343,6 +593,19 @@ FEditorContentBrowserWidget::FDirNode FEditorContentBrowserWidget::BuildDirector
 	Node.Self.Name = DirPath.filename().wstring();
 	Node.Self.bIsDirectory = true;
 
+	if (IsContentBrowserTopLevelPath(DirPath))
+	{
+		Node.Self.Name = L"All";
+		for (const std::filesystem::path& Root : { GetPrimaryContentRoot(), GetScriptRoot() })
+		{
+			if (std::filesystem::exists(Root) && std::filesystem::is_directory(Root))
+			{
+				Node.Children.push_back(BuildDirectoryTree(Root));
+			}
+		}
+		return Node;
+	}
+
 	for (const auto& Entry : std::filesystem::directory_iterator(DirPath))
 	{
 		if (!Entry.is_directory())
@@ -356,7 +619,7 @@ FEditorContentBrowserWidget::FDirNode FEditorContentBrowserWidget::BuildDirector
 	}
 
 	if(Node.Self.Name.empty())
-		Node.Self.Name = FPaths::ToWide("Project");
+		Node.Self.Name = FPaths::ToWide("All");
 
 	return Node;
 }

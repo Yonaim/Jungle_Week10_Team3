@@ -57,6 +57,38 @@ void FEditorViewportClient::ResetCamera()
 	SyncCameraSmoothingTarget();
 }
 
+bool FEditorViewportClient::FocusActor(AActor* Actor)
+{
+	if (!Actor || !Camera)
+	{
+		return false;
+	}
+
+	const FVector TargetLoc = Actor->GetActorLocation();
+	const FVector CameraForward = Camera->GetForwardVector();
+
+	const FVector OriginalLoc = Camera->GetWorldLocation();
+	const FRotator OriginalRot = Camera->GetRelativeRotation();
+
+	constexpr float FocusDistance = 5.0f;
+	const FVector NewCameraLoc = TargetLoc - CameraForward * FocusDistance;
+
+	Camera->SetWorldLocation(NewCameraLoc);
+	Camera->LookAt(TargetLoc);
+	const FRotator TargetRot = Camera->GetRelativeRotation();
+
+	Camera->SetWorldLocation(OriginalLoc);
+	Camera->SetRelativeRotation(OriginalRot);
+
+	bIsFocusAnimating = true;
+	FocusAnimTimer = 0.0f;
+	FocusStartLoc = OriginalLoc;
+	FocusStartRot = OriginalRot;
+	FocusEndLoc = NewCameraLoc;
+	FocusEndRot = TargetRot;
+	return true;
+}
+
 void FEditorViewportClient::SetViewportType(ELevelViewportType NewType)
 {
 	if (!Camera) return;
@@ -275,7 +307,9 @@ void FEditorViewportClient::TickEditorShortcuts()
 
 	if (SelectionManager && InputSystem::Get().GetKeyDown(VK_DELETE))
 	{
+		EditorEngine->BeginTrackedSceneChange();
 		SelectionManager->DeleteSelectedActors();
+		EditorEngine->CommitTrackedSceneChange();
 		return;
 	}
 
@@ -288,35 +322,7 @@ void FEditorViewportClient::TickEditorShortcuts()
 	if (SelectionManager && InputSystem::Get().GetKeyDown('F'))
 	{
 		AActor* Selected = SelectionManager->GetPrimarySelection();
-		if (Selected && Camera)
-		{
-			FVector TargetLoc = Selected->GetActorLocation();
-			FVector CameraForward = Camera->GetForwardVector();
-			
-			// 1. 현재 상태 백업
-			FVector OriginalLoc = Camera->GetWorldLocation();
-			FRotator OriginalRot = Camera->GetRelativeRotation();
-
-			// 2. 목표 좌표 계산 (5m 거리)
-			float FocusDistance = 5.0f;
-			FVector NewCameraLoc = TargetLoc - CameraForward * FocusDistance;
-			
-			// 3. 임시로 이동하여 정확한 목표 회전값 추출
-			Camera->SetWorldLocation(NewCameraLoc);
-			Camera->LookAt(TargetLoc);
-			FRotator TargetRot = Camera->GetRelativeRotation();
-
-			// 4. 카메라 복구 및 애니메이션 설정
-			Camera->SetWorldLocation(OriginalLoc);
-			Camera->SetRelativeRotation(OriginalRot);
-
-			bIsFocusAnimating = true;
-			FocusAnimTimer = 0.0f;
-			FocusStartLoc = OriginalLoc;
-			FocusStartRot = OriginalRot;
-			FocusEndLoc = NewCameraLoc;
-			FocusEndRot = TargetRot;
-		}
+		FocusActor(Selected);
 	}
 
 	if (SelectionManager && InputSystem::Get().GetKey(VK_CONTROL) && InputSystem::Get().GetKeyDown('D'))
@@ -324,6 +330,7 @@ void FEditorViewportClient::TickEditorShortcuts()
 		const TArray<AActor*> ToDuplicate = SelectionManager->GetSelectedActors();
 		if (!ToDuplicate.empty())
 		{
+			EditorEngine->BeginTrackedSceneChange();
 			const FVector DuplicateOffsetStep(0.1f, 0.1f, 0.1f);
 			TArray<AActor*> NewSelection;
 			int32 DuplicateIndex = 0;
@@ -347,6 +354,7 @@ void FEditorViewportClient::TickEditorShortcuts()
 			{
 				EditorEngine->GetGizmo()->UpdateGizmoTransform();
 			}
+			EditorEngine->CommitTrackedSceneChange();
 		}
 	}
 }
@@ -624,15 +632,23 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 				}
 			}
 		}
-		else
+	else
+	{
+		Gizmo->DragEnd();
+		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
 		{
-			Gizmo->DragEnd();
+			EditorEngine->CommitTrackedTransformChange();
 		}
+	}
 	}
 	else if (Input.GetKeyUp(VK_LBUTTON))
 	{
 		// 드래그 threshold 미달로 DragEnd가 호출되지 않는 경우 처리
 		Gizmo->SetPressedOnHandle(false);
+		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+		{
+			EditorEngine->CommitTrackedTransformChange();
+		}
 		bIsMarqueeSelecting = false;
 	}
 }
@@ -650,6 +666,21 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 	//먼저 Ray와 기즈모의 충돌을 감지하고 
 	if (FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
 	{
+		if (SelectionManager)
+		{
+			for (AActor* Actor : SelectionManager->GetSelectedActors())
+			{
+				if (Actor && Actor->IsActorMovementLocked())
+				{
+					Gizmo->SetPressedOnHandle(false);
+					return;
+				}
+			}
+		}
+		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+		{
+			EditorEngine->BeginTrackedTransformChange();
+		}
 		Gizmo->SetPressedOnHandle(true);
 	}
 	else
@@ -738,7 +769,17 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 	// 활성 뷰포트 테두리 강조
 	if (bIsActiveViewport)
 	{
-		DrawList->AddRect(Min, Max, IM_COL32(255, 165, 0, 220), 0.0f, 0, 2.0f);
+		ImU32 BorderColor = IM_COL32(255, 165, 0, 220);
+		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+		{
+			if (EditorEngine->IsPlayingInEditor())
+			{
+				BorderColor = EditorEngine->IsGamePaused()
+					? IM_COL32(66, 133, 244, 255)
+					: IM_COL32(52, 199, 89, 255);
+			}
+		}
+		DrawList->AddRect(Min, Max, BorderColor, 0.0f, 0, 4.0f);
 	}
 
 	// Marquee Selection 사각형 렌더링

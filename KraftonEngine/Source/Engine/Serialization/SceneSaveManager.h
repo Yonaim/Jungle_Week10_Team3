@@ -43,7 +43,9 @@ public:
 	static std::wstring GetSceneDirectory() { return FPaths::SceneDir(); }
 
 	static void SaveSceneAsJSON(const string& SceneName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
+	static string SerializeWorldToJSONString(FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
 	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
+	static void LoadSceneFromJSONString(const string& SceneJson, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 
 	static TArray<FString> GetSceneFileList();
 

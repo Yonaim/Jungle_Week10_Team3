@@ -34,6 +34,10 @@ public:
 	void SetMaterial(int32 ElementIndex, UMaterial* InMaterial);
 	UMaterial* GetMaterial(int32 ElementIndex) const;
 	const TArray<UMaterial*>& GetOverrideMaterials() const { return OverrideMaterials; }
+	void EnsureMaterialSlotsForEditing();
+	int32 GetMaterialSlotCount() const { return static_cast<int32>(MaterialSlots.size()); }
+	FMaterialSlot* GetMaterialSlot(int32 ElementIndex);
+	const FMaterialSlot* GetMaterialSlot(int32 ElementIndex) const;
 
 	void Serialize(FArchive& Ar) override;
 	void PostDuplicate() override;

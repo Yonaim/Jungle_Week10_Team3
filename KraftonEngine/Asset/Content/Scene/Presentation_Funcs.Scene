@@ -389,7 +389,7 @@
           "Height" : 1.000000,
           "Location" : [-0.696197, 31.405922, 0.000000],
           "Material" : {
-            "Path" : "Asset/Editor/Icons/S_AmbientLight_256x.png"
+            "Path" : "Asset/Editor/S_AmbientLight_256x.png"
           },
           "Rotation" : [0.000000, 0.000000, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
@@ -423,7 +423,7 @@
           "Height" : 1.000000,
           "Location" : [0.796321, 29.396147, 0.537412],
           "Material" : {
-            "Path" : "Asset/Editor/Icons/S_DirectionalLight_256x.PNG"
+            "Path" : "Asset/Editor/S_DirectionalLight_256x.PNG"
           },
           "Rotation" : [89.899994, 9.399994, 45.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
@@ -459,7 +459,7 @@
           "Height" : 1.000000,
           "Location" : [0.285738, 20.992941, 4.299304],
           "Material" : {
-            "Path" : "Asset/Editor/Icons/S_PointLight_256x.PNG"
+            "Path" : "Asset/Editor/S_PointLight_256x.PNG"
           },
           "Rotation" : [1.600006, 0.000000, 0.000000],
           "Scale" : [1.000000, 0.300000, 0.300000],
@@ -497,7 +497,7 @@
           "Height" : 1.000000,
           "Location" : [-3.329634, 5.971004, 5.367615],
           "Material" : {
-            "Path" : "Asset/Editor/Icons/S_SpotLight_256x.PNG"
+            "Path" : "Asset/Editor/S_SpotLight_256x.PNG"
           },
           "Rotation" : [0.000000, -176.597061, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
@@ -535,7 +535,7 @@
           "Height" : 1.000000,
           "Location" : [-10.732067, 40.812042, 4.298374],
           "Material" : {
-            "Path" : "Asset/Editor/Icons/S_SpotLight_256x.PNG"
+            "Path" : "Asset/Editor/S_SpotLight_256x.PNG"
           },
           "Rotation" : [0.000000, -177.392380, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
@@ -573,7 +573,7 @@
           "Height" : 1.000000,
           "Location" : [-10.250295, -29.652115, 4.911468],
           "Material" : {
-            "Path" : "Asset/Editor/Icons/S_SpotLight_256x.PNG"
+            "Path" : "Asset/Editor/S_SpotLight_256x.PNG"
           },
           "Rotation" : [0.000000, -174.471222, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
@@ -609,7 +609,7 @@
           "Height" : 1.000000,
           "Location" : [-21.322752, -35.502125, 7.473766],
           "Material" : {
-            "Path" : "Asset/Editor/Icons/S_PointLight_256x.PNG"
+            "Path" : "Asset/Editor/S_PointLight_256x.PNG"
           },
           "Rotation" : [-0.000000, 0.000000, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
