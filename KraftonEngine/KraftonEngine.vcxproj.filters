@@ -320,9 +320,6 @@
     <ClCompile Include="Source\Editor\UI\EditorControlWidget.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\UI\EditorDetailsWidget.cpp">
-      <Filter>Source\Editor\UI</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorDragSource.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
@@ -335,13 +332,16 @@
     <ClCompile Include="Source\Editor\UI\EditorMaterialInspector.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\UI\EditorOutlinerWidget.cpp">
-      <Filter>Source\Editor\UI</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorPlaceActorsWidget.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorPlayToolbarWidget.cpp">
+      <Filter>Source\Editor\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\UI\EditorDetailsWidget.cpp">
+      <Filter>Source\Editor\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\UI\EditorOutlinerWidget.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorShadowMapDebugWidget.cpp">
@@ -884,9 +884,6 @@
     <ClInclude Include="Source\Editor\UI\EditorControlWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\UI\EditorDetailsWidget.h">
-      <Filter>Source\Editor\UI</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorDragSource.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
@@ -899,22 +896,16 @@
     <ClInclude Include="Source\Editor\UI\EditorMaterialInspector.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\UI\EditorOutlinerWidget.h">
-      <Filter>Source\Editor\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\UI\EditorPanelTitleUtils.h">
-      <Filter>Source\Editor\UI</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorPlaceActorsWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorPlayToolbarWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\UI\EditorPropertyWidget.h">
+    <ClInclude Include="Source\Editor\UI\EditorDetailsWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\UI\EditorSceneWidget.h">
+    <ClInclude Include="Source\Editor\UI\EditorOutlinerWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorShadowMapDebugWidget.h">
@@ -1086,9 +1077,6 @@
       <Filter>Source\Engine\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\Common.h">
-      <Filter>Source\Engine\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Core\ComponentMobility.h">
       <Filter>Source\Engine\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\CoreTypes.h">
@@ -1918,6 +1906,9 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\ComponentMobility.h">
+      <Filter>Source\Engine\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

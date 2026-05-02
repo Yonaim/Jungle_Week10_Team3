@@ -180,6 +180,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -198,6 +199,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -216,6 +218,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -234,6 +237,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\sol2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -248,14 +252,14 @@
     <ClCompile Include="Source\Editor\Subsystem\OverlayStatSystem.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorConsoleWidget.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorControlWidget.cpp" />
-    <ClCompile Include="Source\Editor\UI\EditorDetailsWidget.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorDragSource.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorFileUtils.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorMainPanel.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorMaterialInspector.cpp" />
-    <ClCompile Include="Source\Editor\UI\EditorOutlinerWidget.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorPlaceActorsWidget.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorPlayToolbarWidget.cpp" />
+    <ClCompile Include="Source\Editor\UI\EditorDetailsWidget.cpp" />
+    <ClCompile Include="Source\Editor\UI\EditorOutlinerWidget.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorShadowMapDebugWidget.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorStatWidget.cpp" />
     <ClCompile Include="Source\Editor\UI\EditorViewportWidget.cpp" />
@@ -438,17 +442,14 @@
     <ClInclude Include="Source\Editor\Subsystem\OverlayStatSystem.h" />
     <ClInclude Include="Source\Editor\UI\EditorConsoleWidget.h" />
     <ClInclude Include="Source\Editor\UI\EditorControlWidget.h" />
-    <ClInclude Include="Source\Editor\UI\EditorDetailsWidget.h" />
     <ClInclude Include="Source\Editor\UI\EditorDragSource.h" />
     <ClInclude Include="Source\Editor\UI\EditorFileUtils.h" />
     <ClInclude Include="Source\Editor\UI\EditorMainPanel.h" />
     <ClInclude Include="Source\Editor\UI\EditorMaterialInspector.h" />
-    <ClInclude Include="Source\Editor\UI\EditorOutlinerWidget.h" />
-    <ClInclude Include="Source\Editor\UI\EditorPanelTitleUtils.h" />
     <ClInclude Include="Source\Editor\UI\EditorPlaceActorsWidget.h" />
     <ClInclude Include="Source\Editor\UI\EditorPlayToolbarWidget.h" />
-    <ClInclude Include="Source\Editor\UI\EditorPropertyWidget.h" />
-    <ClInclude Include="Source\Editor\UI\EditorSceneWidget.h" />
+    <ClInclude Include="Source\Editor\UI\EditorDetailsWidget.h" />
+    <ClInclude Include="Source\Editor\UI\EditorOutlinerWidget.h" />
     <ClInclude Include="Source\Editor\UI\EditorShadowMapDebugWidget.h" />
     <ClInclude Include="Source\Editor\UI\EditorStatWidget.h" />
     <ClInclude Include="Source\Editor\UI\EditorViewportWidget.h" />
@@ -506,11 +507,11 @@
     <ClInclude Include="Source\Engine\Core\CollisionEventTypes.h" />
     <ClInclude Include="Source\Engine\Core\CollisionTypes.h" />
     <ClInclude Include="Source\Engine\Core\Common.h" />
-    <ClInclude Include="Source\Engine\Core\ComponentMobility.h" />
     <ClInclude Include="Source\Engine\Core\CoreTypes.h" />
     <ClInclude Include="Source\Engine\Core\Delegate.h" />
     <ClInclude Include="Source\Engine\Core\EngineTypes.h" />
     <ClInclude Include="Source\Engine\Core\Log.h" />
+    <ClInclude Include="Source\Engine\Core\ComponentMobility.h" />
     <ClInclude Include="Source\Engine\Core\Notification.h" />
     <ClInclude Include="Source\Engine\Core\ProjectSettings.h" />
     <ClInclude Include="Source\Engine\Core\PropertyTypes.h" />
@@ -987,14 +988,19 @@
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets" Condition="Exists('packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets')" />
+    <Import Project="packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets" Condition="Exists('packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\directxtk_desktop_win10.2025.10.28.2\build\native\directxtk_desktop_win10.targets'))" />
+    <Error Condition="!Exists('packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\luajit.native.2.1.1739213504\build\native\luajit.native.targets'))" />
   </Target>
 </Project>
