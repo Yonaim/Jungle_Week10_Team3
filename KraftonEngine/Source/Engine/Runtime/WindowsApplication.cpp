@@ -35,6 +35,8 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 		return true;
 	}
 
+	FInputManager::Get().ProcessMessage(hWnd, Msg, wParam, lParam);
+
 	switch (Msg)
 	{
 	case WM_DESTROY:

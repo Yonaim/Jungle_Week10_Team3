@@ -1,7 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "Viewport/ViewportClient.h"
 #include "Math/Vector.h"
+#include "Input/EnhancedInputManager.h"
+#include "Input/InputAction.h"
+#include "Input/InputMappingContext.h"
 
 class UCameraComponent;
 class FWindowsWindow;
@@ -11,6 +14,9 @@ class FViewport;
 class FObjViewerViewportClient : public FViewportClient
 {
 public:
+	FObjViewerViewportClient();
+	~FObjViewerViewportClient() override;
+
 	void Initialize(FWindowsWindow* InWindow);
 	void Release();
 
@@ -33,6 +39,11 @@ public:
 	void RenderViewportImage();
 
 private:
+	void SetupInput();
+	void OnOrbit(const FInputActionValue& Value);
+	void OnPan(const FInputActionValue& Value);
+	void OnZoom(const FInputActionValue& Value);
+
 	void TickInput(float DeltaTime);
 
 private:
@@ -51,4 +62,16 @@ private:
 	float ViewportY = 0.0f;
 	float ViewportWidth = 800.0f;
 	float ViewportHeight = 600.0f;
+
+	// Enhanced Input
+	FEnhancedInputManager EnhancedInputManager;
+	FInputMappingContext* ObjMappingContext = nullptr;
+
+	FInputAction* ActionObjOrbit = nullptr;
+	FInputAction* ActionObjPan = nullptr;
+	FInputAction* ActionObjZoom = nullptr;
+
+	FVector OrbitAccumulator = FVector::ZeroVector;
+	FVector PanAccumulator = FVector::ZeroVector;
+	float ZoomAccumulator = 0.0f;
 };

@@ -98,9 +98,6 @@ void FObjViewerPanel::Update()
 		// (뷰포트 ImGui::Image 위에 InvisibleButton이 있으므로 그걸로 판단)
 		bWantMouse = IO.WantCaptureMouse;
 	}
-	// InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
-	// InputSystem::Get().GetGuiInputState().bUsingKeyboard = IO.WantCaptureKeyboard;
-	// InputSystem::Get().GetGuiInputState().bUsingTextInput = IO.WantTextInput;
 }
 
 void FObjViewerPanel::RenderMeshList()

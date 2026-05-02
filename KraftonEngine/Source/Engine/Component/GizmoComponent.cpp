@@ -1,4 +1,4 @@
-﻿#include "GizmoComponent.h"
+#include "GizmoComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -722,19 +722,32 @@ void UGizmoComponent::DragEnd()
 
 void UGizmoComponent::SetNextMode()
 {
-	EGizmoMode NextMode = static_cast<EGizmoMode>((static_cast<int>(CurMode) + 1) % EGizmoMode::End);
+	int NextInt = (static_cast<int>(CurMode) + 1) % static_cast<int>(EGizmoMode::End);
+	if (NextInt == 0) NextInt = 1; // Skip Select in cycle
+	EGizmoMode NextMode = static_cast<EGizmoMode>(NextInt);
 	UpdateGizmoMode(NextMode);
 }
 
 void UGizmoComponent::UpdateGizmoMode(EGizmoMode NewMode)
 {
 	CurMode = NewMode;
+	SetVisibility(NewMode != EGizmoMode::Select);
 	UpdateGizmoTransform();
 }
 
 void UGizmoComponent::UpdateGizmoTransform()
 {
 	if (!TargetComponent) return;
+
+	if (CurMode == EGizmoMode::Select)
+	{
+		SetVisibility(false);
+		return;
+	}
+	else
+	{
+		SetVisibility(true);
+	}
 
 	const FVector DesiredLocation = TargetComponent->GetWorldLocation();
 	
@@ -873,6 +886,8 @@ FMeshBuffer* UGizmoComponent::GetMeshBuffer() const
 		break;
 	case EGizmoMode::Scale:
 		Shape = EMeshShape::ScaleGizmo;
+		break;
+	case EGizmoMode::Select:
 		break;
 	}
 	return &FMeshBufferManager::Get().GetMeshBuffer(Shape);

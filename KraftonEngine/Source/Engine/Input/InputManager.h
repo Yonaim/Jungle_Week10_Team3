@@ -9,6 +9,7 @@ enum class EInputEventType : unsigned char
 	KeyUp,
 	MouseButtonDown,
 	MouseButtonUp,
+	MouseWheel,
 };
 // Struct : Input Event
 // Fuction : Store Input Event information of Type and Key/Button
@@ -16,6 +17,7 @@ struct FInputEvent
 {
 	EInputEventType Type;
 	int32 KeyOrButton;
+	float Value = 0.0f;
 };
 
 // InputManager : Handle raw input from windows 
@@ -50,26 +52,59 @@ public:
 	bool IsKeyPressed(int32 Key) const;
 	bool IsKeyReleased(int32 Key) const;
 
+	// Mouse specific 
 	bool IsMouseButtonDown(int32 Button) const;
 	bool IsMouseButtonPressed(int32 Button) const;
 	bool IsMouseButtonReleased(int32 Button) const;
 
+	// Mouse position & Delta
+	POINT GetMousePos() const { return LastMousePos; }
 	float GetMouseDeltaX() const { return MouseDeltaX; }
 	float GetMouseDeltaY() const { return MouseDeltaY; }
+	bool MouseMoved() const { return std::abs(MouseDeltaX) > 1e-6f || std::abs(MouseDeltaY) > 1e-6f; }
+
+	// Scrolling
+	float GetMouseWheelDelta() const { return MouseWheelDelta; }
+	bool ScrolledUp() const { return MouseWheelDelta > 0.0f; }
+	bool ScrolledDown() const { return MouseWheelDelta < 0.0f; }
+	float GetScrollNotches() const { return MouseWheelDelta; } // Already normalized
+
+	// Dragging
+	bool IsDragging(int32 Button) const;
+	bool WasDragStarted(int32 Button) const;
+	bool WasDragEnded(int32 Button) const;
+	POINT GetDragDelta(int32 Button) const;
+	float GetDragDistance(int32 Button) const;
 
 	void SetTrackingMouse(bool bTrack) { bTrackingMouse = bTrack; if (bTrack) GetCursorPos(&LastMousePos); }
 	void SetLastMousePos(POINT Pos) { LastMousePos = Pos; }
+	void SetOwnerWindow(HWND Hwnd) { OwnerHWnd = Hwnd; }
+	bool IsWindowFocused() const { return bWindowFocused; }
 
-	static constexpr int32 MOUSE_LEFT = 0;
-	static constexpr int32 MOUSE_RIGHT = 1;
-	static constexpr int32 MOUSE_MIDDLE = 2;
+	// GUI state helpers (wrappers for ImGui check)
+	bool IsGuiUsingMouse() const;
+	bool IsGuiUsingKeyboard() const;
+
+	// Resets
+	void ResetMouseDelta();
+	void ResetWheelDelta();
+	void ResetAllKeyStates();
+	void ResetAllStates();
+
+	// Win32 indices
+
+	static constexpr int32 MOUSE_LEFT = VK_LBUTTON;
+	static constexpr int32 MOUSE_RIGHT = VK_RBUTTON;
+	static constexpr int32 MOUSE_MIDDLE = VK_MBUTTON;
+	static constexpr int32 MOUSE_X1 = VK_XBUTTON1;
+	static constexpr int32 MOUSE_X2 = VK_XBUTTON2;
 
 private:
 	FInputManager() = default;
 	~FInputManager() = default;
 
 	static constexpr int32 MAX_KEYS = 256;
-	static constexpr int32 MAX_MOUSE_BUTTONS = 3;
+	static constexpr int32 DRAG_THRESHOLD = 5;
 
 	// Event queue (filled by WndProc, flushed in Tick)
 	std::vector<FInputEvent> EventQueue;
@@ -77,13 +112,29 @@ private:
 	bool KeyState[MAX_KEYS] = {};
 	bool PrevKeyState[MAX_KEYS] = {};
 
-	bool MouseButtonState[MAX_MOUSE_BUTTONS] = {};
-	bool PrevMouseButtonState[MAX_MOUSE_BUTTONS] = {};
-
 	float MouseDeltaX = 0.0f;
 	float MouseDeltaY = 0.0f;
+	float MouseWheelDelta = 0.0f;
+	float PendingWheelDelta = 0.0f;
+
+	float RawMouseDeltaAccumX = 0.0f;
+	float RawMouseDeltaAccumY = 0.0f;
+
 	POINT LastMousePos = {};
 	bool bTrackingMouse = false;
+
+	// Dragging state 
+	bool bIsDragging[MAX_KEYS] = {};
+	bool bWasDragStarted[MAX_KEYS] = {};
+	bool bWasDragEnded[MAX_KEYS] = {};
+	POINT MouseDownPos[MAX_KEYS] = {};
+	bool bDragCandidate[MAX_KEYS] = {};
+
+	HWND OwnerHWnd = nullptr;
+	bool bWindowFocused = true;
+
+	void UpdateDragging();
+	
 
 	static FInputManager* Instance;
 };

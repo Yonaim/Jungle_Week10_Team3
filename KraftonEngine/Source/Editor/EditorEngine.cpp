@@ -86,6 +86,11 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	// 엔진 공통 초기화 (Renderer, D3D, 싱글턴 등)
 	UEngine::Init(InWindow);
 
+	if (InWindow)
+	{
+		FInputManager::Get().SetOwnerWindow(InWindow->GetHWND());
+	}
+
 	{
 		SCOPE_STARTUP_STAT("ObjManager::ScanMeshAssets");
 		FObjManager::ScanMeshAssets();
@@ -159,6 +164,8 @@ void UEditorEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 void UEditorEngine::Tick(float DeltaTime)
 {
+	FInputManager::Get().Tick();
+
 	// --- PIE 요청 처리 (프레임 경계에서 처리되도록 Tick 선두에서 소비) ---
 	if (bRequestEndPlayMapQueued)
 	{
@@ -277,8 +284,6 @@ void UEditorEngine::StartQueuedPlaySessionRequest()
 
 void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams& Params)
 {
-	// InputSystem::Get().ResetAllKeyStates();
-	// InputSystem::Get().ResetTransientState();
 
 	// 1) 현재 에디터 월드를 복제해 PIE 월드 생성 (UE의 CreatePIEWorldByDuplication 대응).
 	UWorld* EditorWorld = GetWorld();
@@ -476,8 +481,6 @@ bool UEditorEngine::EnterPIEPossessedMode()
 	PIEControlMode = EPIEControlMode::Possessed;
 	SyncGameViewportPIEControlState(true);
 	// InputSystem::Get().SetUseRawMouse(true);
-	// InputSystem::Get().ResetAllKeyStates();
-	// InputSystem::Get().ResetTransientState();
 	return true;
 }
 
@@ -491,8 +494,6 @@ bool UEditorEngine::EnterPIEEjectedMode()
 	PIEControlMode = EPIEControlMode::Ejected;
 	SyncGameViewportPIEControlState(false);
 	// InputSystem::Get().SetUseRawMouse(false);
-	// InputSystem::Get().ResetAllKeyStates();
-	// InputSystem::Get().ResetTransientState();
 	return true;
 }
 

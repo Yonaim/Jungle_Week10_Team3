@@ -3,8 +3,10 @@
 #include "Input/InputManager.h"
 #include "Input/InputAction.h"
 #include "Input/InputMappingContext.h"
+#include "ImGui/imgui.h"
 
 #include <algorithm>
+
 // Function : Add mapping context to manager and sort by priority
 // input : Priority, Context 
 // Context : mapping context to add
@@ -30,12 +32,12 @@ void FEnhancedInputManager::RemoveMappingContext(FInputMappingContext* Context)
 			[Context](const FMappingContextEntry& E) { return E.Context == Context; }),
 		MappingContexts.end());
 }
+
 // Function : Clear all mapping context from manager
 void FEnhancedInputManager::ClearAllMappingContexts()
 {
 	MappingContexts.clear();
 }
-
 
 // Function : Bind action to manager with trigger event and callback
 // input : Action , TriggerEvent, callback
@@ -46,6 +48,7 @@ void FEnhancedInputManager::BindAction(FInputAction* Action, ETriggerEvent Trigg
 {
 	Bindings.push_back({ Action, TriggerEvent, std::move(Callback) });
 }
+
 // Function : Clear all bindings from manager
 void FEnhancedInputManager::ClearBindings()
 {
@@ -62,8 +65,28 @@ FInputActionValue FEnhancedInputManager::GetRawActionValue(FInputManager* Input,
 		return FInputActionValue(Input->GetMouseDeltaX());
 	if (Key == static_cast<int32>(EInputKey::MouseY))
 		return FInputActionValue(Input->GetMouseDeltaY());
-	return FInputActionValue(Input->IsKeyDown(Key) ? 1.0f : 0.0f);
+	if (Key == static_cast<int32>(EInputKey::MouseWheel))
+		return FInputActionValue(Input->GetMouseWheelDelta());
+
+	if (Key == static_cast<int32>(EInputKey::MouseDragL_X))
+		return FInputActionValue(static_cast<float>(Input->GetDragDelta(FInputManager::MOUSE_LEFT).x));
+	if (Key == static_cast<int32>(EInputKey::MouseDragL_Y))
+		return FInputActionValue(static_cast<float>(Input->GetDragDelta(FInputManager::MOUSE_LEFT).y));
+	if (Key == static_cast<int32>(EInputKey::MouseDragR_X))
+		return FInputActionValue(static_cast<float>(Input->GetDragDelta(FInputManager::MOUSE_RIGHT).x));
+	if (Key == static_cast<int32>(EInputKey::MouseDragR_Y))
+		return FInputActionValue(static_cast<float>(Input->GetDragDelta(FInputManager::MOUSE_RIGHT).y));
+	if (Key == static_cast<int32>(EInputKey::MouseDragM_X))
+		return FInputActionValue(static_cast<float>(Input->GetDragDelta(FInputManager::MOUSE_MIDDLE).x));
+	if (Key == static_cast<int32>(EInputKey::MouseDragM_Y))
+		return FInputActionValue(static_cast<float>(Input->GetDragDelta(FInputManager::MOUSE_MIDDLE).y));
+
+	if (Key >= 0 && Key < 256)
+		return FInputActionValue(Input->IsKeyDown(Key) ? 1.0f : 0.0f);
+	
+	return FInputActionValue(0.0f);
 }
+
 // Function : Process input from raw input manager 
 // and update action state and trigger events
 // input : raw input , delta time
@@ -72,14 +95,26 @@ FInputActionValue FEnhancedInputManager::GetRawActionValue(FInputManager* Input,
 // used for trigger state update
 void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTime)
 {
+	bool bGuiWantsKeyboard = RawInput->IsGuiUsingKeyboard();
+	bool bGuiWantsMouse = RawInput->IsGuiUsingMouse();
+
 	TMap<FInputAction*, FInputActionValue> ActionValues;
 	TMap<FInputAction*, ETriggerState> NewTriggerStates;
+	
 	for (const FMappingContextEntry& ContextEntry : MappingContexts)
 	{
+		if (!ContextEntry.Context) continue;
+
 		for (FActionKeyMapping& Mapping : ContextEntry.Context->Mappings)
 		{
-			if (!Mapping.Action)
-				continue;
+			if (!Mapping.Action) continue;
+
+			// ImGui blocking
+			bool bIsMouseKey = (Mapping.Key >= static_cast<int32>(EInputKey::MouseX) && Mapping.Key <= static_cast<int32>(EInputKey::MouseDragM_Y))
+				|| (Mapping.Key == VK_LBUTTON || Mapping.Key == VK_RBUTTON || Mapping.Key == VK_MBUTTON || Mapping.Key == VK_XBUTTON1 || Mapping.Key == VK_XBUTTON2);
+			
+			if (bIsMouseKey && bGuiWantsMouse) continue;
+			if (!bIsMouseKey && bGuiWantsKeyboard) continue;
 
 			FInputActionValue Value = GetRawActionValue(RawInput, Mapping.Key);
 
@@ -87,13 +122,11 @@ void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTim
 			{
 				Value = Modifier->ModifyRaw(Value);
 			}
-			ETriggerState MappingTriggerState = ETriggerState::None;
 
+			ETriggerState MappingTriggerState = ETriggerState::None;
 			if (Mapping.Triggers.empty())
 			{
-				MappingTriggerState = Value.IsNonZero()
-					? ETriggerState::Triggered
-					: ETriggerState::None;
+				MappingTriggerState = Value.IsNonZero() ? ETriggerState::Triggered : ETriggerState::None;
 			}
 			else
 			{
@@ -102,16 +135,12 @@ void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTim
 				for (auto& Trigger : Mapping.Triggers)
 				{
 					ETriggerState State = Trigger->UpdateState(Value, DeltaTime);
-					if (State != ETriggerState::Triggered)
-						bAllTriggered = false;
-					if (State == ETriggerState::Ongoing)
-						bAnyOngoing = true;
+					if (State != ETriggerState::Triggered) bAllTriggered = false;
+					if (State == ETriggerState::Ongoing) bAnyOngoing = true;
 				}
 
-				if (bAllTriggered)
-					MappingTriggerState = ETriggerState::Triggered;
-				else if (bAnyOngoing)
-					MappingTriggerState = ETriggerState::Ongoing;
+				if (bAllTriggered) MappingTriggerState = ETriggerState::Triggered;
+				else if (bAnyOngoing) MappingTriggerState = ETriggerState::Ongoing;
 			}
 
 			if (ActionValues.find(Mapping.Action) == ActionValues.end())
@@ -125,38 +154,28 @@ void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTim
 		}
 	}
 
-
-	// 상태 전이 → ETriggerEvent 결정 + Binding 호출
+	// State Transitions -> ETriggerEvent -> Callbacks
 	for (auto& [Action, NewState] : NewTriggerStates)
 	{
 		ETriggerState PrevState = ActionStates[Action];
-
 		ETriggerEvent Event = ETriggerEvent::None;
+
 		if (NewState == ETriggerState::Triggered)
 		{
-			if (PrevState == ETriggerState::None)
-				Event = ETriggerEvent::Started | ETriggerEvent::Triggered;
-			else
-				Event = ETriggerEvent::Triggered;
+			Event = (PrevState == ETriggerState::None) ? (ETriggerEvent::Started | ETriggerEvent::Triggered) : ETriggerEvent::Triggered;
 		}
 		else if (NewState == ETriggerState::Ongoing)
 		{
-			if (PrevState == ETriggerState::None)
-				Event = ETriggerEvent::Started | ETriggerEvent::Ongoing;
-			else
-				Event = ETriggerEvent::Ongoing;
+			Event = (PrevState == ETriggerState::None) ? (ETriggerEvent::Started | ETriggerEvent::Ongoing) : ETriggerEvent::Ongoing;
 		}
-		else // NewState == None
+		else // None
 		{
-			if (PrevState == ETriggerState::Triggered)
-				Event = ETriggerEvent::Completed;
-			else if (PrevState == ETriggerState::Ongoing)
-				Event = ETriggerEvent::Canceled;
+			if (PrevState == ETriggerState::Triggered) Event = ETriggerEvent::Completed;
+			else if (PrevState == ETriggerState::Ongoing) Event = ETriggerEvent::Canceled;
 		}
 
 		ActionStates[Action] = NewState;
 
-		// 매칭 Binding 호출
 		if (Event != ETriggerEvent::None)
 		{
 			FInputActionValue& ActionValue = ActionValues[Action];
@@ -170,18 +189,14 @@ void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTim
 		}
 	}
 
-	// 이번 프레임에 매핑이 없었던 Action의 상태 정리
-	for (auto It = ActionStates.begin(); It != ActionStates.end(); ++It)
+	// Clean up actions not mapped this frame
+	for (auto It = ActionStates.begin(); It != ActionStates.end();)
 	{
 		if (NewTriggerStates.find(It->first) == NewTriggerStates.end())
 		{
 			if (It->second != ETriggerState::None)
 			{
-				// 매핑이 사라진 Action -> Completed/Canceled
-				ETriggerEvent Event = (It->second == ETriggerState::Triggered)
-					? ETriggerEvent::Completed
-					: ETriggerEvent::Canceled;
-
+				ETriggerEvent Event = (It->second == ETriggerState::Triggered) ? ETriggerEvent::Completed : ETriggerEvent::Canceled;
 				FInputActionValue ZeroValue;
 				for (const FBindingEntry& Binding : Bindings)
 				{
@@ -191,7 +206,11 @@ void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTim
 					}
 				}
 			}
-			It->second = ETriggerState::None;
+			It = ActionStates.erase(It);
+		}
+		else
+		{
+			++It;
 		}
 	}
 }

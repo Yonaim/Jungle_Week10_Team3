@@ -8,6 +8,13 @@ enum class EInputKey : int32
 {
 	MouseX = 256,
 	MouseY = 257,
+	MouseWheel = 258,
+	MouseDragL_X = 259,
+	MouseDragL_Y = 260,
+	MouseDragR_X = 261,
+	MouseDragR_Y = 262,
+	MouseDragM_X = 263,
+	MouseDragM_Y = 264,
 };
 // InputActionValue store input value of action and provide interface to get value in different type
 enum class EInputActionValueType : uint32

@@ -14,7 +14,6 @@
 
 class FViewport;
 class UCameraComponent;
-struct FInputSystemSnapshot;
 
 struct FGameInputSettings
 {

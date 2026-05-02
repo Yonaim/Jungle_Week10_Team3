@@ -292,17 +292,7 @@ void FEditorMainPanel::Update()
 	// 뷰포트 슬롯 위에서는 bUsingMouse를 해제해야 TickInteraction이 동작
 	bool bWantMouse = IO.WantCaptureMouse;
 	bool bWantKeyboard = IO.WantCaptureKeyboard || bShowShortcutOverlay;
-	if (EditorEngine && EditorEngine->IsMouseOverViewport())
-	{
-		bWantMouse = false;
-		if (!IO.WantTextInput && !bShowShortcutOverlay)
-		{
-			bWantKeyboard = false;
-		}
-	}
-	// InputSystem::Get().GetGuiInputState().bUsingMouse = bWantMouse;
-	// InputSystem::Get().GetGuiInputState().bUsingKeyboard = bWantKeyboard;
-	// InputSystem::Get().GetGuiInputState().bUsingTextInput = IO.WantTextInput;
+
 
 	// IME는 ImGui가 텍스트 입력을 원할 때만 활성화.
 	if (Window)

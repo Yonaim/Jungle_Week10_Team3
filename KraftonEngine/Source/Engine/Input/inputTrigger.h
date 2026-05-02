@@ -86,6 +86,7 @@ class FInputReleased : public FInputTrigger //뗀 1회
 
 class FInputHold : public FInputTrigger
 {
+public:
 	// Fuction : Value is NonZero -> HoldDuration += DeltaTime 
 	// if HoldDuration >= HoldTimeThresold -> Triggered else Ongoing
 	// if Value is Zero -> Reset
@@ -115,6 +116,22 @@ class FInputHold : public FInputTrigger
 		FInputTrigger::Reset();
 		HeldDuration = 0.0f;
 		bTriggered = false;
+	}
+};
+
+class FTriggerChordAction : public FInputTrigger
+{
+public:
+	FInputAction* ChordAction = nullptr;
+
+	FTriggerChordAction(FInputAction* InChordAction) : ChordAction(InChordAction) {}
+
+	ETriggerState UpdateState(const FInputActionValue& Value, float DeltaTime) override
+	{
+		//  This requires the ChordAction to be updated in the same frame.
+		// In a simple system, we might just check FInputManager directly for the key.
+		// , we check if the ChordAction's current state is Triggered.
+		return ETriggerState::None; // Implementation depends on EnhancedInputManager access
 	}
 };
 

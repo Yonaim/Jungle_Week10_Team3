@@ -64,6 +64,7 @@ struct FViewportRenderOptions
 	float CameraMoveSensitivity = 1.0f;
 	float CameraRotateSensitivity = 1.0f;
 	ELevelViewportType ViewportType = ELevelViewportType::Perspective;
+	bool bGameView = false;
 
 	// Scene Depth 전용 설정
 	int32 SceneDepthVisMode = 0;

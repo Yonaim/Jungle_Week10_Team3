@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Viewport/ViewportClient.h"
 #include "Render/Types/RenderTypes.h"
@@ -10,6 +10,9 @@
 #include "Core/CollisionTypes.h"
 #include "Math/Rotator.h"
 #include "imgui.h"
+#include "Input/EnhancedInputManager.h"
+#include "Input/InputAction.h"
+#include "Input/InputMappingContext.h"
 
 class UWorld;
 class UCameraComponent;
@@ -24,6 +27,9 @@ class FOverlayStatSystem;
 class FEditorViewportClient : public FViewportClient
 {
 public:
+	FEditorViewportClient();
+	~FEditorViewportClient() override;
+
 	void Initialize(FWindowsWindow* InWindow);
 	void SetOverlayStatSystem(FOverlayStatSystem* InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
 	// World는 더 이상 저장하지 않는다 — GetWorld()는 GEngine->GetWorld()를 경유하여
@@ -85,6 +91,23 @@ public:
 	void SetPointLightFaceIndex(int32 Index) { PointLightFaceIndex = (Index < 0) ? 0 : (Index > 5) ? 5 : Index; }
 
 private:
+	void SetupInput();
+
+	// Action Callbacks
+	void OnEditorMove(const FInputActionValue& Value);
+	void OnEditorRotate(const FInputActionValue& Value);
+	void OnEditorPan(const FInputActionValue& Value);
+	void OnEditorZoom(const FInputActionValue& Value);
+	void OnEditorOrbit(const FInputActionValue& Value);
+
+	void OnEditorFocus(const FInputActionValue& Value);
+	void OnEditorDelete(const FInputActionValue& Value);
+	void OnEditorDuplicate(const FInputActionValue& Value);
+	void OnEditorToggleGizmoMode(const FInputActionValue& Value);
+	void OnEditorToggleCoordSystem(const FInputActionValue& Value);
+	void OnEditorEscape(const FInputActionValue& Value);
+	void OnEditorTogglePIE(const FInputActionValue& Value);
+
 	void TickEditorShortcuts();
 	void TickInput(float DeltaTime);
 	void TickInteraction(float DeltaTime);
@@ -132,4 +155,27 @@ private:
 	FVector LastAppliedCameraLocation;
 	bool bLastAppliedCameraLocationInitialized = false;
 	const float SmoothLocationSpeed = 10.0f;
+
+	// Enhanced Input
+	FEnhancedInputManager EnhancedInputManager;
+	FInputMappingContext* EditorMappingContext = nullptr;
+
+	FInputAction* ActionEditorMove = nullptr;
+	FInputAction* ActionEditorRotate = nullptr;
+	FInputAction* ActionEditorPan = nullptr;
+	FInputAction* ActionEditorZoom = nullptr;
+	FInputAction* ActionEditorOrbit = nullptr;
+
+	FInputAction* ActionEditorFocus = nullptr;
+	FInputAction* ActionEditorDelete = nullptr;
+	FInputAction* ActionEditorDuplicate = nullptr;
+	FInputAction* ActionEditorToggleGizmoMode = nullptr;
+	FInputAction* ActionEditorToggleCoordSystem = nullptr;
+	FInputAction* ActionEditorEscape = nullptr;
+	FInputAction* ActionEditorTogglePIE = nullptr;
+
+	FVector EditorMoveAccumulator = FVector::ZeroVector;
+	FVector EditorRotateAccumulator = FVector::ZeroVector;
+	FVector EditorPanAccumulator = FVector::ZeroVector;
+	float EditorZoomAccumulator = 0.0f;
 };

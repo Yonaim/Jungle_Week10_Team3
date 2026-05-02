@@ -9,8 +9,9 @@ class AActor;
 class FPrimitiveSceneProxy;
 class FScene;
 
-enum EGizmoMode
+enum class EGizmoMode
 {
+	Select,
 	Translate,
 	Rotate,
 	Scale,
@@ -58,6 +59,7 @@ public:
 	inline void SetTranslateMode() { UpdateGizmoMode(EGizmoMode::Translate); }
 	inline void SetRotateMode() { UpdateGizmoMode(EGizmoMode::Rotate); }
 	inline void SetScaleMode() { UpdateGizmoMode(EGizmoMode::Scale); }
+	inline void SetSelectMode() { UpdateGizmoMode(EGizmoMode::Select); }
 	void UpdateGizmoTransform();
 	float ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f) const;
 	void ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f);
