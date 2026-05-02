@@ -116,6 +116,7 @@ namespace
 		{ "Height Fog", "height fog vfx atmosphere", "Editor.Icon.HeightFog", EPlaceType::HeightFog, ECategory::VFX },
 		{ "Obstacle", "Basic Obstacle", "Editor.Icon.Cube", EPlaceType::SimpleObstacle, ECategory::Basic },
 		{ "Wireball", "Wireball Obstacle", "Editor.Icon.Cube", EPlaceType::Wireball, ECategory::Basic },
+		{ "Vertical Wires", "Vertical Wire Obstacle", "Editor.Icon.Cube", EPlaceType::VerticalWires, ECategory::Basic },
 	};
 
 	const char* GetCategoryLabel(ECategory Category)

@@ -434,6 +434,7 @@
     <ClCompile Include="Source\Engine\Viewport\ViewportClient.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\VerticalWireActor.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\WireballActor.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerEngine.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerPanel.cpp" />
@@ -680,6 +681,7 @@
     <ClInclude Include="Source\Engine\Viewport\ViewportClient.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\VerticalWireActor.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\WireballActor.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerEngine.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerPanel.h" />

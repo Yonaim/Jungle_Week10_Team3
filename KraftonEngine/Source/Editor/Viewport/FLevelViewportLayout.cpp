@@ -19,6 +19,7 @@
 #include "GameFramework/Light/SpotLightActor.h"
 #include "Game/GameActors/Obstacle/SimpleObstacleActor.h"
 #include "Game/GameActors/Obstacle/WireballActor.h"
+#include "Game/GameActors/Obstacle/VerticalWireActor.h"
 #include "GameFramework/World.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
@@ -2995,6 +2996,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Spot Light", EViewportPlaceActorType::SpotLight);
 		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::SimpleObstacle);
 		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::Wireball);
+		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::VerticalWires);
 
 		ImGui::EndMenu();
 	}
@@ -3313,6 +3315,16 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 			SpawnLocation.Z += 1.0f;
 		}
 		break;
+	}
+	case EViewportPlaceActorType::VerticalWires:
+	{
+		AVerticalWireActor* Actor = World->SpawnActor<AVerticalWireActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents(GetRegisteredMeshPath(""));
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
+		}
 	}
 	default:
 		break;
