@@ -40,7 +40,7 @@ struct VS_Input_PNCTT
 };
 
 // FTextureVertex (Position + TexCoord)
-// 사용: Font, SubUV, OverlayFont
+// 사용: Font, SubUV, ScreenText
 struct VS_Input_PT
 {
     float3 position : POSITION;

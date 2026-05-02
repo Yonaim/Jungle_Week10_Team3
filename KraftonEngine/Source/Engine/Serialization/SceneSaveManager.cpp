@@ -8,6 +8,7 @@
 #include "SimpleJSON/json.hpp"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/GameModeBase.h"
 #include "Component/SceneComponent.h"
 #include "Component/ActorComponent.h"
 #include "Component/StaticMeshComponent.h"
@@ -347,6 +348,7 @@ json::JSON FSceneSaveManager::SerializeWorld(UWorld* World, const FWorldContext&
 	JSON Actors = json::Array();
 	for (AActor* Actor : World->GetActors()) {
 		if (!Actor) continue;
+		if (Actor->IsA<AGameModeBase>()) continue;
 		JSON a = SerializeActor(Actor);
 		auto it = ActorPrimitiveKey.find(Actor);
 		if (it != ActorPrimitiveKey.end()) {
@@ -695,6 +697,9 @@ void FSceneSaveManager::LoadSceneFromJSONString(const string& SceneJson, FWorldC
 	{
 		for (auto& ActorJSON : root[SceneKeys::Actors].ArrayRange()) {
 			string ActorClass = ActorJSON[SceneKeys::ClassName].ToString();
+			if (ActorClass == AGameModeBase::StaticClass()->GetName()) {
+				continue;
+			}
 			AActor* Actor = nullptr;
 			if (ActorJSON.hasKey("PrimitiveKey")) {
 				string pk = ActorJSON["PrimitiveKey"].ToString();

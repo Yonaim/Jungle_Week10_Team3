@@ -393,7 +393,7 @@
     <ClCompile Include="Source\Engine\Render\RenderPass\GizmoOuterPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\LightCullingPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\OpaquePass.cpp" />
-    <ClCompile Include="Source\Engine\Render\RenderPass\OverlayFontPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderPass\ScreenTextPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PassRenderStateTable.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PostProcessPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PreDepthPass.cpp" />
@@ -619,7 +619,7 @@
     <ClInclude Include="Source\Engine\Render\RenderPass\GizmoOuterPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\LightCullingPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\OpaquePass.h" />
-    <ClInclude Include="Source\Engine\Render\RenderPass\OverlayFontPass.h" />
+    <ClInclude Include="Source\Engine\Render\RenderPass\ScreenTextPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PassRenderStateTable.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PostProcessPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PreDepthPass.h" />
@@ -995,7 +995,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Demo|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shaders\UI\OverlayFont.hlsl">
+    <FxCompile Include="Shaders\UI\ScreenText.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>

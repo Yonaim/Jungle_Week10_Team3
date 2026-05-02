@@ -291,7 +291,7 @@
     <FxCompile Include="Shaders\UI\Font.hlsl">
       <Filter>Shaders\UI</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\UI\OverlayFont.hlsl">
+    <FxCompile Include="Shaders\UI\ScreenText.hlsl">
       <Filter>Shaders\UI</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\UI\SubUV.hlsl">
@@ -713,7 +713,7 @@
     <ClCompile Include="Source\Engine\Render\RenderPass\OpaquePass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\RenderPass\OverlayFontPass.cpp">
+    <ClCompile Include="Source\Engine\Render\RenderPass\ScreenTextPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\PassRenderStateTable.cpp">
@@ -1361,7 +1361,7 @@
     <ClInclude Include="Source\Engine\Render\RenderPass\OpaquePass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\RenderPass\OverlayFontPass.h">
+    <ClInclude Include="Source\Engine\Render\RenderPass\ScreenTextPass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\PassRenderStateTable.h">
