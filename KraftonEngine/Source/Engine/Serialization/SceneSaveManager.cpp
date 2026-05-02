@@ -675,7 +675,16 @@ void FSceneSaveManager::LoadSceneFromJSONString(const string& SceneJson, FWorldC
 		? root[SceneKeys::ContextHandle].ToString()
 		: ContextName;
 
+	// GameMode 클래스를 InitWorld 전에 PersistentLevel에 주입할 수 없으므로
+	// 일단 World를 만든 뒤 PersistentLevel에 메타데이터로 설정한다.
 	World->InitWorld();
+	if (root.hasKey(SceneKeys::GameModeClass))
+	{
+		if (ULevel* PersistentLevel = World->GetPersistentLevel())
+		{
+			PersistentLevel->SetGameModeClassName(root[SceneKeys::GameModeClass].ToString());
+		}
+	}
 
 	std::unordered_map<string, AActor*> CreatedFromPrimitives;
 	if (root.hasKey("Primitives")) {

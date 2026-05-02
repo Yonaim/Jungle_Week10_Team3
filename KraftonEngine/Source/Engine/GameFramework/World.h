@@ -171,6 +171,10 @@ public:
 
 	bool HasBegunPlay() const { return bHasBegunPlay; }
 
+	// GameMode — BeginPlay 시점에 PersistentLevel/ProjectSettings의 클래스명으로 스폰됨
+	AGameModeBase* GetAuthGameMode() const { return AuthorGameMode; }
+	void SpawnGameMode();
+
 	// Active Camera — EditorViewportClient 또는 PlayerController가 세팅
 	void SetActiveCamera(UCameraComponent* InCamera) { ActiveCamera = InCamera; }
 	UCameraComponent* GetActiveCamera() const { return ActiveCamera; }

@@ -47,6 +47,9 @@ void UGameEngine::LoadStartLevel()
 	FWorldContext* Context = GetWorldContextFromHandle(GetActiveWorldHandle());
 	if (!Context || !Context->World) return;
 
+	// LoadSceneFromJSON이 새 World를 만들어 Context를 덮어씀 — 기존 World/Handle을 백업해두고 끝나면 복구.
+	const FName OriginalHandle = Context->ContextHandle;
+
 	FPerspectiveCameraData DummyCamera;
 	if (FilePath.ends_with(".Scene") || FilePath.ends_with(".scene"))
 	{
@@ -56,9 +59,19 @@ void UGameEngine::LoadStartLevel()
 	{
 		FSceneSaveManager::LoadWorldFromBinary(FilePath, Context->World);
 	}
-	
+
+	// JSON 저장본의 WorldType("Editor")을 Game으로 강제 복구 — UEngine::BeginPlay가 World->BeginPlay를 호출하려면 필수.
+	Context->WorldType = EWorldType::Game;
+	Context->ContextHandle = OriginalHandle;
+	SetActiveWorld(OriginalHandle);
+
+	// 주의: 기존 World 객체는 의도적으로 destroy하지 않음.
+	// 렌더 프록시 등 외부 참조가 남아있을 수 있어 즉시 destroy 시 크래시 위험.
+	// 엔진 셧다운 시 UObjectManager가 일괄 정리하도록 둠 (작은 1회성 누수).
+
 	if (Context->World)
 	{
+		Context->World->SetWorldType(EWorldType::Game);
 		Context->World->WarmupPickingData();
 	}
 }

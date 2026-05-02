@@ -26,6 +26,11 @@
 #include "Resource/ResourceManager.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Editor/UI/EditorFileUtils.h"
+#include "GameFramework/GameInstance.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/Level.h"
+#include "Object/UClass.h"
+#include "Core/Notification.h"
 
 #include <filesystem>
 #include <windows.h>
@@ -494,6 +499,19 @@ void FEditorMainPanel::RenderMainMenuBar()
 			{
 				EditorEngine->ImportTextureWithDialog();
 			}
+			DrawPopupSectionHeader("PACKAGE");
+			if (ImGui::MenuItem("Package: Release..."))
+			{
+				PackageGameBuild("ReleaseBuild.bat");
+			}
+			if (ImGui::MenuItem("Package: Shipping..."))
+			{
+				PackageGameBuild("ShippingBuild.bat");
+			}
+			if (ImGui::MenuItem("Package: Demo..."))
+			{
+				PackageGameBuild("DemoBuild.bat");
+			}
 			ImGui::EndMenu();
 		}
 
@@ -632,6 +650,27 @@ void FEditorMainPanel::RenderMainMenuBar()
 						World->AddStreamingLevel(SelectedPath);
 					}
 				}
+
+				if (Persistent && ImGui::BeginMenu("GameMode Override"))
+				{
+					const TArray<UClass*> Candidates = UClass::GetSubclassesOf(AGameModeBase::StaticClass());
+					const FString CurrentName = Persistent->GetGameModeClassName();
+
+					if (ImGui::MenuItem("(Use Project Default)", nullptr, CurrentName.empty()))
+					{
+						Persistent->SetGameModeClassName("");
+					}
+					ImGui::Separator();
+					for (UClass* C : Candidates)
+					{
+						const bool bSelected = (CurrentName == C->GetName());
+						if (ImGui::MenuItem(C->GetName(), nullptr, bSelected))
+						{
+							Persistent->SetGameModeClassName(C->GetName());
+						}
+					}
+					ImGui::EndMenu();
+				}
 			}
 			ImGui::EndMenu();
 		}
@@ -762,6 +801,29 @@ void FEditorMainPanel::RenderProjectSettingsWindow()
 	ImGui::Combo("Mode", &SceneDepthMode, "Power\0Linear\0");
 	ProjectSettings.SceneDepth.Mode = static_cast<uint32>(SceneDepthMode);
 	ImGui::SliderFloat("Exponent", &ProjectSettings.SceneDepth.Exponent, 1.0f, 512.0f, "%.0f");
+
+	DrawPopupSectionHeader("GAME");
+	auto DrawClassDropdown = [](const char* Label, UClass* BaseClass, FString& InOutValue)
+	{
+		const TArray<UClass*> Candidates = UClass::GetSubclassesOf(BaseClass);
+		const char* Preview = InOutValue.empty() ? "(none)" : InOutValue.c_str();
+		if (ImGui::BeginCombo(Label, Preview))
+		{
+			for (UClass* C : Candidates)
+			{
+				const bool bSelected = (InOutValue == C->GetName());
+				if (ImGui::Selectable(C->GetName(), bSelected))
+				{
+					InOutValue = C->GetName();
+				}
+				if (bSelected) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+	};
+	DrawClassDropdown("GameInstance Class", UGameInstance::StaticClass(), ProjectSettings.Game.GameInstanceClass);
+	DrawClassDropdown("Default GameMode Class", AGameModeBase::StaticClass(), ProjectSettings.Game.DefaultGameModeClass);
+	ImGui::TextDisabled("(GameInstance class change requires restart)");
 
 	if (ImGui::Button("Save"))
 	{
@@ -1006,5 +1068,67 @@ void FEditorMainPanel::HideEditorWindowsForPIE()
 void FEditorMainPanel::RestoreEditorWindowsAfterPIE()
 {
 	ShowEditorWindows();
+}
+
+void FEditorMainPanel::PackageGameBuild(const char* BatFileName)
+{
+	// 솔루션 루트(.bat 위치)를 찾는다 — 후보 경로를 차례대로 검사.
+	// FPaths::RootDir()은 보통 KraftonEngine/ (개발) 또는 exe 디렉터리(배포)를 반환한다.
+	// 트레일링 슬래시 때문에 parent_path()가 의도대로 안 나올 수 있으므로 lexically_normal로 정규화.
+	std::filesystem::path RootDir = std::filesystem::path(FPaths::RootDir()).lexically_normal();
+
+	std::filesystem::path SolutionDir;
+	std::filesystem::path BatPath;
+	const std::filesystem::path Candidates[] = {
+		RootDir,                                            // exe 디렉터리에 .bat이 있는 경우 (배포)
+		RootDir.parent_path(),                              // KraftonEngine/의 상위 = 솔루션 루트 (개발)
+		RootDir.parent_path().parent_path(),                // 한 단계 더 (혹시 모를 중첩)
+		std::filesystem::current_path(),                    // 마지막 폴백
+	};
+	for (const auto& Candidate : Candidates)
+	{
+		const std::filesystem::path Tentative = Candidate / BatFileName;
+		if (std::filesystem::exists(Tentative))
+		{
+			SolutionDir = Candidate;
+			BatPath = Tentative;
+			break;
+		}
+	}
+
+	if (BatPath.empty())
+	{
+		FNotificationManager::Get().AddNotification(
+			std::string("Package script not found: ") + BatFileName + " (searched near " + RootDir.string() + ")",
+			ENotificationType::Error);
+		return;
+	}
+
+	// .bat은 별도 콘솔 창에서 실행 (편집 중인 에디터를 막지 않게).
+	// "cmd /c start \"Title\" /D <SolutionDir> cmd /k \"<bat>\"" 형태로 cmd 콘솔에서 띄움.
+	std::wstring SolutionDirW = SolutionDir.wstring();
+	std::wstring BatPathW = BatPath.wstring();
+
+	std::wstring CommandLine = L"/c start \"Package Game Build\" /D \"" + SolutionDirW + L"\" cmd /k \"\"" + BatPathW + L"\"\"";
+
+	HINSTANCE Result = ShellExecuteW(
+		Window ? Window->GetHWND() : nullptr,
+		L"open",
+		L"cmd.exe",
+		CommandLine.c_str(),
+		SolutionDirW.c_str(),
+		SW_SHOWNORMAL);
+
+	if (reinterpret_cast<INT_PTR>(Result) <= 32)
+	{
+		FNotificationManager::Get().AddNotification(
+			std::string("Failed to launch package script: ") + BatFileName,
+			ENotificationType::Error);
+		return;
+	}
+
+	FNotificationManager::Get().AddNotification(
+		std::string("Packaging started: ") + BatFileName,
+		ENotificationType::Info);
 }
 

@@ -10,6 +10,4 @@ public:
 
 	virtual void Init() {}
 	virtual void Shutdown() {}
-
-}; 
-IMPLEMENT_CLASS(UGameInstance, UObject)
+};
