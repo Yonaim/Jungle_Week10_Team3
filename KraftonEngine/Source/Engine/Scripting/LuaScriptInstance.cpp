@@ -10,8 +10,10 @@
 #include "Object/ObjectFactory.h"
 #include "Platform/Paths.h"
 #include "Platform/ScriptPaths.h"
+#include "Scripting/ScriptProperty.h"
 
 // Sol.hpp에 있는 Check 매크로 겹침 방지 목적 제거
+#pragma region SolInclude
 #ifdef check
 #pragma push_macro("check")
 #undef check
@@ -36,6 +38,7 @@
 #pragma pop_macro("check")
 #undef LUA_RESTORE_CHECK_MACRO
 #endif
+#pragma endregion
 
 #include <algorithm>
 #include <cctype>
@@ -60,8 +63,7 @@ struct FLuaScriptInstance::FInstanceImpl
 		Frames,
 		MoveDone,
 		KeyDown,
-		Signal,
-		AnimationDone
+		Signal
 	};
 
 	struct FLuaWaitCondition
@@ -246,13 +248,6 @@ struct FLuaScriptInstance::FInstanceImpl
 			return true;
 		}
 
-		if (Type == "anim_done")
-		{
-			Entry.Wait.Kind = ELuaWaitKind::AnimationDone;
-			Entry.Wait.Name = Command["name"].get_or(FString());
-			return true;
-		}
-
 		OwnerInstance->SetError("Coroutine '" + Entry.FunctionName + "' yielded unknown wait command: " + Type);
 		return false;
 	}
@@ -285,8 +280,6 @@ struct FLuaScriptInstance::FInstanceImpl
 		}
 		case ELuaWaitKind::Signal:
 			return PendingSignals.find(Entry.Wait.Name) != PendingSignals.end();
-		case ELuaWaitKind::AnimationDone:
-			return OwnerProxy.IsAnimationDone(Entry.Wait.Name);
 		default:
 			return true;
 		}
@@ -428,6 +421,76 @@ namespace
 		OutFunction = sol::protected_function();
 	}
 
+	bool TryMakeScriptPropertyValueFromLua(const sol::object& Object, FScriptPropertyValue& OutValue)
+	{
+		// property(name, defaultValue)의 defaultValue를 C++ 저장 타입으로 옮긴다.
+		// Lua 숫자는 int/float 구분이 약하므로 일단 float로 받고, 선언 타입 보정은 UScriptComponent에서 처리한다.
+		if (!Object.valid() || Object == sol::lua_nil)
+		{
+			return false;
+		}
+
+		switch (Object.get_type())
+		{
+		case sol::type::boolean:
+			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Bool);
+			OutValue.BoolValue = Object.as<bool>();
+			return true;
+		case sol::type::number:
+			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Float);
+			OutValue.FloatValue = Object.as<float>();
+			return true;
+		case sol::type::string:
+			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::String);
+			OutValue.StringValue = Object.as<FString>();
+			return true;
+		case sol::type::table:
+		{
+			// ScriptProperty 스캔 stub과 같은 규칙을 사용해 테이블형 vec3도 받아준다.
+			// 실제 런타임 vec3는 userdata지만, 사용자가 직접 {x=0,y=0,z=0}을 넘기는 경우도 허용한다.
+			sol::table Table = Object.as<sol::table>();
+			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Vector);
+			OutValue.VectorValue.X = Table["x"].get_or(Table["X"].get_or(Table[1].get_or(0.0f)));
+			OutValue.VectorValue.Y = Table["y"].get_or(Table["Y"].get_or(Table[2].get_or(0.0f)));
+			OutValue.VectorValue.Z = Table["z"].get_or(Table["Z"].get_or(Table[3].get_or(0.0f)));
+			return true;
+		}
+		case sol::type::userdata:
+			if (Object.is<FVector>())
+			{
+				OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Vector);
+				OutValue.VectorValue = Object.as<FVector>();
+				return true;
+			}
+			break;
+		default:
+			break;
+		}
+
+		return false;
+	}
+
+	sol::object MakeLuaObjectFromScriptProperty(sol::state& Lua, const FScriptPropertyValue& Value)
+	{
+		// C++에서 결정한 property 값을 다시 Lua 값으로 돌려준다.
+		// vector는 LuaScriptRuntime에 등록된 FVector userdata로 반환된다.
+		switch (Value.Type)
+		{
+		case EScriptPropertyType::Bool:
+			return sol::make_object(Lua, Value.BoolValue);
+		case EScriptPropertyType::Int:
+			return sol::make_object(Lua, Value.IntValue);
+		case EScriptPropertyType::Float:
+			return sol::make_object(Lua, Value.FloatValue);
+		case EScriptPropertyType::String:
+			return sol::make_object(Lua, Value.StringValue);
+		case EScriptPropertyType::Vector:
+			return sol::make_object(Lua, Value.VectorValue);
+		default:
+			return sol::make_object(Lua, sol::lua_nil);
+		}
+	}
+
 	sol::object FindLuaObjectByPath(sol::environment& Env, const FString& Path)
 	{
 		// Env["EnemyAI.start"]는 Lua table 내부 함수를 찾지 못한다.
@@ -532,7 +595,9 @@ bool FLuaScriptInstance::Initialize(UScriptComponent* InOwnerComponent)
 	BindCoroutineFunctions();
 	BindInputFunctions();
 	BindDebugTimeFunctions();
-	BindWorldFunctions();
+	BindPropertyFunctions();
+	// Actor 생성/탐색 전역 API를 노출하지 않는다.
+	// 필요가 확정되면 BindWorldFunctions 호출을 되살리고 공개 API 문서도 같이 갱신한다.
 	return true;
 }
 
@@ -589,7 +654,9 @@ bool FLuaScriptInstance::LoadFromFile(const FString& InScriptPath)
 	BindCoroutineFunctions();
 	BindInputFunctions();
 	BindDebugTimeFunctions();
-	BindWorldFunctions();
+	BindPropertyFunctions();
+	// Actor 생성/탐색 전역 API를 노출하지 않는다.
+	// 필요가 확정되면 BindWorldFunctions 호출을 되살리고 공개 API 문서도 같이 갱신한다.
 
 	FString ScriptSource;
 	FString FileReadError;
@@ -840,6 +907,7 @@ AActor* FLuaScriptInstance::GetOwnerActor() const
 	return OwnerComponent ? OwnerComponent->GetOwner() : nullptr;
 }
 
+// Bind 관련 함수 (추가할 일 없으면 열지 말 것, bind 짬통)
 void FLuaScriptInstance::BindOwnerObject()
 {
 	if (!Impl)
@@ -860,11 +928,6 @@ void FLuaScriptInstance::BindCoroutineFunctions()
 	}
 
 	Impl->Env.set_function("StartCoroutine", [this](const FString& FunctionName)
-	{
-		return StartCoroutine(FunctionName);
-	});
-
-	Impl->Env.set_function("start_coroutine", [this](const FString& FunctionName)
 	{
 		return StartCoroutine(FunctionName);
 	});
@@ -913,30 +976,29 @@ void FLuaScriptInstance::BindCoroutineFunctions()
 		return Command;
 	}));
 
-	Impl->Env.set_function("wait_signal", sol::yielding([MakeWaitCommand](const FString& SignalName)
+	constexpr bool bExposeLegacyCoroutineSignals = false;
+	if (bExposeLegacyCoroutineSignals)
 	{
-		sol::table Command = MakeWaitCommand("signal");
-		Command["name"] = SignalName;
-		return Command;
-	}));
-
-	Impl->Env.set_function("wait_anim_done", sol::yielding([MakeWaitCommand](const FString& AnimName)
-	{
-		sol::table Command = MakeWaitCommand("anim_done");
-		Command["name"] = AnimName;
-		return Command;
-	}));
-
-	Impl->Env.set_function("signal", [this](const FString& SignalName)
-	{
-		if (!Impl || SignalName.empty())
+		// 템플런 MVP에서는 signal 대기 API를 공개하지 않는다.
+		// 기존 구현은 보존해 두되, 명시적으로 다시 켤 때만 environment에 바인딩한다.
+		Impl->Env.set_function("wait_signal", sol::yielding([MakeWaitCommand](const FString& SignalName)
 		{
-			return;
-		}
+			sol::table Command = MakeWaitCommand("signal");
+			Command["name"] = SignalName;
+			return Command;
+		}));
 
-		// signal은 코루틴 사이의 한 프레임 이벤트이므로 PendingSignals에 잠시 기록하고 TickCoroutines 끝에서 제거한다.
-		Impl->PendingSignals.insert(SignalName);
-	});
+		Impl->Env.set_function("signal", [this](const FString& SignalName)
+		{
+			if (!Impl || SignalName.empty())
+			{
+				return;
+			}
+
+			// signal은 코루틴 사이의 한 프레임 이벤트이므로 PendingSignals에 잠시 기록하고 TickCoroutines 끝에서 제거한다.
+			Impl->PendingSignals.insert(SignalName);
+		});
+	}
 }
 
 void FLuaScriptInstance::BindInputFunctions()
@@ -1037,6 +1099,49 @@ void FLuaScriptInstance::BindDebugTimeFunctions()
 	Impl->Env.set_function("delta_time", [this]()
 	{
 		return Impl ? Impl->LastDeltaTime : 0.0f;
+	});
+}
+
+void FLuaScriptInstance::BindPropertyFunctions()
+{
+	if (!Impl)
+	{
+		return;
+	}
+
+	Impl->Env.set_function("DeclareProperties", [](sol::object)
+	{
+		// 런타임에서는 ScriptProperty::LoadDescs가 이미 선언을 읽었다.
+		// Lua 실행 중에는 같은 스크립트를 그대로 실행하기 위해 no-op으로 둔다.
+	});
+
+	// Bind 예시:
+	// Impl->Env.set_function("my_api", [this](float Value) { /* OwnerComponent를 통해 엔진 상태를 읽고 쓴다. */ });
+	Impl->Env.set_function("property", [this](const FString& PropertyName, sol::optional<sol::object> DefaultObject)
+	{
+		// Lua 쪽 호출 형태는 property("Speed", 600.0)이다.
+		// 실제 우선순위 판단은 Component가 editor override를 알고 있으므로 Component에 위임한다.
+		sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
+		const sol::object NilObject = sol::make_object(Lua, sol::lua_nil);
+		const sol::object LuaDefaultObject = DefaultObject ? *DefaultObject : NilObject;
+
+		FScriptPropertyValue FallbackValue;
+		const bool bHasFallback = TryMakeScriptPropertyValueFromLua(LuaDefaultObject, FallbackValue);
+
+		UScriptComponent* OwnerComponent = GetOwnerComponent();
+		if (!OwnerComponent)
+		{
+			// owner가 사라진 뒤 Lua 값이 호출되면 C++ 객체 접근을 포기하고 fallback만 돌려준다.
+			return bHasFallback ? LuaDefaultObject : NilObject;
+		}
+
+		FScriptPropertyValue ResolvedValue;
+		if (!OwnerComponent->ResolveScriptPropertyValue(PropertyName, FallbackValue, bHasFallback, ResolvedValue))
+		{
+			return bHasFallback ? LuaDefaultObject : NilObject;
+		}
+
+		return MakeLuaObjectFromScriptProperty(Lua, ResolvedValue);
 	});
 }
 

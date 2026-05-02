@@ -77,10 +77,6 @@ struct FLuaActorProxy
 	void SetMoveSpeed(float InSpeed);
 	float GetMoveSpeed() const;
 
-	// 실제 애니메이션 시스템이 붙기 전까지 코루틴 대기 조건을 검증하기 위한 1초 mock API이다.
-	void PlayAnimation(const FString& AnimName);
-	bool IsAnimationDone(const FString& AnimName) const;
-
 	// Actor가 가진 Component를 Lua에 직접 포인터로 넘기지 않고, 항상 ComponentProxy로 감싸서 반환한다.
 	// 이름 조회는 실제 UObject 이름과 Component class 이름을 모두 허용해서 스크립트 사용성을 높인다.
 	FLuaComponentProxy GetComponent(const FString& ComponentName);
@@ -93,7 +89,6 @@ struct FLuaActorProxy
 	// Lua coroutine scheduler가 매 프레임 호출해서 Proxy 내부 비동기 작업을 진행한다.
 	void TickLuaTasks(float DeltaTime);
 	void TickMovement(float DeltaTime);
-	void TickAnimationMock(float DeltaTime);
 
 	void PrintLocation() const;
 	void Destroy();

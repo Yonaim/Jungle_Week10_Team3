@@ -64,11 +64,6 @@ struct FLuaActorProxy::FLuaActorTaskState
 	float MoveSpeed = 300.0f;
 	float MoveAcceptRadius = 1.0f;
 
-	// AnimationDone wait 조건을 테스트하기 위한 mock 상태이다.
-	// 실제 애니메이션 시스템이 붙으면 이 필드는 애니메이션 컴포넌트 조회로 대체할 수 있다.
-	bool bAnimationPlaying = false;
-	FString PlayingAnimationName;
-	float AnimationTimeRemaining = 0.0f;
 };
 
 namespace
@@ -394,31 +389,6 @@ float FLuaActorProxy::GetMoveSpeed() const
 	return TaskState ? TaskState->MoveSpeed : 0.0f;
 }
 
-void FLuaActorProxy::PlayAnimation(const FString& AnimName)
-{
-	if (!TaskState)
-	{
-		TaskState = std::make_shared<FLuaActorTaskState>();
-	}
-
-	// 아직 실제 Animation system과 연결하지 않았으므로, 이름만 기록하고 1초 뒤 완료되는 mock으로 처리한다.
-	// wait_anim_done 테스트와 스크립트 흐름 검증을 먼저 가능하게 하는 임시 구현이다.
-	TaskState->bAnimationPlaying = true;
-	TaskState->PlayingAnimationName = AnimName;
-	TaskState->AnimationTimeRemaining = 1.0f;
-}
-
-bool FLuaActorProxy::IsAnimationDone(const FString& AnimName) const
-{
-	if (!TaskState || !TaskState->bAnimationPlaying)
-	{
-		return true;
-	}
-
-	// 다른 애니메이션 이름을 기다리는 경우 현재 mock이 그 조건을 만족하지 않으므로 계속 대기한다.
-	return TaskState->PlayingAnimationName != AnimName;
-}
-
 FLuaComponentProxy FLuaActorProxy::GetComponent(const FString& ComponentName)
 {
 	AActor* TargetActor = GetActor();
@@ -505,9 +475,8 @@ FLuaComponentProxy FLuaActorProxy::GetStaticMeshComponent()
 
 void FLuaActorProxy::TickLuaTasks(float DeltaTime)
 {
-	// ActorProxy는 Lua 스크립팅의 기본 허브이므로, 이동과 애니메이션 mock 같은 Lua 전용 비동기 작업을 한 곳에서 갱신한다.
+	// ActorProxy는 Lua 스크립팅의 기본 허브이므로, Lua 전용 비동기 작업을 한 곳에서 갱신한다.
 	TickMovement(DeltaTime);
-	TickAnimationMock(DeltaTime);
 }
 
 void FLuaActorProxy::TickMovement(float DeltaTime)
@@ -568,23 +537,6 @@ void FLuaActorProxy::TickMovement(float DeltaTime)
 	FVector Direction = ToTarget;
 	Direction.Normalize();
 	TargetActor->SetActorLocation(CurrentLocation + Direction * Step);
-}
-
-void FLuaActorProxy::TickAnimationMock(float DeltaTime)
-{
-	if (!TaskState || !TaskState->bAnimationPlaying)
-	{
-		return;
-	}
-
-	TaskState->AnimationTimeRemaining -= (std::max)(0.0f, DeltaTime);
-	if (TaskState->AnimationTimeRemaining <= 0.0f)
-	{
-		// mock 애니메이션은 완료 시 playing 상태를 내려 wait_anim_done 조건을 만족시킨다.
-		TaskState->bAnimationPlaying = false;
-		TaskState->PlayingAnimationName.clear();
-		TaskState->AnimationTimeRemaining = 0.0f;
-	}
 }
 
 void FLuaActorProxy::PrintLocation() const
@@ -705,7 +657,9 @@ bool FLuaScriptRuntime::Initialize()
 			sol::lib::math,
 			sol::lib::string,
 			sol::lib::table,
-			sol::lib::coroutine);
+			sol::lib::coroutine
+			/*sol::lib::package*/); // 아직 require을 지원하지 않는다
+		// TODO: 필요하면 그때 추가
 
 		RegisterBindings();
 
@@ -779,9 +733,9 @@ void FLuaScriptRuntime::RegisterBindings()
 {
 	// 런타임 레벨에서 공통으로 노출할 타입은 모두 여기서 한 번만 등록한다.
 	BindVectorType();
-	BindComponentProxyType();
 	BindActorProxyType();
-	BindColorType();
+	// ComponentProxy/Color 바인딩은 유지 보수용 함수만 남기고 공개하지 않는다.
+	// TODO: 해당 기능이 실제 스크립트 요구사항으로 돌아오면 EngineAPI.lua와 함께 다시 노출한다.
 }
 
 void FLuaScriptRuntime::InitializeHotReload()
@@ -960,6 +914,7 @@ void FLuaScriptRuntime::BindActorProxyType()
 	sol::state& Lua = GetLuaState();
 
 	// 실제 Actor 전체를 노출하지 않고, 스크립트에 허용한 조작만 Proxy에 제한해서 공개한다.
+	// 아래 목록이 EngineAPI.lua의 Actor stub과 맞아야 LuaLS 자동완성과 실제 런타임 동작이 어긋나지 않는다.
 	Lua.new_usertype<FLuaActorProxy>(
 		"ActorProxy",
 		"IsValid", &FLuaActorProxy::IsValid,
@@ -985,14 +940,7 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"IsMoveDone", &FLuaActorProxy::IsMoveDone,
 		"SetMoveSpeed", &FLuaActorProxy::SetMoveSpeed,
 		"GetMoveSpeed", &FLuaActorProxy::GetMoveSpeed,
-		"PlayAnimation", &FLuaActorProxy::PlayAnimation,
-		"IsAnimationDone", &FLuaActorProxy::IsAnimationDone,
-		"GetComponent", &FLuaActorProxy::GetComponent,
-		"GetComponentByType", &FLuaActorProxy::GetComponentByType,
-		"GetScriptComponent", &FLuaActorProxy::GetScriptComponent,
-		"GetStaticMeshComponent", &FLuaActorProxy::GetStaticMeshComponent,
-		"PrintLocation", &FLuaActorProxy::PrintLocation,
-		"Destroy", &FLuaActorProxy::Destroy);
+		"PrintLocation", &FLuaActorProxy::PrintLocation);
 }
 
 void FLuaScriptRuntime::BindColorType()
