@@ -90,6 +90,7 @@ public:
 		PointLight,
 		SpotLight,
 		SimpleObstacle,
+		Wireball,
 	};
 
 	AActor* SpawnPlaceActor(EViewportPlaceActorType Type, const FVector& Location);
