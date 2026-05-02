@@ -85,7 +85,7 @@ bool ActorHasVisibleStaticMesh(const AActor* Actor)
 	for (UActorComponent* Component : Actor->GetComponents())
 	{
 		UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(Component);
-		if (StaticMeshComponent && StaticMeshComponent->GetStaticMesh())
+		if (StaticMeshComponent && StaticMeshComponent->IsVisible() && StaticMeshComponent->GetStaticMesh())
 		{
 			return true;
 		}
@@ -114,7 +114,21 @@ bool AActor::HasNonEditorOnlyPrimitiveComponent() const
 	for (UActorComponent* Component : OwnedComponents)
 	{
 		UPrimitiveComponent* PrimitiveComponent = Cast<UPrimitiveComponent>(Component);
-		if (PrimitiveComponent && !PrimitiveComponent->IsEditorOnlyComponent())
+		if (!PrimitiveComponent || PrimitiveComponent->IsEditorOnlyComponent())
+		{
+			continue;
+		}
+
+		if (UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(PrimitiveComponent))
+		{
+			if (StaticMeshComponent->GetStaticMesh())
+			{
+				return true;
+			}
+			continue;
+		}
+
+		if (PrimitiveComponent->IsVisible())
 		{
 			return true;
 		}

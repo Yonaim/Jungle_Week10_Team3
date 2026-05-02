@@ -23,6 +23,9 @@ void APawnActor::InitDefaultComponents()
 	BillboardComponent = AddComponent<UBillboardComponent>();
 	BillboardComponent->SetCanDeleteFromDetails(false);
 	BillboardComponent->AttachToComponent(RootSceneComponent);
+	BillboardComponent->SetAbsoluteScale(true);
+	BillboardComponent->SetEditorOnlyComponent(true);
+	BillboardComponent->SetHiddenInComponentTree(true);
 	BillboardComponent->SetSpriteSize(1.0f, 1.0f);
 
 	const FString IconPath = FResourceManager::Get().ResolvePath(FName("Editor.Icon.Pawn"));
