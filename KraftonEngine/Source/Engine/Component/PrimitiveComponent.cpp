@@ -38,6 +38,10 @@ HIDE_FROM_COMPONENT_LIST(UPrimitiveComponent)
 
 UPrimitiveComponent::~UPrimitiveComponent()
 {
+	if (Owner && Owner->GetWorld())
+	{
+		Owner->GetWorld()->RemovePendingOverlapComponent(this);
+	}
 	DestroyRenderState();
 }
 

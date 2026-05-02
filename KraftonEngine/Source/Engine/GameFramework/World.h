@@ -185,6 +185,7 @@ public:
 
 	// Adds a primitive component to the pending overlap update array
 	void AddPendingOverlapComponent(UPrimitiveComponent* InComp);
+	void RemovePendingOverlapComponent(UPrimitiveComponent* InComp);
 
 private:
 	// Overlaps

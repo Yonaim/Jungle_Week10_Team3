@@ -211,6 +211,7 @@ void UWorld::ClearLevels()
 	Levels.clear();
 	PersistentLevel = nullptr;
 	CurrentLevel = nullptr;
+	PendingOverlapComponents.clear();
 }
 
 void UWorld::DestroyActor(AActor* Actor)
@@ -436,6 +437,10 @@ void UWorld::Tick(float DeltaTime, ELevelTick TickType)
 
 void UWorld::AddPendingOverlapComponent(UPrimitiveComponent* InComp) {
 	if (InComp) PendingOverlapComponents.insert(InComp);
+}
+
+void UWorld::RemovePendingOverlapComponent(UPrimitiveComponent* InComp) {
+	if (InComp) PendingOverlapComponents.erase(InComp);
 }
 
 void UWorld::ProcessOverlapEvents() {
