@@ -79,7 +79,7 @@ void UObjViewerEngine::LoadPreviewMesh(const FString& MeshPath)
 	if (!World) return;
 
 	// 기존 액터 모두 제거
-	TArray<AActor*> Actors = World->GetActors();
+	TArray<AActor*> Actors = World->GetActors().ToArray();
 	for (AActor* Actor : Actors)
 	{
 		World->DestroyActor(Actor);
@@ -108,7 +108,7 @@ void UObjViewerEngine::ImportObjWithOptions(const FString& ObjPath, const FImpor
 	if (!World) return;
 
 	// 기존 액터 모두 제거
-	TArray<AActor*> Actors = World->GetActors();
+	TArray<AActor*> Actors = World->GetActors().ToArray();
 	for (AActor* Actor : Actors)
 	{
 		World->DestroyActor(Actor);

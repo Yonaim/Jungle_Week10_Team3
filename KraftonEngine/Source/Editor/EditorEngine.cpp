@@ -635,9 +635,9 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData& CamData)
 	}
 }
 
-bool UEditorEngine::SaveSceneAs(const FString& InSceneName)
+bool UEditorEngine::SaveSceneAs(const FString& InScenePath)
 {
-	if (InSceneName.empty())
+	if (InScenePath.empty())
 	{
 		return false;
 	}
@@ -649,8 +649,18 @@ bool UEditorEngine::SaveSceneAs(const FString& InSceneName)
 		return false;
 	}
 
-	FSceneSaveManager::SaveSceneAsJSON(InSceneName, *Context, FindSceneViewportCamera());
-	CurrentLevelFilePath = BuildScenePathFromStem(InSceneName);
+	if (InScenePath.ends_with(".umap") || InScenePath.ends_with(".UMAP"))
+	{
+		FSceneSaveManager::SaveWorldToBinary(InScenePath, Context->World);
+	}
+	else
+	{
+		// Extract stem to pass to SaveSceneAsJSON
+		FString Stem = GetFileStem(InScenePath);
+		FSceneSaveManager::SaveSceneAsJSON(Stem, *Context, FindSceneViewportCamera());
+	}
+	
+	CurrentLevelFilePath = InScenePath;
 	return true;
 }
 
@@ -658,7 +668,7 @@ bool UEditorEngine::SaveScene()
 {
 	if (HasCurrentLevelFilePath())
 	{
-		return SaveSceneAs(GetFileStem(CurrentLevelFilePath));
+		return SaveSceneAs(CurrentLevelFilePath);
 	}
 
 	return SaveSceneAsWithDialog();
@@ -669,11 +679,10 @@ bool UEditorEngine::SaveSceneAsWithDialog()
 	const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
 	const std::wstring DefaultFile = HasCurrentLevelFilePath()
 		? std::filesystem::path(FPaths::ToWide(CurrentLevelFilePath)).filename().wstring()
-		: std::wstring(L"Untitled.Scene");
+		: std::wstring(L"Untitled"); // Removed the forced extension so the dialog uses the selected filter's default
 	const FString SelectedPath = FEditorFileUtils::SaveFileDialog({
-		.Filter = L"Scene Files (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
+		.Filter = L"Binary Scene (*.umap)\0*.umap\0JSON Scene (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
 		.Title = L"Save Scene As",
-		.DefaultExtension = L"Scene",
 		.InitialDirectory = InitialDir.c_str(),
 		.DefaultFileName = DefaultFile.c_str(),
 		.OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
@@ -687,7 +696,7 @@ bool UEditorEngine::SaveSceneAsWithDialog()
 		return false;
 	}
 
-	return SaveSceneAs(GetFileStem(SelectedPath));
+	return SaveSceneAs(SelectedPath);
 }
 
 bool UEditorEngine::LoadSceneFromPath(const FString& InScenePath)
@@ -706,7 +715,7 @@ bool UEditorEngine::LoadSceneFromPath(const FString& InScenePath)
 	{
 		FSceneSaveManager::LoadSceneFromJSON(InScenePath, LoadContext, CameraData);
 	}
-	else if (InScenePath.ends_with(".bin"))
+	else if (InScenePath.ends_with(".umap") || InScenePath.ends_with(".UMAP"))
 	{
 		LoadContext.World = UObjectManager::Get().CreateObject<UWorld>();
 		FSceneSaveManager::LoadWorldFromBinary(InScenePath, LoadContext.World);
@@ -734,7 +743,7 @@ bool UEditorEngine::LoadSceneWithDialog()
 {
 	const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
 	const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
-		.Filter = L"Scene Files (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
+		.Filter = L"Scene Files (*.Scene;*.umap)\0*.Scene;*.umap\0All Files (*.*)\0*.*\0",
 		.Title = L"Load Scene",
 		.InitialDirectory = InitialDir.c_str(),
 		.OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,

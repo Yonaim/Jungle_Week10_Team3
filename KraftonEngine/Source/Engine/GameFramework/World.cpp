@@ -6,32 +6,28 @@
 #include "Engine/Component/CameraComponent.h"
 #include "Render/Types/LODContext.h"
 #include <algorithm>
+#include <filesystem>
 #include "Profiling/Stats.h"
 #include "GameFramework/GameModeBase.h"
+#include "Platform/Paths.h"
+#include "Serialization/WindowsArchive.h"
 IMPLEMENT_CLASS(UWorld, UObject)
 
 
 UWorld::~UWorld()
 {
-	if (PersistentLevel && !PersistentLevel->GetActors().empty())
-	{
-		EndPlay();
-	}
+	EndPlay();
 }
 
 UObject* UWorld::Duplicate(UObject* NewOuter) const
 {
-	// UE의 CreatePIEWorldByDuplication 대응 (간소화 버전).
-	// 새 UWorld를 만들고, 소스의 Actor들을 하나씩 복제해 NewWorld를 Outer로 삼아 등록한다.
-	// AActor::Duplicate 내부에서 Dup->GetTypedOuter<UWorld>() 경유 AddActor가 호출되므로
-	// 여기서는 World 단위 상태만 챙기면 된다.
 	UWorld* NewWorld = UObjectManager::Get().CreateObject<UWorld>();
 	if (!NewWorld)
 	{
 		return nullptr;
 	}
 	NewWorld->SetOuter(NewOuter);
-	NewWorld->InitWorld(); // Partition/VisibleSet 초기화 — 이거 없으면 복제 액터가 렌더링되지 않음
+	NewWorld->InitWorld();
 
 	for (AActor* Src : GetActors())
 	{
@@ -64,40 +60,188 @@ UWorld* UWorld::DuplicateAs(EWorldType InWorldType) const
 void UWorld::Serialize(FArchive& Ar)
 {
 	Super::Serialize(Ar);
-	if (PersistentLevel)
+	
+	if (Ar.IsSaving())
 	{
-		PersistentLevel->Serialize(Ar);
+		//  Serialize Persistent Level Data (Only persistent level data is stored in this file)
+		if (PersistentLevel)
+		{
+			PersistentLevel->Serialize(Ar);
+		}
+
+		// Serialize Streaming Levels Metadata (References to other files)
+		int32 StreamingCount = static_cast<int32>(StreamingLevels.size());
+		Ar << StreamingCount;
+		for (auto& Info : StreamingLevels)
+		{
+			Ar << Info.LevelPath;
+			Ar << Info.LevelName;
+			Ar << Info.bShouldBeVisible;
+		}
 	}
+	else if (Ar.IsLoading())
+	{
+		ClearLevels();
+		StreamingLevels.clear();
+
+		// Deserialize Persistent Level Data
+		PersistentLevel = UObjectManager::Get().CreateObject<ULevel>(this);
+		PersistentLevel->SetWorld(this);
+		PersistentLevel->Serialize(Ar);
+		Levels.push_back(PersistentLevel);
+		CurrentLevel = PersistentLevel;
+
+		// Deserialize Streaming Levels Metadata
+		int32 StreamingCount = 0;
+		Ar << StreamingCount;
+		for (int32 i = 0; i < StreamingCount; ++i)
+		{
+			FStreamingLevelInfo Info;
+			Ar << Info.LevelPath;
+			Ar << Info.LevelName;
+			Ar << Info.bShouldBeVisible;
+			StreamingLevels.push_back(Info);
+		}
+
+		// Auto-load streaming levels 
+		for (auto& Info : StreamingLevels)
+		{
+			LoadStreamingLevel(Info.LevelPath);
+		}
+	}
+}
+
+void UWorld::AddStreamingLevel(const FString& LevelPath)
+{
+	for (const auto& Info : StreamingLevels)
+	{
+		if (Info.LevelPath == LevelPath) return;
+	}
+
+	FStreamingLevelInfo NewInfo;
+	NewInfo.LevelPath = LevelPath;
+	NewInfo.LevelName = FName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(LevelPath)).stem().wstring()));
+	StreamingLevels.push_back(NewInfo);
+	
+	LoadStreamingLevel(LevelPath);
+}
+
+void UWorld::LoadStreamingLevel(const FString& LevelPath)
+{
+	FStreamingLevelInfo* TargetInfo = nullptr;
+	for (auto& Info : StreamingLevels)
+	{
+		if (Info.LevelPath == LevelPath)
+		{
+			TargetInfo = &Info;
+			break;
+		}
+	}
+
+	if (!TargetInfo || TargetInfo->bIsLoaded) return;
+
+	// Load Level from separate file
+	ULevel* NewLevel = UObjectManager::Get().CreateObject<ULevel>(this);
+	NewLevel->SetWorld(this);
+
+	FWindowsBinReader Ar(LevelPath);
+	if (Ar.IsValid())
+	{
+		NewLevel->Serialize(Ar);
+		AddLevel(NewLevel);
+		TargetInfo->LoadedLevel = NewLevel;
+		TargetInfo->bIsLoaded = true;
+
+		if (bHasBegunPlay) NewLevel->BeginPlay();
+	}
+	else
+	{
+		UObjectManager::Get().DestroyObject(NewLevel);
+	}
+}
+
+void UWorld::UnloadStreamingLevel(const FName& LevelName)
+{
+	for (auto& Info : StreamingLevels)
+	{
+		if (Info.LevelName == LevelName && Info.bIsLoaded)
+		{
+			if (Info.LoadedLevel)
+			{
+				Info.LoadedLevel->EndPlay();
+				RemoveLevel(Info.LoadedLevel);
+				UObjectManager::Get().DestroyObject(Info.LoadedLevel);
+				Info.LoadedLevel = nullptr;
+			}
+			Info.bIsLoaded = false;
+			return;
+		}
+	}
+}
+
+void UWorld::AddLevel(ULevel* InLevel)
+{
+	if (!InLevel) return;
+	if (std::find(Levels.begin(), Levels.end(), InLevel) == Levels.end())
+	{
+		InLevel->SetWorld(this);
+		Levels.push_back(InLevel);
+		if (!PersistentLevel) PersistentLevel = InLevel;
+	}
+}
+
+void UWorld::RemoveLevel(ULevel* InLevel)
+{
+	if (!InLevel) return;
+	auto it = std::find(Levels.begin(), Levels.end(), InLevel);
+	if (it != Levels.end())
+	{
+		if (CurrentLevel == InLevel) CurrentLevel = (Levels.size() > 1) ? (Levels[0] == InLevel ? Levels[1] : Levels[0]) : nullptr;
+		if (PersistentLevel == InLevel) PersistentLevel = (Levels.size() > 1) ? (Levels[0] == InLevel ? Levels[1] : Levels[0]) : nullptr;
+		Levels.erase(it);
+	}
+}
+
+void UWorld::ClearLevels()
+{
+	for (ULevel* Level : Levels)
+	{
+		if (Level) UObjectManager::Get().DestroyObject(Level);
+	}
+	Levels.clear();
+	PersistentLevel = nullptr;
+	CurrentLevel = nullptr;
 }
 
 void UWorld::DestroyActor(AActor* Actor)
 {
-	// remove and clean up
 	if (!Actor) return;
 	Actor->EndPlay();
-	// Remove from actor list
-	PersistentLevel->RemoveActor(Actor);
+	
+	ULevel* OwningLevel = Cast<ULevel>(Actor->GetOuter());
+	if (OwningLevel)
+	{
+		OwningLevel->RemoveActor(Actor);
+	}
 
 	MarkWorldPrimitivePickingBVHDirty();
 	Partition.RemoveActor(Actor);
 
-	// Mark for garbage collection
 	UObjectManager::Get().DestroyObject(Actor);
 }
 
 void UWorld::AddActor(AActor* Actor)
 {
-	if (!Actor)
+	if (!Actor || !CurrentLevel)
 	{
 		return;
 	}
 
-	PersistentLevel->AddActor(Actor);
+	CurrentLevel->AddActor(Actor);
 
 	InsertActorToOctree(Actor);
 	MarkWorldPrimitivePickingBVHDirty();
 
-	// PIE 중 Duplicate(Ctrl+D)나 SpawnActor로 들어온 액터에도 BeginPlay를 보장.
 	if (bHasBegunPlay && !Actor->HasActorBegunPlay())
 	{
 		Actor->BeginPlay();
@@ -117,7 +261,7 @@ void UWorld::MarkWorldPrimitivePickingBVHDirty()
 
 void UWorld::BuildWorldPrimitivePickingBVHNow() const
 {
-	WorldPrimitivePickingBVH.BuildNow(GetActors());
+	WorldPrimitivePickingBVH.BuildNow(GetActors().ToArray());
 }
 
 void UWorld::BeginDeferredPickingBVHUpdate()
@@ -169,11 +313,9 @@ void UWorld::WarmupPickingData() const
 
 bool UWorld::RaycastPrimitives(const FRay& Ray, FRayHitResult& OutHitResult, AActor*& OutActor) const
 {
-	//혹시라도 BVH 트리가 업데이트 되지 않았다면 업데이트
-	WorldPrimitivePickingBVH.EnsureBuilt(GetActors());
+	WorldPrimitivePickingBVH.EnsureBuilt(GetActors().ToArray());
 	return WorldPrimitivePickingBVH.Raycast(Ray, OutHitResult, OutActor);
 }
-
 
 void UWorld::InsertActorToOctree(AActor* Actor)
 {
@@ -228,18 +370,22 @@ FLODUpdateContext UWorld::PrepareLODContext()
 void UWorld::InitWorld()
 {
 	Partition.Reset(FBoundingBox());
+	ClearLevels();
+	
 	PersistentLevel = UObjectManager::Get().CreateObject<ULevel>(this);
 	PersistentLevel->SetWorld(this);
+	Levels.push_back(PersistentLevel);
+	CurrentLevel = PersistentLevel;
+	
 	AuthorGameMode = SpawnActor<AGameModeBase>();
-
 }
 
 void UWorld::BeginPlay()
 {
 	bHasBegunPlay = true;
-	if (PersistentLevel)
+	for (ULevel* Level : Levels)
 	{
-		PersistentLevel->BeginPlay();
+		if (Level) Level->BeginPlay();
 	}
 	if (AuthorGameMode)
 		AuthorGameMode->StartPlay();
@@ -262,7 +408,7 @@ void UWorld::UpdateOverlaps() {
 	const FOctree* Octree = GetOctree();
 	if (!Octree) return;
 
-	for (auto* Actor : PersistentLevel->GetActors()) {
+	for (auto* Actor : GetActors()) {
 		if (!Actor) continue;
 
 		for (auto* Component : Actor->GetComponents()) {
@@ -305,21 +451,18 @@ void UWorld::EndPlay()
 	bHasBegunPlay = false;
 	TickManager.Reset();
 
-	if (!PersistentLevel)
+	for (ULevel* Level : Levels)
 	{
-		return;
+		if (Level) Level->EndPlay();
 	}
 
-	PersistentLevel->EndPlay();
-
-	// Clear spatial partition while actors/components are still alive.
-	// Otherwise Octree teardown can dereference stale primitive pointers during shutdown.
 	Partition.Reset(FBoundingBox());
 
-	PersistentLevel->Clear();
+	for (ULevel* Level : Levels)
+	{
+		if (Level) Level->Clear();
+	}
 	MarkWorldPrimitivePickingBVHDirty();
 
-	// PersistentLevel은 CreateObject로 생성되었으므로 DestroyObject로 해제해야 alloc count가 맞음
-	UObjectManager::Get().DestroyObject(PersistentLevel);
-	PersistentLevel = nullptr;
+	ClearLevels();
 }

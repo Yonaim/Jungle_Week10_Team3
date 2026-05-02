@@ -21,6 +21,8 @@
 #include "Editor/UI/NotificationToast.h"
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
+#include "Engine/Serialization/SceneSaveManager.h"
+#include "Editor/UI/EditorFileUtils.h"
 
 namespace
 {
@@ -221,6 +223,65 @@ void FEditorMainPanel::RenderMainMenuBar()
 		ImGui::BeginDisabled();
 		ImGui::MenuItem(CurrentSceneLabel, nullptr, false, false);
 		ImGui::EndDisabled();
+		ImGui::EndMenu();
+	}
+
+	if (ImGui::BeginMenu("Levels"))
+	{
+		UWorld* World = EditorEngine->GetWorld();
+		if (World)
+		{
+			// Persistent Level info
+			ULevel* Persistent = World->GetPersistentLevel();
+			FString PersistentName = Persistent ? "Persistent Level" : "No Persistent Level";
+			bool bIsPersistentCurrent = (World->GetCurrentLevel() == Persistent);
+			if (ImGui::MenuItem(PersistentName.c_str(), nullptr, bIsPersistentCurrent))
+			{
+				World->SetCurrentLevel(Persistent);
+			}
+
+			ImGui::Separator();
+			ImGui::TextDisabled("Streaming Levels");
+
+			for (const auto& Info : World->GetStreamingLevels())
+			{
+				bool bIsCurrent = (World->GetCurrentLevel() == Info.LoadedLevel);
+				FString DisplayName = Info.LevelName.ToString() + (Info.bIsLoaded ? "" : " (Unloaded)");
+
+				if (ImGui::MenuItem(DisplayName.c_str(), nullptr, bIsCurrent))
+				{
+					if (Info.LoadedLevel) World->SetCurrentLevel(Info.LoadedLevel);
+				}
+
+				if (ImGui::BeginPopupContextItem())
+				{
+					if (!Info.bIsLoaded)
+					{
+						if (ImGui::MenuItem("Load Level")) World->LoadStreamingLevel(Info.LevelPath);
+					}
+					else
+					{
+						if (ImGui::MenuItem("Unload Level")) World->UnloadStreamingLevel(Info.LevelName);
+					}
+					ImGui::EndPopup();
+				}
+			}
+
+			ImGui::Separator();
+			if (ImGui::MenuItem("Add Existing Level..."))
+			{
+				const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
+				const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
+					.Filter = L"Level Files (*.umap)\0*.umap\0",
+					.Title = L"Add Existing Level",
+					.InitialDirectory = InitialDir.c_str(),
+					});
+				if (!SelectedPath.empty())
+				{
+					World->AddStreamingLevel(SelectedPath);
+				}
+			}
+		}
 		ImGui::EndMenu();
 	}
 

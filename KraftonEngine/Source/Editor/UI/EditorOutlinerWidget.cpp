@@ -75,7 +75,7 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		return;
 	}
 
-	const TArray<AActor*>& Actors = World->GetActors();
+	const TArray<AActor*> Actors = World->GetActors().ToArray();
 	FSelectionManager& Selection = EditorEngine->GetSelectionManager();
 
 	ValidActorIndices.clear();

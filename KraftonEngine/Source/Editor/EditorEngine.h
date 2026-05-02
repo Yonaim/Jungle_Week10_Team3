@@ -49,7 +49,7 @@ public:
 	bool ImportTextureWithDialog();
 	bool SaveScene();
 	bool SaveSceneAsWithDialog();
-	bool SaveSceneAs(const FString& InSceneName);
+	bool SaveSceneAs(const FString& InScenePath);
 	bool HasCurrentLevelFilePath() const { return !CurrentLevelFilePath.empty(); }
 	const FString& GetCurrentLevelFilePath() const { return CurrentLevelFilePath; }
 	void RefreshContentBrowser() { MainPanel.RefreshContentBrowser(); }

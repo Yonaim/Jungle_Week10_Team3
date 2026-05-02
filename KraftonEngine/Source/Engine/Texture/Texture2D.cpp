@@ -72,14 +72,15 @@ void UTexture2D::ScanTextureAssets()
 	AvailableTextureFiles.clear();
 
 	const std::filesystem::path ProjectRoot(FPaths::RootDir());
-	if (!std::filesystem::exists(ProjectRoot))
+	const std::filesystem::path AssetRoot(FPaths::AssetDir());
+	if (!std::filesystem::exists(AssetRoot))
 	{
 		return;
 	}
 
 	std::error_code ErrorCode;
 	std::filesystem::recursive_directory_iterator It(
-		ProjectRoot,
+		AssetRoot,
 		std::filesystem::directory_options::skip_permission_denied,
 		ErrorCode);
 	std::filesystem::recursive_directory_iterator End;

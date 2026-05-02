@@ -892,7 +892,7 @@ TArray<FString> FSceneSaveManager::GetSceneFileList()
 		if (Entry.is_regular_file())
 		{
 			auto Ext = Entry.path().extension().wstring();
-			if (Ext == SceneExtension||Ext == L".bin")
+			if (Ext == SceneExtension||Ext == L".umap"||Ext == L".UMAP")
 				Result.push_back(FPaths::ToUtf8(Entry.path().stem().wstring()));
 		}
 	}

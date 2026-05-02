@@ -89,6 +89,8 @@ void FEditorContentBrowserWidget::Initialize(UEditorEngine* InEditor, ID3D11Devi
 	ICons["Default"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Default"));
 	ICons["Directory"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Directory"));
 	ICons[".Scene"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Scene"));
+	ICons[".umap"] = ICons[".Scene"];
+	ICons[".UMAP"] = ICons[".Scene"];
 	ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Mesh"));
 	ICons[".mat"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Material"));
 
@@ -195,7 +197,7 @@ void FEditorContentBrowserWidget::RefreshContent()
 			element.get()->SetIcon(ICons["Directory"].Get());
 
 		}
-		else if (Content.Path.extension() == ".Scene")
+		else if (Content.Path.extension() == ".Scene" || Content.Path.extension() == ".umap" || Content.Path.extension() == ".UMAP")
 		{
 			element = std::make_shared<SceneElement>();
 			element.get()->SetIcon(ICons[Extension].Get());
