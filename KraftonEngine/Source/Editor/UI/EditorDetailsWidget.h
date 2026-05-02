@@ -30,10 +30,13 @@ private:
 	static FString OpenObjFileDialog();
 
 	UActorComponent* SelectedComponent = nullptr;
+	UActorComponent* ScriptPathEditComponent = nullptr;
 	AActor* LastSelectedActor = nullptr;
 	bool bActorSelected = true;
 	bool bShowEditorOnlyComponents = false;
 	bool bEditingActorName = false;
+	bool bScriptPathEditActive = false;
 	char ActorNameBuffer[256] = {};
+	char ScriptPathEditBuffer[256] = {};
 	UClass* SelectedAddComponentClass = nullptr;
 };

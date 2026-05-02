@@ -379,7 +379,7 @@ void UScriptComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPro
 	Super::GetEditableProperties(OutProps);
 	OutProps.push_back({ "ScriptPath", EPropertyType::String, &ScriptPath });
 
-	if (!RefreshScriptPropertyDescs())
+	if (!RefreshScriptPropertyDescs(false))
 	{
 		// property 스캔에 실패한 경우에는 오래된 UI 값을 보여주지 않는다.
 		// 스크립트 로드 실패와 property 0개를 구분하기 위해 실패 상태는 내부에 남긴다.
@@ -772,7 +772,7 @@ void UScriptComponent::InvalidateScriptPropertyDescs()
 	bScriptPropertyDescsValid = false;
 }
 
-bool UScriptComponent::RefreshScriptPropertyDescs()
+bool UScriptComponent::RefreshScriptPropertyDescs(bool bLogFailure)
 {
 	if (bScriptPropertyDescsLoaded)
 	{
@@ -800,7 +800,10 @@ bool UScriptComponent::RefreshScriptPropertyDescs()
 	{
 		// 스크립트 실행 실패와 "정상적으로 property 0개"를 구분하기 위해 실패 상태를 별도 보관한다.
 		LastScriptPropertyError = LoadError;
-		UE_LOG("[ScriptComponent] Script property scan failed: %s", LoadError.c_str());
+		if (bLogFailure)
+		{
+			UE_LOG("[ScriptComponent] Script property scan failed: %s", LoadError.c_str());
+		}
 		return false;
 	}
 

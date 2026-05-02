@@ -58,7 +58,7 @@ private:
 
 	// Lua property 선언 캐시와 editor override 상태를 동기화한다
 	void InvalidateScriptPropertyDescs();
-	bool RefreshScriptPropertyDescs();
+	bool RefreshScriptPropertyDescs(bool bLogFailure = true);
 	void RebuildEditableScriptPropertyValues();
 	void PruneScriptPropertyOverrides();
 	bool ApplyEditedScriptProperty(const FString& PropertyName);
