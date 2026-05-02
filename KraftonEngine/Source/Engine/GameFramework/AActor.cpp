@@ -68,6 +68,10 @@ const char* GetDefaultEditorBillboardIconKey(const AActor* Actor)
 	{
 		return "Editor.Icon.ScreenText";
 	}
+	if (ClassName.find("WorldText") != FString::npos)
+	{
+		return "Editor.Icon.ScreenText";
+	}
 
 	if (const USceneComponent* RootComponent = Actor->GetRootComponent())
 	{

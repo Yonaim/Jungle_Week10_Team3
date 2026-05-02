@@ -329,6 +329,7 @@
     <ClCompile Include="Source\Engine\GameFramework\DecalActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\HeightFogActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\ScreenTextActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\WorldTextActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Level.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\PawnActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\StaticMeshActor.cpp" />
@@ -540,6 +541,7 @@
     <ClInclude Include="Source\Engine\GameFramework\GameModeBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\HeightFogActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\ScreenTextActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\WorldTextActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\Level.h" />
     <ClInclude Include="Source\Engine\GameFramework\PawnActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\StaticMeshActor.h" />

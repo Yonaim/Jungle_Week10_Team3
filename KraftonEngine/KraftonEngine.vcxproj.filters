@@ -527,6 +527,9 @@
     <ClCompile Include="Source\Engine\GameFramework\ScreenTextActor.cpp">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\GameFramework\WorldTextActor.cpp">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\GameFramework\Level.cpp">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClCompile>
@@ -1137,6 +1140,9 @@
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\ScreenTextActor.h">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\WorldTextActor.h">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\Level.h">

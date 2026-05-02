@@ -13,6 +13,7 @@
 #include "GameFramework/CharacterActor.h"
 #include "GameFramework/HeightFogActor.h"
 #include "GameFramework/ScreenTextActor.h"
+#include "GameFramework/WorldTextActor.h"
 #include "GameFramework/Light/AmbientLightActor.h"
 #include "GameFramework/Light/DirectionalLightActor.h"
 #include "GameFramework/Light/PointLightActor.h"
@@ -2980,6 +2981,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Pawn", EViewportPlaceActorType::Pawn);
 		PlaceActorMenuItem("Character", EViewportPlaceActorType::Character);
 		PlaceActorMenuItem("Static Mesh", EViewportPlaceActorType::StaticMeshActor);
+		PlaceActorMenuItem("World Text", EViewportPlaceActorType::WorldText);
 		PlaceActorMenuItem("Screen Text", EViewportPlaceActorType::ScreenText);
 		PlaceActorMenuItem("Sphere", EViewportPlaceActorType::Sphere);
 		PlaceActorMenuItem("Cylinder", EViewportPlaceActorType::Cylinder);
@@ -3157,6 +3159,17 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		{
 			Actor->InitDefaultComponents();
 			SpawnedActor = Actor;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::WorldText:
+	{
+		AWorldTextActor* Actor = World->SpawnActor<AWorldTextActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
 		}
 		break;
 	}

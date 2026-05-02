@@ -77,6 +77,7 @@ public:
 		Pawn,
 		Character,
 		StaticMeshActor,
+		WorldText,
 		ScreenText,
 		Cube,
 		Sphere,
