@@ -15,7 +15,11 @@ class UWorld;
 //
 // ============================================================
 
+#ifndef SHIPPING
 #define DEBUG_DRAW_ENABLED 1
+#else
+#define DEBUG_DRAW_ENABLED 0
+#endif
 
 #if DEBUG_DRAW_ENABLED
 

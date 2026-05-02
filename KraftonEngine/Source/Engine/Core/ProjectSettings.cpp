@@ -23,6 +23,7 @@ namespace PSKey
 	constexpr const char* Game = "Game";
 	constexpr const char* GameInstanceClass = "GameInstanceClass";
 	constexpr const char* DefaultGameModeClass = "DefaultGameModeClass";
+	constexpr const char* DefaultScene = "DefaultScene";
 }
 
 void FProjectSettings::SaveToFile(const FString& Path) const
@@ -54,6 +55,7 @@ void FProjectSettings::SaveToFile(const FString& Path) const
 	JSON GameObj = Object();
 	GameObj[PSKey::GameInstanceClass] = Game.GameInstanceClass;
 	GameObj[PSKey::DefaultGameModeClass] = Game.DefaultGameModeClass;
+	GameObj[PSKey::DefaultScene] = Game.DefaultScene;
 	Root[PSKey::Game] = GameObj;
 
 	std::filesystem::path FilePath(FPaths::ToWide(Path));
@@ -154,6 +156,10 @@ void FProjectSettings::LoadFromFile(const FString& Path)
 		if (G.hasKey(PSKey::DefaultGameModeClass))
 		{
 			Game.DefaultGameModeClass = G[PSKey::DefaultGameModeClass].ToString();
+		}
+		if (G.hasKey(PSKey::DefaultScene))
+		{
+			Game.DefaultScene = G[PSKey::DefaultScene].ToString();
 		}
 	}
 }

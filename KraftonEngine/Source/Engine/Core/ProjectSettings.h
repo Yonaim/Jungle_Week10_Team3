@@ -40,6 +40,7 @@ class FProjectSettings : public TSingleton<FProjectSettings>
 	{
 		FString GameInstanceClass = "UGameInstance";
 		FString DefaultGameModeClass = "AGameModeBase";
+		FString DefaultScene = "Default";
 	};
 
 public:

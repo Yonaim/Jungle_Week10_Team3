@@ -320,6 +320,9 @@
     <ClCompile Include="Source\Editor\UI\EditorControlWidget.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\UI\EditorDetailsWidget.cpp">
+      <Filter>Source\Editor\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorDragSource.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
@@ -332,16 +335,13 @@
     <ClCompile Include="Source\Editor\UI\EditorMaterialInspector.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\UI\EditorOutlinerWidget.cpp">
+      <Filter>Source\Editor\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorPlaceActorsWidget.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorPlayToolbarWidget.cpp">
-      <Filter>Source\Editor\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\UI\EditorDetailsWidget.cpp">
-      <Filter>Source\Editor\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\UI\EditorOutlinerWidget.cpp">
       <Filter>Source\Editor\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\UI\EditorShadowMapDebugWidget.cpp">
@@ -548,7 +548,13 @@
     <ClCompile Include="Source\Engine\GameFramework\Light\SpotLightActor.cpp">
       <Filter>Source\Engine\GameFramework\Light</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
+    <ClCompile Include="Source\Engine\Input\EnhancedInputManager.cpp">
+      <Filter>Source\Engine\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputManager.cpp">
+      <Filter>Source\Engine\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputMappingContext.cpp">
       <Filter>Source\Engine\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Materials\Material.cpp">
@@ -788,6 +794,9 @@
     <ClCompile Include="Source\Engine\Runtime\EngineLoop.cpp">
       <Filter>Source\Engine\Runtime</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Runtime\GameEngine.cpp">
+      <Filter>Source\Engine\Runtime</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Runtime\Launch.cpp">
       <Filter>Source\Engine\Runtime</Filter>
     </ClCompile>
@@ -887,6 +896,9 @@
     <ClInclude Include="Source\Editor\UI\EditorControlWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\UI\EditorDetailsWidget.h">
+      <Filter>Source\Editor\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorDragSource.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
@@ -899,16 +911,22 @@
     <ClInclude Include="Source\Editor\UI\EditorMaterialInspector.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\UI\EditorOutlinerWidget.h">
+      <Filter>Source\Editor\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\UI\EditorPanelTitleUtils.h">
+      <Filter>Source\Editor\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorPlaceActorsWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorPlayToolbarWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\UI\EditorDetailsWidget.h">
+    <ClInclude Include="Source\Editor\UI\EditorPropertyWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\UI\EditorOutlinerWidget.h">
+    <ClInclude Include="Source\Editor\UI\EditorSceneWidget.h">
       <Filter>Source\Editor\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\UI\EditorShadowMapDebugWidget.h">
@@ -1082,6 +1100,9 @@
     <ClInclude Include="Source\Engine\Core\Common.h">
       <Filter>Source\Engine\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Core\ComponentMobility.h">
+      <Filter>Source\Engine\Core</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Core\CoreTypes.h">
       <Filter>Source\Engine\Core</Filter>
     </ClInclude>
@@ -1130,6 +1151,12 @@
     <ClInclude Include="Source\Engine\GameFramework\DecalActor.h">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\GameInstance.h">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\GameModeBase.h">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\HeightFogActor.h">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
@@ -1160,7 +1187,22 @@
     <ClInclude Include="Source\Engine\GameFramework\Light\SpotLightActor.h">
       <Filter>Source\Engine\GameFramework\Light</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Input\InputSystem.h">
+    <ClInclude Include="Source\Engine\Input\EnhancedInputManager.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputAction.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputManager.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputMappingContext.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\InputModifier.h">
+      <Filter>Source\Engine\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Input\inputTrigger.h">
       <Filter>Source\Engine\Input</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Materials\Material.h">
@@ -1467,6 +1509,9 @@
       <Filter>Source\Engine\Runtime</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Runtime\EngineLoop.h">
+      <Filter>Source\Engine\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Runtime\GameEngine.h">
       <Filter>Source\Engine\Runtime</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Runtime\Launch.h">
@@ -1912,9 +1957,6 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Core\ComponentMobility.h">
-      <Filter>Source\Engine\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
