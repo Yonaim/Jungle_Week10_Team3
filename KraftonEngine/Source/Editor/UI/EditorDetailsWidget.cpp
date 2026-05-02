@@ -360,6 +360,12 @@ namespace
 		{
 			ScriptComponent->OpenScript();
 		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("Reload Script"))
+		{
+			ScriptComponent->RefreshScriptProperties();
+		}
 	}
 
 	bool IsBehaviorPropertyName(const FString& Name)
@@ -567,8 +573,11 @@ void FEditorPropertyWidget::Render(float DeltaTime)
 			LockedActor = nullptr;
 		}
 		SelectedComponent = nullptr;
+		ScriptPathEditComponent = nullptr;
 		LastSelectedActor = nullptr;
 		bActorSelected = true;
+		bScriptPathEditActive = false;
+		ScriptPathEditBuffer[0] = '\0';
 		ImGui::Text("No object selected.");
 		ImGui::End();
 		return;
@@ -578,9 +587,12 @@ void FEditorPropertyWidget::Render(float DeltaTime)
 	if (PrimaryActor != LastSelectedActor)
 	{
 		SelectedComponent = nullptr;
+		ScriptPathEditComponent = nullptr;
 		LastSelectedActor = PrimaryActor;
 		bActorSelected = true;
 		bEditingActorName = false;
+		bScriptPathEditActive = false;
+		ScriptPathEditBuffer[0] = '\0';
 	}
 
 	TArray<AActor*> DisplayedActors;
@@ -1634,6 +1646,44 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor>& Pr
 	case EPropertyType::String:
 	{
 		FString* Val = static_cast<FString*>(Prop.ValuePtr);
+		// ScriptPath 일 경우 모든 입력이 끝나면 갱신하도록 특수 처리
+		const bool bIsScriptPath = (Prop.Name == "ScriptPath") && Cast<UScriptComponent>(SelectedComponent);
+		if (bIsScriptPath)
+		{
+			if (ScriptPathEditComponent != SelectedComponent)
+			{
+				ScriptPathEditComponent = SelectedComponent;
+				bScriptPathEditActive = false;
+				strncpy_s(ScriptPathEditBuffer, sizeof(ScriptPathEditBuffer), Val->c_str(), _TRUNCATE);
+			}
+
+			if (!bScriptPathEditActive && FString(ScriptPathEditBuffer) != *Val)
+			{
+				strncpy_s(ScriptPathEditBuffer, sizeof(ScriptPathEditBuffer), Val->c_str(), _TRUNCATE);
+			}
+
+			auto CommitScriptPathEdit = [&]()
+			{
+				FString NewValue = ScriptPathEditBuffer;
+				if (*Val != NewValue)
+				{
+					*Val = NewValue;
+					bChanged = true;
+				}
+			};
+
+			if (ImGui::InputText(Prop.Name.c_str(), ScriptPathEditBuffer, sizeof(ScriptPathEditBuffer), ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				CommitScriptPathEdit();
+			}
+			if (ImGui::IsItemDeactivatedAfterEdit())
+			{
+				CommitScriptPathEdit();
+			}
+			bScriptPathEditActive = ImGui::IsItemActive();
+			break;
+		}
+
 		char Buf[256];
 		strncpy_s(Buf, sizeof(Buf), Val->c_str(), _TRUNCATE);
 		if (ImGui::InputText(Label, Buf, sizeof(Buf)))

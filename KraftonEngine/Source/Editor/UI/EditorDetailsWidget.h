@@ -47,6 +47,11 @@ private:
 	char ActorNameBuffer[256] = {};
 	char DetailSearchBuffer[128] = {};
 	FString ActiveSectionFilter = "All";
+
+	// Script Section
+	UActorComponent* ScriptPathEditComponent = nullptr;
+	bool bScriptPathEditActive = false;
+	char ScriptPathEditBuffer[256] = {};
 	UClass* SelectedAddComponentClass = nullptr;
 	float ComponentTreeHeight = 160.0f;
 };
