@@ -461,6 +461,7 @@ void UWorld::ProcessOverlapEvents() {
 	PendingOverlapComponents.clear();
 
 	for (auto* Component : Batch) {
+		if (!Component) continue;
 		UShapeComponent* Shape = dynamic_cast<UShapeComponent*>(Component);
 		if (!Shape || !Shape->IsCollisionEnabled() || Shape->GetOverlapBehaviour() == EOverlapBehaviour::Ignore) continue;
 

@@ -759,8 +759,8 @@ void FEditorMainPanel::RenderProjectSettingsWindow()
 	{
 		GEngine->GetTimer()->SetMaxFPS(
 			ProjectSettings.Performance.bLimitFPS
-				? static_cast<float>(ProjectSettings.Performance.MaxFPS)
-				: 0.0f);
+			? static_cast<float>(ProjectSettings.Performance.MaxFPS)
+			: 0.0f);
 	}
 
 	DrawPopupSectionHeader("SHADOW");
@@ -1032,4 +1032,3 @@ void FEditorMainPanel::RestoreEditorWindowsAfterPIE()
 {
 	ShowEditorWindows();
 }
-

@@ -17,6 +17,7 @@
 #include "GameFramework/Light/DirectionalLightActor.h"
 #include "GameFramework/Light/PointLightActor.h"
 #include "GameFramework/Light/SpotLightActor.h"
+#include "Game/GameActors/Obstacle/SimpleObstacleActor.h"
 #include "GameFramework/World.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
@@ -2991,6 +2992,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Directional Light", EViewportPlaceActorType::DirectionalLight);
 		PlaceActorMenuItem("Point Light", EViewportPlaceActorType::PointLight);
 		PlaceActorMenuItem("Spot Light", EViewportPlaceActorType::SpotLight);
+		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::SimpleObstacle);
 
 		ImGui::EndMenu();
 	}
@@ -3283,6 +3285,17 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		if (Actor)
 		{
 			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::SimpleObstacle:
+	{
+		ASimpleObstacleActor* Actor = World->SpawnActor<ASimpleObstacleActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Cube"));
 			SpawnedActor = Actor;
 			SpawnLocation.Z += 1.0f;
 		}

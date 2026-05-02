@@ -1,4 +1,4 @@
-#include "Editor/UI/EditorPlaceActorsWidget.h"
+﻿#include "Editor/UI/EditorPlaceActorsWidget.h"
 
 #include "Component/CameraComponent.h"
 #include "Editor/EditorEngine.h"
@@ -114,6 +114,7 @@ namespace
 		{ "Plane", "plane quad floor shape", "Editor.Icon.Plane", EPlaceType::Plane, ECategory::Shapes },
 		{ "Decal", "decal projection vfx", "Editor.Icon.Decal", EPlaceType::Decal, ECategory::VFX },
 		{ "Height Fog", "height fog vfx atmosphere", "Editor.Icon.HeightFog", EPlaceType::HeightFog, ECategory::VFX },
+		{ "Obstacle", "Basic Obstacle", "Editor.Icon.Cube", EPlaceType::SimpleObstacle, ECategory::Basic },
 	};
 
 	const char* GetCategoryLabel(ECategory Category)
