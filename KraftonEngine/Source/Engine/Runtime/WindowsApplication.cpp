@@ -97,6 +97,13 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 			if (bBottom) return HTBOTTOM;
 		}
 
+		POINT ClientPoint = Cursor;
+		ScreenToClient(hWnd, &ClientPoint);
+		if (Window.IsInTitleBarDragRegion(ClientPoint))
+		{
+			return HTCAPTION;
+		}
+
 		return HTCLIENT;
 	}
 	case WM_DESTROY:
@@ -183,6 +190,7 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 	WndClass.hIcon = LoadIconW(HInstance, MAKEINTRESOURCEW(IDI_APP_ICON));
 	WndClass.hIconSm = LoadIconW(HInstance, MAKEINTRESOURCEW(IDI_APP_ICON));
 	WndClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+	WndClass.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
 	WndClass.lpszClassName = WindowClass;
 
 	RegisterClassExW(&WndClass);

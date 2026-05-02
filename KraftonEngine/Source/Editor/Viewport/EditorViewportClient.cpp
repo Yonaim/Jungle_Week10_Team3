@@ -513,8 +513,13 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	// LineTrace 히트 판정용 AxisMask 갱신 (렌더링은 Proxy가 per-viewport로 직접 계산)
 	Gizmo->SetAxisMask(UGizmoComponent::ComputeAxisMask(RenderOptions.ViewportType, Gizmo->GetMode()));
 
-	// 기즈모 드래그 중에는 마우스가 뷰포트 밖으로 나가도 드래그 종료를 처리해야 함
-	if (InputSystem::Get().GetGuiInputState().bUsingMouse && !Gizmo->IsHolding() && !bIsMarqueeSelecting)
+	// 기즈모 드래그 중에는 마우스가 뷰포트 밖으로 나가도 드래그 종료를 처리해야 함.
+	// 전역 GUI mouse-capture 플래그만 믿으면 뷰포트 위에서도 입력이 막힐 수 있으므로,
+	// 실제 커서가 현재 뷰포트 안에 있을 때는 상호작용을 계속 허용한다.
+	uint32 CursorViewportX = 0;
+	uint32 CursorViewportY = 0;
+	const bool bCursorInViewport = GetCursorViewportPosition(CursorViewportX, CursorViewportY);
+	if (InputSystem::Get().GetGuiInputState().bUsingMouse && !bCursorInViewport && !Gizmo->IsHolding() && !bIsMarqueeSelecting)
 	{
 		return;
 	}

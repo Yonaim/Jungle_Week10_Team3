@@ -53,15 +53,16 @@ namespace
 	void ApplyEditorColorTheme()
 	{
 		ImGuiStyle& Style = ImGui::GetStyle();
-		Style.Colors[ImGuiCol_WindowBg] = ImVec4(0.09f, 0.09f, 0.10f, 1.0f);
-		Style.Colors[ImGuiCol_ChildBg] = ImVec4(0.12f, 0.12f, 0.13f, 1.0f);
-		Style.Colors[ImGuiCol_PopupBg] = ImVec4(0.13f, 0.13f, 0.14f, 0.98f);
-		Style.Colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.10f, 0.11f, 1.0f);
-		Style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.12f, 0.12f, 0.13f, 1.0f);
-		Style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.08f, 0.08f, 0.09f, 1.0f);
-		Style.Colors[ImGuiCol_FrameBg] = ImVec4(0.11f, 0.11f, 0.12f, 1.0f);
-		Style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.18f, 0.18f, 0.20f, 1.0f);
-		Style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.22f, 0.22f, 0.24f, 1.0f);
+		Style.Colors[ImGuiCol_WindowBg] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+		Style.Colors[ImGuiCol_ChildBg] = ImVec4(0.03f, 0.03f, 0.03f, 1.0f);
+		Style.Colors[ImGuiCol_PopupBg] = ImVec4(0.07f, 0.07f, 0.08f, 0.98f);
+		Style.Colors[ImGuiCol_TitleBg] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+		Style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+		Style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+		Style.Colors[ImGuiCol_FrameBg] = ImVec4(0.03f, 0.03f, 0.04f, 1.0f);
+		Style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.07f, 0.07f, 0.09f, 1.0f);
+		Style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.10f, 0.10f, 0.12f, 1.0f);
+		Style.Colors[ImGuiCol_CheckMark] = ImVec4(0.20f, 0.56f, 0.96f, 1.0f);
 		Style.Colors[ImGuiCol_Button] = ImVec4(0.18f, 0.18f, 0.19f, 1.0f);
 		Style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.26f, 0.26f, 0.28f, 1.0f);
 		Style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.32f, 0.32f, 0.35f, 1.0f);
@@ -86,7 +87,17 @@ namespace
 
 	float GetCustomTitleBarHeight()
 	{
-		return 42.0f;
+		return 48.0f;
+	}
+
+	float GetWindowOuterPadding()
+	{
+		return 0.0f;
+	}
+
+	float GetWindowCornerRadius()
+	{
+		return 12.0f;
 	}
 
 	float GetWindowTopContentInset(FWindowsWindow* Window)
@@ -186,15 +197,25 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ImGui::NewFrame();
 	EditorPanelTitleUtils::BeginPanelDecorationFrame();
 
-	RenderMainMenuBar();
-
 	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
 	const float TitleBarHeight = GetCustomTitleBarHeight();
 	const float TopFrameInset = GetWindowTopContentInset(Window);
+	const float OuterPadding = GetWindowOuterPadding();
+	const float CornerRadius = GetWindowCornerRadius();
+	const ImVec2 ViewportMin = MainViewport->Pos;
+	const ImVec2 ViewportMax(MainViewport->Pos.x + MainViewport->Size.x, MainViewport->Pos.y + MainViewport->Size.y);
+	const ImVec2 FrameMin(MainViewport->Pos.x + OuterPadding, MainViewport->Pos.y + TopFrameInset + OuterPadding);
+	const ImVec2 FrameMax(MainViewport->Pos.x + MainViewport->Size.x - OuterPadding, MainViewport->Pos.y + MainViewport->Size.y - OuterPadding);
+	ImDrawList* BackgroundDrawList = ImGui::GetBackgroundDrawList(const_cast<ImGuiViewport*>(MainViewport));
+	BackgroundDrawList->AddRectFilled(ViewportMin, ViewportMax, IM_COL32(0, 0, 0, 255));
+	BackgroundDrawList->AddRectFilled(FrameMin, FrameMax, IM_COL32(0, 0, 0, 255), CornerRadius);
+
+	RenderMainMenuBar();
+
 	ImGuiWindowClass DockspaceWindowClass{};
 	DockspaceWindowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton;
-	ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x, MainViewport->Pos.y + TopFrameInset + TitleBarHeight + 1.0f), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(MainViewport->Size.x, MainViewport->Size.y - TopFrameInset - TitleBarHeight - 1.0f), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x + OuterPadding, MainViewport->Pos.y + TopFrameInset + TitleBarHeight + OuterPadding), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(MainViewport->Size.x - OuterPadding * 2.0f, MainViewport->Size.y - TopFrameInset - TitleBarHeight - OuterPadding * 2.0f), ImGuiCond_Always);
 	ImGui::SetNextWindowViewport(MainViewport->ID);
 	ImGuiWindowFlags DockspaceWindowFlags =
 		ImGuiWindowFlags_NoTitleBar |
@@ -212,10 +233,6 @@ void FEditorMainPanel::Render(float DeltaTime)
 	if (ImGui::Begin("##EditorDockSpaceHost", nullptr, DockspaceWindowFlags))
 	{
 		ImGui::DockSpace(ImGui::GetID("##EditorDockSpace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
-		ImDrawList* DrawList = ImGui::GetWindowDrawList();
-		const ImVec2 WindowMin = ImGui::GetWindowPos();
-		const ImVec2 WindowMax(WindowMin.x + ImGui::GetWindowSize().x, WindowMin.y + ImGui::GetWindowSize().y);
-		DrawList->AddRect(WindowMin, WindowMax, IM_COL32(12, 12, 12, 255), 0.0f, 0, 2.0f);
 	}
 	ImGui::End();
 	ImGui::PopStyleVar(4);
@@ -297,6 +314,8 @@ void FEditorMainPanel::RenderMainMenuBar()
 	const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
 	const float TitleBarHeight = GetCustomTitleBarHeight();
 	const float TopFrameInset = GetWindowTopContentInset(Window);
+	const float OuterPadding = GetWindowOuterPadding();
+	const float CornerRadius = GetWindowCornerRadius();
 	const float LogoSize = 36.0f;
 	const float ButtonWidth = 38.0f;
 	const float WindowControlHeight = 24.0f;
@@ -304,13 +323,9 @@ void FEditorMainPanel::RenderMainMenuBar()
 	const float RightControlsWidth = ButtonWidth * 3.0f + ButtonSpacing * 2.0f;
 	const float TitleBarPaddingY = 2.0f;
 	const float LeftContentInset = 8.0f;
-	const float MenuVerticalOffset = -6.0f;
-	const float SceneTabVerticalOffset = -5.0f;
-	const float WindowControlsVerticalOffset = -5.0f;
-	const float LogoVerticalOffset = -2.0f;
 
-	ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x, MainViewport->Pos.y + TopFrameInset), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(MainViewport->Size.x, TitleBarHeight), ImGuiCond_Always);
+	ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x + OuterPadding, MainViewport->Pos.y + TopFrameInset + OuterPadding), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(MainViewport->Size.x - OuterPadding * 2.0f, TitleBarHeight), ImGuiCond_Always);
 	ImGui::SetNextWindowViewport(MainViewport->ID);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -326,7 +341,8 @@ void FEditorMainPanel::RenderMainMenuBar()
 		ImGuiWindowFlags_NoSavedSettings |
 		ImGuiWindowFlags_NoDocking |
 		ImGuiWindowFlags_NoBringToFrontOnFocus |
-		ImGuiWindowFlags_NoNavFocus;
+		ImGuiWindowFlags_NoNavFocus |
+		ImGuiWindowFlags_NoBackground;
 	if (!ImGui::Begin("##EditorCustomTitleBar", nullptr, TitleBarFlags))
 	{
 		ImGui::End();
@@ -349,8 +365,6 @@ void FEditorMainPanel::RenderMainMenuBar()
 		{
 			ImGui::PushFont(TitleBarFont);
 		}
-		const float MenuRowY = (std::max)(0.0f, floorf((TitleBarHeight - ImGui::GetFrameHeight()) * 0.5f) + MenuVerticalOffset);
-		const float WindowControlsY = (std::max)(0.0f, floorf((TitleBarHeight - WindowControlHeight) * 0.5f) + WindowControlsVerticalOffset);
 		const FString SceneTabLabel = GetSceneTitleLabel(EditorEngine);
 		FString ScenePathTooltip = "Unsaved Scene";
 		if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
@@ -358,15 +372,18 @@ void FEditorMainPanel::RenderMainMenuBar()
 			ScenePathTooltip = EditorEngine->GetCurrentLevelFilePath();
 		}
 		const float SceneTabWidth = ImGui::CalcTextSize(SceneTabLabel.c_str()).x + 34.0f;
-		const float SceneTabHeight = 28.0f;
+		const float MenuFrameHeight = ImGui::GetFrameHeight();
+		const float SceneTabHeight = MenuFrameHeight;
+		const float MaxContentHeight = (std::max)((std::max)(MenuFrameHeight, SceneTabHeight), (std::max)(WindowControlHeight, LogoSize));
+		const float ContentStartY = (std::max)(0.0f, floorf((TitleBarHeight - MaxContentHeight) * 0.5f) - 6.0f);
 		const float RightControlsStartX = ImGui::GetWindowWidth() - RightControlsWidth;
 		const float SceneTabX = RightControlsStartX - SceneTabWidth - 12.0f;
 		float MenuStartX = ImGui::GetStyle().WindowPadding.x;
 
 		if (LogoTexture)
 		{
-			const float LogoX = ImGui::GetStyle().WindowPadding.x;
-			const float LogoY = (std::max)(0.0f, floorf((TitleBarHeight - LogoSize) * 0.5f) + LogoVerticalOffset);
+			const float LogoX = 8.0f;
+			const float LogoY = ContentStartY;
 			ImDrawList* DrawList = ImGui::GetForegroundDrawList(const_cast<ImGuiViewport*>(MainViewport));
 			const ImVec2 WindowPos = ImGui::GetWindowPos();
 			DrawList->AddImage(
@@ -376,7 +393,7 @@ void FEditorMainPanel::RenderMainMenuBar()
 			MenuStartX = LogoX + LogoSize + 10.0f;
 		}
 
-		ImGui::SetCursorPos(ImVec2(MenuStartX, MenuRowY));
+		ImGui::SetCursorPos(ImVec2(MenuStartX, ContentStartY));
 
 		if (ImGui::BeginMenu("File"))
 		{
@@ -452,13 +469,13 @@ void FEditorMainPanel::RenderMainMenuBar()
 
 		MenuEndX = ImGui::GetCursorPosX();
 
-		ImGui::SetCursorPos(ImVec2(SceneTabX, (std::max)(0.0f, floorf((TitleBarHeight - SceneTabHeight) * 0.5f) + SceneTabVerticalOffset)));
+		ImGui::SetCursorPos(ImVec2(SceneTabX, ContentStartY));
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
-		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.03f, 0.03f, 0.03f, 1.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.72f, 0.72f, 0.74f, 1.0f));
 		ImGui::Button(SceneTabLabel.c_str(), ImVec2(SceneTabWidth, SceneTabHeight));
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
 		{
@@ -473,20 +490,22 @@ void FEditorMainPanel::RenderMainMenuBar()
 
 		if (Window)
 		{
-			ImGui::SetCursorPos(ImVec2(RightControlsStartX, WindowControlsY));
+			ImGui::SetCursorPos(ImVec2(RightControlsStartX, ContentStartY));
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.20f, 0.22f, 1.0f));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
 			if (WindowControlIconFont)
 			{
 				ImGui::PushFont(WindowControlIconFont);
 			}
+			ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.58f));
 			if (ImGui::Button(GetWindowControlIconMinimize(), ImVec2(ButtonWidth, WindowControlHeight)))
 			{
 				Window->Minimize();
 			}
+			ImGui::PopStyleVar();
 			ImGui::SameLine(0.0f, ButtonSpacing);
 			if (ImGui::Button(Window->IsWindowMaximized() ? GetWindowControlIconRestore() : GetWindowControlIconMaximize(), ImVec2(ButtonWidth, WindowControlHeight)))
 			{
@@ -523,16 +542,11 @@ void FEditorMainPanel::RenderMainMenuBar()
 
 	if (Window && DragRegionWidth > 24.0f)
 	{
-		ImGui::SetCursorPos(ImVec2(DragRegionStartX, 0.0f));
-		ImGui::InvisibleButton("##TitleDragRegion", ImVec2(DragRegionWidth, TitleBarHeight));
-		if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-		{
-			Window->ToggleMaximize();
-		}
-		else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-		{
-			Window->StartWindowDrag();
-		}
+		Window->SetTitleBarDragRegion(DragRegionStartX, 0.0f, DragRegionWidth, TitleBarHeight);
+	}
+	else if (Window)
+	{
+		Window->ClearTitleBarDragRegion();
 	}
 
 	ImGui::End();

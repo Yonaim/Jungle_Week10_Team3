@@ -1,5 +1,9 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
+#include <dwmapi.h>
+
+#pragma comment(lib, "dwmapi.lib")
+
 void FWindowsWindow::Initialize(HWND InHWindow)
 {
 	HWindow = InHWindow;
@@ -8,12 +12,14 @@ void FWindowsWindow::Initialize(HWND InHWindow)
 	GetClientRect(HWindow, &Rect);
 	Width = static_cast<float>(Rect.right - Rect.left);
 	Height = static_cast<float>(Rect.bottom - Rect.top);
+	UpdateWindowVisualStyle();
 }
 
 void FWindowsWindow::OnResized(unsigned int InWidth, unsigned int InHeight)
 {
 	Width = static_cast<float>(InWidth);
 	Height = static_cast<float>(InHeight);
+	UpdateWindowVisualStyle();
 }
 
 void FWindowsWindow::Minimize() const
@@ -72,8 +78,52 @@ float FWindowsWindow::GetTopFrameInset() const
 	return static_cast<float>(FrameY + PaddedBorder);
 }
 
+void FWindowsWindow::SetTitleBarDragRegion(float X, float Y, float InWidth, float InHeight)
+{
+	TitleBarDragRegion.left = static_cast<LONG>(X);
+	TitleBarDragRegion.top = static_cast<LONG>(Y);
+	TitleBarDragRegion.right = static_cast<LONG>(X + InWidth);
+	TitleBarDragRegion.bottom = static_cast<LONG>(Y + InHeight);
+	bHasTitleBarDragRegion = InWidth > 0.0f && InHeight > 0.0f;
+}
+
+void FWindowsWindow::ClearTitleBarDragRegion()
+{
+	TitleBarDragRegion = RECT{ 0, 0, 0, 0 };
+	bHasTitleBarDragRegion = false;
+}
+
+bool FWindowsWindow::IsInTitleBarDragRegion(POINT ClientPoint) const
+{
+	return bHasTitleBarDragRegion &&
+		ClientPoint.x >= TitleBarDragRegion.left &&
+		ClientPoint.x < TitleBarDragRegion.right &&
+		ClientPoint.y >= TitleBarDragRegion.top &&
+		ClientPoint.y < TitleBarDragRegion.bottom;
+}
+
 POINT FWindowsWindow::ScreenToClientPoint(POINT ScreenPoint) const
 {
 	ScreenToClient(HWindow, &ScreenPoint);
 	return ScreenPoint;
+}
+
+void FWindowsWindow::UpdateWindowVisualStyle() const
+{
+	if (!HWindow)
+	{
+		return;
+	}
+
+	const DWM_WINDOW_CORNER_PREFERENCE CornerPreference = IsWindowMaximized() ? DWMWCP_DONOTROUND : DWMWCP_ROUND;
+	DwmSetWindowAttribute(HWindow, DWMWA_WINDOW_CORNER_PREFERENCE, &CornerPreference, sizeof(CornerPreference));
+
+	const BOOL DarkModeEnabled = TRUE;
+	DwmSetWindowAttribute(HWindow, DWMWA_USE_IMMERSIVE_DARK_MODE, &DarkModeEnabled, sizeof(DarkModeEnabled));
+
+	const COLORREF BorderColorNone = 0xFFFFFFFEu;
+	DwmSetWindowAttribute(HWindow, DWMWA_BORDER_COLOR, &BorderColorNone, sizeof(BorderColorNone));
+
+	const COLORREF CaptionColor = RGB(0, 0, 0);
+	DwmSetWindowAttribute(HWindow, DWMWA_CAPTION_COLOR, &CaptionColor, sizeof(CaptionColor));
 }
