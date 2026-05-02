@@ -461,3 +461,6 @@ CMakeLists.txt
 .clang-format
 
 Asset/Editor/Original/*
+/CLAUDE.md
+*.bat
+/Scripts/GenerateProjectFiles.py

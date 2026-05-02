@@ -43,6 +43,9 @@ echo [3/3] Copying files...
 :: 실행 파일 (루트에)
 copy "%BUILD_OUTPUT%\KraftonEngine.exe" "%DEMO_DIR%\" >nul
 
+:: 런타임 DLL (lua51.dll 등)
+copy "%BUILD_OUTPUT%\*.dll" "%DEMO_DIR%\" >nul 2>&1
+
 :: Shaders
 xcopy "%PROJECT_DIR%\Shaders" "%DEMO_DIR%\Shaders\" /e /i /q >nul
 
@@ -51,6 +54,9 @@ xcopy "%PROJECT_DIR%\Asset" "%DEMO_DIR%\Asset\" /e /i /q >nul
 
 :: Settings
 xcopy "%PROJECT_DIR%\Settings" "%DEMO_DIR%\Settings\" /e /i /q >nul
+
+:: Scripts
+xcopy "%PROJECT_DIR%\Scripts" "%DEMO_DIR%\Scripts\" /e /i /q >nul
 
 :: Data (OBJ, MTL, 텍스처 원본 — .bin 재빌드 및 머티리얼 로드에 필요)
 xcopy "%PROJECT_DIR%\Data" "%DEMO_DIR%\Data\" /e /i /q >nul

@@ -51,6 +51,14 @@ public:
 
 	static TArray<FString> GetSceneFileList();
 
+	// Cooking (Editor -> Shipping 변환) 
+	// .Scene을 로드해 editor-only 컴포넌트 제거 + WorldType=Game 강제 후 .umap 바이너리로 저장.
+	//  성공 시 true, 입력 파일 누락이거나 파싱 실패 시 false.
+	static bool CookSceneToBinary(const FString& InSceneJsonPath, const FString& OutUmapPath);
+
+	// 모든 .Scene 파일을 일괄 쿠킹. 같은 디렉터리에 .umap 파일을 생성한다.
+	static int32 CookAllScenes();
+
 private:
 	// ---- Serialization ----
 	static json::JSON SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam);

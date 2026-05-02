@@ -5,6 +5,7 @@
 #include "Object/ObjectFactory.h"
 #include "GameFramework/World.h"
 #include <filesystem>
+#include <iostream>
 
 IMPLEMENT_CLASS(UGameEngine, UEngine)
 
@@ -35,39 +36,57 @@ void UGameEngine::LoadStartLevel()
 		return;
 	}
 
-	std::filesystem::path ScenePath = std::filesystem::path(FSceneSaveManager::GetSceneDirectory())
-		/ (FPaths::ToWide(StartLevel) + FSceneSaveManager::SceneExtension);
-	FString FilePath = FPaths::ToUtf8(ScenePath.wstring());
+	const std::filesystem::path SceneDir = FSceneSaveManager::GetSceneDirectory();
+	const std::wstring StemW = FPaths::ToWide(StartLevel);
 
-	if (!std::filesystem::exists(ScenePath))
+	// 우선순위: 쿠킹된 .umap → .Scene(JSON, dev/fallback)
+	// Shipping에서는 .umap만 시도. JSON 경로는 dev 환경에서만 동작.
+	const std::filesystem::path UmapPath = SceneDir / (StemW + L".umap");
+	const std::filesystem::path ScenePath = SceneDir / (StemW + FSceneSaveManager::SceneExtension);
+
+	std::filesystem::path ChosenPath;
+	if (std::filesystem::exists(UmapPath))
 	{
+		ChosenPath = UmapPath;
+	}
+#if !defined(SHIPPING) || SHIPPING == 0
+	else if (std::filesystem::exists(ScenePath))
+	{
+		ChosenPath = ScenePath;
+	}
+#endif
+
+	if (ChosenPath.empty())
+	{
+		std::cerr << "[GameEngine] Start level not found. Did you run --cook? Looked for "
+		          << UmapPath.string() << std::endl;
 		return;
 	}
+
+	const FString FilePath = FPaths::ToUtf8(ChosenPath.wstring());
 
 	FWorldContext* Context = GetWorldContextFromHandle(GetActiveWorldHandle());
 	if (!Context || !Context->World) return;
 
-	// LoadSceneFromJSON이 새 World를 만들어 Context를 덮어씀 — 기존 World/Handle을 백업해두고 끝나면 복구.
 	const FName OriginalHandle = Context->ContextHandle;
+	const std::wstring ChosenExt = ChosenPath.extension().wstring();
 
-	FPerspectiveCameraData DummyCamera;
-	if (FilePath.ends_with(".Scene") || FilePath.ends_with(".scene"))
+	if (ChosenExt == L".umap" || ChosenExt == L".UMAP")
 	{
-		FSceneSaveManager::LoadSceneFromJSON(FilePath, *Context, DummyCamera);
-	}
-	else if (FilePath.ends_with(".umap") || FilePath.ends_with(".UMAP"))
-	{
+		// 바이너리(쿠킹된) 경로 — 가장 안정적. World->Serialize가 자체 InitWorld+BeginPlay 처리.
 		FSceneSaveManager::LoadWorldFromBinary(FilePath, Context->World);
 	}
+	else
+	{
+		// JSON 경로 — LoadSceneFromJSON이 새 World를 만들어 Context를 덮어씀
+		FPerspectiveCameraData DummyCamera;
+		FSceneSaveManager::LoadSceneFromJSON(FilePath, *Context, DummyCamera);
+	}
 
-	// JSON 저장본의 WorldType("Editor")을 Game으로 강제 복구 — UEngine::BeginPlay가 World->BeginPlay를 호출하려면 필수.
+	// 어느 경로든 WorldType/Handle을 Game으로 강제 복구
 	Context->WorldType = EWorldType::Game;
 	Context->ContextHandle = OriginalHandle;
 	SetActiveWorld(OriginalHandle);
-
-	// 주의: 기존 World 객체는 의도적으로 destroy하지 않음.
-	// 렌더 프록시 등 외부 참조가 남아있을 수 있어 즉시 destroy 시 크래시 위험.
-	// 엔진 셧다운 시 UObjectManager가 일괄 정리하도록 둠 (작은 1회성 누수).
 
 	if (Context->World)
 	{

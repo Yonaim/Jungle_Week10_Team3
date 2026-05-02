@@ -817,6 +817,122 @@ void FSceneSaveManager::LoadWorldFromBinary(const FString& FilePath, UWorld* Wor
 	}
 }
 
+// ============================================================
+// Cooking — Editor용 .Scene(JSON)을 Shipping용 .umap(바이너리)로 변환.
+// 핵심:
+//   JSON 로드해서 임시 UWorld 생성
+//   모든 Actor의 EditorOnly 컴포넌트 제거 
+//   WorldType을 Game으로 강제
+//   바이너리로 저장
+// ============================================================
+namespace
+{
+	// 액터에서 editor-only 컴포넌트들을 모두 떼어낸다.
+	void StripEditorOnlyComponentsFromActor(AActor* Actor)
+	{
+		if (!Actor) return;
+
+		//  RemoveComponent가 컨테이너를 변경하므로 안전한 방향으로
+		const TArray<UActorComponent*> Snapshot = Actor->GetComponents();
+		for (auto It = Snapshot.rbegin(); It != Snapshot.rend(); ++It)
+		{
+			UActorComponent* Comp = *It;
+			if (!Comp) continue;
+			if (Comp->IsEditorOnlyComponent())
+			{
+				Actor->RemoveComponent(Comp);
+			}
+		}
+	}
+}
+
+bool FSceneSaveManager::CookSceneToBinary(const FString& InSceneJsonPath, const FString& OutUmapPath)
+{
+	std::filesystem::path InPath(FPaths::ToWide(InSceneJsonPath));
+	if (!std::filesystem::exists(InPath))
+	{
+		std::cerr << "[Cook] Source scene not found: " << InSceneJsonPath << std::endl;
+		return false;
+	}
+
+	// JSON을 임시 컨텍스트에 로드 — 자체 World가 새로 생성됨
+	FWorldContext TempCtx;
+	TempCtx.WorldType = EWorldType::Game;
+	TempCtx.ContextHandle = FName("CookTarget");
+	TempCtx.ContextName = "CookTarget";
+	FPerspectiveCameraData DummyCam;
+	LoadSceneFromJSON(InSceneJsonPath, TempCtx, DummyCam);
+
+	UWorld* World = TempCtx.World;
+	if (!World)
+	{
+		std::cerr << "[Cook] Failed to deserialize scene: " << InSceneJsonPath << std::endl;
+		return false;
+	}
+
+	// 모든 액터의 editor-only 컴포넌트 제거
+	for (AActor* Actor : World->GetActors())
+	{
+		if (!Actor) continue;
+		StripEditorOnlyComponentsFromActor(Actor);
+	}
+
+	// 런타임용으로 WorldType 강제
+	World->SetWorldType(EWorldType::Game);
+
+	// 출력 디렉터리 보장 + 바이너리 저장
+	std::filesystem::path OutPath(FPaths::ToWide(OutUmapPath));
+	if (OutPath.has_parent_path())
+	{
+		std::filesystem::create_directories(OutPath.parent_path());
+	}
+	SaveWorldToBinary(OutUmapPath, World);
+
+	const bool bOk = std::filesystem::exists(OutPath);
+	if (bOk)
+	{
+		std::cerr << "[Cook] OK: " << InSceneJsonPath << " -> " << OutUmapPath << std::endl;
+	}
+	else
+	{
+		std::cerr << "[Cook] FAILED to write: " << OutUmapPath << std::endl;
+	}
+
+	// 임시 World는 의도적으로 누수 — destroy 시 외부 참조(Render proxy 등)와 충돌 위험
+	// 쿠킹은 짧은 일회성 작업이므로 프로세스 종료 시 정리됨
+	return bOk;
+}
+
+int32 FSceneSaveManager::CookAllScenes()
+{
+	int32 Cooked = 0;
+	const std::wstring SceneDir = GetSceneDirectory();
+	if (!std::filesystem::exists(SceneDir))
+	{
+		return 0;
+	}
+
+	for (auto& Entry : std::filesystem::directory_iterator(SceneDir))
+	{
+		if (!Entry.is_regular_file()) continue;
+		const std::wstring Ext = Entry.path().extension().wstring();
+		if (Ext != SceneExtension) continue;
+
+		const std::filesystem::path InPath = Entry.path();
+		std::filesystem::path OutPath = InPath;
+		OutPath.replace_extension(L".umap");
+
+		const FString InUtf8 = FPaths::ToUtf8(InPath.wstring());
+		const FString OutUtf8 = FPaths::ToUtf8(OutPath.wstring());
+		if (CookSceneToBinary(InUtf8, OutUtf8))
+		{
+			++Cooked;
+		}
+	}
+
+	return Cooked;
+}
+
 USceneComponent* FSceneSaveManager::DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner)
 {
 	string ClassName = Node[SceneKeys::ClassName].ToString();

@@ -499,6 +499,18 @@ void FEditorMainPanel::RenderMainMenuBar()
 			{
 				EditorEngine->ImportTextureWithDialog();
 			}
+			DrawPopupSectionHeader("COOK");
+			if (ImGui::MenuItem("Cook Current Scene") && EditorEngine)
+			{
+				CookCurrentScene();
+			}
+			if (ImGui::MenuItem("Cook All Scenes"))
+			{
+				const int32 Count = FSceneSaveManager::CookAllScenes();
+				FNotificationManager::Get().AddNotification(
+					std::string("Cooked ") + std::to_string(Count) + " scenes",
+					Count > 0 ? ENotificationType::Success : ENotificationType::Error);
+			}
 			DrawPopupSectionHeader("PACKAGE");
 			if (ImGui::MenuItem("Package: Release..."))
 			{
@@ -1068,6 +1080,28 @@ void FEditorMainPanel::HideEditorWindowsForPIE()
 void FEditorMainPanel::RestoreEditorWindowsAfterPIE()
 {
 	ShowEditorWindows();
+}
+
+void FEditorMainPanel::CookCurrentScene()
+{
+	if (!EditorEngine || !EditorEngine->HasCurrentLevelFilePath())
+	{
+		FNotificationManager::Get().AddNotification(
+			"Cook: save the current scene first.",
+			ENotificationType::Error);
+		return;
+	}
+
+	const FString& InPath = EditorEngine->GetCurrentLevelFilePath();
+	std::filesystem::path Out(FPaths::ToWide(InPath));
+	Out.replace_extension(L".umap");
+	const FString OutPath = FPaths::ToUtf8(Out.wstring());
+
+	const bool bOk = FSceneSaveManager::CookSceneToBinary(InPath, OutPath);
+	FNotificationManager::Get().AddNotification(
+		bOk ? std::string("Cooked: ") + Out.filename().string()
+			: std::string("Cook failed: ") + Out.filename().string(),
+		bOk ? ENotificationType::Success : ENotificationType::Error);
 }
 
 void FEditorMainPanel::PackageGameBuild(const char* BatFileName)
