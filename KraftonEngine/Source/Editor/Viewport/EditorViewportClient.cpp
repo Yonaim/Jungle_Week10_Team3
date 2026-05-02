@@ -163,7 +163,7 @@ void FEditorViewportClient::Tick(float DeltaTime)
 				{
 					GameViewportClient->SetDrivingCamera(Camera);
 					GameViewportClient->SetViewport(Viewport);
-					// GameViewportClient->ProcessPIEInput(InputSnapshot, DeltaTime); // TODO: Update ProcessPIEInput later
+					GameViewportClient->ProcessPIEInput(DeltaTime);
 				}
 				return;
 			}

@@ -18,6 +18,9 @@ class FModifierNegative : public FInputModifier
 public:
 	bool bX = true, bY = true, bZ = true;
 
+	FModifierNegative() = default;
+	FModifierNegative(bool InX, bool InY, bool InZ) : bX(InX), bY(InY), bZ(InZ) {}
+
 	FInputActionValue ModifyRaw(const FInputActionValue& V) override
 	{
 		return V * FVector{ bX ? -1.0f : 1.0f, bY ? -1.0f : 1.0f, bZ ? -1.0f : 1.0f };
@@ -43,8 +46,13 @@ public:
 // else Normalize to range between Lowerthreshold and Uppertyreshold
 class FModifierDeadzone : public FInputModifier
 {
+public:
 	float LowerThreshold = 0.2f;
 	float UpperThreshold = 1.0f;
+
+	FModifierDeadzone() = default;
+	FModifierDeadzone(float InLower, float InUpper) : LowerThreshold(InLower), UpperThreshold(InUpper) {}
+
 	FInputActionValue ModifyRaw(const FInputActionValue& V) override
 	{
 		float Magnitude = std::fabsf(V.Get());
@@ -71,6 +79,10 @@ class FModifierSwizzleAxis : public FInputModifier
 public:
 	enum class ESwizzleOrder { YXZ, ZYX, XZY, YZX, ZXY };
 	ESwizzleOrder Order = ESwizzleOrder::YXZ;
+
+	FModifierSwizzleAxis() = default;
+	explicit FModifierSwizzleAxis(ESwizzleOrder InOrder) : Order(InOrder) {}
+
 	FInputActionValue ModifyRaw(const FInputActionValue& V) override
 	{
 		FVector In = V.GetVector();

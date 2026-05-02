@@ -3,6 +3,9 @@
 #include "Object/Object.h"
 #include "UI/SWindow.h"
 #include "Viewport/ViewportClient.h"
+#include "Input/EnhancedInputManager.h"
+#include "Input/InputAction.h"
+#include "Input/InputMappingContext.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -55,13 +58,16 @@ public:
 	void UnPossess();
 	UCameraComponent* GetPossessedTarget() const { return PossessedCamera; }
 	bool HasPossessedTarget() const { return PossessedCamera != nullptr; }
-	// bool Tick(float DeltaTime, const FInputSystemSnapshot& Snapshot);
-	// bool ProcessPIEInput(const FInputSystemSnapshot& Snapshot, float DeltaTime);
+	bool Tick(float DeltaTime);
+	bool ProcessPIEInput(float DeltaTime);
 
 private:
-	// bool ApplyInputToCameraOrActor(float DeltaTime, const FInputSystemSnapshot& Snapshot);
-	// bool ApplyMovementInput(float DeltaTime, const FInputSystemSnapshot& Snapshot);
-	// bool ApplyLookInput(const FInputSystemSnapshot& Snapshot);
+	void SetupInput();
+	void OnMove(const FInputActionValue& Value);
+	void OnLook(const FInputActionValue& Value);
+	void OnSprintStarted(const FInputActionValue& Value);
+	void OnSprintCompleted(const FInputActionValue& Value);
+
 	void SetCursorCaptured(bool bCaptured);
 	void ApplyCursorClip();
 
@@ -73,4 +79,15 @@ private:
 	bool bHasCursorClipRect = false;
 	bool bPIEPossessedInputEnabled = false;
 	bool bCursorCaptured = false;
+
+	// Enhanced Input
+	FEnhancedInputManager EnhancedInputManager;
+	FInputMappingContext* DefaultMappingContext = nullptr;
+	FInputAction* ActionMove = nullptr;
+	FInputAction* ActionLook = nullptr;
+	FInputAction* ActionSprint = nullptr;
+
+	FVector MoveInputAccumulator = FVector::ZeroVector;
+	FVector LookInputAccumulator = FVector::ZeroVector;
+	bool bIsSprinting = false;
 };

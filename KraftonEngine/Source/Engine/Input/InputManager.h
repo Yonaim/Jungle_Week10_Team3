@@ -57,6 +57,9 @@ public:
 	float GetMouseDeltaX() const { return MouseDeltaX; }
 	float GetMouseDeltaY() const { return MouseDeltaY; }
 
+	void SetTrackingMouse(bool bTrack) { bTrackingMouse = bTrack; if (bTrack) GetCursorPos(&LastMousePos); }
+	void SetLastMousePos(POINT Pos) { LastMousePos = Pos; }
+
 	static constexpr int32 MOUSE_LEFT = 0;
 	static constexpr int32 MOUSE_RIGHT = 1;
 	static constexpr int32 MOUSE_MIDDLE = 2;
