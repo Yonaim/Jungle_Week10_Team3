@@ -286,6 +286,12 @@ void UGizmoComponent::TranslateTarget(float DragAmount)
 {
 	if (!TargetComponent) return;
 
+	if (SelectedAxis == 3)
+	{
+		// Planar translation is applied directly in UpdatePlanarDrag.
+		return;
+	}
+
 	FVector ConstrainedDelta = GetVectorForAxis(SelectedAxis) * DragAmount;
 
 	AddWorldOffset(ConstrainedDelta);
