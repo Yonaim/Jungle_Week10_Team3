@@ -755,6 +755,12 @@ bool UScriptComponent::ResolveScriptPropertyValue(const FString& PropertyName, c
 	return false;
 }
 
+bool UScriptComponent::RefreshScriptProperties()
+{
+	InvalidateScriptPropertyDescs();
+	return RefreshScriptPropertyDescs();
+}
+
 void UScriptComponent::InvalidateScriptPropertyDescs()
 {
 	// ScriptPath 변경, load/reload 진입 시 호출된다.

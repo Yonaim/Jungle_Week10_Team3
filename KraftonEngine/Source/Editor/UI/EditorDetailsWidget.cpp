@@ -117,6 +117,12 @@ namespace
 		{
 			ScriptComponent->OpenScript();
 		}
+
+		ImGui::SameLine();
+		if (ImGui::Button("Reload Script"))
+		{
+			ScriptComponent->RefreshScriptProperties();
+		}
 	}
 }
 

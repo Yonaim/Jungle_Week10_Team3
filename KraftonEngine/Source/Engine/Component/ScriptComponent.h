@@ -42,6 +42,8 @@ public:
 	// Lua property(name, defaultValue)가 호출될 때 editor override/default/fallback 순서로 값을 결정한다.
 	bool ResolveScriptPropertyValue(const FString& PropertyName, const FScriptPropertyValue& FallbackValue, bool bHasFallback, FScriptPropertyValue& OutValue);
 
+	// Lua Property 다시 Load 하는 함수
+	bool RefreshScriptProperties();
 protected:
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
 
