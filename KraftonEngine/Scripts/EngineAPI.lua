@@ -136,3 +136,23 @@ function DeclareProperties(properties) end
 ---@param defaultValue T
 ---@return T
 function property(name, defaultValue) end
+
+---@param keyName string
+---@return boolean
+function GetKey(keyName) end
+
+---@param keyName string
+---@return boolean
+function GetKeyDown(keyName) end
+
+---@param keyName string
+---@return boolean
+function GetKeyUp(keyName) end
+
+---@param seconds number
+function Wait(seconds) end
+
+function wait_until_move_done() end
+
+---@param keyName string
+function wait_key_down(keyName) end
