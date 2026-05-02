@@ -44,10 +44,13 @@ public:
 
 	static void SaveSceneAsJSON(const string& SceneName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
 	static string SerializeWorldToJSONString(FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
+	static string SerializeActorToJSONString(AActor* Actor);
 	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 	static void SaveWorldToBinary(const FString& FilePath, UWorld* World);
 	static void LoadWorldFromBinary(const FString& FilePath, UWorld* World);
 	static void LoadSceneFromJSONString(const string& SceneJson, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
+	static AActor* LoadActorFromJSONString(const string& ActorJson, UWorld* World);
+	static bool ApplyActorFromJSONString(AActor* Actor, const string& ActorJson);
 
 	static TArray<FString> GetSceneFileList();
 
@@ -71,6 +74,7 @@ private:
 	static USceneComponent* DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner);
 	static void DeserializeProperties(UActorComponent* Comp, json::JSON& PropsJSON);
 	static void DeserializePropertyValue(FPropertyDescriptor& Prop, json::JSON& Value);
+	static AActor* DeserializeActorIntoWorld(UWorld* World, json::JSON& ActorJSON, AActor* ExistingActor = nullptr);
 
 	static string GetCurrentTimeStamp();
 };

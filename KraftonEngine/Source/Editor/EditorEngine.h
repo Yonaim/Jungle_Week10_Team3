@@ -4,6 +4,7 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 
 #include "Editor/Viewport/FLevelViewportLayout.h"
+#include "Editor/History/SceneHistoryTypes.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
 #include "Editor/UI/EditorMainPanel.h"
 #include "Editor/Settings/EditorSettings.h"
@@ -85,6 +86,7 @@ public:
 	const FEditorSettings& GetSettings() const { return FEditorSettings::Get(); }
 
 	FSelectionManager& GetSelectionManager() { return SelectionManager; }
+	const FSelectionManager& GetSelectionManager() const { return SelectionManager; }
 
 	// 레이아웃에 위임
 	const TArray<FEditorViewportClient*>& GetAllViewportClients() const { return ViewportLayout.GetAllViewportClients(); }
@@ -146,24 +148,10 @@ private:
 	void RestoreViewportCamera(const FPerspectiveCameraData& CamData);
 	void DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath);
 	void ClearTrackedTransformHistory();
-
-	struct FTrackedSceneSnapshot
-	{
-		FString SerializedScene;
-		FPerspectiveCameraData CameraData;
-		TArray<uint32> SelectedActorUUIDs;
-	};
-
-	struct FTrackedSceneChange
-	{
-		FTrackedSceneSnapshot Before;
-		FTrackedSceneSnapshot After;
-	};
-
-	bool HasMeaningfulSceneDelta(const FTrackedSceneSnapshot& Before, const FTrackedSceneSnapshot& After) const;
-	TArray<uint32> GetChangedActorUUIDs(const FTrackedSceneSnapshot& Before, const FTrackedSceneSnapshot& After, bool bSelectAfterSnapshot) const;
-	FTrackedSceneSnapshot CaptureTrackedSceneSnapshot() const;
-	void ApplyTrackedSceneSnapshot(const FTrackedSceneSnapshot& Snapshot, const TArray<uint32>* PreferredSelectionUUIDs = nullptr);
+	void ApplyTrackedSceneChange(const FTrackedSceneChange& Change, bool bRedo);
+	void ApplyTrackedActorDeltas(const FTrackedSceneChange& Change, bool bRedo);
+	void RestoreTrackedActorOrder(const TArray<uint32>& OrderedUUIDs);
+	void RestoreTrackedSelection(const TArray<uint32>& SelectedUUIDs);
 	void InvalidateTrackedSceneSnapshotCache();
 
 	FSelectionManager SelectionManager;
