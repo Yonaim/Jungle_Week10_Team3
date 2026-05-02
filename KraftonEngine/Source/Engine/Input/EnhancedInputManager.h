@@ -24,7 +24,7 @@ public:
 	void BindAction(FInputAction* Action, ETriggerEvent TriggerEvent, FInputActionCallback Callback);
 	void ClearBindings();
 
-	void ProcessInput(FInputManager* RawInput, float DeltaTime);
+	void ProcessInput(FInputManager* RawInput, float DeltaTime, bool bIgnoreGui = false);
 private:
 	FInputActionValue GetRawActionValue(FInputManager* Input, int32 Key);
 	struct FMappingContextEntry

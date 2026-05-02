@@ -1,4 +1,4 @@
-#include "Editor/Viewport/FLevelViewportLayout.h"
+﻿#include "Editor/Viewport/FLevelViewportLayout.h"
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Viewport/LevelEditorViewportClient.h"
@@ -1110,13 +1110,18 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 			ImVec2 MousePos = ImGui::GetIO().MousePos;
 			FPoint MP = { MousePos.x, MousePos.y };
 
-			// 留덉슦?ㅺ? ?대뼡 ?щ’ ?꾩뿉 ?덈뒗吏
+
 			for (int32 i = 0; i < ActiveSlotCount; ++i)
 			{
-				if (IsSlotVisibleEnough(i) && ViewportWindows[i]->IsHover(MP))
+				bool bSlotHovered = IsSlotVisibleEnough(i) && ViewportWindows[i]->IsHover(MP);
+				if (i < static_cast<int32>(LevelViewportClients.size()))
+				{
+					LevelViewportClients[i]->SetHovered(bSlotHovered);
+				}
+
+				if (bSlotHovered)
 				{
 					bMouseOverViewport = true;
-					break;
 				}
 			}
 

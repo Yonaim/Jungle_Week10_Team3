@@ -33,11 +33,14 @@ void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LP
 
 	case WM_RBUTTONDOWN:
 		EventQueue.push_back({ EInputEventType::MouseButtonDown, MOUSE_RIGHT });
+		GetCursorPos(&LastMousePos);
+		bTrackingMouse = true;
 		SetCapture(Hwnd);
 		break;
 
 	case WM_RBUTTONUP:
 		EventQueue.push_back({ EInputEventType::MouseButtonUp, MOUSE_RIGHT });
+		bTrackingMouse = false;
 		ReleaseCapture();
 		break;
 
@@ -158,25 +161,18 @@ void FInputManager::Tick()
 	POINT CurrentPos;
 	GetCursorPos(&CurrentPos);
 	
-	if (bTrackingMouse)
+	// If we have raw delta, use it. Otherwise use cursor pos.
+	if (std::abs(RawMouseDeltaAccumX) > 0.0f || std::abs(RawMouseDeltaAccumY) > 0.0f)
 	{
-		// If we have raw delta, use it. Otherwise use cursor pos.
-		if (std::abs(RawMouseDeltaAccumX) > 0.0f || std::abs(RawMouseDeltaAccumY) > 0.0f)
-		{
-			MouseDeltaX = RawMouseDeltaAccumX;
-			MouseDeltaY = RawMouseDeltaAccumY;
-		}
-		else
-		{
-			MouseDeltaX = static_cast<float>(CurrentPos.x - LastMousePos.x);
-			MouseDeltaY = static_cast<float>(CurrentPos.y - LastMousePos.y);
-		}
+		MouseDeltaX = RawMouseDeltaAccumX;
+		MouseDeltaY = RawMouseDeltaAccumY;
 	}
 	else
 	{
-		MouseDeltaX = 0.0f;
-		MouseDeltaY = 0.0f;
+		MouseDeltaX = static_cast<float>(CurrentPos.x - LastMousePos.x);
+		MouseDeltaY = static_cast<float>(CurrentPos.y - LastMousePos.y);
 	}
+	
 	LastMousePos = CurrentPos;
 	RawMouseDeltaAccumX = 0.0f;
 	RawMouseDeltaAccumY = 0.0f;

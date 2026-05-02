@@ -56,9 +56,6 @@ void FEnhancedInputManager::ClearBindings()
 }
 
 // Function : Get raw action value from input manager
-// input : input, key
-// input : input manager to get value from
-// key : key to get value for
 FInputActionValue FEnhancedInputManager::GetRawActionValue(FInputManager* Input, int32 Key)
 {
 	if (Key == static_cast<int32>(EInputKey::MouseX))
@@ -93,10 +90,10 @@ FInputActionValue FEnhancedInputManager::GetRawActionValue(FInputManager* Input,
 // raw input : input manager to get raw input from
 // delta time : time since last frame,
 // used for trigger state update
-void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTime)
+void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTime, bool bIgnoreGui)
 {
-	bool bGuiWantsKeyboard = RawInput->IsGuiUsingKeyboard();
-	bool bGuiWantsMouse = RawInput->IsGuiUsingMouse();
+	bool bGuiWantsKeyboard = !bIgnoreGui && RawInput->IsGuiUsingKeyboard();
+	bool bGuiWantsMouse = !bIgnoreGui && RawInput->IsGuiUsingMouse();
 
 	TMap<FInputAction*, FInputActionValue> ActionValues;
 	TMap<FInputAction*, ETriggerState> NewTriggerStates;

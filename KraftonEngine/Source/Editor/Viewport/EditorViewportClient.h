@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Viewport/ViewportClient.h"
 #include "Render/Types/RenderTypes.h"
@@ -59,6 +59,9 @@ public:
 	// 활성 상태 — 활성 뷰포트만 입력 처리
 	void SetActive(bool bInActive) { bIsActive = bInActive; }
 	bool IsActive() const { return bIsActive; }
+
+	void SetHovered(bool bInHovered) { bIsHovered = bInHovered; }
+	bool IsHovered() const { return bIsHovered; }
 
 	// FViewport 소유
 	void SetViewport(FViewport* InViewport) { Viewport = InViewport; }
@@ -132,6 +135,7 @@ private:
 	float WindowHeight = 1080.f;
 
 	bool bIsActive = false;
+	bool bIsHovered = false;
 	// 뷰포트 슬롯의 스크린 좌표 (ImGui screen space = 윈도우 클라이언트 좌표)
 	FRect ViewportScreenRect;
 
@@ -173,6 +177,19 @@ private:
 	FInputAction* ActionEditorToggleCoordSystem = nullptr;
 	FInputAction* ActionEditorEscape = nullptr;
 	FInputAction* ActionEditorTogglePIE = nullptr;
+	FInputAction* ActionEditorDecreaseSnap = nullptr;
+	FInputAction* ActionEditorIncreaseSnap = nullptr;
+	FInputAction* ActionEditorVertexSnap = nullptr;
+	FInputAction* ActionEditorSnapToFloor = nullptr;
+	FInputAction* ActionEditorSetBookmark = nullptr;
+	FInputAction* ActionEditorJumpToBookmark = nullptr;
+	FInputAction* ActionEditorSetViewportPerspective = nullptr;
+	FInputAction* ActionEditorSetViewportTop = nullptr;
+	FInputAction* ActionEditorSetViewportFront = nullptr;
+	FInputAction* ActionEditorSetViewportRight = nullptr;
+	FInputAction* ActionEditorToggleGridSnap = nullptr;
+	FInputAction* ActionEditorToggleRotationSnap = nullptr;
+	FInputAction* ActionEditorToggleScaleSnap = nullptr;
 
 	FVector EditorMoveAccumulator = FVector::ZeroVector;
 	FVector EditorRotateAccumulator = FVector::ZeroVector;

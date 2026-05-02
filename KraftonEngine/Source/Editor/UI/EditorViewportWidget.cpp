@@ -48,6 +48,8 @@ void FEditorViewportWidget::Render(float DeltaTime)
 	// 뷰포트 패널 위에서 마우스 클릭 시 활성 뷰포트 전환
 	if (ViewportClient && EditorEngine)
 	{
+		ViewportClient->SetHovered(ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows));
+
 		if (ImGui::IsWindowHovered() && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)))
 		{
 			if (EditorEngine->GetActiveViewport() != ViewportClient)

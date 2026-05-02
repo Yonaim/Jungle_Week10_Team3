@@ -30,12 +30,12 @@ LRESULT CALLBACK FWindowsApplication::StaticWndProc(HWND hWnd, unsigned int Msg,
 
 LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam)
 {
+	FInputManager::Get().ProcessMessage(hWnd, Msg, wParam, lParam);
+
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, Msg, wParam, lParam))
 	{
 		return true;
 	}
-
-	FInputManager::Get().ProcessMessage(hWnd, Msg, wParam, lParam);
 
 	switch (Msg)
 	{
