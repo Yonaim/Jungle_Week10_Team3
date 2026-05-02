@@ -268,16 +268,6 @@ struct FLuaScriptInstance::FInstanceImpl
 			return Entry.Wait.FramesRemaining <= 0;
 		case ELuaWaitKind::MoveDone:
 			return OwnerProxy.IsMoveDone();
-		case ELuaWaitKind::KeyDown:
-		{
-			int VirtualKey = 0;
-			if (!TryParseVirtualKey(Entry.Wait.KeyName, VirtualKey))
-			{
-				return false;
-			}
-
-			return InputSystem::Get().GetKeyDown(VirtualKey);
-		}
 		case ELuaWaitKind::Signal:
 			return PendingSignals.find(Entry.Wait.Name) != PendingSignals.end();
 		default:
@@ -1065,24 +1055,6 @@ void FLuaScriptInstance::BindInputFunctions()
 		if (TryParseVirtualKey(ButtonName, VirtualKey))
 			return FInputManager::Get().GetDragDistance(VirtualKey);
 		return 0.0f;
-	});
-
-	Impl->Env.set_function("key", [](const FString& KeyName)
-	{
-		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? InputSystem::Get().GetKey(VirtualKey) : false;
-	});
-
-	Impl->Env.set_function("key_down", [](const FString& KeyName)
-	{
-		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? InputSystem::Get().GetKeyDown(VirtualKey) : false;
-	});
-
-	Impl->Env.set_function("key_up", [](const FString& KeyName)
-	{
-		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? InputSystem::Get().GetKeyUp(VirtualKey) : false;
 	});
 }
 
