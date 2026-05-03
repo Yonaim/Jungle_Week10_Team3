@@ -124,6 +124,7 @@ void FLuaScriptRuntime::BindComponentProxyType()
 			&FLuaComponentProxy::MoveByXYZ),
 		"StopMove", &FLuaComponentProxy::StopMove,
 		"IsMoveDone", &FLuaComponentProxy::IsMoveDone,
+		"StartCameraShake", &FLuaComponentProxy::StartCameraShake,
 		"SetBoxExtent", sol::overload(
 			&FLuaComponentProxy::SetBoxExtent,
 			&FLuaComponentProxy::SetBoxExtentXYZ),

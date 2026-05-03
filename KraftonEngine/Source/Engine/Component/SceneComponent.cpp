@@ -398,6 +398,11 @@ FVector USceneComponent::GetWorldLocation() const
 	return FVector(WorldMatrix.M[3][0], WorldMatrix.M[3][1], WorldMatrix.M[3][2]);
 }
 
+FVector USceneComponent::GetWorldRotation() const
+{
+	return GetRotationTranslationWithoutScale(GetWorldMatrix()).GetEuler();
+}
+
 FVector USceneComponent::GetWorldScale() const
 {
 	const FMatrix& WorldMatrix = GetWorldMatrix();

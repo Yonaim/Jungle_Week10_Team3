@@ -1,5 +1,6 @@
 ﻿#include "Component/CameraComponent.h"
 #include "Object/ObjectFactory.h"
+#include "Camera/CameraShake.h"
 #include <cmath>
 
 IMPLEMENT_CLASS(UCameraComponent, USceneComponent)
@@ -8,7 +9,15 @@ HIDE_FROM_COMPONENT_LIST(UCameraComponent)
 FMatrix UCameraComponent::GetViewMatrix() const
 {
 	UpdateWorldMatrix();
-	return FMatrix::MakeViewMatrix(GetRightVector(), GetUpVector(), GetForwardVector(), GetWorldLocation());
+
+	// Apply additive shake offsets only for view matrix calculation
+	FVector FinalLoc = GetWorldLocation() + AdditiveLocationOffset;
+	FRotator FinalRot(GetWorldRotation());
+	FinalRot.Yaw += AdditiveRotationOffset.Yaw;
+	FinalRot.Pitch += AdditiveRotationOffset.Pitch;
+	FinalRot.Roll += AdditiveRotationOffset.Roll;
+
+	return FMatrix::MakeViewMatrix(FinalRot.GetRightVector(), FinalRot.GetUpVector(), FinalRot.GetForwardVector(), FinalLoc);
 }
 
 FMatrix UCameraComponent::GetProjectionMatrix() const
@@ -102,25 +111,39 @@ FRay UCameraComponent::DeprojectScreenToWorld(float MouseX, float MouseY, float 
 
 void UCameraComponent::StartCameraShake(float Intensity, float duration)
 {
-	ShakeDuration = duration;
-	ShakeRunningTime = duration;
-	ShakeIntensity = Intensity;
+	USinWaveCameraShake* NewShake = UObjectManager::Get().CreateObject<USinWaveCameraShake>(this);
+	NewShake->Intensity = Intensity;
+	NewShake->Duration = duration;
+	ActiveShakes.push_back(NewShake);
 }
 
 void UCameraComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
 {
-	if (ShakeRunningTime > 0.0f)
+	USceneComponent::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	AdditiveLocationOffset = FVector::ZeroVector;
+	AdditiveRotationOffset = FRotator::ZeroRotator;
+
+	for (int32 i = static_cast<int32>(ActiveShakes.size()) - 1; i >= 0; --i)
 	{
-		ShakeRunningTime -= DeltaTime;
-		float Alpha = ShakeRunningTime / ShakeDuration;
-		float ElapsedTime = ShakeDuration - ShakeRunningTime;
-		float Frequency = 25.0f;
-		ShakeLocationOffset.X = sin(ElapsedTime * Frequency) * ShakeIntensity * Alpha;
-		ShakeLocationOffset.Y = cos(ElapsedTime * Frequency * 0.5f) * ShakeIntensity * Alpha;
-	}
-	else
-	{
-		ShakeLocationOffset = FVector::ZeroVector;
+		UCameraShakeBase* Shake = ActiveShakes[i];
+		if (!Shake) continue;
+
+		FVector LocOffset = FVector::ZeroVector;
+		FRotator RotOffset = FRotator::ZeroRotator;
+
+		Shake->UpdateShake(DeltaTime, LocOffset, RotOffset);
+
+		AdditiveLocationOffset += LocOffset;
+		AdditiveRotationOffset.Pitch += RotOffset.Pitch;
+		AdditiveRotationOffset.Yaw += RotOffset.Yaw;
+		AdditiveRotationOffset.Roll += RotOffset.Roll;
+
+		if (Shake->IsFinished())
+		{
+			UObjectManager::Get().DestroyObject(Shake);
+			ActiveShakes.erase(ActiveShakes.begin() + i);
+		}
 	}
 }
 

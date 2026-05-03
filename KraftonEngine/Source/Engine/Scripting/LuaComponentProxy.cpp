@@ -17,10 +17,10 @@
 #include "Object/Object.h"
 #include "Object/UClass.h"
 #include "Scripting/LuaActorProxy.h"
+#include "Component/CameraComponent.h"
 #include "Component/Shape/BoxComponent.h"
 #include "Component/Shape/CapsuleComponent.h"
 #include "Component/Shape/SphereComponent.h"
-
 #include <algorithm>
 #include <cmath>
 
@@ -967,6 +967,16 @@ bool FLuaComponentProxy::IsMoveDone() const
 		return ProjectileComponent->GetVelocity().IsNearlyZero();
 	}
 
+	return false;
+}
+
+bool FLuaComponentProxy::StartCameraShake(float Intensity, float Duration)
+{
+	if (UCameraComponent* Camera = Cast<UCameraComponent>(GetComponent()))
+	{
+		Camera->StartCameraShake(Intensity, Duration);
+		return true;
+	}
 	return false;
 }
 

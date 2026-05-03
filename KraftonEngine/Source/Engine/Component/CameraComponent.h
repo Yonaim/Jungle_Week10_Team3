@@ -16,7 +16,7 @@ struct FCameraState
 	float OrthoWidth = 10.0f;
 	bool bIsOrthogonal = false;
 };
-
+class UCameraShakeBase;
 class UCameraComponent : public USceneComponent
 {
 public:
@@ -48,17 +48,16 @@ public:
 	bool IsOrthogonal() const { return CameraState.bIsOrthogonal; }
 
 	FRay DeprojectScreenToWorld(float MouseX, float MouseY, float ScreenWidth, float ScreenHeight);
+
 public://expose in lua 
 	void StartCameraShake(float Intensity, float duration);
-
 
 private:
 	FCameraState CameraState;
 
-	FVector ShakeLocationOffset;
-	FRotator ShakeRotationOffset;
+	// Multi-Shake System
 
-	float ShakeRunningTime = 0.0f;
-	float ShakeDuration = 0.0f;
-	float ShakeIntensity = 0.0f;
+	TArray<UCameraShakeBase*> ActiveShakes;
+	FVector AdditiveLocationOffset = FVector::ZeroVector;
+	FRotator AdditiveRotationOffset = FRotator::ZeroRotator;
 };
