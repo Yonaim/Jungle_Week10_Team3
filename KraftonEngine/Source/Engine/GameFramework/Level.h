@@ -34,6 +34,7 @@ public:
 	UWorld* GetWorld() const { return OwingWorld; }
 	void SetWorld(UWorld* World) { OwingWorld = World;}
 	void Serialize(FArchive& Ar);
+	virtual UObject* Duplicate(UObject* NewOuter = nullptr) const override;
 	void BeginPlay();
 	void EndPlay();
 	void Tick(float DeltaTime);

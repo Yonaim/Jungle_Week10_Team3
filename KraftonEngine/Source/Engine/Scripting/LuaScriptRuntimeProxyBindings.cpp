@@ -75,6 +75,9 @@ void FLuaScriptRuntime::BindComponentProxyType()
 			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetLocalScale),
 			&FLuaComponentProxy::SetLocalScaleXYZ),
 		"SetLocalScaleXYZ", &FLuaComponentProxy::SetLocalScaleXYZ,
+		"GetForwardVector", &FLuaComponentProxy::GetForwardVector,
+		"GetRightVector", &FLuaComponentProxy::GetRightVector,
+		"GetUpVector", &FLuaComponentProxy::GetUpVector,
 		"SetCollisionEnabled", &FLuaComponentProxy::SetCollisionEnabled,
 		"SetGenerateOverlapEvents", &FLuaComponentProxy::SetGenerateOverlapEvents,
 		"IsOverlappingActor", &FLuaComponentProxy::IsOverlappingActor,
@@ -137,6 +140,9 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"Name", sol::property(&FLuaActorProxy::GetName),
 		"UUID", sol::property(&FLuaActorProxy::GetUUID),
 		"Tag", sol::property(&FLuaActorProxy::GetTag, &FLuaActorProxy::SetTag),
+		"Location", sol::property(&FLuaActorProxy::GetWorldLocation, &FLuaActorProxy::SetWorldLocation),
+		"Rotation", sol::property(&FLuaActorProxy::GetWorldRotation, &FLuaActorProxy::SetWorldRotation),
+		"Scale", sol::property(&FLuaActorProxy::GetWorldScale, &FLuaActorProxy::SetWorldScale),
 		"Velocity", sol::property(&FLuaActorProxy::GetVelocity, &FLuaActorProxy::SetVelocity),
 		"HasTag", &FLuaActorProxy::HasTag,
 		"GetWorldLocation", &FLuaActorProxy::GetWorldLocation,
@@ -161,6 +167,9 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"AddWorldOffset", sol::overload(
 			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::AddWorldOffset),
 			&FLuaActorProxy::AddWorldOffsetXYZ),
+		"GetForwardVector", &FLuaActorProxy::GetForwardVector,
+		"GetRightVector", &FLuaActorProxy::GetRightVector,
+		"GetUpVector", &FLuaActorProxy::GetUpVector,
 		"FindGround", [](const FLuaActorProxy& ActorProxy, float MaxDistance, float SkinWidth)
 		{
 			const FLuaGroundHit GroundHit = ActorProxy.FindGround(MaxDistance, SkinWidth);

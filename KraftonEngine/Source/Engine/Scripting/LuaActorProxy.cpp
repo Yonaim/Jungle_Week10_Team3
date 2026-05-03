@@ -333,6 +333,36 @@ void FLuaActorProxy::AddWorldOffsetXYZ(float X, float Y, float Z)
 	AddWorldOffset(FVector(X, Y, Z));
 }
 
+FVector FLuaActorProxy::GetForwardVector() const
+{
+	AActor* TargetActor = GetActor();
+	if (TargetActor && TargetActor->GetRootComponent())
+	{
+		return TargetActor->GetRootComponent()->GetForwardVector();
+	}
+	return FVector(1.0f, 0.0f, 0.0f);
+}
+
+FVector FLuaActorProxy::GetRightVector() const
+{
+	AActor* TargetActor = GetActor();
+	if (TargetActor && TargetActor->GetRootComponent())
+	{
+		return TargetActor->GetRootComponent()->GetRightVector();
+	}
+	return FVector(0.0f, 1.0f, 0.0f);
+}
+
+FVector FLuaActorProxy::GetUpVector() const
+{
+	AActor* TargetActor = GetActor();
+	if (TargetActor && TargetActor->GetRootComponent())
+	{
+		return TargetActor->GetRootComponent()->GetUpVector();
+	}
+	return FVector(0.0f, 0.0f, 1.0f);
+}
+
 FLuaGroundHit FLuaActorProxy::FindGround(float MaxDistance, float SkinWidth) const
 {
 	FLuaGroundHit Result;

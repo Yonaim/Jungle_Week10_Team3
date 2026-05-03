@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -20,6 +20,8 @@ public:
 	bool Init(HINSTANCE InHInstance);
 	void PumpMessages();
 	void Destroy();
+
+	void RequestExit() { bIsExitRequested = true; }
 
 	FWindowsWindow& GetWindow() { return Window; }
 	const FWindowsWindow& GetWindow() const { return Window; }
@@ -44,3 +46,4 @@ private:
 	FOnSizingCallback OnSizingCallback;
 	FOnResizedCallback OnResizedCallback;
 };
+ 

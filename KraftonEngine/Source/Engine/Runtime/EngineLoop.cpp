@@ -3,6 +3,8 @@
 #include "Core/ProjectSettings.h"
 #include "Profiling/StartupProfiler.h"
 #include "Engine/Serialization/SceneSaveManager.h"
+#include "Engine/Input/InputManager.h"
+#include <iostream>
 
 #if IS_OBJ_VIEWER
 #include "ObjViewer/ObjViewerEngine.h"
@@ -104,6 +106,13 @@ int FEngineLoop::Run()
 		if (Application.IsExitRequested())
 		{
 			break;
+		}
+
+		FInputManager::Get().Tick();
+
+		if (FInputManager::Get().IsKeyDown(VK_ESCAPE))
+		{
+			Application.RequestExit();
 		}
 
 		Timer.Tick();

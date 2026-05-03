@@ -351,6 +351,36 @@ bool FLuaComponentProxy::SetLocalScaleXYZ(float X, float Y, float Z)
 	return SetLocalScale(FVector(X, Y, Z));
 }
 
+sol::optional<FVector> FLuaComponentProxy::GetForwardVector() const
+{
+	UActorComponent* Comp = GetComponent();
+	if (USceneComponent* SceneComp = Cast<USceneComponent>(Comp))
+	{
+		return SceneComp->GetForwardVector();
+	}
+	return sol::nullopt;
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetRightVector() const
+{
+	UActorComponent* Comp = GetComponent();
+	if (USceneComponent* SceneComp = Cast<USceneComponent>(Comp))
+	{
+		return SceneComp->GetRightVector();
+	}
+	return sol::nullopt;
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetUpVector() const
+{
+	UActorComponent* Comp = GetComponent();
+	if (USceneComponent* SceneComp = Cast<USceneComponent>(Comp))
+	{
+		return SceneComp->GetUpVector();
+	}
+	return sol::nullopt;
+}
+
 bool FLuaComponentProxy::SetCollisionEnabled(bool bEnabled)
 {
 	UPrimitiveComponent* PrimitiveComponent = Cast<UPrimitiveComponent>(GetComponent());

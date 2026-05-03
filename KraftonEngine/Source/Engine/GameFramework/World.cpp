@@ -100,11 +100,27 @@ UObject* UWorld::Duplicate(UObject* NewOuter) const
 		NewWorld->GetPersistentLevel()->SetOutlinerFolders(PersistentLevel->GetOutlinerFolders());
 	}
 
-	for (AActor* Src : GetActors())
+	if (PersistentLevel)
 	{
-		if (!Src) continue;
-		Src->Duplicate(NewWorld);
+		NewWorld->PersistentLevel = Cast<ULevel>(PersistentLevel->Duplicate(NewWorld));
+		if (NewWorld->PersistentLevel)
+		{
+			NewWorld->PersistentLevel->SetWorld(NewWorld);
+			NewWorld->Levels.push_back(NewWorld->PersistentLevel);
+			NewWorld->CurrentLevel = NewWorld->PersistentLevel;
+
+			for (AActor* Actor : NewWorld->PersistentLevel->GetActors())
+			{
+				if (Actor)
+				{
+					NewWorld->InsertActorToOctree(Actor);
+				}
+			}
+			NewWorld->MarkWorldPrimitivePickingBVHDirty();
+		}
 	}
+
+	NewWorld->StreamingLevels = StreamingLevels;
 
 	NewWorld->PostDuplicate();
 	return NewWorld;
@@ -125,11 +141,27 @@ UWorld* UWorld::DuplicateAs(EWorldType InWorldType) const
 	// TODO: 임시 처리. 추후 제거 하고 Level Duplicate 하는 과정 추가해야할듯
 	NewWorld->PersistentLevel->SetGameModeClassName(PersistentLevel->GetGameModeClassName());
 
-	for (AActor* Src : GetActors())
+	if (PersistentLevel)
 	{
-		if (!Src) continue;
-		Src->Duplicate(NewWorld);
+		NewWorld->PersistentLevel = Cast<ULevel>(PersistentLevel->Duplicate(NewWorld));
+		if (NewWorld->PersistentLevel)
+		{
+			NewWorld->PersistentLevel->SetWorld(NewWorld);
+			NewWorld->Levels.push_back(NewWorld->PersistentLevel);
+			NewWorld->CurrentLevel = NewWorld->PersistentLevel;
+
+			for (AActor* Actor : NewWorld->PersistentLevel->GetActors())
+			{
+				if (Actor)
+				{
+					NewWorld->InsertActorToOctree(Actor);
+				}
+			}
+			NewWorld->MarkWorldPrimitivePickingBVHDirty();
+		}
 	}
+
+	NewWorld->StreamingLevels = StreamingLevels;
 
 	NewWorld->PostDuplicate();
 	return NewWorld;
@@ -168,6 +200,15 @@ void UWorld::Serialize(FArchive& Ar)
 		PersistentLevel->Serialize(Ar);
 		Levels.push_back(PersistentLevel);
 		CurrentLevel = PersistentLevel;
+
+		for (AActor* Actor : PersistentLevel->GetActors())
+		{
+			if (Actor)
+			{
+				InsertActorToOctree(Actor);
+			}
+		}
+		MarkWorldPrimitivePickingBVHDirty();
 
 		// Deserialize Streaming Levels Metadata
 		int32 StreamingCount = 0;
@@ -543,6 +584,7 @@ void UWorld::SpawnGameMode()
 
 void UWorld::BeginPlay()
 {
+	if (bHasBegunPlay) return;
 	bHasBegunPlay = true;
 
 	SpawnGameMode();

@@ -59,6 +59,11 @@ struct FLuaActorProxy
 
 	void AddWorldOffset(const FVector& Delta);
 	void AddWorldOffsetXYZ(float X, float Y, float Z);
+
+	FVector GetForwardVector() const;
+	FVector GetRightVector() const;
+	FVector GetUpVector() const;
+
 	FLuaGroundHit FindGround(float MaxDistance, float SkinWidth) const;
 
 	// 이동 API는 즉시 위치를 바꾸는 함수가 아니라 C++ Tick에서 처리할 목표 상태를 설정한다.

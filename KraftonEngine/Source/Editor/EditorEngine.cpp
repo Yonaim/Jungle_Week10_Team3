@@ -24,6 +24,7 @@
 #include "Texture/Texture2D.h"
 #include "Object/Object.h"
 #include <filesystem>
+#include <fstream>
 #include <set>
 
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
@@ -172,8 +173,6 @@ void UEditorEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 void UEditorEngine::Tick(float DeltaTime)
 {
-	FInputManager::Get().Tick();
-
 	// --- PIE 요청 처리 (프레임 경계에서 처리되도록 Tick 선두에서 소비) ---
 	if (bRequestEndPlayMapQueued)
 	{
@@ -198,7 +197,11 @@ void UEditorEngine::Tick(float DeltaTime)
 
 	WorldTick(DeltaTime);
 	Render(DeltaTime);
-	SelectionManager.Tick();
+
+	if (!IsPIEPossessedMode())
+	{
+		SelectionManager.Tick();
+	}
 }
 
 UCameraComponent* UEditorEngine::GetCamera() const
@@ -1080,7 +1083,8 @@ bool UEditorEngine::LoadSceneFromPath(const FString& InScenePath)
 
 	FWorldContext LoadContext;
 	FPerspectiveCameraData CameraData;
-	if (InScenePath.ends_with(".Scene")||InScenePath.ends_with(".scene"))
+
+	if (FSceneSaveManager::IsJsonFile(InScenePath))
 	{
 		FSceneSaveManager::LoadSceneFromJSON(InScenePath, LoadContext, CameraData);
 	}

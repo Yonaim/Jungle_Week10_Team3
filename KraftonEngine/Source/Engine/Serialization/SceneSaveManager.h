@@ -62,6 +62,8 @@ public:
 	// 모든 .Scene 파일을 일괄 쿠킹. 같은 디렉터리에 .umap 파일을 생성한다.
 	static int32 CookAllScenes();
 
+	static bool IsJsonFile(const FString& FilePath);
+
 private:
 	// ---- Serialization ----
 	static json::JSON SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam);

@@ -175,7 +175,6 @@ void UEngine::Tick(float DeltaTime)
 	FDirectoryWatcher::Get().ProcessChanges();
 	FNotificationManager::Get().Tick(DeltaTime);
 	FAudioManager::Get().Update();
-	FInputManager::Get().Tick();
 	WorldTick(DeltaTime);
 	Render(DeltaTime);
 }

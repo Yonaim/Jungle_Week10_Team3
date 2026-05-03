@@ -125,59 +125,63 @@ void UGameViewportClient::ResetInputState()
 
 bool UGameViewportClient::Tick(float DeltaTime)
 {
-	if (!bPIEPossessedInputEnabled || !HasPossessedTarget())
+	if (!HasPossessedTarget())
 	{
 		return false;
 	}
 
-	//If possessed, we capture and center the mouse
-	SetCursorCaptured(true);
-
-	// Reset accumulators before processing
-	MoveInputAccumulator = FVector::ZeroVector;
-	LookInputAccumulator = FVector::ZeroVector;
-
-	// Process Enhanced Input
-	EnhancedInputManager.ProcessInput(&FInputManager::Get(), DeltaTime);
-
-	// Apply Accumulated Input
-	UCameraComponent* TargetCamera = GetPossessedTarget();
-	if (!TargetCamera) return false;
-
 	bool bChanged = false;
 
-	// Movement
-	if (!MoveInputAccumulator.IsNearlyZero())
+	// possessed 상태면 마우스 캡처 및 중앙 고정 수행 (스크립트 제어 카메라여도 뷰포트 포커스 유지 목적)
+	SetCursorCaptured(true);
+
+	if (bPIEPossessedInputEnabled)
 	{
-		MoveInputAccumulator = MoveInputAccumulator.Normalized();
+		// Reset accumulators before processing
+		MoveInputAccumulator = FVector::ZeroVector;
+		LookInputAccumulator = FVector::ZeroVector;
 
-		FVector FlatForward = TargetCamera->GetForwardVector();
-		FVector FlatRight = TargetCamera->GetRightVector();
-		FlatForward.Z = 0.0f;
-		FlatRight.Z = 0.0f;
-		if (!FlatForward.IsNearlyZero()) FlatForward = FlatForward.Normalized();
-		if (!FlatRight.IsNearlyZero()) FlatRight = FlatRight.Normalized();
+		// Process Enhanced Input
+		EnhancedInputManager.ProcessInput(&FInputManager::Get(), DeltaTime);
 
-		const float SpeedBoost = bIsSprinting ? InputSettings.SprintMultiplier : 1.0f;
-		const FVector WorldDelta = (FlatForward * MoveInputAccumulator.X + FlatRight * MoveInputAccumulator.Y + FVector::UpVector * MoveInputAccumulator.Z)
-			* (InputSettings.MoveSpeed * SpeedBoost * DeltaTime);
+		// Apply Accumulated Input
+		UCameraComponent* TargetCamera = GetPossessedTarget();
+		if (TargetCamera)
+		{
+			// Movement
+			if (!MoveInputAccumulator.IsNearlyZero())
+			{
+				MoveInputAccumulator = MoveInputAccumulator.Normalized();
 
-		TargetCamera->SetWorldLocation(TargetCamera->GetWorldLocation() + WorldDelta);
-		bChanged = true;
-	}
+				FVector FlatForward = TargetCamera->GetForwardVector();
+				FVector FlatRight = TargetCamera->GetRightVector();
+				FlatForward.Z = 0.0f;
+				FlatRight.Z = 0.0f;
+				if (!FlatForward.IsNearlyZero()) FlatForward = FlatForward.Normalized();
+				if (!FlatRight.IsNearlyZero()) FlatRight = FlatRight.Normalized();
 
-	// Look
-	if (!LookInputAccumulator.IsNearlyZero())
-	{
-		FRotator Rotation = TargetCamera->GetRelativeRotation();
-		Rotation.Yaw += LookInputAccumulator.X * InputSettings.LookSensitivity;
-		Rotation.Pitch = Clamp(
-			Rotation.Pitch + LookInputAccumulator.Y * InputSettings.LookSensitivity,
-			InputSettings.MinPitch,
-			InputSettings.MaxPitch);
-		Rotation.Roll = 0.0f;
-		TargetCamera->SetRelativeRotation(Rotation);
-		bChanged = true;
+				const float SpeedBoost = bIsSprinting ? InputSettings.SprintMultiplier : 1.0f;
+				const FVector WorldDelta = (FlatForward * MoveInputAccumulator.X + FlatRight * MoveInputAccumulator.Y + FVector::UpVector * MoveInputAccumulator.Z)
+					* (InputSettings.MoveSpeed * SpeedBoost * DeltaTime);
+
+				TargetCamera->SetWorldLocation(TargetCamera->GetWorldLocation() + WorldDelta);
+				bChanged = true;
+			}
+
+			// Look
+			if (!LookInputAccumulator.IsNearlyZero())
+			{
+				FRotator Rotation = TargetCamera->GetRelativeRotation();
+				Rotation.Yaw += LookInputAccumulator.X * InputSettings.LookSensitivity;
+				Rotation.Pitch = Clamp(
+					Rotation.Pitch + LookInputAccumulator.Y * InputSettings.LookSensitivity,
+					InputSettings.MinPitch,
+					InputSettings.MaxPitch);
+				Rotation.Roll = 0.0f;
+				TargetCamera->SetRelativeRotation(Rotation);
+				bChanged = true;
+			}
+		}
 	}
 
 	// Recenter mouse after processing to allow continuous rotation

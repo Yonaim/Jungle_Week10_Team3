@@ -1,4 +1,5 @@
-#include "D3DDevice.h"
+﻿#include "D3DDevice.h"
+#include <fstream>
 
 //	Safe Release Macro
 #define SAFE_RELEASE(Obj) if (Obj) { Obj->Release(); Obj = nullptr; }
@@ -34,6 +35,28 @@ void FD3DDevice::Present()
 {
 	UINT PresentFlags = bTearingSupported ? DXGI_PRESENT_ALLOW_TEARING : 0;
 	SwapChain->Present(0, PresentFlags);
+}
+
+void FD3DDevice::CopyToBackbuffer(ID3D11Texture2D* Source)
+{
+	if (!Source || !DeviceContext || !FrameBuffer) return;
+
+	// 진단: Source/Dest 텍스처 크기/포맷 비교 — 다르면 CopyResource silent 실패.
+	static bool s_DiagOnce = false;
+	if (!s_DiagOnce)
+	{
+		s_DiagOnce = true;
+		D3D11_TEXTURE2D_DESC SrcDesc = {};
+		D3D11_TEXTURE2D_DESC DstDesc = {};
+		Source->GetDesc(&SrcDesc);
+		FrameBuffer->GetDesc(&DstDesc);
+
+		std::ofstream Log("Saves/diag.log", std::ios::app);
+		Log << "[Copy] Src " << SrcDesc.Width << "x" << SrcDesc.Height << " fmt=" << SrcDesc.Format
+		    << " | Dst " << DstDesc.Width << "x" << DstDesc.Height << " fmt=" << DstDesc.Format << std::endl;
+	}
+
+	DeviceContext->CopyResource(FrameBuffer, Source);
 }
 
 void FD3DDevice::OnResizeViewport(int Width, int Height)

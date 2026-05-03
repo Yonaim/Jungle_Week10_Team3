@@ -50,6 +50,10 @@ struct FLuaComponentProxy
 	bool SetLocalScale(const FVector& InScale);
 	bool SetLocalScaleXYZ(float X, float Y, float Z);
 
+	sol::optional<FVector> GetForwardVector() const;
+	sol::optional<FVector> GetRightVector() const;
+	sol::optional<FVector> GetUpVector() const;
+
 	bool SetCollisionEnabled(bool bEnabled);
 	bool SetGenerateOverlapEvents(bool bEnabled);
 	bool IsOverlappingActor(const FLuaActorProxy& OtherActor) const;

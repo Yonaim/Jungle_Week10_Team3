@@ -227,9 +227,12 @@ void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& 
 
 	for (FPrimitiveSceneProxy* Proxy : Output.FrustumVisibleProxies)
 	{
-		// Light View에서는 EditorOnly 프록시(빌보드 아이콘 등) 제외
-		if (Frame.bIsLightView && Proxy->HasProxyFlag(EPrimitiveProxyFlags::EditorOnly))
-			continue;
+		// EditorOnly 프록시(빌보드 아이콘 등) 필터링: Light View이거나 비-에디터 월드(Game/Shipping/PIE)인 경우 제외
+		if (Proxy->HasProxyFlag(EPrimitiveProxyFlags::EditorOnly))
+		{
+			if (Frame.bIsLightView || (World && World->GetWorldType() != EWorldType::Editor))
+				continue;
+		}
 
 		UpdateProxyLOD(Proxy, Frame.LODContext);
 		LOD_STATS_RECORD(Proxy->GetCurrentLOD());

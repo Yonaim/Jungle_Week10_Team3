@@ -957,20 +957,25 @@ void FSceneSaveManager::LoadWorldFromBinary(const FString& FilePath, UWorld* Wor
 namespace
 {
 	// 액터에서 editor-only 컴포넌트들을 모두 떼어낸다.
+	// AActor::RemoveComponent는 OwnedComponents에서만 제거하고 scene tree(parent.Children)는 끊지 않으므로
+	// SerializeSceneComponentTree가 부모를 따라 다시 직렬화할 수 있다. → 명시적으로 detach까지 수행.
 	void StripEditorOnlyComponentsFromActor(AActor* Actor)
 	{
 		if (!Actor) return;
 
-		//  RemoveComponent가 컨테이너를 변경하므로 안전한 방향으로
 		const TArray<UActorComponent*> Snapshot = Actor->GetComponents();
 		for (auto It = Snapshot.rbegin(); It != Snapshot.rend(); ++It)
 		{
 			UActorComponent* Comp = *It;
 			if (!Comp) continue;
-			if (Comp->IsEditorOnlyComponent())
+			if (!Comp->IsEditorOnlyComponent()) continue;
+
+			// Scene tree에서 부모 분리 (SerializeSceneComponentTree가 못 보게)
+			if (USceneComponent* SceneComp = Cast<USceneComponent>(Comp))
 			{
-				Actor->RemoveComponent(Comp);
+				SceneComp->SetParent(nullptr);
 			}
+			Actor->RemoveComponent(Comp);
 		}
 	}
 }
@@ -1073,7 +1078,21 @@ int32 FSceneSaveManager::CookAllScenes()
 	return Cooked;
 }
 
-USceneComponent* FSceneSaveManager::DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner)
+	bool FSceneSaveManager::IsJsonFile(const FString& FilePath)
+	{
+	std::ifstream File(std::filesystem::path(FPaths::ToWide(FilePath)), std::ios::binary);
+	if (!File.is_open()) return false;
+	char Ch = 0;
+	while (File.get(Ch))
+	{
+		// Skip whitespace and BOM
+		if (Ch == ' ' || Ch == '\t' || Ch == '\r' || Ch == '\n' || Ch == '\xEF' || Ch == '\xBB' || Ch == '\xBF') continue;
+		return Ch == '{';
+	}
+	return false;
+	}
+
+	USceneComponent* FSceneSaveManager::DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner)
 {
 	string ClassName = Node[SceneKeys::ClassName].ToString();
 	UObject* Obj = FObjectFactory::Get().Create(ClassName, Owner);

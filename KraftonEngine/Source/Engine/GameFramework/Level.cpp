@@ -219,6 +219,31 @@ void ULevel::Tick(float DeltaTime) {
 	}
 }
 
+UObject* ULevel::Duplicate(UObject* NewOuter) const
+{
+	ULevel* DupLevel = UObjectManager::Get().CreateObject<ULevel>(NewOuter);
+	if (!DupLevel) return nullptr;
+
+	if (UWorld* WorldOuter = Cast<UWorld>(NewOuter))
+	{
+		DupLevel->SetWorld(WorldOuter);
+	}
+
+	DupLevel->SetGameModeClassName(GetGameModeClassName());
+
+	for (AActor* SrcActor : Actors)
+	{
+		if (!SrcActor) continue;
+		AActor* DupActor = Cast<AActor>(SrcActor->Duplicate(DupLevel));
+		if (DupActor)
+		{
+			DupLevel->AddActor(DupActor);
+		}
+	}
+
+	return DupLevel;
+}
+
 void ULevel::Serialize(FArchive& Ar)
 {
 	Super::Serialize(Ar);

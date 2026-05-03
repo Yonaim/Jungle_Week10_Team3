@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Render/Types/RenderTypes.h"
 #include "Core/CoreTypes.h"
 
@@ -17,6 +17,11 @@ public:
 
 	ID3D11Device* GetDevice() const;
 	ID3D11DeviceContext* GetDeviceContext() const;
+
+	// 오프스크린 텍스처를 스왑체인 백버퍼로 복사 — Game/Shipping 모드에서 ImGui 합성 없이 화면에 출력하기 위해 사용.
+	void CopyToBackbuffer(ID3D11Texture2D* Source);
+	uint32 GetBackbufferWidth() const { return static_cast<uint32>(ViewportInfo.Width); }
+	uint32 GetBackbufferHeight() const { return static_cast<uint32>(ViewportInfo.Height); }
 
 private:
 	void CreateDeviceAndSwapChain(HWND InHWindow);
