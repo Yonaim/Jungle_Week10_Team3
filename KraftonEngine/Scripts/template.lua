@@ -20,9 +20,62 @@ function BeginPlay()
 end
 
 function Tick(dt)
-    print("[Tick]" .. obj.UUID)
 end
 
 function EndPlay()
     print("[EndPlay] " .. obj.UUID)
 end
+
+function OnBeginOverlap(otherActor, otherComp, selfComp)
+end
+
+function OnEndOverlap(otherActor, otherComp, selfComp)
+end
+
+function OnHit(otherActor, otherComp, selfComp, impactLocation, impactNormal)
+end
+
+-- ComponentProxy 사용 예시:
+-- score = 0
+-- runner = nil
+-- text = nil
+--
+-- function BeginPlay()
+--     runner = obj:GetComponentByType("InterpToMovementComponent")
+--     text = obj:GetComponentByType("TextRenderComponent")
+--
+--     if runner and runner:IsValid() then
+--         runner:SetSpeed(900)
+--     end
+--
+--     if text and text:IsValid() then
+--         text:SetText("Score: 0")
+--     end
+-- end
+--
+-- function Tick(dt)
+--     if runner and runner:IsValid() then
+--         if GetKeyDown("A") then
+--             runner:MoveBy(vec3(0, -100, 0))
+--         elseif GetKeyDown("D") then
+--             runner:MoveBy(vec3(0, 100, 0))
+--         end
+--     end
+-- end
+--
+-- function OnBeginOverlap(otherActor, otherComp, selfComp)
+--     if not otherActor or not otherActor:IsValid() then
+--         return
+--     end
+--
+--     if otherActor.Name == "Coin" then
+--         score = score + 10
+--         otherActor:Destroy()
+--
+--         if text and text:IsValid() then
+--             text:SetText("Score: " .. score)
+--         end
+--     elseif otherActor.Name == "Obstacle" then
+--         print("Game Over")
+--     end
+-- end

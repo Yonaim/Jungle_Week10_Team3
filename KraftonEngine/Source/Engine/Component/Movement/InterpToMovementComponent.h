@@ -31,6 +31,8 @@ public:
 	// Interpolation Duration
 	float				GetInterpDuration() const { return Duration; }
 	void				SetInterpDuration(float InDuration);
+	void				SetSpeed(float InSpeed);
+	float				GetSpeed() const { return MoveSpeed; }
 
 	// Interpolation behaviour
 	EInterpBehaviour	GetInterpolationBehaviour() const { return InterpBehaviour; }
@@ -44,6 +46,10 @@ public:
 	void				ShouldAutoActivate(bool bActivate) { bAutoActivate = bActivate; }
 	void				Reset();
 	void				ResetAndHalt();
+	void				MoveTo(const FVector& TargetLocation);
+	void				MoveBy(const FVector& Delta);
+	void				StopMove() { ResetAndHalt(); }
+	bool				IsMoveDone() const { return !bisLerping; }
 
 private:
 	// Used to lerp back and forth when Behaviour is set to PingPong
@@ -75,6 +81,7 @@ private:
 	uint32				CurrentPointID = 0;
 	uint32				NextPointID = 0;
 	float				Duration = 5.0f;		// Does not store an "array" of duration
+	float				MoveSpeed = 300.0f;
 	float				RotateDuration = 0.f;
 	float				Elapsed = 0.f;
 	float				TotalDistance = 0;

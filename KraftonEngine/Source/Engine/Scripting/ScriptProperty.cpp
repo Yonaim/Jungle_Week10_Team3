@@ -113,7 +113,7 @@ namespace
 
 	void AddScriptPackagePaths(sol::state& Lua)
 	{
-		// property 선언 파일이 require를 쓰는 경우를 위해 런타임과 같은 Scripts 검색 경로를 붙인다.
+		// property 선언 파일이 require를 쓰는 경우를 위해 런타임과 같은 Scripts 검색 경로만 사용한다.
 		// 단, 실제 게임 바인딩은 넣지 않고 스캔에 필요한 최소 함수만 별도로 stub 처리한다.
 		sol::table Package = Lua["package"];
 		if (!Package.valid())
@@ -122,18 +122,14 @@ namespace
 		}
 
 		const std::filesystem::path ScriptsDir(FPaths::ScriptsDir());
-		FString NewPath = Package["path"].get_or(FString());
-		if (!NewPath.empty())
-		{
-			NewPath += ";";
-		}
-
-		NewPath += MakeLuaPath(ScriptsDir / L"?.lua");
+		FString NewPath = MakeLuaPath(ScriptsDir / L"?.lua");
 		NewPath += ";";
 		NewPath += MakeLuaPath(ScriptsDir / L"?" / L"init.lua");
-		NewPath += ";";
-		NewPath += MakeLuaPath(ScriptsDir / L"Lib" / L"?.lua");
 		Package["path"] = NewPath;
+		Package["cpath"] = "";
+
+		// require로 불러온 모듈은 Lua state 안에서 캐시됩니다.
+		// 여러 스크립트가 같은 모듈 테이블을 공유하므로 Config는 상수처럼 사용하는 것이 안전합니다.
 	}
 
 	bool InstallPropertyScanStubs(sol::state& Lua, sol::environment& Env, FString& OutError)

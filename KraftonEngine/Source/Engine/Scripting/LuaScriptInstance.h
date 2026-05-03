@@ -7,6 +7,7 @@
 
 class AActor;
 class UScriptComponent;
+struct FInputActionValue;
 
 // ======================================================
 //  -- Actor의 Lua 실행 상태를 관리하는 Instance 클래스 --
@@ -43,6 +44,19 @@ public:
 	bool CallTick(float DeltaTime);
 	bool CallEndPlay();
 
+	// Collision, Input을 Lua 함수와 바인딩 하기 위한 API
+	bool CallLuaFunction(const FString& FunctionName);
+
+	// Collision 
+	// BeginOverlap과 EndOverlap Format이 동일하기 때문에 처리하는 함수 하나만 존재
+	bool CallLuaOverlapEvent(const FString& FunctionName, AActor* OtherActor, UActorComponent* OtherComponent, UActorComponent* SelfComponent);
+	// Blocking 충돌용 Lua 함수 호출 객체
+	bool CallLuaHitEvent(const FString& FunctionName, AActor* OtherActor, UActorComponent* OtherComponent, UActorComponent* SelfComponent, const FVector& ImpactLocation, const FVector& ImpactNormal);
+	// Input
+	bool CallLuaInputAction(const FString& FunctionName, const FString& ActionName, const FInputActionValue& Value);
+
+
+
 	// 스크립트가 시작한 coroutine을 관리한다.
 	bool StartCoroutine(const FString& FunctionName);
 	void TickCoroutines(float DeltaTime);
@@ -68,9 +82,11 @@ private:
 
 	// Lua에 노출할 ActorProxy를 현재 owner actor 기준으로 다시 만든다.
 	FLuaActorProxy MakeActorProxy(AActor* Actor) const;
+	FLuaComponentProxy MakeComponentProxy(UActorComponent* Component);
 
 	// 내부 상태에 에러를 저장하고 로그에 남긴다.
 	void SetError(const FString& ErrorMessage);
+
 
 private:
 	struct FInstanceImpl;

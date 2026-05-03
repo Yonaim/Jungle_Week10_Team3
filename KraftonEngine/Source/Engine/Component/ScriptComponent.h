@@ -3,6 +3,11 @@
 #include "Component/ActorComponent.h"
 #include "Scripting/LuaScriptInstance.h"
 #include "Scripting/ScriptProperty.h"
+#include "Core/Delegate.h"
+
+class UShapeComponent;
+struct FComponentOverlapEvent;
+struct FComponentHitEvent;
 
 // ======================================================
 // -- Actor와 Lua Script를 연결해주는 Script 관리 Component --
@@ -13,6 +18,8 @@ class UScriptComponent : public UActorComponent
 {
 public:
 	DECLARE_CLASS(UScriptComponent, UActorComponent)
+
+	~UScriptComponent() override;
 
 	// Actor 생명주기에 맞춰 Lua 스크립트를 로드/정리한다.
 	void BeginPlay() override;
@@ -82,4 +89,25 @@ private:
 	bool bScriptPropertyDescsLoaded = false;	// 이번 캐시가 이미 시도됐는지 여부
 	bool bScriptPropertyDescsValid = false;	// true면 정상 로드, false면 Lua 실행/파일 읽기 실패
 	FString LastScriptPropertyError;
+
+	// =================================================================
+	// Delegate Section
+	// - Lua에서 Delegate 호출을 위해 있는 멤버 변수
+	// =================================================================
+	struct FShapeCollisionBinding
+	{
+		UShapeComponent* ShapeComponent = nullptr;
+		FDelegateHandle BeginOverlapHandle;
+		FDelegateHandle EndOverlapHandle;
+		FDelegateHandle HitHandle;
+	};
+
+	TArray<FShapeCollisionBinding> ShapeCollisionBindings;
+
+	void BindOwnerShapeCollisionEvents();
+	void UnbindOwnerShapeCollisionEvents();
+
+	void OnShapeBeginOverlap(const FComponentOverlapEvent& Event);
+	void OnShapeEndOverlap(const FComponentOverlapEvent& Event);
+	void OnShapeHit(const FComponentHitEvent& Event);
 };

@@ -12,6 +12,8 @@
 #include "Runtime/Engine.h"
 #include "Scripting/LuaScriptRuntime.h"
 #include "Serialization/Archive.h"
+#include "Shape/ShapeComponent.h"
+#include "PrimitiveComponent.h"
 
 #include <shellapi.h>
 
@@ -274,6 +276,11 @@ namespace
 }
 #pragma endregion
 
+UScriptComponent::~UScriptComponent()
+{
+	UnbindOwnerShapeCollisionEvents();
+}
+
 void UScriptComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -296,11 +303,17 @@ void UScriptComponent::BeginPlay()
 		return;
 	}
 
-	// 로드가 끝난 뒤 Lua BeginPlay를 호출해 스크립트 초기화 로직을 실행한다.
+	// 로드가 끝난 후 delegate를 바인딩
+	BindOwnerShapeCollisionEvents();
+
+	// 델리게이트 바인드가 끝난 뒤 Lua BeginPlay를 호출해 스크립트 초기화 로직을 실행한다.
 	// BeginPlay Call 실패 시 Error 출력 후 다시 load를 수행한다
 	if (!ScriptInstance.CallBeginPlay())
 	{
 		RefreshScriptErrorState();
+
+		// 실패한 경우 델리게이트 바인딩 모두 해제
+		UnbindOwnerShapeCollisionEvents();
 
 		ScriptInstance.StopAllCoroutines();
 		bLoaded = false;
@@ -312,6 +325,8 @@ void UScriptComponent::BeginPlay()
 
 void UScriptComponent::EndPlay()
 {
+	UnbindOwnerShapeCollisionEvents();
+
 	// EndPlay 이후에는 더 이상 이 component를 hot-reload 대상으로 순회하면 안 된다.
 	if (!ScriptPath.empty())
 	{
@@ -562,6 +577,7 @@ bool UScriptComponent::ReloadScript()
 {
 	// 수동 reload와 파일 변경 기반 hot-reload가 모두 이 경로를 사용한다.
 	// 이미 owner가 연결된 경우에는 그 상태를 재사용하고, 아니면 다시 초기화한다.
+	UnbindOwnerShapeCollisionEvents();
 	bLoaded = false;
 
 	if (ScriptPath.empty())
@@ -624,7 +640,12 @@ bool UScriptComponent::ReloadScript()
 	if (!bBeginPlaySucceeded)
 	{
 		ScriptInstance.StopAllCoroutines();
+		UnbindOwnerShapeCollisionEvents();
 		bLoaded = false;
+	}
+	else if (bReloaded && GetOwner() && GetOwner()->HasActorBegunPlay())
+	{
+		BindOwnerShapeCollisionEvents();
 	}
 	return bReloaded && bBeginPlaySucceeded;
 }
@@ -901,6 +922,154 @@ const FScriptPropertyDesc* UScriptComponent::FindScriptPropertyDesc(const FStrin
 			return Desc.Name == PropertyName;
 		});
 	return It != ScriptPropertyDescs.end() ? &(*It) : nullptr;
+}
+
+void UScriptComponent::BindOwnerShapeCollisionEvents()
+{
+	UnbindOwnerShapeCollisionEvents();
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		UE_LOG("[ScriptComponent] Owner Actor isn't exist");
+		return;
+	}
+
+	const TArray<UPrimitiveComponent*>& PrimitiveComponents =
+		OwnerActor->GetPrimitiveComponents();
+
+	// OwnerActor의 PrimitiveComponent들을 순회
+	for (UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
+	{
+		if (!PrimitiveComponent || !IsAliveObject(PrimitiveComponent))
+		{
+			continue;
+		}
+
+		// ShapeComponent가 있다면 Delegate Binding
+		UShapeComponent* ShapeComponent = Cast<UShapeComponent>(PrimitiveComponent);
+		if (!ShapeComponent)
+		{
+			continue;
+		}
+
+		FShapeCollisionBinding Binding;
+		Binding.ShapeComponent = ShapeComponent;
+
+		Binding.BeginOverlapHandle = ShapeComponent->OnComponentBeginOverlap.AddDynamic(
+				this,
+				&UScriptComponent::OnShapeBeginOverlap);
+
+		Binding.EndOverlapHandle =
+			ShapeComponent->OnComponentEndOverlap.AddDynamic(
+				this,
+				&UScriptComponent::OnShapeEndOverlap);
+
+		Binding.HitHandle =
+			ShapeComponent->OnComponentHit.AddDynamic(
+				this,
+				&UScriptComponent::OnShapeHit);
+
+		ShapeCollisionBindings.push_back(Binding);
+	}
+}
+
+void UScriptComponent::UnbindOwnerShapeCollisionEvents()
+{
+	// 캐싱된 ShapeCollisionBinding들을 순회하면서 Delegate Bind 해제
+	for (FShapeCollisionBinding& Binding : ShapeCollisionBindings)
+	{
+		if (!Binding.ShapeComponent || !IsAliveObject(Binding.ShapeComponent))
+		{
+			continue;
+		}
+
+		if (Binding.BeginOverlapHandle.IsValid())
+		{
+			Binding.ShapeComponent->OnComponentBeginOverlap.Remove(
+				Binding.BeginOverlapHandle);
+
+			Binding.BeginOverlapHandle.Reset();
+		}
+
+		if (Binding.EndOverlapHandle.IsValid())
+		{
+			Binding.ShapeComponent->OnComponentEndOverlap.Remove(
+				Binding.EndOverlapHandle);
+
+			Binding.EndOverlapHandle.Reset();
+		}
+
+		if (Binding.HitHandle.IsValid())
+		{
+			Binding.ShapeComponent->OnComponentHit.Remove(Binding.HitHandle);
+			Binding.HitHandle.Reset();
+		}
+	}
+
+	ShapeCollisionBindings.clear();
+}
+
+void UScriptComponent::OnShapeBeginOverlap(const FComponentOverlapEvent& Event)
+{
+	if (!bLoaded)
+	{
+		return;
+	}
+
+	if (!ScriptInstance.CallLuaOverlapEvent(
+		"OnBeginOverlap",
+		Event.OtherActor,
+		Event.OtherComponent,
+		Event.OverlappedComponent))
+	{
+		RefreshScriptErrorState();
+		return;
+	}
+
+	RefreshScriptErrorState();
+}
+
+void UScriptComponent::OnShapeEndOverlap(const FComponentOverlapEvent& Event)
+{
+	if (!bLoaded)
+	{
+		return;
+	}
+
+	if (!ScriptInstance.CallLuaOverlapEvent(
+		"OnEndOverlap",
+		Event.OtherActor,
+		Event.OtherComponent,
+		Event.OverlappedComponent))
+	{
+		RefreshScriptErrorState();
+		return;
+	}
+
+	RefreshScriptErrorState();
+}
+
+void UScriptComponent::OnShapeHit(const FComponentHitEvent& Event)
+{
+	if (!bLoaded)
+	{
+		return;
+	}
+
+	if (!ScriptInstance.CallLuaHitEvent(
+		"OnHit",
+		Event.OtherActor,
+		Event.OtherComponent,
+		Event.HitComponent,
+		Event.Hit.ImpactLocation,
+		Event.Hit.ImpactNormal))
+	{
+		RefreshScriptErrorState();
+		return;
+	}
+
+	RefreshScriptErrorState();
 }
 
 void UScriptComponent::ClearScriptError()

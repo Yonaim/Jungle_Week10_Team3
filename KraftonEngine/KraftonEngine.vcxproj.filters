@@ -827,6 +827,12 @@
     <ClCompile Include="Source\Engine\Runtime\WindowsWindow.cpp">
       <Filter>Source\Engine\Runtime</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Scripting\LuaActorProxy.cpp">
+      <Filter>Source\Engine\Scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Scripting\LuaComponentProxy.cpp">
+      <Filter>Source\Engine\Scripting</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Scripting\LuaScriptInstance.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
@@ -1561,6 +1567,12 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Runtime\resource.h">
       <Filter>Source\Engine\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Scripting\LuaActorProxy.h">
+      <Filter>Source\Engine\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Scripting\LuaComponentProxy.h">
+      <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Scripting\LuaScriptInstance.h">
       <Filter>Source\Engine\Scripting</Filter>
