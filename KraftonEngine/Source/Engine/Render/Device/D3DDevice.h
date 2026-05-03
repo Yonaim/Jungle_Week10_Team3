@@ -46,7 +46,7 @@ private:
 	ID3D11DepthStencilView* DepthStencilView = nullptr;
 
 	D3D11_VIEWPORT ViewportInfo = {};
-	const float ClearColor[4] = { 0.25f, 0.25f, 0.25f, 1.0f };
+	const float ClearColor[4] = { 0.95f, 0.25f, 0.25f, 1.0f };
 
 	BOOL bTearingSupported = FALSE;
 	UINT SwapChainFlags = 0;

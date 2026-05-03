@@ -91,7 +91,8 @@ bool FViewport::CreateResources()
 	TexDesc.Height = Height;
 	TexDesc.MipLevels = 1;
 	TexDesc.ArraySize = 1;
-	TexDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	// 스왑체인 백버퍼와 포맷 일치 — Game/Shipping에서 ImGui 합성 없이 CopyResource로 직접 백버퍼 복사하기 위함.
+	TexDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 	TexDesc.SampleDesc.Count = 1;
 	TexDesc.Usage = D3D11_USAGE_DEFAULT;
 	TexDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -168,7 +169,7 @@ bool FViewport::CreateResources()
 	if (FAILED(hr)) return false;
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC SceneColorCopySRVDesc = {};
-	SceneColorCopySRVDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	SceneColorCopySRVDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 	SceneColorCopySRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	SceneColorCopySRVDesc.Texture2D.MipLevels = 1;
 	SceneColorCopySRVDesc.Texture2D.MostDetailedMip = 0;
