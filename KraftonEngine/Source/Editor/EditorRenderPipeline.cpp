@@ -11,6 +11,7 @@
 #include "Engine/Render/Types/ForwardLightData.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Core/ProjectSettings.h"
+#include "Viewport/GameViewportClient.h"
 
 FEditorRenderPipeline::FEditorRenderPipeline(UEditorEngine* InEditor, FRenderer& InRenderer)
 	: Editor(InEditor)
@@ -93,6 +94,27 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRenderer& Renderer)
 {
 	UCameraComponent* Camera = VC->GetCamera();
+
+	// PIE 고려한 구조.
+	if (Editor && Editor->IsPIEPossessedMode())
+	{
+		if (UGameViewportClient* GameViewportClient = Editor->GetGameViewportClient())
+		{
+			if (UCameraComponent* GameCamera = GameViewportClient->GetDrivingCamera())
+			{
+				Camera = GameCamera;
+			}
+		}
+
+		if (!Camera)
+		{
+			if (UWorld* World = Editor->GetWorld())
+			{
+				Camera = World->GetActiveCamera();
+			}
+		}
+	}
+
 	if (!Camera) return;
 
 	FViewport* VP = VC->GetViewport();

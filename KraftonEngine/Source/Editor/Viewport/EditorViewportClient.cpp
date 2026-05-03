@@ -1,4 +1,4 @@
-#include "Editor/Viewport/EditorViewportClient.h"
+﻿#include "Editor/Viewport/EditorViewportClient.h"
 
 #include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
@@ -613,12 +613,27 @@ void FEditorViewportClient::Tick(float DeltaTime)
 			FInputManager& Input = FInputManager::Get();
 			if (Input.IsKeyPressed(VK_ESCAPE)) { EditorEngine->RequestEndPlayMap(); return; }
 			if (Input.IsKeyPressed(VK_F8)) { EditorEngine->TogglePIEControlMode(); }
+
+			// 매 Tick마다 SetDrivingCamera(EditorViewportCamera)를 하지 말 것
 			if (EditorEngine->IsPIEPossessedMode())
 			{
 				if (UGameViewportClient* GameViewportClient = EditorEngine->GetGameViewportClient())
 				{
-					GameViewportClient->SetDrivingCamera(Camera);
 					GameViewportClient->SetViewport(Viewport);
+
+					if (!GameViewportClient->HasPossessedTarget())
+					{
+						if (UWorld* World = EditorEngine->GetWorld())
+						{
+							GameViewportClient->Possess(World->GetActiveCamera());
+						}
+
+						if (!GameViewportClient->HasPossessedTarget())
+						{
+							GameViewportClient->Possess(Camera);
+						}
+					}
+
 					GameViewportClient->ProcessPIEInput(DeltaTime);
 				}
 				return;
