@@ -402,6 +402,15 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams& Pa
 	//    UWorld::BeginPlay가 bHasBegunPlay를 먼저 세팅하므로 BeginPlay 도중
 	//    SpawnActor로 만든 신규 액터도 자동으로 BeginPlay된다.
 	PIEWorld->BeginPlay();
+
+	// 임시 코드
+	if (UGameViewportClient* PIEViewportClient = GetGameViewportClient())
+	{
+		if (UCameraComponent* GameCamera = PIEWorld->GetActiveCamera())
+		{
+			PIEViewportClient->Possess(GameCamera);
+		}
+	}
 }
 
 void UEditorEngine::EndPlayMap()
@@ -541,15 +550,24 @@ void UEditorEngine::SyncGameViewportPIEControlState(bool bPossessedMode)
 
 	if (FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport())
 	{
-		PIEViewportClient->Possess(ActiveVC->GetCamera());
+		// PIEViewportClient->Possess(ActiveVC->GetCamera());
 		PIEViewportClient->SetViewport(ActiveVC->GetViewport());
 		PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
-		return;
+		// return;
 	}
-
+	// CameraComponent 우선 Possess 시도
 	if (UWorld* World = GetWorld())
 	{
-		PIEViewportClient->Possess(World->GetActiveCamera());
+		if (UCameraComponent* GameCamera = World->GetActiveCamera())
+		{
+			PIEViewportClient->Possess(GameCamera);
+			return;
+		}
+	}
+	// 이후 ViewportClient Possess 시도
+	if (FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport())
+	{
+		PIEViewportClient->Possess(ActiveVC->GetCamera());
 	}
 }
 

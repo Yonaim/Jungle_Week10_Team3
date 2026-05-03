@@ -21,8 +21,7 @@
 #include "GameFramework/Light/PointLightActor.h"
 #include "GameFramework/Light/SpotLightActor.h"
 #include "Game/GameActors/Obstacle/SimpleObstacleActor.h"
-#include "Game/GameActors/Obstacle/WireballActor.h"
-#include "Game/GameActors/Obstacle/VerticalWireActor.h"
+#include "Game/Map/AMapManager.h"
 #include "GameFramework/World.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
@@ -3021,9 +3020,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Directional Light", EViewportPlaceActorType::DirectionalLight);
 		PlaceActorMenuItem("Point Light", EViewportPlaceActorType::PointLight);
 		PlaceActorMenuItem("Spot Light", EViewportPlaceActorType::SpotLight);
-		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::SimpleObstacle);
-		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::Wireball);
-		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::VerticalWires);
+		PlaceActorMenuItem("Map", EViewportPlaceActorType::MapManager);
 
 		ImGui::EndMenu();
 	}
@@ -3343,37 +3340,14 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		}
 		break;
 	}
-	case EViewportPlaceActorType::SimpleObstacle:
+	case EViewportPlaceActorType::MapManager:
 	{
-		ASimpleObstacleActor* Actor = World->SpawnActor<ASimpleObstacleActor>();
-		if (Actor)
+		AMapManager* Actor = World->SpawnActor<AMapManager>();
+		if (Actor) 
 		{
-			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Cube"));
 			SpawnedActor = Actor;
-			SpawnLocation.Z += 1.0f;
 		}
 		break;
-	}
-	case EViewportPlaceActorType::Wireball: 
-	{
-		AWireballActor* Actor = World->SpawnActor<AWireballActor>();
-		if (Actor)
-		{
-			Actor->InitDefaultComponents(GetRegisteredMeshPath(""));
-			SpawnedActor = Actor;
-			SpawnLocation.Z += 1.0f;
-		}
-		break;
-	}
-	case EViewportPlaceActorType::VerticalWires:
-	{
-		AVerticalWireActor* Actor = World->SpawnActor<AVerticalWireActor>();
-		if (Actor)
-		{
-			Actor->InitDefaultComponents(GetRegisteredMeshPath(""));
-			SpawnedActor = Actor;
-			SpawnLocation.Z += 1.0f;
-		}
 	}
 	default:
 		break;

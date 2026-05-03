@@ -31,18 +31,63 @@ function vec3(x, y, z) end
 ---@return Vector
 function Vector3(x, y, z) end
 
+---@class GroundHit
+---@field hit boolean
+---@field location Vector
+---@field normal Vector
+---@field ground_z number
+---@field distance number
+---@field actor ActorProxy
+---@field component ComponentProxy
+local GroundHit = {}
+
 ---@class ActorProxy
 ---@field Name string
 ---@field UUID integer
 ---@field Tag string 임시 프로토타입용 태그입니다. 장기적으로 정식 식별 방식으로 교체해야 합니다.
----@field Location Vector
----@field Rotation Vector
----@field Scale Vector
 ---@field Velocity Vector
 local ActorProxy = {}
 
 ---@return boolean
 function ActorProxy:IsValid() end
+
+---@return Vector
+function ActorProxy:GetWorldLocation() end
+
+---@param location Vector
+function ActorProxy:SetWorldLocation(location) end
+
+---@param x number
+---@param y number
+---@param z number
+function ActorProxy:SetWorldLocationXYZ(x, y, z) end
+
+---@return Vector
+function ActorProxy:GetWorldRotation() end
+
+---@param rotation Vector
+function ActorProxy:SetWorldRotation(rotation) end
+
+---@param x number
+---@param y number
+---@param z number
+function ActorProxy:SetWorldRotationXYZ(x, y, z) end
+
+---@return Vector
+function ActorProxy:GetWorldScale() end
+
+---@param scale Vector
+function ActorProxy:SetWorldScale(scale) end
+
+---@param x number
+---@param y number
+---@param z number
+function ActorProxy:SetWorldScaleXYZ(x, y, z) end
+
+---@param maxDistance number
+---@param skinWidth number
+---@return GroundHit
+function ActorProxy:FindGround(maxDistance, skinWidth) end
 
 ---@param tag string
 ---@return boolean
@@ -70,8 +115,8 @@ function ActorProxy:AddWorldOffset(delta) end
 ---@param z number
 function ActorProxy:AddWorldOffset(x, y, z) end
 
----@param delta Vector
-function ActorProxy:Translate(delta) end
+---@param location Vector
+function ActorProxy:MoveTo(location) end
 
 ---@param x number
 ---@param y number
@@ -132,17 +177,30 @@ function ComponentProxy:SetActive(active) end
 function ComponentProxy:IsActive() end
 
 ---@return Vector|nil
-function ComponentProxy:GetLocation() end
+function ComponentProxy:GetWorldLocation() end
 
 ---@param location Vector
 ---@return boolean
-function ComponentProxy:SetLocation(location) end
+function ComponentProxy:SetWorldLocation(location) end
 
 ---@param x number
 ---@param y number
 ---@param z number
 ---@return boolean
-function ComponentProxy:SetLocation(x, y, z) end
+function ComponentProxy:SetWorldLocationXYZ(x, y, z) end
+
+---@return Vector|nil
+function ComponentProxy:GetLocalLocation() end
+
+---@param location Vector
+---@return boolean
+function ComponentProxy:SetLocalLocation(location) end
+
+---@param x number
+---@param y number
+---@param z number
+---@return boolean
+function ComponentProxy:SetLocalLocationXYZ(x, y, z) end
 
 ---@param delta Vector
 ---@return boolean
@@ -152,43 +210,69 @@ function ComponentProxy:AddWorldOffset(delta) end
 ---@param y number
 ---@param z number
 ---@return boolean
-function ComponentProxy:AddWorldOffset(x, y, z) end
+function ComponentProxy:AddWorldOffsetXYZ(x, y, z) end
 
 ---@param delta Vector
 ---@return boolean
-function ComponentProxy:Translate(delta) end
+function ComponentProxy:AddLocalOffset(delta) end
 
 ---@param x number
 ---@param y number
 ---@param z number
 ---@return boolean
-function ComponentProxy:Translate(x, y, z) end
+function ComponentProxy:AddLocalOffsetXYZ(x, y, z) end
 
 ---@return Vector|nil
-function ComponentProxy:GetRotation() end
+function ComponentProxy:GetWorldRotation() end
 
 ---@param rotation Vector
 ---@return boolean
-function ComponentProxy:SetRotation(rotation) end
+function ComponentProxy:SetWorldRotation(rotation) end
 
 ---@param x number
 ---@param y number
 ---@param z number
 ---@return boolean
-function ComponentProxy:SetRotation(x, y, z) end
+function ComponentProxy:SetWorldRotationXYZ(x, y, z) end
 
 ---@return Vector|nil
-function ComponentProxy:GetScale() end
+function ComponentProxy:GetLocalRotation() end
+
+---@param rotation Vector
+---@return boolean
+function ComponentProxy:SetLocalRotation(rotation) end
+
+---@param x number
+---@param y number
+---@param z number
+---@return boolean
+function ComponentProxy:SetLocalRotationXYZ(x, y, z) end
+
+---@return Vector|nil
+function ComponentProxy:GetWorldScale() end
 
 ---@param scale Vector
 ---@return boolean
-function ComponentProxy:SetScale(scale) end
+function ComponentProxy:SetWorldScale(scale) end
 
 ---@param x number
 ---@param y number
 ---@param z number
 ---@return boolean
-function ComponentProxy:SetScale(x, y, z) end
+function ComponentProxy:SetWorldScaleXYZ(x, y, z) end
+
+---@return Vector|nil
+function ComponentProxy:GetLocalScale() end
+
+---@param scale Vector
+---@return boolean
+function ComponentProxy:SetLocalScale(scale) end
+
+---@param x number
+---@param y number
+---@param z number
+---@return boolean
+function ComponentProxy:SetLocalScaleXYZ(x, y, z) end
 
 ---@param enabled boolean
 ---@return boolean
@@ -201,6 +285,30 @@ function ComponentProxy:SetGenerateOverlapEvents(enabled) end
 ---@param other ActorProxy
 ---@return boolean
 function ComponentProxy:IsOverlappingActor(other) end
+
+---@return '"Box"'|'"Sphere"'|'"Capsule"'|'"Unknown"'
+function ComponentProxy:GetShapeType() end
+
+---@return number|nil
+function ComponentProxy:GetShapeHalfHeight() end
+
+---@param halfHeight number
+---@return boolean
+function ComponentProxy:SetShapeHalfHeight(halfHeight) end
+
+---@return number|nil
+function ComponentProxy:GetShapeRadius() end
+
+---@param radius number
+---@return boolean
+function ComponentProxy:SetShapeRadius(radius) end
+
+---@return Vector|nil
+function ComponentProxy:GetShapeExtent() end
+
+---@param extent Vector
+---@return boolean
+function ComponentProxy:SetShapeExtent(extent) end
 
 ---@param meshPath string 현재 프로젝트의 OBJ/StaticMesh 경로 문자열을 사용합니다.
 ---@return boolean

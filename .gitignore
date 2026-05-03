@@ -464,3 +464,5 @@ Asset/Editor/Original/*
 /CLAUDE.md
 *.bat
 /Scripts/GenerateProjectFiles.py
+DemoBuild/
+_font_preview/

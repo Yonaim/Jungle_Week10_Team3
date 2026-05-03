@@ -122,6 +122,9 @@ UWorld* UWorld::DuplicateAs(EWorldType InWorldType) const
 		NewWorld->GetPersistentLevel()->SetOutlinerFolders(PersistentLevel->GetOutlinerFolders());
 	}
 
+	// TODO: 임시 처리. 추후 제거 하고 Level Duplicate 하는 과정 추가해야할듯
+	NewWorld->PersistentLevel->SetGameModeClassName(PersistentLevel->GetGameModeClassName());
+
 	for (AActor* Src : GetActors())
 	{
 		if (!Src) continue;

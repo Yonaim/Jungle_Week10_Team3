@@ -1,4 +1,4 @@
-﻿#include "Scripting/LuaScriptRuntime.h"
+#include "Scripting/LuaScriptRuntime.h"
 
 #include "Component/ScriptComponent.h"
 #include "Core/EngineTypes.h"
@@ -303,6 +303,7 @@ void FLuaScriptRuntime::OnScriptsChanged(const TSet<FString>& ChangedFiles)
 		ScriptComponents.erase(StaleComponent);
 	}
 }
+
 // TODO: 어쩔 수 없이 하드코딩으로 바인딩 -> 추후 구조 개선 고려
 void FLuaScriptRuntime::BindVectorType()
 {
@@ -351,126 +352,6 @@ void FLuaScriptRuntime::BindVectorType()
 
 		UE_LOG("[Lua] %s", Message.c_str());
 	});
-}
-
-void FLuaScriptRuntime::BindComponentProxyType()
-{
-	sol::state& Lua = GetLuaState();
-
-	// ComponentProxy는 UActorComponent*를 Lua에 직접 공개하지 않기 위한 얇은 접근 계층이다.
-	Lua.new_usertype<FLuaComponentProxy>(
-		"ComponentProxy",
-		"IsValid", &FLuaComponentProxy::IsValid,
-		"Name", sol::property(&FLuaComponentProxy::GetName),
-		"Owner", sol::property(&FLuaComponentProxy::GetOwner),
-		"TypeName", sol::property(&FLuaComponentProxy::GetTypeName),
-		"GetTypeName", &FLuaComponentProxy::GetTypeName,
-		"SetActive", &FLuaComponentProxy::SetActive,
-		"IsActive", &FLuaComponentProxy::IsActive,
-		"GetLocation", &FLuaComponentProxy::GetLocation,
-		"SetLocation", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetLocation),
-			&FLuaComponentProxy::SetLocationXYZ),
-		"AddWorldOffset", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::AddWorldOffset),
-			&FLuaComponentProxy::AddWorldOffsetXYZ),
-		"Translate", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::AddWorldOffset),
-			&FLuaComponentProxy::AddWorldOffsetXYZ),
-		"GetRotation", &FLuaComponentProxy::GetRotation,
-		"SetRotation", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetRotation),
-			&FLuaComponentProxy::SetRotationXYZ),
-		"GetScale", &FLuaComponentProxy::GetScale,
-		"SetScale", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetScale),
-			&FLuaComponentProxy::SetScaleXYZ),
-		"SetCollisionEnabled", &FLuaComponentProxy::SetCollisionEnabled,
-		"SetGenerateOverlapEvents", &FLuaComponentProxy::SetGenerateOverlapEvents,
-		"IsOverlappingActor", &FLuaComponentProxy::IsOverlappingActor,
-		"SetStaticMesh", &FLuaComponentProxy::SetStaticMesh,
-		"SetText", &FLuaComponentProxy::SetText,
-		"GetText", &FLuaComponentProxy::GetText,
-		"SetTexture", &FLuaComponentProxy::SetTexture,
-		"GetTexturePath", &FLuaComponentProxy::GetTexturePath,
-		"SetTint", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetTint),
-			&FLuaComponentProxy::SetTintRGBA),
-		"SetLabel", &FLuaComponentProxy::SetLabel,
-		"GetLabel", &FLuaComponentProxy::GetLabel,
-		"IsHovered", &FLuaComponentProxy::IsHovered,
-		"IsPressed", &FLuaComponentProxy::IsPressed,
-		"WasClicked", &FLuaComponentProxy::WasClicked,
-		"SetSoundPath", &FLuaComponentProxy::SetSoundPath,
-		"GetSoundPath", &FLuaComponentProxy::GetSoundPath,
-		"SetSoundCategory", &FLuaComponentProxy::SetSoundCategory,
-		"GetSoundCategory", &FLuaComponentProxy::GetSoundCategory,
-		"SetSoundLooping", &FLuaComponentProxy::SetSoundLooping,
-		"IsSoundLooping", &FLuaComponentProxy::IsSoundLooping,
-		"PlaySound", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)()>(&FLuaComponentProxy::PlayAudio),
-			&FLuaComponentProxy::PlayAudioPath),
-		"StopSound", &FLuaComponentProxy::StopSound,
-		"PauseSound", &FLuaComponentProxy::PauseSound,
-		"ResumeSound", &FLuaComponentProxy::ResumeSound,
-		"IsSoundPlaying", &FLuaComponentProxy::IsSoundPlaying,
-		"SetSpeed", &FLuaComponentProxy::SetSpeed,
-		"GetSpeed", &FLuaComponentProxy::GetSpeed,
-		"MoveTo", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::MoveTo),
-			&FLuaComponentProxy::MoveToXYZ),
-		"MoveBy", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::MoveBy),
-			&FLuaComponentProxy::MoveByXYZ),
-		"StopMove", &FLuaComponentProxy::StopMove,
-		"IsMoveDone", &FLuaComponentProxy::IsMoveDone);
-}
-
-void FLuaScriptRuntime::BindActorProxyType()
-{
-	sol::state& Lua = GetLuaState();
-
-	// 실제 Actor 전체를 노출하지 않고, 스크립트에 허용한 조작만 Proxy에 제한해서 공개한다.
-	// 아래 목록이 EngineAPI.lua의 Actor stub과 맞아야 LuaLS 자동완성과 실제 런타임 동작이 어긋나지 않는다.
-	Lua.new_usertype<FLuaActorProxy>(
-		"ActorProxy",
-		"IsValid", &FLuaActorProxy::IsValid,
-		"Name", sol::property(&FLuaActorProxy::GetName),
-		"UUID", sol::property(&FLuaActorProxy::GetUUID),
-		"Tag", sol::property(&FLuaActorProxy::GetTag, &FLuaActorProxy::SetTag),
-		"Location", sol::property(&FLuaActorProxy::GetLocation, &FLuaActorProxy::SetLocation),
-		"Rotation", sol::property(&FLuaActorProxy::GetRotation, &FLuaActorProxy::SetRotation),
-		"Scale", sol::property(&FLuaActorProxy::GetScale, &FLuaActorProxy::SetScale),
-		"Velocity", sol::property(&FLuaActorProxy::GetVelocity, &FLuaActorProxy::SetVelocity),
-
-		"HasTag", &FLuaActorProxy::HasTag,
-		"GetComponent", &FLuaActorProxy::GetComponent,
-		"GetComponentByType", &FLuaActorProxy::GetComponentByType,
-		"GetScriptComponent", &FLuaActorProxy::GetScriptComponent,
-		"GetStaticMeshComponent", &FLuaActorProxy::GetStaticMeshComponent,
-
-		"AddWorldOffset", sol::overload(
-			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::AddWorldOffset),
-			&FLuaActorProxy::AddWorldOffsetXYZ),
-		"Translate", sol::overload(
-			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::AddWorldOffset),
-			&FLuaActorProxy::AddWorldOffsetXYZ),
-		"MoveTo", sol::overload(
-			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::MoveTo),
-			&FLuaActorProxy::MoveTo2D,
-			&FLuaActorProxy::MoveTo3D),
-		"MoveBy", sol::overload(
-			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::MoveBy),
-			&FLuaActorProxy::MoveBy2D,
-			&FLuaActorProxy::MoveBy3D),
-
-		"MoveToActor", &FLuaActorProxy::MoveToActor,
-		"StopMove", &FLuaActorProxy::StopMove,
-		"IsMoveDone", &FLuaActorProxy::IsMoveDone,
-		"SetMoveSpeed", &FLuaActorProxy::SetMoveSpeed,
-		"GetMoveSpeed", &FLuaActorProxy::GetMoveSpeed,
-		"PrintLocation", &FLuaActorProxy::PrintLocation,
-		"Destroy", &FLuaActorProxy::Destroy);
 }
 
 void FLuaScriptRuntime::BindColorType()

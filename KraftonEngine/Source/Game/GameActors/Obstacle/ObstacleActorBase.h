@@ -8,12 +8,20 @@ class UBoxComponent;
 class USphereComponent;
 class UCapsuleComponent;
 
+enum class EObstacleType : uint8
+{
+	Barrier = 1 << 0,   // must switch lanes
+	LowBar  = 1 << 1,   // must jump
+	HighBar = 1 << 2,   // must slide
+	Misc	= 1 << 3,
+};
+
 class AObstacleActorBase : public AStaticMeshActor {
 public:
 	DECLARE_CLASS(AObstacleActorBase, AStaticMeshActor)
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaTime) {};
-	virtual void EndPlay() {};
+	virtual void EndPlay() override;
 
 	virtual void InitDefaultComponents(const FString& UStaticMeshFileName) override;
 

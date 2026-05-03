@@ -617,6 +617,12 @@
     <ClCompile Include="Source\Engine\Input\InputMappingContext.cpp">
       <Filter>Source\Engine\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputManager.cpp">
+      <Filter>Source\Engine\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Input\InputMappingContext.cpp">
+      <Filter>Source\Engine\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Materials\Material.cpp">
       <Filter>Source\Engine\Materials</Filter>
     </ClCompile>
@@ -887,6 +893,9 @@
     <ClCompile Include="Source\Engine\Scripting\LuaScriptRuntime.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Scripting\LuaScriptRuntimeProxyBindings.cpp">
+      <Filter>Source\Engine\Scripting</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Scripting\ScriptProperty.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
@@ -945,6 +954,11 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\VerticalWireActor.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\WireballActor.cpp" />
+    <ClCompile Include="Source\Game\Player\Runner.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -2096,6 +2110,11 @@
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\VerticalWireActor.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\WireballActor.h" />
+    <ClInclude Include="Source\Game\Player\Runner.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />

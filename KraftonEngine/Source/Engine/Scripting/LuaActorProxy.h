@@ -2,11 +2,12 @@
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
+#include "Scripting/LuaComponentProxy.h"
 
 #include <memory>
 
 class AActor;
-struct FLuaComponentProxy;
+struct FLuaGroundHit;
 
 // =================================================
 // Lua에 공개할 기능을 제한하는 FLuaActorProxy
@@ -39,21 +40,26 @@ struct FLuaActorProxy
 	void SetTag(const FString& InTag);
 	bool HasTag(const FString& InTag) const;
 
+	// ActorProxy는 현재 World transform만 명시 지원한다. Local transform은 ComponentProxy에서 사용한다.
 	// Transform API는 Lua가 Actor 내부 포인터를 직접 만지지 않고 Proxy를 통해서만 위치를 조작하게 만든다.
-	FVector GetLocation() const;
-	void SetLocation(const FVector& InLocation);
+	FVector GetWorldLocation() const;
+	void SetWorldLocation(const FVector& InLocation);
+	void SetWorldLocationXYZ(float X, float Y, float Z);
 
-	FVector GetRotation() const;
-	void SetRotation(const FVector& InRotation);
+	FVector GetWorldRotation() const;
+	void SetWorldRotation(const FVector& InRotation);
+	void SetWorldRotationXYZ(float X, float Y, float Z);
 
-	FVector GetScale() const;
-	void SetScale(const FVector& InScale);
+	FVector GetWorldScale() const;
+	void SetWorldScale(const FVector& InScale);
+	void SetWorldScaleXYZ(float X, float Y, float Z);
 
 	FVector GetVelocity() const;
 	void SetVelocity(const FVector& InVelocity);
 
 	void AddWorldOffset(const FVector& Delta);
 	void AddWorldOffsetXYZ(float X, float Y, float Z);
+	FLuaGroundHit FindGround(float MaxDistance, float SkinWidth) const;
 
 	// 이동 API는 즉시 위치를 바꾸는 함수가 아니라 C++ Tick에서 처리할 목표 상태를 설정한다.
 	void MoveTo(const FVector& Target);
@@ -83,4 +89,15 @@ struct FLuaActorProxy
 
 	void PrintLocation() const;
 	void Destroy();
+};
+
+struct FLuaGroundHit
+{
+	bool bHit = false;
+	FVector Location = FVector(0.0f, 0.0f, 0.0f);
+	FVector Normal = FVector(0.0f, 0.0f, 1.0f);
+	float GroundZ = 0.0f;
+	float Distance = 0.0f;
+	FLuaActorProxy Actor;
+	FLuaComponentProxy Component;
 };

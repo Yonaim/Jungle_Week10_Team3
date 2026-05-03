@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
+#include "Collision/OverlapInfo.h"
 
 class UActorComponent;
 struct FLuaActorProxy;
@@ -26,21 +27,40 @@ struct FLuaComponentProxy
 	bool SetActive(bool bActive);
 	bool IsActive() const;
 
-	sol::optional<FVector> GetLocation() const;
-	bool SetLocation(const FVector& InLocation);
-	bool SetLocationXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetWorldLocation() const;
+	bool SetWorldLocation(const FVector& InLocation);
+	bool SetWorldLocationXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetLocalLocation() const;
+	bool SetLocalLocation(const FVector& InLocation);
+	bool SetLocalLocationXYZ(float X, float Y, float Z);
 	bool AddWorldOffset(const FVector& Delta);
 	bool AddWorldOffsetXYZ(float X, float Y, float Z);
-	sol::optional<FVector> GetRotation() const;
-	bool SetRotation(const FVector& InRotation);
-	bool SetRotationXYZ(float X, float Y, float Z);
-	sol::optional<FVector> GetScale() const;
-	bool SetScale(const FVector& InScale);
-	bool SetScaleXYZ(float X, float Y, float Z);
+	bool AddLocalOffset(const FVector& Delta);
+	bool AddLocalOffsetXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetWorldRotation() const;
+	bool SetWorldRotation(const FVector& InRotation);
+	bool SetWorldRotationXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetLocalRotation() const;
+	bool SetLocalRotation(const FVector& InRotation);
+	bool SetLocalRotationXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetWorldScale() const;
+	bool SetWorldScale(const FVector& InScale);
+	bool SetWorldScaleXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetLocalScale() const;
+	bool SetLocalScale(const FVector& InScale);
+	bool SetLocalScaleXYZ(float X, float Y, float Z);
 
 	bool SetCollisionEnabled(bool bEnabled);
 	bool SetGenerateOverlapEvents(bool bEnabled);
 	bool IsOverlappingActor(const FLuaActorProxy& OtherActor) const;
+
+	FString GetShapeType() const;
+	sol::optional<float> GetShapeHalfHeight() const;
+	bool SetShapeHalfHeight(float HalfHeight);
+	sol::optional<float> GetShapeRadius() const;
+	bool SetShapeRadius(float Radius);
+	sol::optional<FVector> GetShapeExtent() const;
+	bool SetShapeExtent(const FVector& Extent);
 
 	bool SetStaticMesh(const FString& MeshPath);
 
@@ -77,4 +97,9 @@ struct FLuaComponentProxy
 	bool MoveByXYZ(float X, float Y, float Z);
 	bool StopMove();
 	bool IsMoveDone() const;
+
+	// Box Extent (�浹 ó��) ����
+	bool SetBoxExtent(const FVector& Extent);
+	bool SetBoxExtentXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetBoxExtent() const;
 };
