@@ -5,6 +5,8 @@ class UScriptComponent;
 class UCameraComponent;
 class UBoxComponent;
 class UStaticMeshComponent;
+class USFXComponent;
+class UBackgroundSoundComponent;
 /*
 * Jungle Run (가제)에서 조작 대상 Player
 */
@@ -36,5 +38,8 @@ private:
 	UCameraComponent* MainCamera = nullptr;
 	// StaticMesh
 	UStaticMeshComponent* MeshComponent = nullptr;
+	// Sound
+	UBackgroundSoundComponent* BackgroundSound = nullptr;
+	USFXComponent* SFXSound = nullptr;
 };
 

@@ -13,7 +13,10 @@ public:
 	void Tick(float DeltaTime) override;
 	void EndPlay() override;
 
-	void SetPlayerActor(AActor* InPlayer) { Player = InPlayer; }
+	void Initialize(AActor* InPlayer);
+	void ResetMap();
+	void SetEnabled(bool bInEnabled);
+	void SetPlayerActor(AActor* InPlayer);
 
 private:
 	void  BuildTemplateLibrary();
@@ -24,6 +27,7 @@ private:
 	TArray<FMapChunkTemplate> Templates;
 	TArray<AMapChunk*>        ActiveChunks;
 	AActor* Player = nullptr;
+	bool bEnabled = true;
 
 	int32 StraightRunLength = 0;
 	int32 MinStraightsBetweenTurns = 2;

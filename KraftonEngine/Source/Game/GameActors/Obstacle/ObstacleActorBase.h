@@ -25,6 +25,9 @@ public:
 
 	virtual void InitDefaultComponents(const FString& UStaticMeshFileName) override;
 
+	int GetDamage() const { return Damage; }
+	void SetDamage(int InDamage) { Damage = InDamage; }
+
 protected:
 	virtual ~AObstacleActorBase() = default;
 
@@ -44,4 +47,7 @@ protected:
 
 protected:
 	float OnHitDamage = 0.f;
+	// TODO: Expose obstacle GetDamage to Lua.
+	// TODO: Move obstacle damage table to Lua Config when binding is available.
+	int Damage = 1;
 };

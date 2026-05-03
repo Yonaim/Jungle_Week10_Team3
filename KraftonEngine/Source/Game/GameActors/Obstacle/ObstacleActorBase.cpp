@@ -8,8 +8,6 @@
 #include "Materials/MaterialManager.h"
 #include "Resource/ResourceManager.h"
 
-#include "Core/Log.h"
-
 DEFINE_CLASS(AObstacleActorBase, AStaticMeshActor)
 
 void AObstacleActorBase::BeginPlay() {
@@ -29,22 +27,30 @@ void AObstacleActorBase::EndPlay() {
 }
 
 void AObstacleActorBase::OnHit(const FComponentHitEvent& Other) {
-	UE_LOG("Listening to a Hit Event, UUID: %u", GetUUID());
 	if (!Other.HitComponent) return;
 
 }
 
 void AObstacleActorBase::OnOverlap(const FComponentOverlapEvent& Other) {
-	UE_LOG("Listening to an Overlap Event, UUID: %u", GetUUID());
 	if (!Other.OtherComponent) return;
 }
 
 void AObstacleActorBase::InitDefaultComponents(const FString& UStaticMeshFileName) {
 	StaticMeshComponent = AddComponent<UStaticMeshComponent>();
 	StaticMeshComponent->SetCanDeleteFromDetails(false);
+	StaticMeshComponent->SetCollisionEnabled(false);
 	SetRootComponent(StaticMeshComponent);
 	UBoxComponent* CollisionBox = AddComponent<UBoxComponent>();
+	CollisionBox->SetCanDeleteFromDetails(false);
 	CollisionBox->AttachToComponent(StaticMeshComponent);
+	CollisionBox->SetBoxExtent(FVector(0.75f, 0.75f, 1.0f));
+	CollisionBox->SetCollisionEnabled(true);
+	CollisionBox->SetGenerateOverlapEvents(true);
+	if (HasActorBegunPlay())
+	{
+		CollisionBox->OnComponentBeginOverlap.AddDynamic(this, &AObstacleActorBase::OnOverlap);
+		CollisionBox->OnComponentHit.AddDynamic(this, &AObstacleActorBase::OnHit);
+	}
 	//CollisionBox->SetWorldLocation(StaticMeshComponent->GetWorldLocation());
 
 	if (!UStaticMeshFileName.empty() && UStaticMeshFileName != "None")

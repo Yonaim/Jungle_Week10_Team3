@@ -1,68 +1,121 @@
+local Config = require("Game.Config")
+local AudioManager = require("Game.AudioManager")
+
 local GameManager = {
     State = {
         Ready = "Ready",
-        Playing = "Playing",
+        Running = "Running",
+        Playing = "Running",
         GameOver = "GameOver",
     },
-    state = "Playing",
-    score = 0.0,
-    survival_time = 0.0,
+
+    state = "Ready",
+    score = 0,
     distance = 0.0,
-    debug_score_log = false,
-    score_log_interval = 1.0,
+    elapsed_time = 0.0,
     score_log_timer = 0.0,
 }
 
-function GameManager.Start()
-    GameManager.state = GameManager.State.Playing
-    GameManager.score = 0.0
-    GameManager.survival_time = 0.0
-    GameManager.distance = 0.0
-    GameManager.score_log_timer = 0.0
-    print("[TempleRun] GameManager Start: Playing")
+local function log(message)
+    if Config.debug.enable_log then
+        print(message)
+    end
 end
 
-function GameManager.Tick(dt, distance_delta)
-    if GameManager.state ~= GameManager.State.Playing then
+local function score_log_interval()
+    return Config.debug.score_log_interval or 1.0
+end
+
+function GameManager.StartGame()
+    GameManager.state = GameManager.State.Running
+    GameManager.score = 0
+    GameManager.distance = 0.0
+    GameManager.elapsed_time = 0.0
+    GameManager.score_log_timer = 0.0
+
+    log("[GameManager] StartGame state=Running score=0 distance=0 elapsed_time=0")
+    AudioManager.PlayBGM()
+end
+
+function GameManager.Tick(dt, moved_distance)
+    if GameManager.state ~= GameManager.State.Running then
         return
     end
 
-    GameManager.survival_time = GameManager.survival_time + (dt or 0.0)
-    GameManager.distance = GameManager.distance + (distance_delta or 0.0)
-    GameManager.score = GameManager.distance
+    local safe_dt = dt or 0.0
+    local safe_moved_distance = moved_distance or 0.0
 
-    if GameManager.debug_score_log then
-        GameManager.score_log_timer = GameManager.score_log_timer + (dt or 0.0)
-        if GameManager.score_log_timer >= GameManager.score_log_interval then
-            GameManager.score_log_timer = 0.0
-            print("[TempleRun] ScoreLog score=" .. tostring(math.floor(GameManager.score)) ..
-                  " distance=" .. tostring(math.floor(GameManager.distance)) ..
-                  " survival_time=" .. tostring(math.floor(GameManager.survival_time)))
-        end
+    GameManager.distance = GameManager.distance + safe_moved_distance
+    GameManager.elapsed_time = GameManager.elapsed_time + safe_dt
+    GameManager.score = math.floor(
+        GameManager.distance * Config.score.distance_weight
+        + GameManager.elapsed_time * Config.score.survival_time_weight
+    )
+
+    GameManager.score_log_timer = GameManager.score_log_timer + safe_dt
+    if GameManager.score_log_timer >= score_log_interval() then
+        GameManager.score_log_timer = 0.0
+        log(
+            "[GameManager] ScoreLog score=" .. tostring(GameManager.score) ..
+            " distance=" .. tostring(GameManager.distance) ..
+            " elapsed_time=" .. tostring(GameManager.elapsed_time)
+        )
     end
 end
 
 function GameManager.GameOver(reason)
     if GameManager.state == GameManager.State.GameOver then
+        log("[GameManager] GameOver ignored: already GameOver")
         return
     end
 
     GameManager.state = GameManager.State.GameOver
-    print("[TempleRun] GameOver: " .. (reason or "Unknown"))
-    print("[TempleRun] Score: " .. tostring(math.floor(GameManager.score)))
+
+    log("[GameManager] GameOver reason=" .. tostring(reason or "Unknown"))
+    AudioManager.PlayGameOver()
+
+    local should_stop_bgm = Config.audio.stop_bgm_on_game_over
+    if should_stop_bgm == nil then
+        should_stop_bgm = true
+    end
+    if should_stop_bgm then
+        AudioManager.StopBGM()
+    end
+
+    log(
+        "[GameManager] FinalScore score=" .. tostring(GameManager.score) ..
+        " distance=" .. tostring(GameManager.distance) ..
+        " elapsed_time=" .. tostring(GameManager.elapsed_time)
+    )
+    log("[GameManager] TODO ChangeLevel hook: GameOver")
 end
 
-function GameManager.Restart()
-    GameManager.state = GameManager.State.Playing
-    GameManager.score = 0.0
-    GameManager.survival_time = 0.0
-    GameManager.distance = 0.0
-    GameManager.score_log_timer = 0.0
-    print("[TempleRun] Restart")
+function GameManager.IsRunning()
+    return GameManager.state == GameManager.State.Running
 end
 
 function GameManager.IsGameOver()
     return GameManager.state == GameManager.State.GameOver
 end
+
+function GameManager.GetScore()
+    return GameManager.score
+end
+
+function GameManager.GetDistance()
+    return GameManager.distance
+end
+
+function GameManager.GetElapsedTime()
+    return GameManager.elapsed_time
+end
+
+function GameManager.ChangeLevel(level_name)
+    -- TODO: Connect real level transition after the scene flow exists.
+    log("[GameManager] TODO ChangeLevel: " .. tostring(level_name))
+end
+
+-- Compatibility for older prototype scripts. New code should call StartGame().
+GameManager.Start = GameManager.StartGame
 
 return GameManager

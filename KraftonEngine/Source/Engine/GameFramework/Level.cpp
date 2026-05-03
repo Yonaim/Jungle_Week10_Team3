@@ -311,7 +311,7 @@ void ULevel::EndPlay()
 
 	for (AActor* Actor : Actors)
 	{
-		if (Actor)
+		if (Actor && IsAliveObject(Actor))
 		{
 			UObjectManager::Get().DestroyObject(Actor);
 		}

@@ -457,7 +457,7 @@ sol::optional<float> FLuaComponentProxy::GetShapeHalfHeight() const
 
 bool FLuaComponentProxy::SetShapeHalfHeight(float HalfHeight)
 {
-	const float SafeHalfHeight = (std::max)(1.0f, std::isfinite(HalfHeight) ? HalfHeight : 1.0f);
+	const float SafeHalfHeight = (std::max)(0.01f, std::isfinite(HalfHeight) ? HalfHeight : 1.0f);
 	UActorComponent* TargetComponent = GetComponent();
 	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
 	{
@@ -508,7 +508,7 @@ sol::optional<float> FLuaComponentProxy::GetShapeRadius() const
 
 bool FLuaComponentProxy::SetShapeRadius(float Radius)
 {
-	const float SafeRadius = (std::max)(1.0f, std::isfinite(Radius) ? Radius : 1.0f);
+	const float SafeRadius = (std::max)(0.01f, std::isfinite(Radius) ? Radius : 1.0f);
 	UActorComponent* TargetComponent = GetComponent();
 	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
 	{
@@ -564,9 +564,9 @@ sol::optional<FVector> FLuaComponentProxy::GetShapeExtent() const
 bool FLuaComponentProxy::SetShapeExtent(const FVector& Extent)
 {
 	const FVector SafeExtent(
-		(std::max)(1.0f, std::isfinite(Extent.X) ? Extent.X : 1.0f),
-		(std::max)(1.0f, std::isfinite(Extent.Y) ? Extent.Y : 1.0f),
-		(std::max)(1.0f, std::isfinite(Extent.Z) ? Extent.Z : 1.0f)
+		(std::max)(0.01f, std::isfinite(Extent.X) ? Extent.X : 1.0f),
+		(std::max)(0.01f, std::isfinite(Extent.Y) ? Extent.Y : 1.0f),
+		(std::max)(0.01f, std::isfinite(Extent.Z) ? Extent.Z : 1.0f)
 	);
 
 	UActorComponent* TargetComponent = GetComponent();
@@ -979,9 +979,9 @@ bool FLuaComponentProxy::SetBoxExtent(const FVector& Extent)
 }
 
 	const FVector SafeExtent(
-		std::max(1.0f, Extent.X),
-		std::max(1.0f, Extent.Y),
-		std::max(1.0f, Extent.Z)
+		std::max(0.01f, Extent.X),
+		std::max(0.01f, Extent.Y),
+		std::max(0.01f, Extent.Z)
 	);
 
 	BoxComponent->SetBoxExtent(SafeExtent);
