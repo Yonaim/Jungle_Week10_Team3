@@ -78,6 +78,13 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 	case WM_NCHITTEST:
 	{
 		POINT Cursor = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		POINT ClientPoint = Cursor;
+		ScreenToClient(hWnd, &ClientPoint);
+		if (Window.IsInTitleBarControlRegion(ClientPoint))
+		{
+			return HTCLIENT;
+		}
+
 		RECT WindowRect{};
 		GetWindowRect(hWnd, &WindowRect);
 		const int ResizeBorderThickness = GetResizeBorderForWindow(hWnd);
@@ -100,8 +107,6 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 			if (bBottom) return HTBOTTOM;
 		}
 
-		POINT ClientPoint = Cursor;
-		ScreenToClient(hWnd, &ClientPoint);
 		if (Window.IsInTitleBarDragRegion(ClientPoint))
 		{
 			return HTCAPTION;
@@ -197,7 +202,11 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 	RegisterRawInputDevices(&RawMouseDevice, 1, sizeof(RAWINPUTDEVICE));
 
 	Window.Initialize(HWindow);
+#if WITH_EDITOR || IS_OBJ_VIEWER
+	Window.SetResizeLocked(false);
+#else
 	Window.SetResizeLocked(FProjectSettings::Get().Game.bLockWindowResolution);
+#endif
 	Window.ResizeClientArea(WindowWidth, WindowHeight);
 	return true;
 }

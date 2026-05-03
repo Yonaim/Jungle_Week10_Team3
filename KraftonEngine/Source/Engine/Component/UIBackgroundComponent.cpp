@@ -1,9 +1,13 @@
 #include "Component/UIBackgroundComponent.h"
 
+#include "Component/CanvasRootComponent.h"
+#include "Component/UIScreenTextComponent.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Object/ObjectFactory.h"
 #include "Render/Scene/FScene.h"
+#include "Viewport/GameViewportClient.h"
+#include "Viewport/Viewport.h"
 
 #include <algorithm>
 #include <cstring>
@@ -29,6 +33,7 @@ void UUIBackgroundComponent::GetEditableProperties(TArray<FPropertyDescriptor>& 
 	OutProps.push_back({ "Texture", EPropertyType::TextureSlot, &TextureSlot });
 	OutProps.push_back({ "Tint", EPropertyType::Color4, &Tint });
 	OutProps.push_back({ "Z Order", EPropertyType::Int, &ZOrder });
+	OutProps.push_back({ "Visible", EPropertyType::Bool, &bIsVisible });
 }
 
 void UUIBackgroundComponent::PostEditProperty(const char* PropertyName)
@@ -50,7 +55,10 @@ void UUIBackgroundComponent::ContributeVisuals(FScene& Scene) const
 
 	if (ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV())
 	{
-		Scene.AddScreenQuad(SRV, FVector2(0.0f, 0.0f), GetViewportSize2D(), Tint, ZOrder);
+		FVector2 BackgroundPosition(0.0f, 0.0f);
+		FVector2 BackgroundSize = GetViewportSize2D();
+		ResolveBackgroundRect(BackgroundPosition, BackgroundSize);
+		Scene.AddScreenQuad(SRV, BackgroundPosition, BackgroundSize, Tint, ZOrder);
 	}
 }
 
@@ -61,19 +69,16 @@ void UUIBackgroundComponent::ContributeSelectedVisuals(FScene& Scene) const
 		return;
 	}
 
-	if (!GetResolvedTextureSRV())
-	{
-		return;
-	}
-
 	constexpr float OutlineThickness = 3.0f;
-	const FVector2 Size = GetViewportSize2D();
+	FVector2 Position(0.0f, 0.0f);
+	FVector2 Size = GetViewportSize2D();
+	ResolveBackgroundRect(Position, Size);
 	const int32 OutlineZ = ZOrder + 1000;
 
-	Scene.AddScreenQuad(nullptr, FVector2(-OutlineThickness, -OutlineThickness), FVector2(Size.X + OutlineThickness * 2.0f, OutlineThickness), SelectedUIOutlineColor, OutlineZ);
-	Scene.AddScreenQuad(nullptr, FVector2(-OutlineThickness, Size.Y), FVector2(Size.X + OutlineThickness * 2.0f, OutlineThickness), SelectedUIOutlineColor, OutlineZ);
-	Scene.AddScreenQuad(nullptr, FVector2(-OutlineThickness, 0.0f), FVector2(OutlineThickness, Size.Y), SelectedUIOutlineColor, OutlineZ);
-	Scene.AddScreenQuad(nullptr, FVector2(Size.X, 0.0f), FVector2(OutlineThickness, Size.Y), SelectedUIOutlineColor, OutlineZ);
+	Scene.AddScreenQuad(nullptr, FVector2(Position.X - OutlineThickness, Position.Y - OutlineThickness), FVector2(Size.X + OutlineThickness * 2.0f, OutlineThickness), SelectedUIOutlineColor, OutlineZ);
+	Scene.AddScreenQuad(nullptr, FVector2(Position.X - OutlineThickness, Position.Y + Size.Y), FVector2(Size.X + OutlineThickness * 2.0f, OutlineThickness), SelectedUIOutlineColor, OutlineZ);
+	Scene.AddScreenQuad(nullptr, FVector2(Position.X - OutlineThickness, Position.Y), FVector2(OutlineThickness, Size.Y), SelectedUIOutlineColor, OutlineZ);
+	Scene.AddScreenQuad(nullptr, FVector2(Position.X + Size.X, Position.Y), FVector2(OutlineThickness, Size.Y), SelectedUIOutlineColor, OutlineZ);
 }
 
 bool UUIBackgroundComponent::HitTestUIScreenPoint(float X, float Y) const
@@ -83,8 +88,46 @@ bool UUIBackgroundComponent::HitTestUIScreenPoint(float X, float Y) const
 		return false;
 	}
 
-	const FVector2 Size = GetViewportSize2D();
-	return X >= 0.0f && X <= Size.X && Y >= 0.0f && Y <= Size.Y;
+	FVector2 Position(0.0f, 0.0f);
+	FVector2 Size = GetViewportSize2D();
+	ResolveBackgroundRect(Position, Size);
+	return X >= Position.X && X <= Position.X + Size.X && Y >= Position.Y && Y <= Position.Y + Size.Y;
+}
+
+bool UUIBackgroundComponent::ResolveBackgroundRect(FVector2& OutPosition, FVector2& OutSize) const
+{
+	for (const USceneComponent* Current = GetParent(); Current != nullptr; Current = Current->GetParent())
+	{
+		if (const UCanvasRootComponent* CanvasRoot = dynamic_cast<const UCanvasRootComponent*>(Current))
+		{
+			const FVector& CanvasSize = CanvasRoot->GetCanvasSize();
+			OutPosition = CanvasRoot->GetCanvasOrigin();
+			OutSize = FVector2((std::max)(1.0f, CanvasSize.X), (std::max)(1.0f, CanvasSize.Y));
+			return true;
+		}
+
+		if (const UUIImageComponent* ImageParent = dynamic_cast<const UUIImageComponent*>(Current))
+		{
+			if (ImageParent->ResolveLayoutRect(OutPosition, OutSize))
+			{
+				return true;
+			}
+			continue;
+		}
+
+		if (const UUIScreenTextComponent* TextParent = dynamic_cast<const UUIScreenTextComponent*>(Current))
+		{
+			if (TextParent->ResolveLayoutRect(OutPosition, OutSize))
+			{
+				return true;
+			}
+			continue;
+		}
+	}
+
+	OutPosition = FVector2(0.0f, 0.0f);
+	OutSize = GetViewportSize2D();
+	return true;
 }
 
 FVector2 UUIBackgroundComponent::GetViewportSize2D() const
@@ -92,6 +135,21 @@ FVector2 UUIBackgroundComponent::GetViewportSize2D() const
 	FVector2 ViewportSize(1920.0f, 1080.0f);
 	if (GEngine)
 	{
+		if (UGameViewportClient* GameViewportClient = GEngine->GetGameViewportClient())
+		{
+			if (FViewport* GameViewport = GameViewportClient->GetViewport())
+			{
+				const float Width = static_cast<float>(GameViewport->GetWidth());
+				const float Height = static_cast<float>(GameViewport->GetHeight());
+				if (Width > 0.0f && Height > 0.0f)
+				{
+					ViewportSize.X = Width;
+					ViewportSize.Y = Height;
+					return ViewportSize;
+				}
+			}
+		}
+
 		if (FWindowsWindow* Window = GEngine->GetWindow())
 		{
 			ViewportSize.X = (std::max)(1.0f, Window->GetWidth());

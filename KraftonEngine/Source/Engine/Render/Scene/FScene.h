@@ -71,9 +71,10 @@ public:
 		FVector2 UVMax = FVector2(1.0f, 1.0f);
 		FVector4 Color = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 		int32 ZOrder = 0;
+		bool bSolidColorOnly = false;
 	};
 	void AddScreenQuad(ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, const FVector4& Color, int32 ZOrder,
-		const FVector2& UVMin = FVector2(0.0f, 0.0f), const FVector2& UVMax = FVector2(1.0f, 1.0f));
+		const FVector2& UVMin = FVector2(0.0f, 0.0f), const FVector2& UVMax = FVector2(1.0f, 1.0f), bool bSolidColorOnly = false);
 	const TArray<FScreenQuadEntry>& GetScreenQuads() const { return ScreenQuads; }
 
 	// --- Debug AABB ---

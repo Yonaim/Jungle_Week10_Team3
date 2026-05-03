@@ -176,6 +176,13 @@ function ComponentProxy:SetActive(active) end
 ---@return boolean
 function ComponentProxy:IsActive() end
 
+---@param visible boolean
+---@return boolean
+function ComponentProxy:SetVisible(visible) end
+
+---@return boolean
+function ComponentProxy:IsVisible() end
+
 ---@return Vector|nil
 function ComponentProxy:GetWorldLocation() end
 
@@ -355,42 +362,42 @@ function ComponentProxy:IsPressed() end
 ---@return boolean
 function ComponentProxy:WasClicked() end
 
----@param soundPath string
+---@param audioPath string
 ---@return boolean
-function ComponentProxy:SetSoundPath(soundPath) end
+function ComponentProxy:SetAudioPath(audioPath) end
 
 ---@return string|nil
-function ComponentProxy:GetSoundPath() end
+function ComponentProxy:GetAudioPath() end
 
 ---@param category '"sfx"'|'"background"'|'"bgm"'
 ---@return boolean
-function ComponentProxy:SetSoundCategory(category) end
+function ComponentProxy:SetAudioCategory(category) end
 
 ---@return string|nil
-function ComponentProxy:GetSoundCategory() end
+function ComponentProxy:GetAudioCategory() end
 
 ---@param looping boolean
 ---@return boolean
-function ComponentProxy:SetSoundLooping(looping) end
+function ComponentProxy:SetAudioLooping(looping) end
 
 ---@return boolean
-function ComponentProxy:IsSoundLooping() end
+function ComponentProxy:IsAudioLooping() end
 
----@param soundPath? string
+---@param audioPath? string
 ---@return boolean
-function ComponentProxy:PlaySound(soundPath) end
-
----@return boolean
-function ComponentProxy:StopSound() end
+function ComponentProxy:PlayAudio(audioPath) end
 
 ---@return boolean
-function ComponentProxy:PauseSound() end
+function ComponentProxy:StopAudio() end
 
 ---@return boolean
-function ComponentProxy:ResumeSound() end
+function ComponentProxy:PauseAudio() end
 
 ---@return boolean
-function ComponentProxy:IsSoundPlaying() end
+function ComponentProxy:ResumeAudio() end
+
+---@return boolean
+function ComponentProxy:IsAudioPlaying() end
 
 ---@param speed number
 ---@return boolean
@@ -595,35 +602,35 @@ function play_sfx(soundPath, looping) end
 ---@param soundPath string
 ---@param looping? boolean
 ---@return string
-function play_background(soundPath, looping) end
+function play_bgm(soundPath, looping) end
 
 ---@param handle string
 ---@return boolean
-function stop_sound(handle) end
+function stop_audio_by_handle(handle) end
 
 ---@param handle string
 ---@return boolean
-function pause_sound(handle) end
+function pause_audio_by_handle(handle) end
 
 ---@param handle string
 ---@return boolean
-function resume_sound(handle) end
+function resume_audio_by_handle(handle) end
 
 ---@param handle string
 ---@return boolean
-function is_sound_playing(handle) end
+function is_audio_playing_by_handle(handle) end
 
 ---@return boolean
-function stop_background() end
+function stop_bgm() end
 
 ---@return boolean
-function pause_background() end
+function pause_bgm() end
 
 ---@return boolean
-function resume_background() end
+function resume_bgm() end
 
 ---@return boolean
-function is_background_playing() end
+function is_bgm_playing() end
 
 function BeginPlay() end
 

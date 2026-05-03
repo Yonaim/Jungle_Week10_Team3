@@ -46,7 +46,7 @@ class FProjectSettings : public TSingleton<FProjectSettings>
 	{
 		FString GameInstanceClass = "UGameInstance";
 		FString DefaultGameModeClass = "AGameModeBase";
-		FString DefaultScene = "Default";
+		FString DefaultScene = "game/title.scene";
 		uint32 WindowWidth = 1920;
 		uint32 WindowHeight = 1080;
 		bool bLockWindowResolution = false;

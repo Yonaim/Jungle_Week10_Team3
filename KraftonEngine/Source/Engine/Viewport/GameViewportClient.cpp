@@ -5,6 +5,7 @@
 #include "Engine/Input/InputModifier.h"
 #include "Engine/Input/InputTrigger.h"
 #include "Math/MathUtils.h"
+#include "Viewport/Viewport.h"
 
 #include <windows.h>
 
@@ -81,6 +82,48 @@ void UGameViewportClient::SetCursorClipRect(const FRect& InViewportScreenRect)
 	{
 		ApplyCursorClip();
 	}
+}
+
+bool UGameViewportClient::TryGetCursorViewportPosition(float& OutViewportX, float& OutViewportY) const
+{
+	OutViewportX = 0.0f;
+	OutViewportY = 0.0f;
+
+	if (!Viewport || !bHasCursorClipRect || !OwnerHWnd)
+	{
+		return false;
+	}
+
+	const float ViewportWidth = static_cast<float>(Viewport->GetWidth());
+	const float ViewportHeight = static_cast<float>(Viewport->GetHeight());
+	const float RectWidth = static_cast<float>(CursorClipClientRect.right - CursorClipClientRect.left);
+	const float RectHeight = static_cast<float>(CursorClipClientRect.bottom - CursorClipClientRect.top);
+	if (ViewportWidth <= 0.0f || ViewportHeight <= 0.0f || RectWidth <= 0.0f || RectHeight <= 0.0f)
+	{
+		return false;
+	}
+
+	POINT CursorPoint{};
+	if (!::GetCursorPos(&CursorPoint))
+	{
+		return false;
+	}
+
+	if (!::ScreenToClient(OwnerHWnd, &CursorPoint))
+	{
+		return false;
+	}
+
+	const float LocalX = static_cast<float>(CursorPoint.x - CursorClipClientRect.left);
+	const float LocalY = static_cast<float>(CursorPoint.y - CursorClipClientRect.top);
+	if (LocalX < 0.0f || LocalY < 0.0f || LocalX >= RectWidth || LocalY >= RectHeight)
+	{
+		return false;
+	}
+
+	OutViewportX = LocalX * (ViewportWidth / RectWidth);
+	OutViewportY = LocalY * (ViewportHeight / RectHeight);
+	return true;
 }
 
 void UGameViewportClient::SetPossessed(bool bPossessed)
@@ -183,9 +226,19 @@ bool UGameViewportClient::Tick(float DeltaTime)
 	// Recenter mouse after processing to allow continuous rotation
 	if (bCursorCaptured && OwnerHWnd)
 	{
-		RECT rect;
-		::GetClientRect(OwnerHWnd, &rect);
-		POINT center = { (rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2 };
+		POINT center{};
+		if (bHasCursorClipRect)
+		{
+			center.x = (CursorClipClientRect.left + CursorClipClientRect.right) / 2;
+			center.y = (CursorClipClientRect.top + CursorClipClientRect.bottom) / 2;
+		}
+		else
+		{
+			RECT rect;
+			::GetClientRect(OwnerHWnd, &rect);
+			center.x = (rect.left + rect.right) / 2;
+			center.y = (rect.top + rect.bottom) / 2;
+		}
 		::ClientToScreen(OwnerHWnd, &center);
 		::SetCursorPos(center.x, center.y);
 		FInputManager::Get().SetLastMousePos(center);

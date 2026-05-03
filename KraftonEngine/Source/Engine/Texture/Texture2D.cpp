@@ -273,11 +273,30 @@ void UTexture2D::ScanTextureAssets()
 			FTextureAssetListItem Item;
 			Item.DisplayName = FPaths::ToUtf8(Entry.path().filename().wstring());
 			Item.FullPath = FPaths::ToUtf8(RelativePath.generic_wstring());
+			Item.SourceFolder = FPaths::ToUtf8(RelativePath.parent_path().generic_wstring());
 			AvailableTextureFiles.push_back(std::move(Item));
 		}
 
 		It.increment(ErrorCode);
 	}
+
+	std::sort(
+		AvailableTextureFiles.begin(),
+		AvailableTextureFiles.end(),
+		[](const FTextureAssetListItem& A, const FTextureAssetListItem& B)
+		{
+			if (A.SourceFolder != B.SourceFolder)
+			{
+				return A.SourceFolder < B.SourceFolder;
+			}
+
+			if (A.DisplayName != B.DisplayName)
+			{
+				return A.DisplayName < B.DisplayName;
+			}
+
+			return A.FullPath < B.FullPath;
+		});
 }
 
 const TArray<FTextureAssetListItem>& UTexture2D::GetAvailableTextureFiles()

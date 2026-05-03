@@ -45,6 +45,7 @@ public:
 	void SetCursorClipRect(const FRect& InViewportScreenRect);
 	void SetDrivingCamera(UCameraComponent* InCamera) { Possess(InCamera); }
 	UCameraComponent* GetDrivingCamera() const { return GetPossessedTarget(); }
+	bool TryGetCursorViewportPosition(float& OutViewportX, float& OutViewportY) const;
 
 	void SetPIEPossessedInputEnabled(bool bEnabled);
 	bool IsPIEPossessedInputEnabled() const { return bPIEPossessedInputEnabled; }

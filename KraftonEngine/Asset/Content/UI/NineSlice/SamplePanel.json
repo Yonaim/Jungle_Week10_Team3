@@ -1,0 +1,5 @@
+{
+  "image": "../../Texture/checker.png",
+  "region": { "x": 0, "y": 0, "w": 512, "h": 512 },
+  "border": { "left": 32, "right": 32, "top": 32, "bottom": 32 }
+}

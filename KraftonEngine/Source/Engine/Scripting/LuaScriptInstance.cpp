@@ -4,6 +4,7 @@
 #include "Audio/AudioManager.h"
 #include "Core/Log.h"
 #include "Engine/Input/InputManager.h"
+#include "Engine/Runtime/GameEngine.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/StaticMeshActor.h"
 #include "GameFramework/World.h"
@@ -1324,47 +1325,47 @@ void FLuaScriptInstance::BindSoundFunctions()
 		return FAudioManager::Get().PlaySFX(SoundPath, Looping.value_or(false));
 	});
 
-	Impl->Env.set_function("play_background", [](const FString& SoundPath, sol::optional<bool> Looping)
+	Impl->Env.set_function("play_bgm", [](const FString& SoundPath, sol::optional<bool> Looping)
 	{
 		return FAudioManager::Get().PlayBackground(SoundPath, Looping.value_or(true));
 	});
 
-	Impl->Env.set_function("stop_sound", [](const FString& Handle)
+	Impl->Env.set_function("stop_audio_by_handle", [](const FString& Handle)
 	{
 		return FAudioManager::Get().StopSound(Handle);
 	});
 
-	Impl->Env.set_function("pause_sound", [](const FString& Handle)
+	Impl->Env.set_function("pause_audio_by_handle", [](const FString& Handle)
 	{
 		return FAudioManager::Get().PauseSound(Handle);
 	});
 
-	Impl->Env.set_function("resume_sound", [](const FString& Handle)
+	Impl->Env.set_function("resume_audio_by_handle", [](const FString& Handle)
 	{
 		return FAudioManager::Get().ResumeSound(Handle);
 	});
 
-	Impl->Env.set_function("is_sound_playing", [](const FString& Handle)
+	Impl->Env.set_function("is_audio_playing_by_handle", [](const FString& Handle)
 	{
 		return FAudioManager::Get().IsSoundPlaying(Handle);
 	});
 
-	Impl->Env.set_function("stop_background", []()
+	Impl->Env.set_function("stop_bgm", []()
 	{
 		return FAudioManager::Get().StopBackground();
 	});
 
-	Impl->Env.set_function("pause_background", []()
+	Impl->Env.set_function("pause_bgm", []()
 	{
 		return FAudioManager::Get().PauseBackground();
 	});
 
-	Impl->Env.set_function("resume_background", []()
+	Impl->Env.set_function("resume_bgm", []()
 	{
 		return FAudioManager::Get().ResumeBackground();
 	});
 
-	Impl->Env.set_function("is_background_playing", []()
+	Impl->Env.set_function("is_bgm_playing", []()
 	{
 		return FAudioManager::Get().IsBackgroundPlaying();
 	});
@@ -1506,6 +1507,11 @@ void FLuaScriptInstance::BindWorldFunctions()
 	{
 		// destroy_actor는 Lua가 Actor를 소유한다는 뜻이 아니라 Proxy의 Destroy 래퍼일 뿐이다.
 		ActorProxy.Destroy();
+	});
+
+	Impl->Env.set_function("load_scene", [](const FString& SceneReference)
+	{
+		return GEngine ? GEngine->RequestSceneLoad(SceneReference) : false;
 	});
 }
 

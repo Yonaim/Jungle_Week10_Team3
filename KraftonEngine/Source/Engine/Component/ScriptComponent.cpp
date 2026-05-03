@@ -686,6 +686,41 @@ bool UScriptComponent::OpenScript()
 	return true;
 }
 
+bool UScriptComponent::CallScriptFunction(const FString& FunctionName)
+{
+	if (FunctionName.empty())
+	{
+		return false;
+	}
+
+	if (!ScriptInstance.CallLuaFunction(FunctionName))
+	{
+		RefreshScriptErrorState();
+		return false;
+	}
+
+	RefreshScriptErrorState();
+	return true;
+}
+
+void UScriptComponent::SetSerializedScriptPropertyOverrides(const TMap<FString, FScriptPropertyValue>& InOverrides)
+{
+	ScriptPropertyOverrides = InOverrides;
+
+	if (RefreshScriptPropertyDescs(false))
+	{
+		PruneScriptPropertyOverrides();
+		RebuildEditableScriptPropertyValues();
+		return;
+	}
+
+	EditableScriptPropertyValues.clear();
+	for (const auto& Pair : ScriptPropertyOverrides)
+	{
+		EditableScriptPropertyValues[Pair.first] = Pair.second;
+	}
+}
+
 void UScriptComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);

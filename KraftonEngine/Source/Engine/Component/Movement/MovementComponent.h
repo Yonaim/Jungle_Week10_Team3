@@ -24,6 +24,7 @@ public:
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 	void Serialize(FArchive& Ar) override;
 	void PostEditProperty(const char* PropertyName) override;
+	bool ShouldExposeTickEnabledProperty() const override { return true; }
 
 	void SetUpdatedComponent(USceneComponent* NewUpdatedComponent);
 	USceneComponent* GetUpdatedComponent() const;

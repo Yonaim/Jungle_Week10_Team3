@@ -104,4 +104,22 @@ struct FDrawCommand
 		Key |= (static_cast<uint64>(UserBits) & 0xFFF);              // [11:0]  User
 		return Key;
 	}
+
+	// UI는 텍스처 상태 변화보다 z-order 보장이 더 중요하므로 UserBits를 앞에 둔다.
+	static uint64 ComputeUISortKey(ERenderPass InPass, uint16 PackedZOrder,
+		const FShader* InShader, const ID3D11ShaderResourceView* InSRV)
+	{
+		auto PtrHash16 = [](const void* Ptr) -> uint16
+		{
+			uintptr_t Val = reinterpret_cast<uintptr_t>(Ptr);
+			return static_cast<uint16>((Val >> 4) ^ (Val >> 20));
+		};
+
+		uint64 Key = 0;
+		Key |= (static_cast<uint64>(InPass) & 0xF) << 60;            // [63:60] Pass
+		Key |= (static_cast<uint64>(PackedZOrder) & 0xFFF) << 48;   // [59:48] UI Z
+		Key |= (static_cast<uint64>(PtrHash16(InShader))) << 32;    // [47:32] Shader
+		Key |= (static_cast<uint64>(PtrHash16(InSRV))) << 16;       // [31:16] SRV
+		return Key;
+	}
 };

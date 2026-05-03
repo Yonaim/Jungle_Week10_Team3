@@ -18,7 +18,9 @@ public:
 	bool SupportsUIScreenPicking() const override { return false; }
 	bool HitTestUIScreenPoint(float X, float Y) const override;
 	int32 GetUIScreenPickingZOrder() const override { return GetZOrder(); }
+	bool ParticipatesInPickingSpatialStructure() const override { return false; }
 
 private:
+	bool ResolveBackgroundRect(FVector2& OutPosition, FVector2& OutSize) const;
 	FVector2 GetViewportSize2D() const;
 };

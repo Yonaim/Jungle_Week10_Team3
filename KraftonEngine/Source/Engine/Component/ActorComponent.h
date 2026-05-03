@@ -65,6 +65,8 @@ public:
 	virtual bool HitTestUIScreenPoint(float X, float Y) const { (void)X; (void)Y; return false; }
 	virtual int32 GetUIScreenPickingZOrder() const { return INT_MIN; }
 	virtual bool SupportsWorldGizmo() const { return true; }
+	virtual bool ShouldExposeTickEnabledProperty() const { return false; }
+	virtual bool ShouldExposeEditorOnlyProperty() const { return false; }
 	
 	FActorComponentTickFunction PrimaryComponentTick;
 

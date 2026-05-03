@@ -15,27 +15,17 @@
 #include "Texture/Texture2D.h"
 #include "Engine/Runtime/Engine.h"
 
+#include <algorithm>
+
 // UpdateProxyLOD defined in RenderCollector.cpp (shared)
 extern void UpdateProxyLOD(FPrimitiveSceneProxy* Proxy, const FLODUpdateContext& LODCtx);
 
 namespace
 {
-	ID3D11ShaderResourceView* GetFallbackUIScreenQuadSRV()
+	uint16 PackUIScreenZOrder(int32 ZOrder)
 	{
-		static UTexture2D* CachedFallbackTexture = nullptr;
-		if (CachedFallbackTexture)
-		{
-			return CachedFallbackTexture->GetSRV();
-		}
-
-		ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
-		if (!Device)
-		{
-			return nullptr;
-		}
-
-		CachedFallbackTexture = UTexture2D::LoadFromFile("Asset/Content/Texture/checker.png", Device);
-		return CachedFallbackTexture ? CachedFallbackTexture->GetSRV() : nullptr;
+		const int32 Clamped = (std::clamp)(ZOrder, -2048, 2047);
+		return static_cast<uint16>(Clamped + 2048);
 	}
 }
 
@@ -431,7 +421,8 @@ void FDrawCommandBuilder::PrepareDynamicGeometry(const FFrameContext& Frame, con
 			Quad.UVMin,
 			Quad.UVMax,
 			Quad.TextureSRV,
-			static_cast<uint16>((Quad.ZOrder < 0) ? 0 : ((Quad.ZOrder > 65535) ? 65535 : Quad.ZOrder)));
+			PackUIScreenZOrder(Quad.ZOrder),
+			Quad.bSolidColorOnly);
 	}
 
 	// --- ScreenText 패스: 스크린 공간 텍스트 ---
@@ -633,8 +624,7 @@ void FDrawCommandBuilder::BuildUICommands(EViewMode ViewMode)
 			continue;
 		}
 
-		ID3D11ShaderResourceView* BatchSRV = Batch.SRV ? Batch.SRV : GetFallbackUIScreenQuadSRV();
-		if (!BatchSRV)
+		if (!Batch.SRV && !Batch.bSolidColorOnly)
 		{
 			continue;
 		}
@@ -646,8 +636,8 @@ void FDrawCommandBuilder::BuildUICommands(EViewMode ViewMode)
 		Cmd.Buffer = { ScreenQuads.GetVBBuffer(), ScreenQuads.GetVBStride(), ScreenQuads.GetIBBuffer() };
 		Cmd.Buffer.FirstIndex = Batch.FirstIndex;
 		Cmd.Buffer.IndexCount = Batch.IndexCount;
-		Cmd.Bindings.SRVs[(int)EMaterialTextureSlot::Diffuse] = BatchSRV;
-		Cmd.BuildSortKey(Batch.ZOrder);
+		Cmd.Bindings.SRVs[(int)EMaterialTextureSlot::Diffuse] = Batch.SRV;
+		Cmd.SortKey = FDrawCommand::ComputeUISortKey(Cmd.Pass, Batch.ZOrder, Cmd.Shader, Batch.SRV);
 	}
 }
 

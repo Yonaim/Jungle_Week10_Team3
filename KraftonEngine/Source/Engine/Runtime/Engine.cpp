@@ -19,6 +19,7 @@
 #include "GameFramework/GameInstance.h"
 #include "Object/ObjectFactory.h"
 #include "Core/ProjectSettings.h"
+#include "Core/Notification.h"
 
 #include "Core/TickFunction.h"
 #include "Collision/CollisionDispatcher.h"
@@ -172,12 +173,32 @@ void UEngine::BeginPlay()
 
 void UEngine::Tick(float DeltaTime)
 {
+	if (!PendingSceneLoadReference.empty())
+	{
+		const FString SceneToLoad = PendingSceneLoadReference;
+		PendingSceneLoadReference.clear();
+		LoadScene(SceneToLoad);
+	}
+
 	FDirectoryWatcher::Get().ProcessChanges();
 	FNotificationManager::Get().Tick(DeltaTime);
 	FAudioManager::Get().Update();
 	FInputManager::Get().Tick();
 	WorldTick(DeltaTime);
 	Render(DeltaTime);
+}
+
+bool UEngine::RequestSceneLoad(const FString& InSceneReference)
+{
+	if (InSceneReference.empty())
+	{
+		return false;
+	}
+
+	PendingSceneLoadReference = InSceneReference;
+	UE_LOG_CATEGORY(Engine, Info, "[SceneLoad] Queued scene load: %s", InSceneReference.c_str());
+	FNotificationManager::Get().AddNotification("Queued scene load: " + InSceneReference, ENotificationType::Info, 1.5f);
+	return true;
 }
 
 void UEngine::Render(float DeltaTime)

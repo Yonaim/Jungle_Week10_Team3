@@ -46,7 +46,8 @@ void FScreenQuadGeometry::AddScreenQuad(
 	const FVector2& UVMin,
 	const FVector2& UVMax,
 	ID3D11ShaderResourceView* SRV,
-	uint16 ZOrder)
+	uint16 ZOrder,
+	bool bSolidColorOnly)
 {
 	if (Width <= 0.0f || Height <= 0.0f || ViewportWidth <= 0.0f || ViewportHeight <= 0.0f)
 	{
@@ -83,7 +84,7 @@ void FScreenQuadGeometry::AddScreenQuad(
 	Indices.push_back(BaseVertex + 3);
 	Indices.push_back(BaseVertex + 2);
 
-	Batches.push_back({ FirstIndex, 6u, SRV, ZOrder });
+	Batches.push_back({ FirstIndex, 6u, SRV, ZOrder, bSolidColorOnly });
 }
 
 bool FScreenQuadGeometry::UploadBuffers(ID3D11DeviceContext* Context)

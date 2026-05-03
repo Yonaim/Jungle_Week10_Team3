@@ -26,6 +26,8 @@ struct FLuaComponentProxy
 
 	bool SetActive(bool bActive);
 	bool IsActive() const;
+	bool SetVisible(bool bVisible);
+	bool IsVisible() const;
 
 	sol::optional<FVector> GetWorldLocation() const;
 	bool SetWorldLocation(const FVector& InLocation);

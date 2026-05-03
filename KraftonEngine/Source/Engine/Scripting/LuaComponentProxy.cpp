@@ -11,6 +11,7 @@
 #include "Component/UIButtonComponent.h"
 #include "Component/UIImageComponent.h"
 #include "Component/TextRenderComponent.h"
+#include "Component/UIScreenTextComponent.h"
 #include "Engine/Runtime/Engine.h"
 #include "GameFramework/AActor.h"
 #include "Mesh/ObjManager.h"
@@ -144,6 +145,24 @@ bool FLuaComponentProxy::IsActive() const
 {
 	UActorComponent* TargetComponent = GetComponent();
 	return TargetComponent ? TargetComponent->IsActive() : false;
+}
+
+bool FLuaComponentProxy::SetVisible(bool bVisible)
+{
+	UPrimitiveComponent* PrimitiveComponent = Cast<UPrimitiveComponent>(GetComponent());
+	if (!PrimitiveComponent)
+	{
+		return false;
+	}
+
+	PrimitiveComponent->SetVisibility(bVisible);
+	return true;
+}
+
+bool FLuaComponentProxy::IsVisible() const
+{
+	UPrimitiveComponent* PrimitiveComponent = Cast<UPrimitiveComponent>(GetComponent());
+	return PrimitiveComponent ? PrimitiveComponent->IsVisible() : false;
 }
 
 sol::optional<FVector> FLuaComponentProxy::GetWorldLocation() const
@@ -596,25 +615,39 @@ bool FLuaComponentProxy::SetStaticMesh(const FString& MeshPath)
 bool FLuaComponentProxy::SetText(const FString& Text)
 {
 	UTextRenderComponent* TextComponent = Cast<UTextRenderComponent>(GetComponent());
-	if (!TextComponent)
+	if (TextComponent)
+	{
+		TextComponent->SetText(Text);
+		TextComponent->PostEditProperty("Text");
+		return true;
+	}
+
+	UUIScreenTextComponent* ScreenTextComponent = Cast<UUIScreenTextComponent>(GetComponent());
+	if (!ScreenTextComponent)
 	{
 		return false;
 	}
 
-	TextComponent->SetText(Text);
-	TextComponent->PostEditProperty("Text");
+	ScreenTextComponent->SetText(Text);
+	ScreenTextComponent->PostEditProperty("Text");
 	return true;
 }
 
 sol::optional<FString> FLuaComponentProxy::GetText() const
 {
 	UTextRenderComponent* TextComponent = Cast<UTextRenderComponent>(GetComponent());
-	if (!TextComponent)
+	if (TextComponent)
+	{
+		return TextComponent->GetText();
+	}
+
+	UUIScreenTextComponent* ScreenTextComponent = Cast<UUIScreenTextComponent>(GetComponent());
+	if (!ScreenTextComponent)
 	{
 		return sol::nullopt;
 	}
 
-	return TextComponent->GetText();
+	return ScreenTextComponent->GetText();
 }
 
 bool FLuaComponentProxy::SetTexture(const FString& TexturePath)
@@ -647,12 +680,19 @@ bool FLuaComponentProxy::SetTint(const FVector& TintRGB)
 bool FLuaComponentProxy::SetTintRGBA(float R, float G, float B, float A)
 {
 	UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent());
-	if (!ImageComponent)
+	if (ImageComponent)
+	{
+		ImageComponent->SetTint(FVector4(R, G, B, A));
+		return true;
+	}
+
+	UUIScreenTextComponent* ScreenTextComponent = Cast<UUIScreenTextComponent>(GetComponent());
+	if (!ScreenTextComponent)
 	{
 		return false;
 	}
 
-	ImageComponent->SetTint(FVector4(R, G, B, A));
+	ScreenTextComponent->SetColor(FVector4(R, G, B, A));
 	return true;
 }
 
