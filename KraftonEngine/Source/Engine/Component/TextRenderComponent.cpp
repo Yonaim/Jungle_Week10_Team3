@@ -12,6 +12,14 @@
 
 IMPLEMENT_CLASS(UTextRenderComponent, UBillboardComponent)
 
+namespace
+{
+	const char* GTextRenderSpaceNames[] = {
+		"World",
+		"Screen"
+	};
+}
+
 FPrimitiveSceneProxy* UTextRenderComponent::CreateSceneProxy()
 {
 	return new FTextRenderSceneProxy(this);
@@ -133,6 +141,9 @@ void UTextRenderComponent::GetEditableProperties(TArray<FPropertyDescriptor>& Ou
 	OutProps.push_back({ "Font", EPropertyType::Name, &FontName });
 	//OutProps.push_back({ "Color", EPropertyType::Vec4, &Color });
 	OutProps.push_back({ "Font Size", EPropertyType::Float, &FontSize, 0.1f, 100.0f, 0.1f });
+	OutProps.push_back({ "Render Space", EPropertyType::Enum, &RenderSpace, 0.0f, 0.0f, 0.1f, GTextRenderSpaceNames, 2 });
+	OutProps.push_back({ "Screen X", EPropertyType::Float, &ScreenX, 0.0f, 10000.0f, 1.0f });
+	OutProps.push_back({ "Screen Y", EPropertyType::Float, &ScreenY, 0.0f, 10000.0f, 1.0f });
 	OutProps.push_back({ "Visible", EPropertyType::Bool, &bIsVisible });
 }
 
@@ -156,6 +167,16 @@ void UTextRenderComponent::PostEditProperty(const char* PropertyName)
 	else if (strcmp(PropertyName, "Font Size") == 0)
 	{
 		MarkProxyDirty(EDirtyFlag::Mesh);
+		MarkProxyDirty(EDirtyFlag::Transform);
+	}
+	else if (strcmp(PropertyName, "Render Space") == 0)
+	{
+		MarkProxyDirty(EDirtyFlag::Mesh);
+		MarkProxyDirty(EDirtyFlag::Transform);
+		MarkWorldBoundsDirty();
+	}
+	else if (strcmp(PropertyName, "Screen X") == 0 || strcmp(PropertyName, "Screen Y") == 0)
+	{
 		MarkProxyDirty(EDirtyFlag::Transform);
 	}
 	else if (strcmp(PropertyName, "Visible") == 0)

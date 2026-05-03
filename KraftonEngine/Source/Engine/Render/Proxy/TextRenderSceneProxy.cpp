@@ -53,6 +53,9 @@ void FTextRenderSceneProxy::UpdateMesh()
 	CachedText = TextComp->GetText();
 	CachedFontScale = TextComp->GetFontSize();
 	CachedFont = TextComp->GetFont();
+	CachedRenderSpace = TextComp->GetRenderSpace();
+	CachedScreenX = TextComp->GetScreenX();
+	CachedScreenY = TextComp->GetScreenY();
 	CachedCharWidth = TextComp->GetCharWidth();
 	CachedCharHeight = TextComp->GetCharHeight();
 }
@@ -71,6 +74,14 @@ void FTextRenderSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 	if (CachedText.empty() || !CachedFont || !CachedFont->IsLoaded())
 	{
 		bVisible = false;
+		return;
+	}
+
+	if (CachedRenderSpace == ETextRenderSpace::Screen)
+	{
+		if (!bVisible) return;
+		PerObjectConstants = FPerObjectConstants::FromWorldMatrix(FMatrix::Identity);
+		MarkPerObjectCBDirty();
 		return;
 	}
 

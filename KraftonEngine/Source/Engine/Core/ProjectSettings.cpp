@@ -20,6 +20,9 @@ namespace PSKey
 	constexpr const char* SceneDepth = "SceneDepth";
 	constexpr const char* SceneDepthMode = "SceneDepthMode";
 	constexpr const char* SceneDepthExponent = "SceneDepthExponent";
+	constexpr const char* Performance = "Performance";
+	constexpr const char* LimitFPS = "LimitFPS";
+	constexpr const char* MaxFPS = "MaxFPS";
 	constexpr const char* Game = "Game";
 	constexpr const char* GameInstanceClass = "GameInstanceClass";
 	constexpr const char* DefaultGameModeClass = "DefaultGameModeClass";
@@ -51,6 +54,11 @@ void FProjectSettings::SaveToFile(const FString& Path) const
 	SceneDepthObj[PSKey::SceneDepthMode] = static_cast<int>(SceneDepth.Mode);
 	SceneDepthObj[PSKey::SceneDepthExponent] = SceneDepth.Exponent;
 	Root[PSKey::SceneDepth] = SceneDepthObj;
+
+	JSON PerformanceObj = Object();
+	PerformanceObj[PSKey::LimitFPS] = Performance.bLimitFPS;
+	PerformanceObj[PSKey::MaxFPS] = static_cast<int>(Performance.MaxFPS);
+	Root[PSKey::Performance] = PerformanceObj;
 
 	JSON GameObj = Object();
 	GameObj[PSKey::GameInstanceClass] = Game.GameInstanceClass;
@@ -143,6 +151,20 @@ void FProjectSettings::LoadFromFile(const FString& Path)
 		{
 			float v = static_cast<float>(D[PSKey::SceneDepthExponent].ToFloat());
 			SceneDepth.Exponent = (std::max)(1.0f, (std::min)(v, 512.0f));
+		}
+	}
+
+	if (Root.hasKey(PSKey::Performance))
+	{
+		JSON P = Root[PSKey::Performance];
+		if (P.hasKey(PSKey::LimitFPS))
+		{
+			Performance.bLimitFPS = P[PSKey::LimitFPS].ToBool();
+		}
+		if (P.hasKey(PSKey::MaxFPS))
+		{
+			int v = P[PSKey::MaxFPS].ToInt();
+			Performance.MaxFPS = static_cast<uint32>((std::max)(1, (std::min)(v, 1000)));
 		}
 	}
 

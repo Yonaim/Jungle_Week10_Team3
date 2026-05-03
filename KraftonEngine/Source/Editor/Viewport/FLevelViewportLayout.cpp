@@ -12,10 +12,15 @@
 #include "GameFramework/PawnActor.h"
 #include "GameFramework/CharacterActor.h"
 #include "GameFramework/HeightFogActor.h"
+#include "GameFramework/ScreenTextActor.h"
+#include "GameFramework/WorldTextActor.h"
 #include "GameFramework/Light/AmbientLightActor.h"
 #include "GameFramework/Light/DirectionalLightActor.h"
 #include "GameFramework/Light/PointLightActor.h"
 #include "GameFramework/Light/SpotLightActor.h"
+#include "Game/GameActors/Obstacle/SimpleObstacleActor.h"
+#include "Game/GameActors/Obstacle/WireballActor.h"
+#include "Game/GameActors/Obstacle/VerticalWireActor.h"
 #include "GameFramework/World.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
@@ -2979,6 +2984,8 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Pawn", EViewportPlaceActorType::Pawn);
 		PlaceActorMenuItem("Character", EViewportPlaceActorType::Character);
 		PlaceActorMenuItem("Static Mesh", EViewportPlaceActorType::StaticMeshActor);
+		PlaceActorMenuItem("World Text", EViewportPlaceActorType::WorldText);
+		PlaceActorMenuItem("Screen Text", EViewportPlaceActorType::ScreenText);
 		PlaceActorMenuItem("Sphere", EViewportPlaceActorType::Sphere);
 		PlaceActorMenuItem("Cylinder", EViewportPlaceActorType::Cylinder);
 		PlaceActorMenuItem("Cone", EViewportPlaceActorType::Cone);
@@ -2989,6 +2996,9 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Directional Light", EViewportPlaceActorType::DirectionalLight);
 		PlaceActorMenuItem("Point Light", EViewportPlaceActorType::PointLight);
 		PlaceActorMenuItem("Spot Light", EViewportPlaceActorType::SpotLight);
+		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::SimpleObstacle);
+		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::Wireball);
+		PlaceActorMenuItem("Obstacle", EViewportPlaceActorType::VerticalWires);
 
 		ImGui::EndMenu();
 	}
@@ -3158,6 +3168,28 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		}
 		break;
 	}
+	case EViewportPlaceActorType::WorldText:
+	{
+		AWorldTextActor* Actor = World->SpawnActor<AWorldTextActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::ScreenText:
+	{
+		AScreenTextActor* Actor = World->SpawnActor<AScreenTextActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
+		}
+		break;
+	}
 	case EViewportPlaceActorType::Cube:
 	{
 		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
@@ -3274,6 +3306,38 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 			SpawnLocation.Z += 1.0f;
 		}
 		break;
+	}
+	case EViewportPlaceActorType::SimpleObstacle:
+	{
+		ASimpleObstacleActor* Actor = World->SpawnActor<ASimpleObstacleActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents(GetRegisteredMeshPath("Default.Mesh.BasicShape.Cube"));
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::Wireball: 
+	{
+		AWireballActor* Actor = World->SpawnActor<AWireballActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents(GetRegisteredMeshPath(""));
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::VerticalWires:
+	{
+		AVerticalWireActor* Actor = World->SpawnActor<AVerticalWireActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents(GetRegisteredMeshPath(""));
+			SpawnedActor = Actor;
+			SpawnLocation.Z += 1.0f;
+		}
 	}
 	default:
 		break;

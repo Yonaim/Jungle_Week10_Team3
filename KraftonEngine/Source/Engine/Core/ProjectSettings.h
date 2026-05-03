@@ -36,6 +36,12 @@ class FProjectSettings : public TSingleton<FProjectSettings>
 		float Exponent = 128.0f;
 	};
 
+	struct FPerformanceOption
+	{
+		bool bLimitFPS = true;
+		uint32 MaxFPS = 60;
+	};
+
 	struct FGameOption
 	{
 		FString GameInstanceClass = "UGameInstance";
@@ -47,6 +53,7 @@ public:
 	FShadowOption Shadow;
 	FLightCullingOption LightCulling;
 	FSceneDepthOption SceneDepth;
+	FPerformanceOption Performance;
 	FGameOption Game;
 
 	// --- 직렬화 ---

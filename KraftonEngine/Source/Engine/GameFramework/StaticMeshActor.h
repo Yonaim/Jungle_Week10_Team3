@@ -12,9 +12,12 @@ public:
 	DECLARE_CLASS(AStaticMeshActor, AActor)
 	AStaticMeshActor() {}
 
-	void InitDefaultComponents(const FString& UStaticMeshFileName = "None");
+	virtual void InitDefaultComponents(const FString& UStaticMeshFileName = "None");
 
-private:
+protected:
+	bool IsBasicShapeAssetPath(const FString& Path);
+
+protected:
 	UStaticMeshComponent* StaticMeshComponent = nullptr;
 	//UTextRenderComponent* TextRenderComponent = nullptr;
 	//USubUVComponent* SubUVComponent = nullptr;

@@ -1,4 +1,5 @@
 ﻿#include "Engine/Runtime/EngineLoop.h"
+#include "Core/ProjectSettings.h"
 #include "Profiling/StartupProfiler.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include <iostream>
@@ -54,6 +55,10 @@ bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 	}
 
 	GEngine->SetTimer(&Timer);
+	Timer.SetMaxFPS(
+		FProjectSettings::Get().Performance.bLimitFPS
+			? static_cast<float>(FProjectSettings::Get().Performance.MaxFPS)
+			: 0.0f);
 
 	{
 		SCOPE_STARTUP_STAT("Engine::BeginPlay");
@@ -76,7 +81,6 @@ int FEngineLoop::RunCookOnly()
 int FEngineLoop::Run()
 {
 	timeBeginPeriod(1);
-	const float TargetDeltaTime = 1.f / 60.f;
 	while (!Application.IsExitRequested())
 	{
 		Application.PumpMessages();
@@ -90,8 +94,10 @@ int FEngineLoop::Run()
 		float DeltaTime = Timer.GetDeltaTime();
 		GEngine->Tick(DeltaTime);
 
+		const float MaxFPS = Timer.GetMaxFPS();
+		const float TargetDeltaTime = MaxFPS > 0.0f ? (1.0f / MaxFPS) : 0.0f;
 		float FrameProcessTime = Timer.GetTimeSinceLastTick();
-		if (FrameProcessTime < TargetDeltaTime)
+		if (TargetDeltaTime > 0.0f && FrameProcessTime < TargetDeltaTime)
 		{
 			float RemainingTimeMS = (TargetDeltaTime - FrameProcessTime) * 1000.f;
 			if (RemainingTimeMS > 2.0f)

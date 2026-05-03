@@ -160,6 +160,7 @@ public:
 	FActorRange GetActors() const { return FActorRange(Levels); }
 
 	ULevel* GetPersistentLevel() const { return PersistentLevel; }
+	AGameModeBase* GetAuthorGameMode() const { return AuthorGameMode; }
 
 	// LOD 컨텍스트를 FFrameContext에 전달 (Collect 단계에서 LOD 인라인 갱신용)
 	FLODUpdateContext PrepareLODContext();

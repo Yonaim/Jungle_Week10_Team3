@@ -9,6 +9,7 @@
 #include "GameFramework/World.h"
 #include "Object/Object.h"
 #include "Engine/Runtime/WindowsWindow.h"
+#include "Engine/Profiling/Timer.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
@@ -218,8 +219,10 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 	Style.CellPadding.y = (std::max)(Style.CellPadding.y, 6.0f);
 
 	const FString FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
-	IO.Fonts->AddFontFromFileTTF(FontPath.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
-	TitleBarFont = IO.Fonts->AddFontFromFileTTF(FontPath.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
+	const std::filesystem::path UIFontPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(FontPath);
+	const FString UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
+	IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
+	TitleBarFont = IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
 	EditorPanelTitleUtils::EnsurePanelChromeIconFontLoaded();
 	if (std::filesystem::exists("C:/Windows/Fonts/segmdl2.ttf"))
 	{
@@ -789,6 +792,28 @@ void FEditorMainPanel::RenderProjectSettingsWindow()
 
 	FProjectSettings& ProjectSettings = FProjectSettings::Get();
 
+	DrawPopupSectionHeader("PERFORMANCE");
+	bool bPerformanceChanged = false;
+	bPerformanceChanged |= ImGui::Checkbox("Limit FPS", &ProjectSettings.Performance.bLimitFPS);
+	ImGui::BeginDisabled(!ProjectSettings.Performance.bLimitFPS);
+	bPerformanceChanged |= ImGui::InputScalar("Max FPS", ImGuiDataType_U32, &ProjectSettings.Performance.MaxFPS);
+	ImGui::EndDisabled();
+	if (ProjectSettings.Performance.MaxFPS == 0)
+	{
+		ProjectSettings.Performance.MaxFPS = 1;
+	}
+	else if (ProjectSettings.Performance.MaxFPS > 1000)
+	{
+		ProjectSettings.Performance.MaxFPS = 1000;
+	}
+	if (bPerformanceChanged && GEngine && GEngine->GetTimer())
+	{
+		GEngine->GetTimer()->SetMaxFPS(
+			ProjectSettings.Performance.bLimitFPS
+			? static_cast<float>(ProjectSettings.Performance.MaxFPS)
+			: 0.0f);
+	}
+
 	DrawPopupSectionHeader("SHADOW");
 	ImGui::Checkbox("Enable Shadows", &ProjectSettings.Shadow.bEnabled);
 	ImGui::InputScalar("CSM Resolution", ImGuiDataType_U32, &ProjectSettings.Shadow.CSMResolution);
@@ -1165,4 +1190,3 @@ void FEditorMainPanel::PackageGameBuild(const char* BatFileName)
 		std::string("Packaging started: ") + BatFileName,
 		ENotificationType::Info);
 }
-

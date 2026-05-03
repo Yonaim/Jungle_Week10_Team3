@@ -1,27 +1,69 @@
-﻿#include "Engine/Platform/Paths.h"
+#include "Engine/Platform/Paths.h"
 
 #include <filesystem>
+
+namespace
+{
+	bool IsProjectRootCandidate(const std::filesystem::path& Path)
+	{
+		return std::filesystem::exists(Path / L"Shaders")
+			&& std::filesystem::exists(Path / L"Settings")
+			&& std::filesystem::exists(Path / L"Asset");
+	}
+
+	std::filesystem::path FindProjectRoot(const std::filesystem::path& StartPath)
+	{
+		if (StartPath.empty())
+		{
+			return {};
+		}
+
+		std::filesystem::path Current = StartPath;
+		if (!std::filesystem::is_directory(Current))
+		{
+			Current = Current.parent_path();
+		}
+
+		while (!Current.empty())
+		{
+			if (IsProjectRootCandidate(Current))
+			{
+				return Current;
+			}
+
+			const std::filesystem::path Parent = Current.parent_path();
+			if (Parent == Current)
+			{
+				break;
+			}
+
+			Current = Parent;
+		}
+
+		return {};
+	}
+}
 
 std::wstring FPaths::RootDir()
 {
 	static std::wstring Cached;
 	if (Cached.empty())
 	{
-		// exe 옆에 Shaders/ 가 있으면 배포 환경, 없으면 개발 환경 (CWD 사용)
 		WCHAR Buffer[MAX_PATH];
 		GetModuleFileNameW(nullptr, Buffer, MAX_PATH);
-		std::filesystem::path ExeDir = std::filesystem::path(Buffer).parent_path();
+		const std::filesystem::path ExePath(Buffer);
 
-		if (std::filesystem::exists(ExeDir / L"Shaders"))
+		std::filesystem::path Root = FindProjectRoot(ExePath);
+		if (Root.empty())
 		{
-			// 배포: exe와 리소스가 같은 디렉터리
-			Cached = ExeDir.wstring() + L"\\";
+			Root = FindProjectRoot(std::filesystem::current_path());
 		}
-		else
+		if (Root.empty())
 		{
-			// 개발: CWD(= $(ProjectDir))에 리소스가 있음
-			Cached = std::filesystem::current_path().wstring() + L"\\";
+			Root = ExePath.parent_path();
 		}
+
+		Cached = Root.lexically_normal().wstring() + L"\\";
 	}
 	return Cached;
 }

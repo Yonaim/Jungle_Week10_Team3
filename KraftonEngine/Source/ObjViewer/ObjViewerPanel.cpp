@@ -13,6 +13,9 @@
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "Resource/ResourceManager.h"
+#include "Platform/Paths.h"
+
+#include <filesystem>
 
 namespace
 {
@@ -77,7 +80,9 @@ void FObjViewerPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, UO
 	Style.CellPadding.y = (std::max)(Style.CellPadding.y, 6.0f);
 
 	const FString FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
-	IO.Fonts->AddFontFromFileTTF(FontPath.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
+	const std::filesystem::path UIFontPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(FontPath);
+	const FString UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
+	IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
 
 	ImGui_ImplWin32_Init((void*)InWindow->GetHWND());
 	ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());

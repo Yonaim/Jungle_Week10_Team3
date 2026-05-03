@@ -78,7 +78,7 @@ namespace EShaderPath
 	inline constexpr const char* LightCulling = "Shaders/PostProcess/LightCulling.hlsl";
 
 	inline constexpr const char* Font = "Shaders/UI/Font.hlsl";
-	inline constexpr const char* OverlayFont = "Shaders/UI/OverlayFont.hlsl";
+	inline constexpr const char* ScreenText = "Shaders/UI/ScreenText.hlsl";
 	inline constexpr const char* SubUV = "Shaders/UI/SubUV.hlsl";
 	inline constexpr const char* Billboard = "Shaders/UI/Billboard.hlsl";
 

@@ -281,6 +281,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
+    <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp" />
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp" />
     <ClCompile Include="Source\Editor\Selection\SelectionManager.cpp" />
     <ClCompile Include="Source\Editor\Settings\EditorSettings.cpp" />
@@ -355,6 +356,8 @@
     <ClCompile Include="Source\Engine\GameFramework\CharacterActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\DecalActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\HeightFogActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\ScreenTextActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\WorldTextActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\Level.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\PawnActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\PlayerController.cpp" />
@@ -421,7 +424,7 @@
     <ClCompile Include="Source\Engine\Render\RenderPass\GizmoOuterPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\LightCullingPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\OpaquePass.cpp" />
-    <ClCompile Include="Source\Engine\Render\RenderPass\OverlayFontPass.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderPass\ScreenTextPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PassRenderStateTable.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PostProcessPass.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderPass\PreDepthPass.cpp" />
@@ -462,6 +465,10 @@
     <ClCompile Include="Source\Engine\Viewport\GameViewportClient.cpp" />
     <ClCompile Include="Source\Engine\Viewport\Viewport.cpp" />
     <ClCompile Include="Source\Engine\Viewport\ViewportClient.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\VerticalWireActor.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\WireballActor.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerEngine.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerPanel.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerRenderPipeline.cpp" />
@@ -477,6 +484,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h" />
+    <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h" />
+    <ClInclude Include="Source\Editor\History\SceneHistoryTypes.h" />
     <ClInclude Include="Source\Editor\EditorRenderPipeline.h" />
     <ClInclude Include="Source\Editor\PIE\PIETypes.h" />
     <ClInclude Include="Source\Editor\Selection\SelectionManager.h" />
@@ -572,6 +581,8 @@
     <ClInclude Include="Source\Engine\GameFramework\GameInstance.h" />
     <ClInclude Include="Source\Engine\GameFramework\GameModeBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\HeightFogActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\ScreenTextActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\WorldTextActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\Level.h" />
     <ClInclude Include="Source\Engine\GameFramework\PawnActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\PlayerController.h" />
@@ -650,7 +661,7 @@
     <ClInclude Include="Source\Engine\Render\RenderPass\GizmoOuterPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\LightCullingPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\OpaquePass.h" />
-    <ClInclude Include="Source\Engine\Render\RenderPass\OverlayFontPass.h" />
+    <ClInclude Include="Source\Engine\Render\RenderPass\ScreenTextPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PassRenderStateTable.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PostProcessPass.h" />
     <ClInclude Include="Source\Engine\Render\RenderPass\PreDepthPass.h" />
@@ -709,6 +720,10 @@
     <ClInclude Include="Source\Engine\Viewport\GameViewportClient.h" />
     <ClInclude Include="Source\Engine\Viewport\Viewport.h" />
     <ClInclude Include="Source\Engine\Viewport\ViewportClient.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\VerticalWireActor.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\WireballActor.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerEngine.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerPanel.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerRenderPipeline.h" />
@@ -1058,7 +1073,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Demo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shaders\UI\OverlayFont.hlsl">
+    <FxCompile Include="Shaders\UI\ScreenText.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>

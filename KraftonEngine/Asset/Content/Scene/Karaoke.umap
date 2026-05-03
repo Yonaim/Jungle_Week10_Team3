@@ -1,0 +1,1939 @@
+{
+  "Actors" : [{
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_10",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [600.000000, 90.000000, 0.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1129",
+      "PrimitiveKey" : "12800",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_8",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 1.000000, 0.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899109, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2336",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [5.457514, -40.751217, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12800,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_11",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [0.000000, 90.000000, -600.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1130",
+      "PrimitiveKey" : "12803",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_9",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.000000, 0.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899109, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2337",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-2.897605, -41.113697, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12803,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_12",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [600.000000, 90.000000, 600.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1131",
+      "PrimitiveKey" : "12806",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_10",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899109, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2338",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [14.230787, -41.721554, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12806,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_13",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [600.000000, 90.000000, 600.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1132",
+      "PrimitiveKey" : "12809",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_11",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.000000, 0.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899109, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2339",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-15.591304, -41.721554, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12809,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1133",
+      "PrimitiveKey" : "12812",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2299",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Mobility" : 2,
+          "Rotation" : [89.899994, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12812,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_4",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [0.000000, 90.000000, 600.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1134",
+      "PrimitiveKey" : "12816",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_3",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 0.000000, 1.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899994, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2300",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-10.261391, -35.113647, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12816,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_5",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [600.000000, 90.000000, 0.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1135",
+      "PrimitiveKey" : "12819",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_4",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 1.000000, 0.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899994, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2301",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-6.184255, -40.751217, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12819,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_6",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [600.000000, 90.000000, 600.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1136",
+      "PrimitiveKey" : "12822",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_5",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 1.000000, 0.987342, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899994, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2302",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [2.899024, -34.537212, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12822,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_7",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [0.000000, 90.000000, -600.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1137",
+      "PrimitiveKey" : "12825",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_6",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.000000, 0.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899994, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2303",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [10.344926, -41.113697, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12825,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_8",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [-600.000000, 90.000000, 0.000000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1138",
+      "PrimitiveKey" : "12828",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "USpotLightComponent",
+            "ObjectName" : "USpotLightComponent_7",
+            "Properties" : {
+              "AttenuationRadius" : 25.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.000000, 1.000000, 1.000000],
+              "InnerConeAngle" : 20.000000,
+              "Intensity" : 3.450000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "OuterConeAngle" : 40.000000,
+              "Rotation" : [89.899994, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2304",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [13.241390, -34.211395, 13.779120],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12828,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "UPendulumMovementComponent",
+          "ObjectName" : "UPendulumMovementComponent_9",
+          "Properties" : {
+            "Amplitude (deg)" : 30.000000,
+            "Angle Offset (deg)" : 0.000000,
+            "Auto Register Updated" : true,
+            "Frequency (Hz)" : 2.490000,
+            "Phase (deg)" : 0.000000,
+            "Swing Axis" : [4.300000, 1.000000, 4.300000],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }, {
+          "ClassName" : "URotatingMovementComponent",
+          "ObjectName" : "URotatingMovementComponent_9",
+          "Properties" : {
+            "Auto Register Updated" : true,
+            "Pivot Translation" : [0.000000, 0.000000, 0.000000],
+            "Rotation In Local Space" : false,
+            "Rotation Rate" : [11.900000, 90.000000, 32.099998],
+            "Updated Component" : "",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AStaticMeshActor_1139",
+      "PrimitiveKey" : "12831",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2305",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [0.000000, -34.681522, 4.033359],
+          "Mobility" : 2,
+          "Rotation" : [0.300003, 0.000000, 0.000000],
+          "Scale" : [3.600000, 4.500000, 3.800000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12831,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1140",
+      "PrimitiveKey" : "12835",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2306",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, 1.664919, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12835,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1141",
+      "PrimitiveKey" : "12838",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2307",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, 1.664919, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12838,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1142",
+      "PrimitiveKey" : "12841",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2010",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.537255, 0.356863, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2308",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, 1.664919, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12841,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1143",
+      "PrimitiveKey" : "12844",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2309",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, -6.959642, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12844,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1144",
+      "PrimitiveKey" : "12847",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2310",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, -6.959642, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12847,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1145",
+      "PrimitiveKey" : "12850",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2011",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.000000, 1.000000, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2311",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, -6.959642, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12850,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1146",
+      "PrimitiveKey" : "12853",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2312",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, -17.815403, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12853,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1147",
+      "PrimitiveKey" : "12856",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2313",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, -17.815403, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12856,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1148",
+      "PrimitiveKey" : "12859",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2012",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 0.936709, 1.000000, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2314",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-24.889011, -17.815403, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12859,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1149",
+      "PrimitiveKey" : "12862",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2315",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, -17.815403, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12862,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1150",
+      "PrimitiveKey" : "12865",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2316",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, -17.815403, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12865,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1151",
+      "PrimitiveKey" : "12868",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2013",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.835443, 0.000000, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2317",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, -17.815403, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12868,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1152",
+      "PrimitiveKey" : "12871",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2318",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, -7.614784, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12871,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1153",
+      "PrimitiveKey" : "12874",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2319",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, -7.614784, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12874,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1154",
+      "PrimitiveKey" : "12877",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2014",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 1.000000, 0.126582, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2320",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, -7.614784, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12877,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1155",
+      "PrimitiveKey" : "12880",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2321",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 1.584787, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12880,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1156",
+      "PrimitiveKey" : "12883",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2322",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 1.584787, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12883,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1157",
+      "PrimitiveKey" : "12886",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2015",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.000000, 0.000000, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2323",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 1.584787, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12886,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1158",
+      "PrimitiveKey" : "12889",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2324",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 10.947786, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12889,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1159",
+      "PrimitiveKey" : "12892",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2325",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 10.947786, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12892,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1160",
+      "PrimitiveKey" : "12895",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2016",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 1.000000, 1.000000, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2326",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 10.947786, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12895,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1161",
+      "PrimitiveKey" : "12898",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2327",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 20.524641, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12898,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1162",
+      "PrimitiveKey" : "12901",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2328",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 20.524641, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12901,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1163",
+      "PrimitiveKey" : "12904",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2017",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 0.462745, 0.690196, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2329",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [25.381456, 20.524641, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12904,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1164",
+      "PrimitiveKey" : "12907",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2330",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-26.678568, 20.524641, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12907,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1165",
+      "PrimitiveKey" : "12910",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2331",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-26.678568, 20.524641, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12910,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1166",
+      "PrimitiveKey" : "12913",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2018",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2332",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-26.678568, 20.524641, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12913,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1167",
+      "PrimitiveKey" : "12916",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2333",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-26.678568, 10.344133, 2.812811],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12916,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1168",
+      "PrimitiveKey" : "12919",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2334",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-26.678568, 10.344133, 9.852592],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 2.610152],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12919,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_1169",
+      "PrimitiveKey" : "12922",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UPointLightComponent",
+            "ObjectName" : "UPointLightComponent_2019",
+            "Properties" : {
+              "AttenuationRadius" : 30.000000,
+              "Cast Shadows" : true,
+              "Color" : [0.000000, 0.000000, 1.000000, 1.000000],
+              "Intensity" : 1.000000,
+              "LightFalloffExponent" : 1.000000,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shadow Bias" : -0.000100,
+              "Shadow Normal Bias" : -0.002000,
+              "Shadow Resolution Scale" : 1.000000,
+              "Shadow Sharpen" : 0.670000,
+              "Shadow Slope Bias" : 0.000100,
+              "Visible" : true,
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_2335",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [-26.678568, 10.344133, 6.167456],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "None",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 12922,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AAmbientLightActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AAmbientLightActor_4",
+      "UUID" : 12944,
+      "bVisible" : true
+    }],
+  "ClassName" : "UWorld",
+  "ContextHandle" : "NewScene",
+  "ContextName" : "New Scene",
+  "Primitives" : {
+    "12800" : {
+      "Location" : [5.457514, -40.751217, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12803" : {
+      "Location" : [-2.897605, -41.113697, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12806" : {
+      "Location" : [14.230787, -41.721554, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12809" : {
+      "Location" : [-15.591304, -41.721554, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12812" : {
+      "Location" : [0.000000, 0.000000, 0.000000],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, 89.901085, -0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12816" : {
+      "Location" : [-10.261391, -35.113647, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12819" : {
+      "Location" : [-6.184255, -40.751217, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12822" : {
+      "Location" : [2.899024, -34.537212, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12825" : {
+      "Location" : [10.344926, -41.113697, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12828" : {
+      "Location" : [13.241390, -34.211395, 13.779120],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12831" : {
+      "Location" : [0.000000, -34.681522, 4.033359],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, 1.080070, 0.000000],
+      "Scale" : [3.600000, 4.500000, 3.800000],
+      "Type" : "StaticMeshComp"
+    },
+    "12835" : {
+      "Location" : [-24.889011, 1.664919, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12838" : {
+      "Location" : [-24.889011, 1.664919, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12841" : {
+      "Location" : [-24.889011, 1.664919, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12844" : {
+      "Location" : [-24.889011, -6.959642, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12847" : {
+      "Location" : [-24.889011, -6.959642, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12850" : {
+      "Location" : [-24.889011, -6.959642, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12853" : {
+      "Location" : [-24.889011, -17.815403, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12856" : {
+      "Location" : [-24.889011, -17.815403, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12859" : {
+      "Location" : [-24.889011, -17.815403, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12862" : {
+      "Location" : [25.381456, -17.815403, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12865" : {
+      "Location" : [25.381456, -17.815403, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12868" : {
+      "Location" : [25.381456, -17.815403, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12871" : {
+      "Location" : [25.381456, -7.614784, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12874" : {
+      "Location" : [25.381456, -7.614784, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12877" : {
+      "Location" : [25.381456, -7.614784, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12880" : {
+      "Location" : [25.381456, 1.584787, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12883" : {
+      "Location" : [25.381456, 1.584787, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12886" : {
+      "Location" : [25.381456, 1.584787, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12889" : {
+      "Location" : [25.381456, 10.947786, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12892" : {
+      "Location" : [25.381456, 10.947786, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12895" : {
+      "Location" : [25.381456, 10.947786, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12898" : {
+      "Location" : [25.381456, 20.524641, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12901" : {
+      "Location" : [25.381456, 20.524641, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12904" : {
+      "Location" : [25.381456, 20.524641, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12907" : {
+      "Location" : [-26.678568, 20.524641, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12910" : {
+      "Location" : [-26.678568, 20.524641, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12913" : {
+      "Location" : [-26.678568, 20.524641, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "12916" : {
+      "Location" : [-26.678568, 10.344133, 2.812811],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12919" : {
+      "Location" : [-26.678568, 10.344133, 9.852592],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 2.610152],
+      "Type" : "StaticMeshComp"
+    },
+    "12922" : {
+      "Location" : [-26.678568, 10.344133, 6.167456],
+      "ObjStaticMeshAsset" : "None",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    }
+  },
+  "Version" : 2,
+  "WorldType" : "Game"
+}

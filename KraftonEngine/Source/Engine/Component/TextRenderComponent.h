@@ -82,6 +82,7 @@ public:
 
 	void SetVerticalAlignment(ETextVAlign InAlign) { VAlign = InAlign; }
 	ETextVAlign GetVerticalAlignment() const { return VAlign; }
+	bool IsScreenSpace() const { return RenderSpace == ETextRenderSpace::Screen; }
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 

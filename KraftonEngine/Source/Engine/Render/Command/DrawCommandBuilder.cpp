@@ -270,6 +270,18 @@ void FDrawCommandBuilder::AddWorldText(const FTextRenderSceneProxy* TextProxy, c
 	);
 }
 
+static void AddScreenText(const FTextRenderSceneProxy* TextProxy, FFontGeometry& FontGeometry, const FFrameContext& Frame)
+{
+	FontGeometry.AddScreenText(
+		TextProxy->CachedText,
+		TextProxy->CachedScreenX,
+		TextProxy->CachedScreenY,
+		Frame.ViewportWidth,
+		Frame.ViewportHeight,
+		TextProxy->CachedFontScale
+	);
+}
+
 // ============================================================
 // BuildCommands — 프록시 커맨드 + 동적 커맨드 일괄 생성
 // ============================================================
@@ -294,7 +306,12 @@ void FDrawCommandBuilder::BuildProxyCommands(const FFrameContext& Frame, FScene&
 		{
 			const FTextRenderSceneProxy* TextProxy = static_cast<const FTextRenderSceneProxy*>(Proxy);
 			if (!TextProxy->CachedText.empty())
-				AddWorldText(TextProxy, Frame);
+			{
+				if (TextProxy->CachedRenderSpace == ETextRenderSpace::Screen)
+					AddScreenText(TextProxy, FontGeometry, Frame);
+				else
+					AddWorldText(TextProxy, Frame);
+			}
 		}
 		else if (Proxy->HasProxyFlag(EPrimitiveProxyFlags::Decal))
 			BuildDecalCommands(Proxy, Frame, Output);
@@ -390,8 +407,8 @@ void FDrawCommandBuilder::PrepareDynamicGeometry(const FFrameContext& Frame, con
 			CameraPos, CameraFwd, Frame.IsFixedOrtho());
 	}
 
-	// --- OverlayFont 패스: 스크린 공간 텍스트 ---
-	for (const auto& Text : Scene->GetOverlayTexts())
+	// --- ScreenText 패스: 스크린 공간 텍스트 ---
+	for (const auto& Text : Scene->GetScreenTexts())
 	{
 		if (!Text.Text.empty())
 		{
@@ -565,7 +582,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 }
 
 // ============================================================
-// BuildFontCommands — World text (AlphaBlend) + Screen text (OverlayFont)
+// BuildFontCommands — World text (AlphaBlend) + Screen text (ScreenText)
 // ============================================================
 void FDrawCommandBuilder::BuildFontCommands(EViewMode ViewMode)
 {
@@ -589,9 +606,9 @@ void FDrawCommandBuilder::BuildFontCommands(EViewMode ViewMode)
 	if (FontGeometry.GetScreenQuadCount() > 0 && FontGeometry.UploadScreenBuffers(Ctx))
 	{
 		FDrawCommand& Cmd = DrawCommandList.AddCommand();
-		Cmd.Pass = ERenderPass::OverlayFont;
-		Cmd.Shader = FShaderManager::Get().GetOrCreate(EShaderPath::OverlayFont);
-		Cmd.RenderState = PassRenderStateTable->ToDrawCommandState(ERenderPass::OverlayFont, ViewMode);
+		Cmd.Pass = ERenderPass::ScreenText;
+		Cmd.Shader = FShaderManager::Get().GetOrCreate(EShaderPath::ScreenText);
+		Cmd.RenderState = PassRenderStateTable->ToDrawCommandState(ERenderPass::ScreenText, ViewMode);
 		Cmd.Buffer = { FontGeometry.GetScreenVBBuffer(), FontGeometry.GetScreenVBStride(), FontGeometry.GetScreenIBBuffer() };
 		Cmd.Buffer.IndexCount = FontGeometry.GetScreenIndexCount();
 		Cmd.Bindings.SRVs[(int)EMaterialTextureSlot::Diffuse] = FontRes->SRV;

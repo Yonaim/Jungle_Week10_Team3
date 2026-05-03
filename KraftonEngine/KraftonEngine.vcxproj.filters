@@ -28,6 +28,9 @@
     <Filter Include="Source\Editor">
       <UniqueIdentifier>{879fdc11-4e44-c448-2bbf-5fd281dc244f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\History">
+      <UniqueIdentifier>{a8b3c5d7-91b4-4e07-9f6a-7d9c3f12ab45}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\PIE">
       <UniqueIdentifier>{1485fbd8-4084-14c8-cd14-33798c9651d4}</UniqueIdentifier>
     </Filter>
@@ -291,7 +294,7 @@
     <FxCompile Include="Shaders\UI\Font.hlsl">
       <Filter>Shaders\UI</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\UI\OverlayFont.hlsl">
+    <FxCompile Include="Shaders\UI\ScreenText.hlsl">
       <Filter>Shaders\UI</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\UI\SubUV.hlsl">
@@ -301,6 +304,9 @@
   <ItemGroup>
     <ClCompile Include="Source\Editor\EditorEngine.cpp">
       <Filter>Source\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp">
+      <Filter>Source\Editor\History</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp">
       <Filter>Source\Editor</Filter>
@@ -524,6 +530,12 @@
     <ClCompile Include="Source\Engine\GameFramework\HeightFogActor.cpp">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\GameFramework\ScreenTextActor.cpp">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\GameFramework\WorldTextActor.cpp">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\GameFramework\Level.cpp">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClCompile>
@@ -722,7 +734,7 @@
     <ClCompile Include="Source\Engine\Render\RenderPass\OpaquePass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\RenderPass\OverlayFontPass.cpp">
+    <ClCompile Include="Source\Engine\Render\RenderPass\ScreenTextPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\PassRenderStateTable.cpp">
@@ -883,6 +895,12 @@
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
       <Filter>Source\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h">
+      <Filter>Source\Editor\History</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\History\SceneHistoryTypes.h">
+      <Filter>Source\Editor\History</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\EditorRenderPipeline.h">
       <Filter>Source\Editor</Filter>
@@ -1169,6 +1187,12 @@
     <ClInclude Include="Source\Engine\GameFramework\HeightFogActor.h">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\ScreenTextActor.h">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\WorldTextActor.h">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\Level.h">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
@@ -1403,7 +1427,7 @@
     <ClInclude Include="Source\Engine\Render\RenderPass\OpaquePass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\RenderPass\OverlayFontPass.h">
+    <ClInclude Include="Source\Engine\Render\RenderPass\ScreenTextPass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\PassRenderStateTable.h">

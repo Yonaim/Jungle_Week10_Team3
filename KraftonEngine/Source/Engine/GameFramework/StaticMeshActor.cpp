@@ -7,34 +7,6 @@
 #include "Materials/MaterialManager.h"
 #include "Resource/ResourceManager.h"
 
-namespace
-{
-	bool IsBasicShapeAssetPath(const FString& Path)
-	{
-		const char* BasicShapeMeshKeys[] = {
-			"Default.Mesh.BasicShape.Cone",
-			"Default.Mesh.BasicShape.Cube",
-			"Default.Mesh.BasicShape.Cylinder",
-			"Default.Mesh.BasicShape.Plane",
-			"Default.Mesh.BasicShape.Sphere",
-			"Default.Mesh.BasicShape.SphereLowpoly"
-		};
-
-		for (const char* MeshKey : BasicShapeMeshKeys)
-		{
-			if (const FMeshResource* MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
-			{
-				if (MeshResource->Path == Path)
-				{
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-}
-
 IMPLEMENT_CLASS(AStaticMeshActor, AActor)
 
 void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
@@ -85,4 +57,28 @@ void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
 	//SubUVComponent->SetParticle(FName("Explosion"));
 	//SubUVComponent->AttachToComponent(StaticMeshComponent);
 	//SubUVComponent->SetVisibility(true);
+}
+
+bool AStaticMeshActor::IsBasicShapeAssetPath(const FString& Path) {
+	const char* BasicShapeMeshKeys[] = {
+				"Default.Mesh.BasicShape.Cone",
+				"Default.Mesh.BasicShape.Cube",
+				"Default.Mesh.BasicShape.Cylinder",
+				"Default.Mesh.BasicShape.Plane",
+				"Default.Mesh.BasicShape.Sphere",
+				"Default.Mesh.BasicShape.SphereLowpoly"
+	};
+
+	for (const char* MeshKey : BasicShapeMeshKeys)
+	{
+		if (const FMeshResource* MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
+		{
+			if (MeshResource->Path == Path)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }

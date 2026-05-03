@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Component/TextRenderComponent.h"
 #include "Render/Proxy/BillboardSceneProxy.h"
 #include "Core/ResourceTypes.h"
 
@@ -26,6 +27,9 @@ public:
 	float   CachedFontScale = 1.0f;
 	FMatrix CachedBillboardMatrix;
 	const FFontResource* CachedFont = nullptr;
+	ETextRenderSpace CachedRenderSpace = ETextRenderSpace::World;
+	float CachedScreenX = 0.0f;
+	float CachedScreenY = 0.0f;
 
 private:
 	UTextRenderComponent* GetTextRenderComponent() const;

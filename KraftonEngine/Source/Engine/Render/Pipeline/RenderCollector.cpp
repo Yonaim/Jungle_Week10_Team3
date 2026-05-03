@@ -68,7 +68,7 @@ void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, F
 	Scene.SetGrid(GridSpacing, GridHalfLineCount);
 }
 
-void FRenderCollector::CollectOverlayText(const FOverlayStatSystem& OverlaySystem, const UEditorEngine& Editor, FScene& Scene)
+void FRenderCollector::CollectScreenText(const FOverlayStatSystem& OverlaySystem, const UEditorEngine& Editor, FScene& Scene)
 {
 	TArray<FOverlayStatLine> Lines;
 	OverlaySystem.BuildLines(Editor, Lines);
@@ -76,7 +76,7 @@ void FRenderCollector::CollectOverlayText(const FOverlayStatSystem& OverlaySyste
 
 	for (FOverlayStatLine& Line : Lines)
 	{
-		Scene.AddOverlayText(std::move(Line.Text), Line.ScreenPosition, TextScale);
+		Scene.AddScreenText(std::move(Line.Text), Line.ScreenPosition, TextScale);
 	}
 }
 

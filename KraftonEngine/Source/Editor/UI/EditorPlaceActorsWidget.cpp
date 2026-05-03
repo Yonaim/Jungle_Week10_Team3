@@ -1,4 +1,4 @@
-#include "Editor/UI/EditorPlaceActorsWidget.h"
+﻿#include "Editor/UI/EditorPlaceActorsWidget.h"
 
 #include "Component/CameraComponent.h"
 #include "Editor/EditorEngine.h"
@@ -44,6 +44,8 @@ namespace
 		{
 		case FEditorPlaceActorsWidget::EPlaceActorCategory::Basic:
 			return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Basic")).Get();
+		case FEditorPlaceActorsWidget::EPlaceActorCategory::Text:
+			return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ScreenText")).Get();
 		case FEditorPlaceActorsWidget::EPlaceActorCategory::Lights:
 			return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Lights")).Get();
 		case FEditorPlaceActorsWidget::EPlaceActorCategory::Shapes:
@@ -102,6 +104,8 @@ namespace
 		{ "Pawn", "pawn actor basic", "Editor.Icon.Pawn", EPlaceType::Pawn, ECategory::Basic },
 		{ "Character", "character actor basic", "Editor.Icon.Character", EPlaceType::Character, ECategory::Basic },
 		{ "Static Mesh", "static mesh actor mesh basic", "Editor.Icon.StaticMeshActor", EPlaceType::StaticMeshActor, ECategory::Basic },
+		{ "World Text", "world text 3d billboard font label", "Editor.Icon.ScreenText", EPlaceType::WorldText, ECategory::Text },
+		{ "Screen Text", "screen text overlay ui hud widget", "Editor.Icon.ScreenText", EPlaceType::ScreenText, ECategory::Text },
 		{ "Ambient Light", "ambient light", "Editor.Icon.AmbientLight", EPlaceType::AmbientLight, ECategory::Lights },
 		{ "Directional Light", "directional light sun", "Editor.Icon.DirectionalLight", EPlaceType::DirectionalLight, ECategory::Lights },
 		{ "Point Light", "point light bulb", "Editor.Icon.PointLight", EPlaceType::PointLight, ECategory::Lights },
@@ -113,6 +117,9 @@ namespace
 		{ "Plane", "plane quad floor shape", "Editor.Icon.Plane", EPlaceType::Plane, ECategory::Shapes },
 		{ "Decal", "decal projection vfx", "Editor.Icon.Decal", EPlaceType::Decal, ECategory::VFX },
 		{ "Height Fog", "height fog vfx atmosphere", "Editor.Icon.HeightFog", EPlaceType::HeightFog, ECategory::VFX },
+		{ "Obstacle", "Basic Obstacle", "Editor.Icon.Cube", EPlaceType::SimpleObstacle, ECategory::Basic },
+		{ "Wireball", "Wireball Obstacle", "Editor.Icon.Cube", EPlaceType::Wireball, ECategory::Basic },
+		{ "Vertical Wires", "Vertical Wire Obstacle", "Editor.Icon.Cube", EPlaceType::VerticalWires, ECategory::Basic },
 	};
 
 	const char* GetCategoryLabel(ECategory Category)
@@ -120,6 +127,7 @@ namespace
 		switch (Category)
 		{
 		case ECategory::Basic: return "Basic";
+		case ECategory::Text: return "Text";
 		case ECategory::Lights: return "Lights";
 		case ECategory::Shapes: return "Shapes";
 		case ECategory::VFX: return "VFX";
@@ -188,6 +196,7 @@ void FEditorPlaceActorsWidget::RenderCategorySidebar()
 
 	const EPlaceActorCategory Categories[] = {
 		EPlaceActorCategory::Basic,
+		EPlaceActorCategory::Text,
 		EPlaceActorCategory::Lights,
 		EPlaceActorCategory::Shapes,
 		EPlaceActorCategory::VFX

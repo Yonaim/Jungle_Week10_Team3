@@ -5,6 +5,7 @@
 #include "Component/BillboardComponent.h"
 #include "Component/Movement/MovementComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/TextRenderComponent.h"
 #include "Math/Rotator.h"
 #include "GameFramework/Level.h"
 #include "GameFramework/World.h"
@@ -62,6 +63,14 @@ const char* GetDefaultEditorBillboardIconKey(const AActor* Actor)
 	if (ClassName.find("StaticMeshActor") != FString::npos)
 	{
 		return "Editor.Icon.StaticMeshActor";
+	}
+	if (ClassName.find("ScreenText") != FString::npos)
+	{
+		return "Editor.Icon.ScreenText";
+	}
+	if (ClassName.find("WorldText") != FString::npos)
+	{
+		return "Editor.Icon.ScreenText";
 	}
 
 	if (const USceneComponent* RootComponent = Actor->GetRootComponent())
@@ -126,6 +135,14 @@ bool AActor::HasNonEditorOnlyPrimitiveComponent() const
 				return true;
 			}
 			continue;
+		}
+
+		if (UTextRenderComponent* TextRenderComponent = Cast<UTextRenderComponent>(PrimitiveComponent))
+		{
+			if (TextRenderComponent->IsScreenSpace())
+			{
+				continue;
+			}
 		}
 
 		if (PrimitiveComponent->IsVisible())

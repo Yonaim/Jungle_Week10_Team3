@@ -17,6 +17,43 @@ TArray<FTextureAssetListItem> UTexture2D::AvailableTextureFiles;
 
 namespace
 {
+	FString NormalizeTexturePath(const FString& FilePath)
+	{
+		if (FilePath.empty())
+		{
+			return FilePath;
+		}
+
+		std::filesystem::path Path(FPaths::ToWide(FilePath));
+		const std::filesystem::path Root(FPaths::RootDir());
+
+		if (!Path.is_absolute())
+		{
+			Path = Root / Path;
+		}
+
+		Path = Path.lexically_normal();
+
+		const std::filesystem::path RelativePath = Path.lexically_relative(Root);
+		if (!RelativePath.empty() && RelativePath.native() != L".")
+		{
+			return FPaths::ToUtf8(RelativePath.generic_wstring());
+		}
+
+		return FPaths::ToUtf8(Path.generic_wstring());
+	}
+
+	std::wstring ResolveTexturePathOnDisk(const FString& FilePath)
+	{
+		std::filesystem::path Path(FPaths::ToWide(FilePath));
+		if (!Path.is_absolute())
+		{
+			Path = std::filesystem::path(FPaths::RootDir()) / Path;
+		}
+
+		return Path.lexically_normal().wstring();
+	}
+
 	bool ShouldSkipTextureScanDirectory(const std::filesystem::path& Path)
 	{
 		const std::wstring Name = Path.filename().wstring();
@@ -223,8 +260,10 @@ UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Devi
 {
 	if (FilePath.empty() || !Device) return nullptr;
 
+	const FString NormalizedPath = NormalizeTexturePath(FilePath);
+
 	// 캐시 히트
-	auto It = TextureCache.find(FilePath);
+	auto It = TextureCache.find(NormalizedPath);
 	if (It != TextureCache.end())
 	{
 		return It->second;
@@ -238,7 +277,7 @@ UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Devi
 		return nullptr;
 	}
 
-	TextureCache[FilePath] = Texture;
+	TextureCache[NormalizedPath] = Texture;
 	return Texture;
 }
 
@@ -246,7 +285,7 @@ UTexture2D* UTexture2D::LoadFromCached(const FString& FilePath)
 {
 	if (FilePath.empty()) return nullptr;
 
-	auto It = TextureCache.find(FilePath);
+	auto It = TextureCache.find(NormalizeTexturePath(FilePath));
 	if (It != TextureCache.end())
 	{
 		return It->second;
@@ -257,9 +296,8 @@ UTexture2D* UTexture2D::LoadFromCached(const FString& FilePath)
 
 bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 {
-	//std::filesystem::path TexPath(FilePath);
-	//std::wstring WidePath = TexPath.wstring();
-	std::wstring WidePath = FPaths::ToWide(FilePath);
+	const FString NormalizedPath = NormalizeTexturePath(FilePath);
+	const std::wstring WidePath = ResolveTexturePathOnDisk(NormalizedPath);
 
 	ID3D11Resource* Resource = nullptr;
 	HRESULT hr = DirectX::CreateWICTextureFromFileEx(
@@ -300,8 +338,8 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 		Resource->Release();
 	}
 
-	SourceFilePath = FilePath;
-	LoadCPUTextureRGBA(FilePath, Width, Height, CPUTextureRGBA);
+	SourceFilePath = NormalizedPath;
+	LoadCPUTextureRGBA(NormalizedPath, Width, Height, CPUTextureRGBA);
 	return true;
 }
 
