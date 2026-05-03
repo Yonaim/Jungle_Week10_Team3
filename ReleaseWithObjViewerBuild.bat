@@ -2,7 +2,7 @@
 setlocal
 
 set SOLUTION_DIR=%~dp0
-set PROJECT_DIR=%SOLUTION_DIR%LunaticEngine
+set PROJECT_DIR=%SOLUTION_DIR%KraftonEngine
 set BUILD_OUTPUT=%PROJECT_DIR%\Bin\Release
 set BUILD_OUTPUT_OBJVIEW=%PROJECT_DIR%\Bin\ObjViewDebug
 set RELEASE_DIR=%SOLUTION_DIR%ReleaseBuild
@@ -22,7 +22,7 @@ echo ============================================
 
 echo.
 echo [1/4] Building Release x64...
-msbuild "%SOLUTION_DIR%LunaticEngine.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+msbuild "%SOLUTION_DIR%KraftonEngine.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 if %ERRORLEVEL% neq 0 (
     echo BUILD FAILED - Release
     pause
@@ -31,7 +31,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo [2/4] Building ObjViewDebug x64...
-msbuild "%SOLUTION_DIR%LunaticEngine.sln" /p:Configuration=ObjViewDebug /p:Platform=x64 /m /v:minimal
+msbuild "%SOLUTION_DIR%KraftonEngine.sln" /p:Configuration=ObjViewDebug /p:Platform=x64 /m /v:minimal
 if %ERRORLEVEL% neq 0 (
     echo BUILD FAILED - ObjViewDebug
     pause
@@ -46,8 +46,8 @@ mkdir "%RELEASE_DIR%"
 echo.
 echo [4/4] Copying files...
 
-copy "%BUILD_OUTPUT%\LunaticEngine.exe" "%RELEASE_DIR%\" >nul
-copy "%BUILD_OUTPUT_OBJVIEW%\LunaticEngine.exe" "%RELEASE_DIR%\ObjViewer.exe" >nul
+copy "%BUILD_OUTPUT%\KraftonEngine.exe" "%RELEASE_DIR%\" >nul
+copy "%BUILD_OUTPUT_OBJVIEW%\KraftonEngine.exe" "%RELEASE_DIR%\ObjViewer.exe" >nul
 
 xcopy "%PROJECT_DIR%\Shaders" "%RELEASE_DIR%\Shaders\" /e /i /q >nul
 
@@ -65,7 +65,7 @@ echo  Build complete: %RELEASE_DIR%
 echo ============================================
 echo.
 echo  ReleaseBuild/
-echo    LunaticEngine.exe  (Editor)
+echo    KraftonEngine.exe  (Editor)
 echo    ObjViewer.exe      (OBJ Viewer)
 echo    Shaders/
 echo    Asset/
