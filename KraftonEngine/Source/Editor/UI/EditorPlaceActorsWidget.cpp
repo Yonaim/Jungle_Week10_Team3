@@ -118,12 +118,10 @@ namespace
 		{ "Plane", "plane quad floor shape", "Editor.Icon.Plane", EPlaceType::Plane, ECategory::Shapes },
 		{ "Decal", "decal projection vfx", "Editor.Icon.Decal", EPlaceType::Decal, ECategory::VFX },
 		{ "Height Fog", "height fog vfx atmosphere", "Editor.Icon.HeightFog", EPlaceType::HeightFog, ECategory::VFX },
-		{ "Obstacle", "Basic Obstacle", "Editor.Icon.Cube", EPlaceType::SimpleObstacle, ECategory::Basic },
-		{ "Wireball", "Wireball Obstacle", "Editor.Icon.Cube", EPlaceType::Wireball, ECategory::Basic },
-		{ "Vertical Wires", "Vertical Wire Obstacle", "Editor.Icon.Cube", EPlaceType::VerticalWires, ECategory::Basic },
 		{ "World Text", "world text 3d billboard font label", "Editor.Icon.ScreenText", EPlaceType::WorldText, ECategory::Text },
 		{ "Screen Text", "screen text overlay ui hud widget", "Editor.Icon.ScreenText", EPlaceType::ScreenText, ECategory::Text },
 		{ "UI Root", "ui root canvas hud menu widget", "Editor.ToolIcon.WorldSpace", EPlaceType::UIRoot, ECategory::UI },
+		{ "Map Manager", "Map Manager", "Editor.Icon.Cube", EPlaceType::MapManager, ECategory::Basic },
 	};
 
 	const char* GetCategoryLabel(ECategory Category)
