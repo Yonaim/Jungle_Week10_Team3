@@ -281,6 +281,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
 		ImGui::End();
 		return;
 	}
+	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
 	FRenderer& Renderer = GEngine->GetRenderer();
 	const FShadowMapResources& SR = Renderer.GetResources().ShadowResources;

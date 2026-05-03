@@ -1,5 +1,6 @@
 #include "ContentBrowserElement.h"
 #include "Editor/UI/EditorFileUtils.h"
+#include "Editor/UI/EditorAccentColor.h"
 #include "Platform/Paths.h"
 #include "Core/Notification.h"
 #include "Materials/MaterialManager.h"
@@ -117,8 +118,8 @@ bool ContentBrowserElement::RenderSelectSpace(ContentBrowserContext& Context)
 	const FString Subtitle = GetSubtitleText();
 	const ImVec2 SubtitleTextSize = ImGui::CalcTextSize(Subtitle.c_str());
 	const float CardRounding = 6.0f;
-	const ImU32 BorderColor = bIsSelected ? IM_COL32(76, 139, 235, 255) : IM_COL32(62, 62, 66, 255);
-	const ImU32 FillColor = bIsSelected ? IM_COL32(43, 52, 67, 255) : IM_COL32(36, 36, 39, 255);
+	const ImU32 BorderColor = bIsSelected ? EditorAccentColor::ToU32() : IM_COL32(62, 62, 66, 255);
+	const ImU32 FillColor = bIsSelected ? EditorAccentColor::ToU32(48) : IM_COL32(36, 36, 39, 255);
 	const ImU32 ThumbnailFill = IM_COL32(30, 30, 33, 255);
 	DrawList->AddRectFilled(Min, Max, FillColor, CardRounding);
 	DrawList->AddRect(Min, Max, BorderColor, CardRounding, 0, bIsSelected ? 1.5f : 1.0f);

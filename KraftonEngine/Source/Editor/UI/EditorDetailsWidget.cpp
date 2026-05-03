@@ -2,13 +2,17 @@
 
 #include "Editor/EditorEngine.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Editor/UI/EditorAccentColor.h"
 #include "Editor/UI/EditorPanelTitleUtils.h"
 
 #include "Component/ActorComponent.h"
 #include "Component/BillboardComponent.h"
+#include "Component/CanvasRootComponent.h"
 #include "Component/DecalComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/HeightFogComponent.h"
+#include "Component/UIImageComponent.h"
+#include "Component/UIScreenTextComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/MeshComponent.h"
 #include "Component/Movement/MovementComponent.h"
@@ -54,8 +58,9 @@
 
 namespace
 {
-    constexpr ImVec4 PopupMenuItemHoverColor = ImVec4(0.10f, 0.54f, 0.96f, 1.0f);
-    constexpr ImVec4 PopupMenuItemActiveColor = ImVec4(0.00f, 0.40f, 0.84f, 1.0f);
+    constexpr ImVec4 PopupMenuItemColor = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
+    constexpr ImVec4 PopupMenuItemHoverColor = EditorAccentColor::Value;
+    constexpr ImVec4 PopupMenuItemActiveColor = EditorAccentColor::Value;
     constexpr ImVec4 DetailsHeaderButtonColor = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
     constexpr ImVec4 DetailsHeaderButtonHoveredColor = ImVec4(0.24f, 0.24f, 0.24f, 1.0f);
     constexpr ImVec4 DetailsHeaderButtonActiveColor = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);
@@ -89,6 +94,14 @@ namespace
     {
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(2);
+    }
+
+    void PushPopupMenuStyle()
+    {
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, PopupPalette::PopupBg);
+        ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
     }
 
     const char *GetActorHeaderIconKey(const AActor *Actor)
@@ -361,8 +374,22 @@ namespace
             return nullptr;
         }
 
-        // UTextRenderComponent는 C++ 상속은 Billboard지만 RTTI 등록 부모가 Primitive라서 명시적으로 묶는다.
+        // UI 전용/밀접 컴포넌트는 상속 체계와 무관하게 한 섹션으로 모은다.
+        if (ComponentClass->IsA(UCanvasRootComponent::StaticClass())
+            || ComponentClass->IsA(UUIImageComponent::StaticClass())
+            || ComponentClass->IsA(UUIScreenTextComponent::StaticClass()))
+        {
+            return UCanvasRootComponent::StaticClass();
+        }
+
+        // TextRender는 월드/스크린 겸용이라 Add Component에서는 OTHER에 둔다.
         if (ComponentClass == UTextRenderComponent::StaticClass())
+        {
+            return nullptr;
+        }
+
+        // Height Fog는 SceneComponent 기반이지만 Add Component에서는 Effects 쪽이 더 자연스럽다.
+        if (ComponentClass == UHeightFogComponent::StaticClass())
         {
             return UBillboardComponent::StaticClass();
         }
@@ -392,11 +419,12 @@ namespace
         CachedGroups.clear();
         CachedClassCount = AllClasses.size();
 
-        AddComponentClassGroup(CachedGroups, "LIGHT", ULightComponentBase::StaticClass());
-        AddComponentClassGroup(CachedGroups, "MOVEMENT", UMovementComponent::StaticClass());
-        AddComponentClassGroup(CachedGroups, "EFFECTS", UBillboardComponent::StaticClass());
         AddComponentClassGroup(CachedGroups, "PRIMITIVE", UPrimitiveComponent::StaticClass());
+        AddComponentClassGroup(CachedGroups, "LIGHT", ULightComponentBase::StaticClass());
+        AddComponentClassGroup(CachedGroups, "EFFECTS", UBillboardComponent::StaticClass());
+        AddComponentClassGroup(CachedGroups, "MOVEMENT", UMovementComponent::StaticClass());
         AddComponentClassGroup(CachedGroups, "SCENE", USceneComponent::StaticClass());
+        AddComponentClassGroup(CachedGroups, "UI", UCanvasRootComponent::StaticClass());
         AddComponentClassGroup(CachedGroups, "OTHER", nullptr);
 
         for (UClass *Cls : AllClasses)
@@ -645,6 +673,7 @@ void FEditorPropertyWidget::Render(float DeltaTime)
     ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
     EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Details", Settings.UI.bProperty, "x##CloseDetails");
+    EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     FSelectionManager &Selection = EditorEngine->GetSelectionManager();
     AActor            *PrimaryActor = bSelectionLocked ? LockedActor : Selection.GetPrimarySelection();
@@ -687,7 +716,6 @@ void FEditorPropertyWidget::Render(float DeltaTime)
         SelectedActorsPtr = &DisplayedActors;
     }
     const TArray<AActor *> &SelectedActors = *SelectedActorsPtr;
-    ImGui::Dummy(ImVec2(0.0f, 10.0f));
     RenderHeader(PrimaryActor, SelectedActors);
 
     constexpr float ResizeHandleHeight = 8.0f;
@@ -715,7 +743,7 @@ void FEditorPropertyWidget::Render(float DeltaTime)
 
     ImDrawList *DrawList = ImGui::GetWindowDrawList();
     const float LineY = HandleCursor.y + ResizeHandleHeight * 0.5f;
-    const ImU32 LineColor = ImGui::GetColorU32(bHandleActive    ? ImVec4(0.22f, 0.55f, 0.95f, 1.0f)
+    const ImU32 LineColor = ImGui::GetColorU32(bHandleActive    ? EditorAccentColor::Value
                                                : bHandleHovered ? ImVec4(0.45f, 0.48f, 0.55f, 1.0f)
                                                                 : ImVec4(0.26f, 0.28f, 0.32f, 1.0f));
     DrawList->AddLine(ImVec2(HandleCursor.x, LineY), ImVec2(HandleCursor.x + HandleWidth, LineY), LineColor, 2.0f);
@@ -894,7 +922,7 @@ void FEditorDetailsWidget::RenderHeader(AActor *PrimaryActor, const TArray<AActo
     const bool  bLocked = bSelectionLocked && LockedActor == PrimaryActor;
     const char *LockIconKey = bLocked ? "Editor.Icon.Locked" : "Editor.Icon.Unlocked";
     const char *LockTooltip = bLocked ? "Unlock Details Panel" : "Lock Details Panel to Selection";
-    const ImU32 LockTint = bLocked ? IM_COL32(94, 170, 255, 255) : IM_COL32(215, 215, 215, 255);
+    const ImU32 LockTint = bLocked ? EditorAccentColor::ToU32() : IM_COL32(215, 215, 215, 255);
     if (DrawHeaderIconButton("##LockDetailsSelection", LockIconKey, bLocked ? "Unlock" : "Lock", LockTooltip, ImVec2(28.0f, 0.0f), LockTint))
     {
         if (bLocked)
@@ -924,8 +952,10 @@ void FEditorDetailsWidget::RenderAddComponentButton(AActor *Actor)
         ImGui::OpenPopup("##AddComponentPopup");
     }
 
+    PushPopupMenuStyle();
     if (!ImGui::BeginPopup("##AddComponentPopup"))
     {
+        ImGui::PopStyleColor(4);
         return;
     }
 
@@ -1001,6 +1031,7 @@ void FEditorDetailsWidget::RenderAddComponentButton(AActor *Actor)
     }
 
     ImGui::EndPopup();
+    ImGui::PopStyleColor(4);
 }
 
 void FEditorPropertyWidget::RenderDetails(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)
@@ -1208,9 +1239,9 @@ void FEditorPropertyWidget::RenderComponentTree(AActor *Actor, float Height)
         if (bIsSelected)
         {
             Flags |= ImGuiTreeNodeFlags_Selected;
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.06f, 0.33f, 0.75f, 0.95f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.09f, 0.39f, 0.84f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.05f, 0.28f, 0.67f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Header, EditorAccentColor::WithAlpha(0.95f));
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
         }
 
         ImGui::TreeNodeEx(Comp, Flags, "%s%s", ComponentTreeLabelPadding, LabelText.c_str());
@@ -1259,9 +1290,9 @@ void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent *Comp)
     if (bIsSelected)
     {
         Flags |= ImGuiTreeNodeFlags_Selected;
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.06f, 0.33f, 0.75f, 0.95f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.09f, 0.39f, 0.84f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.05f, 0.28f, 0.67f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Header, EditorAccentColor::WithAlpha(0.95f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
     }
 
     bool    bIsRoot = (Comp->GetParent() == nullptr);

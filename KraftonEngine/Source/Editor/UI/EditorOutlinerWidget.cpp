@@ -2,6 +2,7 @@
 
 #include "Editor/EditorEngine.h"
 #include "Editor/UI/EditorPanelTitleUtils.h"
+#include "Editor/UI/EditorAccentColor.h"
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Selection/SelectionManager.h"
 #include "GameFramework/AActor.h"
@@ -20,11 +21,11 @@
 namespace
 {
 	constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
-	constexpr ImVec4 OutlinerSelectionHeaderColor = ImVec4(0.06f, 0.33f, 0.75f, 0.95f);
-	constexpr ImVec4 OutlinerSelectionHeaderHoveredColor = ImVec4(0.09f, 0.39f, 0.84f, 1.0f);
-	constexpr ImVec4 OutlinerSelectionHeaderActiveColor = ImVec4(0.05f, 0.28f, 0.67f, 1.0f);
-	constexpr ImVec4 PopupMenuItemHoverColor = ImVec4(0.10f, 0.54f, 0.96f, 1.0f);
-	constexpr ImVec4 PopupMenuItemActiveColor = ImVec4(0.00f, 0.40f, 0.84f, 1.0f);
+	constexpr ImVec4 OutlinerSelectionHeaderColor = EditorAccentColor::Value;
+	constexpr ImVec4 OutlinerSelectionHeaderHoveredColor = EditorAccentColor::Value;
+	constexpr ImVec4 OutlinerSelectionHeaderActiveColor = EditorAccentColor::Value;
+	constexpr ImVec4 PopupMenuItemHoverColor = EditorAccentColor::Value;
+	constexpr ImVec4 PopupMenuItemActiveColor = EditorAccentColor::Value;
 	constexpr ImVec4 OutlinerFolderArrowColor = ImVec4(0.66f, 0.66f, 0.68f, 1.0f);
 	constexpr ImVec4 OutlinerItemLabelColor = ImVec4(0.86f, 0.86f, 0.88f, 1.0f);
 	constexpr ImU32 OutlinerFolderIconTint = IM_COL32(184, 140, 58, 255);
@@ -269,6 +270,7 @@ void FEditorOutlinerWidget::Render(float DeltaTime)
 		ImGui::End();
 		return;
 	}
+	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
 	UWorld* World = EditorEngine->GetWorld();
 	std::set<FString> ActorTypes;
@@ -706,12 +708,9 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 			ImGui::Indent(ChildItemIndentX);
 		}
 		ImGui::PushStyleColor(ImGuiCol_Text, OutlinerItemLabelColor);
-		if (bIsSelected)
-		{
-			ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
-			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
-			ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
-		}
+		ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
 		if (bIsRenaming)
 		{
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
@@ -752,10 +751,7 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 				Selection.Select(Actor);
 			}
 		}
-		if (bIsSelected)
-		{
-			ImGui::PopStyleColor(3);
-		}
+		ImGui::PopStyleColor(3);
 		ImGui::PopStyleColor();
 		if (ImGui::BeginPopupContextItem((Label + "##OutlinerContext" + std::to_string(StableIndex)).c_str()))
 		{
@@ -880,17 +876,11 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		const FString FolderLabel = "    " + FolderName;
 		ImGui::PushStyleColor(ImGuiCol_Text, OutlinerItemLabelColor);
 		ImGui::PushStyleColor(ImGuiCol_Text, OutlinerFolderArrowColor);
-		if (bAllActorsSelected)
-		{
-			ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
-			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
-			ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
-		}
+		ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
 		const bool bOpen = ImGui::TreeNodeEx((FolderName + "##Folder").c_str(), FolderFlags, "%s", FolderLabel.c_str());
-		if (bAllActorsSelected)
-		{
-			ImGui::PopStyleColor(3);
-		}
+		ImGui::PopStyleColor(3);
 		ImGui::PopStyleColor();
 		ImGui::PopStyleColor();
 		if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())

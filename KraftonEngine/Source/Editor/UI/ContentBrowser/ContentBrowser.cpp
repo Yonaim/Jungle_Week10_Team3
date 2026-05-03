@@ -302,6 +302,7 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
 		ImGui::End();
 		return;
 	}
+	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
 	//if (ImGui::Button("Refresh") || BrowserContext.bIsNeedRefresh)
 	//	Refresh();

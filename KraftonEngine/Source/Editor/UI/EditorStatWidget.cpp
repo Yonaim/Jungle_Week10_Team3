@@ -27,6 +27,7 @@ void FEditorStatWidget::Render(float DeltaTime)
 	ImGui::Begin(WindowTitle.c_str());
 	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
 	EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Stat Profiler", Settings.UI.bStat, "x##CloseStat");
+	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
 	// Pause / Resume 버튼
 	if (bPaused)

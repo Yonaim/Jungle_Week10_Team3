@@ -21,6 +21,7 @@
 
 #include "Editor/UI/ImGuiSetting.h"
 #include "Editor/UI/NotificationToast.h"
+#include "Editor/UI/EditorAccentColor.h"
 #include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Core/ProjectSettings.h"
 #include "Platform/Paths.h"
@@ -44,9 +45,6 @@ namespace
 	constexpr ImVec4 UnrealDockEmpty = ImVec4(5.0f / 255.0f, 5.0f / 255.0f, 5.0f / 255.0f, 1.0f);
 	constexpr ImVec4 UnrealPopupSurface = ImVec4(42.0f / 255.0f, 42.0f / 255.0f, 42.0f / 255.0f, 0.98f);
 	constexpr ImVec4 UnrealBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
-	constexpr ImVec4 UnrealAccentBlueHover = ImVec4(0.10f, 0.54f, 0.96f, 1.0f);
-	constexpr ImVec4 UnrealAccentBlueActive = ImVec4(0.00f, 0.40f, 0.84f, 1.0f);
-
 	constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
 	constexpr EOverlayStatType SupportedOverlayStats[] = {
 		EOverlayStatType::FPS,
@@ -123,7 +121,7 @@ namespace
 		Style.Colors[ImGuiCol_FrameBg] = UnrealDockEmpty;
 		Style.Colors[ImGuiCol_FrameBgHovered] = UnrealPanelSurfaceHover;
 		Style.Colors[ImGuiCol_FrameBgActive] = UnrealPanelSurfaceActive;
-		Style.Colors[ImGuiCol_CheckMark] = ImVec4(0.20f, 0.56f, 0.96f, 1.0f);
+		Style.Colors[ImGuiCol_CheckMark] = EditorAccentColor::Value;
 		Style.Colors[ImGuiCol_Button] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_ButtonHovered] = UnrealPanelSurfaceHover;
 		Style.Colors[ImGuiCol_ButtonActive] = UnrealPanelSurfaceActive;
@@ -467,8 +465,8 @@ void FEditorMainPanel::RenderMainMenuBar()
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
 		ImGui::PushStyleColor(ImGuiCol_PopupBg, UnrealPanelSurface);
 		ImGui::PushStyleColor(ImGuiCol_Header, UnrealPanelSurface);
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, UnrealAccentBlueHover);
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, UnrealAccentBlueActive);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
 
 		if (ImGui::BeginMenu("File"))
 		{
@@ -608,8 +606,6 @@ void FEditorMainPanel::RenderMainMenuBar()
 			}
 			ImGui::EndMenu();
 		}
-		ImGui::PopStyleColor(4);
-		ImGui::PopStyleVar(4);
 
 		if (ImGui::BeginMenu("Levels"))
 		{
@@ -689,6 +685,8 @@ void FEditorMainPanel::RenderMainMenuBar()
 			}
 			ImGui::EndMenu();
 		}
+		ImGui::PopStyleColor(4);
+		ImGui::PopStyleVar(4);
 
 		MenuEndX = ImGui::GetCursorPosX();
 

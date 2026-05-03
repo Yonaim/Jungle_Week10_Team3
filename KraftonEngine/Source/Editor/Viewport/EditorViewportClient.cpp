@@ -23,6 +23,7 @@
 #include "Collision/RayUtils.h"
 #include "Object/Object.h"
 #include "Editor/Selection/SelectionManager.h"
+#include "Editor/UI/EditorAccentColor.h"
 #include "Editor/EditorEngine.h"
 #include "GameFramework/AActor.h"
 #include "Viewport/GameViewportClient.h"
@@ -978,7 +979,7 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 			if (EditorEngine->IsPlayingInEditor())
 			{
 				BorderColor = EditorEngine->IsGamePaused()
-					? IM_COL32(66, 133, 244, 255)
+					? EditorAccentColor::ToU32()
 					: IM_COL32(52, 199, 89, 255);
 			}
 		}

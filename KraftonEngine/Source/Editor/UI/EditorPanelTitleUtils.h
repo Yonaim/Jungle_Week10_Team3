@@ -2,6 +2,7 @@
 
 #include "Object/FName.h"
 #include "Resource/ResourceManager.h"
+#include "Editor/UI/EditorAccentColor.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
@@ -88,6 +89,11 @@ namespace EditorPanelTitleUtils
 		return 5.0f;
 	}
 
+	inline float GetPanelContentTopInset()
+	{
+		return 8.0f;
+	}
+
 	inline float GetSelectedPanelTopBorderThickness()
 	{
 		return 2.0f;
@@ -95,7 +101,7 @@ namespace EditorPanelTitleUtils
 
 	inline ImU32 GetSelectedPanelTopBorderColor()
 	{
-		return IM_COL32(28, 140, 255, 255);
+		return EditorAccentColor::ToU32();
 	}
 
 	inline float GetSelectedPanelTopBorderInset()
@@ -324,6 +330,11 @@ namespace EditorPanelTitleUtils
 		(void)Id;
 		QueuePanelDecoration(nullptr, &bVisible);
 		return false;
+	}
+
+	inline void ApplyPanelContentTopInset()
+	{
+		ImGui::Dummy(ImVec2(0.0f, GetPanelContentTopInset()));
 	}
 
 	inline void FlushPanelDecorations()

@@ -291,6 +291,7 @@ void FEditorConsoleWidget::Render(float DeltaTime)
 		ImGui::End();
 		return;
 	}
+	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
 	RenderDrawerToolbar();
 	const float FooterHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
