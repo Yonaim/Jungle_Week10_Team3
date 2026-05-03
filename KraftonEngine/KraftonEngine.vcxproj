@@ -280,6 +280,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Game\GameMode\ARunnerGameMode.cpp" />
+    <ClCompile Include="Source\Game\Player\Runner.cpp" />
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
     <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp" />
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp" />
@@ -468,6 +470,7 @@
     <ClCompile Include="Source\Engine\Scripting\LuaComponentProxy.cpp" />
     <ClCompile Include="Source\Engine\Scripting\LuaScriptInstance.cpp" />
     <ClCompile Include="Source\Engine\Scripting\LuaScriptRuntime.cpp" />
+    <ClCompile Include="Source\Engine\Scripting\LuaScriptRuntimeProxyBindings.cpp" />
     <ClCompile Include="Source\Engine\Scripting\ScriptProperty.cpp" />
     <ClCompile Include="Source\Engine\Serialization\SceneSaveManager.cpp" />
     <ClCompile Include="Source\Engine\Texture\Texture2D.cpp" />
@@ -498,6 +501,8 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Game\GameMode\ARunnerGameMode.h" />
+    <ClInclude Include="Source\Game\Player\Runner.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
     <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h" />
     <ClInclude Include="Source\Editor\History\SceneHistoryTypes.h" />

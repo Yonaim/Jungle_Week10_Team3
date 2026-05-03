@@ -1,0 +1,229 @@
+{
+  "Actors" : [{
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_4",
+      "PrimitiveKey" : "228",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBoxComponent",
+            "ObjectName" : "UBoxComponent_8",
+            "Properties" : {
+              "Box Extent" : [2000.000000, 440.000000, 20.000000],
+              "Draw Only If Selected" : false,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Overlap Behaviour" : 1,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shape Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_8",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Element 0" : {
+            "Path" : "Asset/Content/Materials/Samples/Wood.mat"
+          },
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [2000.000000, 0.000000, -200.000000],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [2000.000000, 440.000000, 20.000000],
+          "Static Mesh" : "Asset/Content/Model/BasicShape/cube.obj",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 228,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_5",
+      "PrimitiveKey" : "240",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBoxComponent",
+            "ObjectName" : "UBoxComponent_0",
+            "Properties" : {
+              "Box Extent" : [100.000000, 100.000000, 100.000000],
+              "Draw Only If Selected" : false,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Overlap Behaviour" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shape Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_10",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Element 0" : {
+            "Path" : "Asset/Content/Materials/Samples/Wood.mat"
+          },
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [1000.000000, 0.000000, 100.000000],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [100.000000, 100.000000, 100.000000],
+          "Static Mesh" : "Asset/Content/Model/BasicShape/cube.obj",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 240,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_8",
+      "PrimitiveKey" : "273",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBoxComponent",
+            "ObjectName" : "UBoxComponent_3",
+            "Properties" : {
+              "Box Extent" : [100.000000, 100.000000, 100.000000],
+              "Draw Only If Selected" : false,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Overlap Behaviour" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Shape Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "bEditorOnly" : false,
+              "bTickEnable" : true
+            }
+          }],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_15",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Element 0" : {
+            "Path" : "Asset/Content/Materials/Samples/Wood.mat"
+          },
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [1500.000000, 0.000000, 100.000000],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [100.000000, 100.000000, 100.000000],
+          "Static Mesh" : "Asset/Content/Model/BasicShape/cube.obj",
+          "Two Sided Shadow" : false,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 273,
+      "bVisible" : true
+    }, {
+      "ClassName" : "ADirectionalLightActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "ADirectionalLightActor_1",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_9",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : true,
+              "Width" : 1.000000,
+              "bEditorOnly" : true,
+              "bTickEnable" : true
+            },
+            "bHiddenInComponentTree" : true
+          }],
+        "ClassName" : "UDirectionalLightComponent",
+        "ObjectName" : "UDirectionalLightComponent_1",
+        "Properties" : {
+          "Cast Shadows" : true,
+          "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+          "Intensity" : 1.000000,
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Rotation" : [45.000000, -45.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Shadow Bias" : -0.000100,
+          "Shadow Normal Bias" : -0.002000,
+          "Shadow Resolution Scale" : 1.000000,
+          "Shadow Sharpen" : 0.670000,
+          "Shadow Slope Bias" : 0.000100,
+          "Visible" : true,
+          "bEditorOnly" : false,
+          "bTickEnable" : true
+        }
+      },
+      "UUID" : 500,
+      "bVisible" : true
+    }],
+  "ClassName" : "UWorld",
+  "ContextHandle" : "NewScene",
+  "ContextName" : "New Scene",
+  "GameModeClass" : "ARunnerGameMode",
+  "Name" : "PlayerDev",
+  "PerspectiveCamera" : {
+    "FOV" : 1.047198,
+    "FarClip" : 1000.000000,
+    "Location" : [167.600967, -406.432159, 206.093185],
+    "NearClip" : 0.100000,
+    "Rotation" : [0.000000, 25.249922, 17.354355]
+  },
+  "Primitives" : {
+    "228" : {
+      "Location" : [2000.000000, 0.000000, -200.000000],
+      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/cube.obj",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [2000.000000, 440.000000, 20.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "240" : {
+      "Location" : [1000.000000, 0.000000, 100.000000],
+      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/cube.obj",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [100.000000, 100.000000, 100.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "273" : {
+      "Location" : [1500.000000, 0.000000, 100.000000],
+      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/cube.obj",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [100.000000, 100.000000, 100.000000],
+      "Type" : "StaticMeshComp"
+    }
+  },
+  "Version" : 2,
+  "WorldType" : "Editor"
+}
