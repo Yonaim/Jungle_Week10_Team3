@@ -78,6 +78,7 @@ private:
 	void BindInputFunctions();
 	void BindDebugTimeFunctions();
 	void BindPropertyFunctions();
+	void BindSoundFunctions();
 	void BindWorldFunctions();
 
 	// Lua에 노출할 ActorProxy를 현재 owner actor 기준으로 다시 만든다.

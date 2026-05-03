@@ -64,8 +64,8 @@ FPrimitiveSceneProxy* UBillboardComponent::CreateSceneProxy()
 void UBillboardComponent::UpdateWorldAABB() const
 {
 	const FVector WorldScale = GetWorldScale();
-	const float HalfHeight = std::abs(WorldScale.Z) * 0.5f;
-	const float HalfWidth = std::abs(WorldScale.Y) * 0.5f;
+	const float HalfHeight = std::abs(WorldScale.Z * Height) * 0.5f;
+	const float HalfWidth = std::abs(WorldScale.Y * Width) * 0.5f;
 	const float Radius = std::sqrt((HalfWidth * HalfWidth) + (HalfHeight * HalfHeight));
 	const FVector Extent(Radius, Radius, Radius);
 	const FVector WorldCenter = GetWorldLocation();
@@ -220,7 +220,13 @@ bool UBillboardComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& Out
 
 bool UBillboardComponent::IntersectBillboard(const FRay& Ray, FRayHitResult& OutHitResult, bool bRespectTextureAlpha) const
 {
-	const FMatrix BillboardWorldMatrix = ComputeBillboardMatrix(Ray.Direction);
+	FMatrix BillboardWorldMatrix = ComputeBillboardMatrix(Ray.Direction);
+	BillboardWorldMatrix.M[1][0] *= Width;
+	BillboardWorldMatrix.M[1][1] *= Width;
+	BillboardWorldMatrix.M[1][2] *= Width;
+	BillboardWorldMatrix.M[2][0] *= Height;
+	BillboardWorldMatrix.M[2][1] *= Height;
+	BillboardWorldMatrix.M[2][2] *= Height;
 	const FMatrix InvWorldMatrix = BillboardWorldMatrix.GetInverse();
 
 	FRay LocalRay;

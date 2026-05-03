@@ -13,9 +13,31 @@
 #include "Render/Pipeline/RenderCollector.h"
 #include "Materials/Material.h"
 #include "Texture/Texture2D.h"
+#include "Engine/Runtime/Engine.h"
 
 // UpdateProxyLOD defined in RenderCollector.cpp (shared)
 extern void UpdateProxyLOD(FPrimitiveSceneProxy* Proxy, const FLODUpdateContext& LODCtx);
+
+namespace
+{
+	ID3D11ShaderResourceView* GetFallbackUIScreenQuadSRV()
+	{
+		static UTexture2D* CachedFallbackTexture = nullptr;
+		if (CachedFallbackTexture)
+		{
+			return CachedFallbackTexture->GetSRV();
+		}
+
+		ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+		if (!Device)
+		{
+			return nullptr;
+		}
+
+		CachedFallbackTexture = UTexture2D::LoadFromFile("Asset/Content/Texture/checker.png", Device);
+		return CachedFallbackTexture ? CachedFallbackTexture->GetSRV() : nullptr;
+	}
+}
 
 // ============================================================
 // Create / Release
@@ -374,11 +396,11 @@ void FDrawCommandBuilder::PrepareDynamicGeometry(const FFrameContext& Frame, con
 	// --- Editor 패스: AABB 디버그 박스 + DebugDraw 라인 ---
 	for (const auto& AABB : Scene->GetDebugAABBs())
 	{
-		EditorLines.AddAABB(FBoundingBox{ AABB.Min, AABB.Max }, AABB.Color);
+		EditorLines.AddBillboardAABB(FBoundingBox{ AABB.Min, AABB.Max }, AABB.Color, Frame, Frame.RenderOptions.DebugLineThickness);
 	}
 	for (const auto& Line : Scene->GetDebugLines())
 	{
-		EditorLines.AddLine(Line.Start, Line.End, Line.Color.ToVector4());
+		EditorLines.AddBillboardLine(Line.Start, Line.End, Line.Color.ToVector4(), Frame, Frame.RenderOptions.DebugLineThickness);
 	}
 
 	// --- Grid 패스: 월드 그리드 + 축 ---
@@ -454,6 +476,7 @@ void FDrawCommandBuilder::EmitLineCommand(FLineGeometry& Lines, FShader* Shader,
 		Cmd.Pass = ERenderPass::EditorLines;
 		Cmd.Shader = Shader;
 		Cmd.RenderState = RS;
+		Cmd.RenderState.Topology = Lines.GetTopology();
 		Cmd.Buffer = { Lines.GetVBBuffer(), Lines.GetVBStride(), Lines.GetIBBuffer() };
 		Cmd.Buffer.IndexCount = Lines.GetIndexCount();
 		Cmd.BuildSortKey();
@@ -605,7 +628,13 @@ void FDrawCommandBuilder::BuildUICommands(EViewMode ViewMode)
 	const FDrawCommandRenderState UIRS = PassRenderStateTable->ToDrawCommandState(ERenderPass::UI, ViewMode);
 	for (const FScreenQuadGeometry::FBatch& Batch : ScreenQuads.GetBatches())
 	{
-		if (!Batch.SRV || Batch.IndexCount == 0)
+		if (Batch.IndexCount == 0)
+		{
+			continue;
+		}
+
+		ID3D11ShaderResourceView* BatchSRV = Batch.SRV ? Batch.SRV : GetFallbackUIScreenQuadSRV();
+		if (!BatchSRV)
 		{
 			continue;
 		}
@@ -617,7 +646,7 @@ void FDrawCommandBuilder::BuildUICommands(EViewMode ViewMode)
 		Cmd.Buffer = { ScreenQuads.GetVBBuffer(), ScreenQuads.GetVBStride(), ScreenQuads.GetIBBuffer() };
 		Cmd.Buffer.FirstIndex = Batch.FirstIndex;
 		Cmd.Buffer.IndexCount = Batch.IndexCount;
-		Cmd.Bindings.SRVs[(int)EMaterialTextureSlot::Diffuse] = Batch.SRV;
+		Cmd.Bindings.SRVs[(int)EMaterialTextureSlot::Diffuse] = BatchSRV;
 		Cmd.BuildSortKey(Batch.ZOrder);
 	}
 }

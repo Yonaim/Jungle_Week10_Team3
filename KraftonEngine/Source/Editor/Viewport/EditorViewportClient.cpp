@@ -3,6 +3,7 @@
 #include "Editor/UI/EditorConsoleWidget.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Core/ProjectSettings.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Input/InputModifier.h"
 #include "Engine/Input/InputTrigger.h"
@@ -17,13 +18,11 @@
 #include "Math/MathUtils.h"
 
 #include "Component/GizmoComponent.h"
+#include "Component/UIImageComponent.h"
+#include "Component/UIScreenTextComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/MeshComponent.h"
 #include "Component/StaticMeshComponent.h"
-#include "Component/UIImageComponent.h"
-#include "Component/UIButtonComponent.h"
-#include "Component/UIScreenTextComponent.h"
-#include "Component/UWindowPanelComponent.h"
 #include "Collision/RayUtils.h"
 #include "Object/Object.h"
 #include "Editor/Selection/SelectionManager.h"
@@ -31,9 +30,10 @@
 #include "Editor/EditorEngine.h"
 #include "GameFramework/AActor.h"
 #include "Viewport/GameViewportClient.h"
-#include "Resource/ResourceManager.h"
 #include "ImGui/imgui.h"
 #include "Component/Light/LightComponentBase.h"
+
+#include <cfloat>
 
 UWorld* FEditorViewportClient::GetWorld() const
 {
@@ -50,83 +50,20 @@ namespace
 	};
 	static FCameraBookmark GCameraBookmarks[10];
 
-	bool IsPointInsideRect(float X, float Y, float RectX, float RectY, float RectW, float RectH)
+	enum class EUIScreenGizmoAxis : int32
 	{
-		return X >= RectX
-			&& X <= RectX + RectW
-			&& Y >= RectY
-			&& Y <= RectY + RectH;
-	}
+		None = 0,
+		X = 1,
+		Y = 2,
+		XY = 3
+	};
 
 	bool IsUIComponentSelectable(const UActorComponent* Component)
 	{
 		return Component
 			&& !Component->IsHiddenInComponentTree()
-			&& !Component->IsEditorOnlyComponent();
-	}
-
-	bool ComputeScreenTextBounds(const UUIScreenTextComponent* TextComponent, float& OutX, float& OutY, float& OutW, float& OutH)
-	{
-		if (!TextComponent || !TextComponent->IsVisible())
-		{
-			return false;
-		}
-
-		const FString& Text = TextComponent->GetText();
-		if (Text.empty())
-		{
-			return false;
-		}
-
-		const FVector& ScreenPosition = TextComponent->GetScreenPosition();
-		const float Scale = TextComponent->GetFontSize();
-		const FFontResource* Font = FResourceManager::Get().FindFont(TextComponent->GetFontName());
-
-		float Width = 0.0f;
-		float Height = 23.0f * Scale;
-		if (Font && Font->IsLoaded() && Font->bHasGlyphMetrics && Font->LineHeight > 0.0f)
-		{
-			const float PixelScale = (23.0f * Scale) / Font->LineHeight;
-			Height = Font->LineHeight * PixelScale;
-
-			const uint8* Ptr = reinterpret_cast<const uint8*>(Text.c_str());
-			const uint8* const End = Ptr + Text.size();
-			uint32 PrevCodepoint = 0;
-			bool bHasPrevCodepoint = false;
-
-			while (Ptr < End)
-			{
-				uint32 CP = 0;
-				if (Ptr[0] < 0x80) { CP = Ptr[0]; Ptr += 1; }
-				else if ((Ptr[0] & 0xE0) == 0xC0 && Ptr + 1 < End) { CP = ((Ptr[0] & 0x1F) << 6) | (Ptr[1] & 0x3F); Ptr += 2; }
-				else if ((Ptr[0] & 0xF0) == 0xE0 && Ptr + 2 < End) { CP = ((Ptr[0] & 0x0F) << 12) | ((Ptr[1] & 0x3F) << 6) | (Ptr[2] & 0x3F); Ptr += 3; }
-				else if ((Ptr[0] & 0xF8) == 0xF0 && Ptr + 3 < End) { CP = ((Ptr[0] & 0x07) << 18) | ((Ptr[1] & 0x3F) << 12) | ((Ptr[2] & 0x3F) << 6) | (Ptr[3] & 0x3F); Ptr += 4; }
-				else { ++Ptr; continue; }
-
-				if (bHasPrevCodepoint)
-				{
-					Width += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
-				}
-
-				if (const FFontGlyph* Glyph = Font->FindGlyph(CP))
-				{
-					Width += Glyph->XAdvance * PixelScale;
-				}
-
-				PrevCodepoint = CP;
-				bHasPrevCodepoint = true;
-			}
-		}
-		else
-		{
-			Width = static_cast<float>(Text.size()) * (23.0f * Scale * 0.5f);
-		}
-
-		OutX = ScreenPosition.X;
-		OutY = ScreenPosition.Y;
-		OutW = (std::max)(1.0f, Width);
-		OutH = (std::max)(1.0f, Height);
-		return true;
+			&& !Component->IsEditorOnlyComponent()
+			&& Component->SupportsUIScreenPicking();
 	}
 
 	USceneComponent* FindTopmostUIComponentAt(UWorld* World, float X, float Y)
@@ -153,44 +90,428 @@ namespace
 					continue;
 				}
 
-				if (UUIScreenTextComponent* TextComponent = Cast<UUIScreenTextComponent>(Component))
-				{
-					float RectX = 0.0f;
-					float RectY = 0.0f;
-					float RectW = 0.0f;
-					float RectH = 0.0f;
-					if (ComputeScreenTextBounds(TextComponent, RectX, RectY, RectW, RectH)
-						&& IsPointInsideRect(X, Y, RectX, RectY, RectW, RectH)
-						&& BestZOrder <= 0)
-					{
-						BestComponent = TextComponent;
-						BestZOrder = 0;
-					}
-					continue;
-				}
-
-				UUIImageComponent* UIImage = Cast<UUIImageComponent>(Component);
-				if (!UIImage || !UIImage->IsVisible())
+				USceneComponent* SceneComponent = Cast<USceneComponent>(Component);
+				if (!SceneComponent || !Component->HitTestUIScreenPoint(X, Y))
 				{
 					continue;
 				}
 
-				const FVector& ScreenPosition = UIImage->GetScreenPosition();
-				const FVector& ScreenSize = UIImage->GetScreenSize();
-				if (!IsPointInsideRect(X, Y, ScreenPosition.X, ScreenPosition.Y, ScreenSize.X, ScreenSize.Y))
+				const int32 ZOrder = Component->GetUIScreenPickingZOrder();
+				if (!BestComponent || ZOrder >= BestZOrder)
 				{
-					continue;
-				}
-
-				if (!BestComponent || UIImage->GetZOrder() >= BestZOrder)
-				{
-					BestComponent = UIImage;
-					BestZOrder = UIImage->GetZOrder();
+					BestComponent = SceneComponent;
+					BestZOrder = ZOrder;
 				}
 			}
 		}
 
 		return BestComponent;
+	}
+
+	bool IsUIScreenTransformableComponent(const USceneComponent* Component)
+	{
+		return Cast<UUIImageComponent>(Component) || Cast<UUIScreenTextComponent>(Component);
+	}
+
+	bool GetUIScreenTextBounds(const UUIScreenTextComponent* TextComponent, float& OutX, float& OutY, float& OutWidth, float& OutHeight)
+	{
+		return TextComponent && TextComponent->GetResolvedScreenBounds(OutX, OutY, OutWidth, OutHeight);
+	}
+
+	bool GetUIScreenComponentBounds(const USceneComponent* Component, float& OutX, float& OutY, float& OutWidth, float& OutHeight)
+	{
+		if (const UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(Component))
+		{
+			const FVector2 ResolvedPosition = ImageComponent->GetResolvedScreenPosition();
+			const FVector2 ResolvedSize = ImageComponent->GetResolvedScreenSize();
+			OutX = ResolvedPosition.X;
+			OutY = ResolvedPosition.Y;
+			OutWidth = (std::max)(1.0f, ResolvedSize.X);
+			OutHeight = (std::max)(1.0f, ResolvedSize.Y);
+			return true;
+		}
+
+		if (const UUIScreenTextComponent* TextComponent = Cast<UUIScreenTextComponent>(Component))
+		{
+			return GetUIScreenTextBounds(TextComponent, OutX, OutY, OutWidth, OutHeight);
+		}
+
+		return false;
+	}
+
+	bool GetUIScreenComponentPosition(const USceneComponent* Component, FVector& OutPosition)
+	{
+		if (const UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(Component))
+		{
+			const FVector2 ResolvedPosition = ImageComponent->GetResolvedScreenPosition();
+			OutPosition = FVector(ResolvedPosition.X, ResolvedPosition.Y, ImageComponent->GetScreenPosition().Z);
+			return true;
+		}
+
+		if (const UUIScreenTextComponent* TextComponent = Cast<UUIScreenTextComponent>(Component))
+		{
+			float X = 0.0f;
+			float Y = 0.0f;
+			float Width = 0.0f;
+			float Height = 0.0f;
+			if (!TextComponent->GetResolvedScreenBounds(X, Y, Width, Height))
+			{
+				return false;
+			}
+
+			OutPosition = FVector(X, Y, TextComponent->GetScreenPosition().Z);
+			return true;
+		}
+
+		return false;
+	}
+
+	bool SetUIScreenComponentPosition(USceneComponent* Component, const FVector& InPosition)
+	{
+		if (UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(Component))
+		{
+			if (ImageComponent->IsAnchoredLayoutEnabled())
+			{
+				const FVector2 CurrentResolvedPosition = ImageComponent->GetResolvedScreenPosition();
+				FVector AnchorOffset = ImageComponent->GetAnchorOffset();
+				AnchorOffset.X += InPosition.X - CurrentResolvedPosition.X;
+				AnchorOffset.Y += InPosition.Y - CurrentResolvedPosition.Y;
+				ImageComponent->SetAnchorOffset(AnchorOffset);
+				return true;
+			}
+
+			ImageComponent->SetScreenPosition(InPosition);
+			return true;
+		}
+
+		if (UUIScreenTextComponent* TextComponent = Cast<UUIScreenTextComponent>(Component))
+		{
+			if (TextComponent->IsAnchoredLayoutEnabled())
+			{
+				float CurrentX = 0.0f;
+				float CurrentY = 0.0f;
+				float CurrentWidth = 0.0f;
+				float CurrentHeight = 0.0f;
+				if (!TextComponent->GetResolvedScreenBounds(CurrentX, CurrentY, CurrentWidth, CurrentHeight))
+				{
+					return false;
+				}
+
+				FVector AnchorOffset = TextComponent->GetAnchorOffset();
+				AnchorOffset.X += InPosition.X - CurrentX;
+				AnchorOffset.Y += InPosition.Y - CurrentY;
+				TextComponent->SetAnchorOffset(AnchorOffset);
+				return true;
+			}
+
+			TextComponent->SetScreenPosition(InPosition);
+			return true;
+		}
+
+		return false;
+	}
+
+	bool TryConvertMouseToViewportPixel(
+		const ImVec2& MousePos,
+		const FRect& ViewportScreenRect,
+		const FViewport* Viewport,
+		float FallbackWidth,
+		float FallbackHeight,
+		float& OutViewportX,
+		float& OutViewportY)
+	{
+		if (ViewportScreenRect.Width <= 0.0f || ViewportScreenRect.Height <= 0.0f)
+		{
+			return false;
+		}
+
+		const float LocalX = MousePos.x - ViewportScreenRect.X;
+		const float LocalY = MousePos.y - ViewportScreenRect.Y;
+		if (LocalX < 0.0f || LocalY < 0.0f || LocalX >= ViewportScreenRect.Width || LocalY >= ViewportScreenRect.Height)
+		{
+			return false;
+		}
+
+		const float TargetWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : FallbackWidth;
+		const float TargetHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : FallbackHeight;
+		if (TargetWidth <= 0.0f || TargetHeight <= 0.0f)
+		{
+			return false;
+		}
+
+		const float ScaleX = TargetWidth / ViewportScreenRect.Width;
+		const float ScaleY = TargetHeight / ViewportScreenRect.Height;
+		OutViewportX = LocalX * ScaleX;
+		OutViewportY = LocalY * ScaleY;
+		return true;
+	}
+
+	bool TryConvertViewportPixelToScreenPoint(
+		float ViewportX,
+		float ViewportY,
+		const FRect& ViewportScreenRect,
+		const FViewport* Viewport,
+		float FallbackWidth,
+		float FallbackHeight,
+		float& OutScreenX,
+		float& OutScreenY)
+	{
+		if (ViewportScreenRect.Width <= 0.0f || ViewportScreenRect.Height <= 0.0f)
+		{
+			return false;
+		}
+
+		const float TargetWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : FallbackWidth;
+		const float TargetHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : FallbackHeight;
+		if (TargetWidth <= 0.0f || TargetHeight <= 0.0f)
+		{
+			return false;
+		}
+
+		const float ScaleX = ViewportScreenRect.Width / TargetWidth;
+		const float ScaleY = ViewportScreenRect.Height / TargetHeight;
+		OutScreenX = ViewportScreenRect.X + ViewportX * ScaleX;
+		OutScreenY = ViewportScreenRect.Y + ViewportY * ScaleY;
+		return true;
+	}
+
+	bool ProjectWorldToViewport(
+		const FMatrix& ViewProjection,
+		const FVector& WorldPosition,
+		float ViewportWidth,
+		float ViewportHeight,
+		float& OutScreenX,
+		float& OutScreenY,
+		float& OutDepth)
+	{
+		const FVector ClipSpace = ViewProjection.TransformPositionWithW(WorldPosition);
+		OutScreenX = (ClipSpace.X * 0.5f + 0.5f) * ViewportWidth;
+		OutScreenY = (1.0f - (ClipSpace.Y * 0.5f + 0.5f)) * ViewportHeight;
+		OutDepth = ClipSpace.Z;
+		return std::isfinite(OutScreenX) && std::isfinite(OutScreenY) && std::isfinite(OutDepth);
+	}
+
+	bool EditorRaycastAllVisiblePrimitives(UWorld* World, const FRay& Ray, FRayHitResult& OutHitResult, AActor*& OutActor)
+	{
+		FRayHitResult BestHit{};
+		AActor* BestActor = nullptr;
+
+		if (!World)
+		{
+			return false;
+		}
+
+		for (AActor* Actor : World->GetActors())
+		{
+			if (!Actor || !Actor->IsVisible())
+			{
+				continue;
+			}
+
+			for (UActorComponent* Component : Actor->GetComponents())
+			{
+				UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component);
+				if (!Primitive || !Primitive->IsVisible())
+				{
+					continue;
+				}
+
+				FRayHitResult CandidateHit{};
+				if (!Primitive->LineTraceComponent(Ray, CandidateHit))
+				{
+					float AABBTMin = 0.0f;
+					float AABBTMax = 0.0f;
+					const FBoundingBox Bounds = Primitive->GetWorldBoundingBox();
+					if (!Bounds.IsValid() || !FRayUtils::IntersectRayAABB(Ray, Bounds.Min, Bounds.Max, AABBTMin, AABBTMax))
+					{
+						continue;
+					}
+
+					CandidateHit.HitComponent = Primitive;
+					CandidateHit.Distance = AABBTMin >= 0.0f ? AABBTMin : AABBTMax;
+					CandidateHit.WorldHitLocation = Ray.Origin + Ray.Direction * CandidateHit.Distance;
+					CandidateHit.bHit = true;
+				}
+
+				if (CandidateHit.Distance < BestHit.Distance)
+				{
+					BestHit = CandidateHit;
+					BestActor = Actor;
+				}
+			}
+		}
+
+		if (!BestActor)
+		{
+			return false;
+		}
+
+		OutHitResult = BestHit;
+		OutActor = BestActor;
+		return true;
+	}
+
+	void BuildBoundingBoxCorners(const FBoundingBox& Bounds, FVector OutCorners[8])
+	{
+		const FVector& Min = Bounds.Min;
+		const FVector& Max = Bounds.Max;
+		OutCorners[0] = FVector(Min.X, Min.Y, Min.Z);
+		OutCorners[1] = FVector(Max.X, Min.Y, Min.Z);
+		OutCorners[2] = FVector(Min.X, Max.Y, Min.Z);
+		OutCorners[3] = FVector(Max.X, Max.Y, Min.Z);
+		OutCorners[4] = FVector(Min.X, Min.Y, Max.Z);
+		OutCorners[5] = FVector(Max.X, Min.Y, Max.Z);
+		OutCorners[6] = FVector(Min.X, Max.Y, Max.Z);
+		OutCorners[7] = FVector(Max.X, Max.Y, Max.Z);
+	}
+
+	AActor* FindScreenSpacePrimitiveAt(
+		UWorld* World,
+		const UCameraComponent* Camera,
+		float MouseViewportX,
+		float MouseViewportY,
+		float ViewportWidth,
+		float ViewportHeight,
+		UPrimitiveComponent*& OutPrimitive)
+	{
+		OutPrimitive = nullptr;
+		if (!World || !Camera || ViewportWidth <= 0.0f || ViewportHeight <= 0.0f)
+		{
+			return nullptr;
+		}
+
+		const FMatrix ViewProjection = Camera->GetViewProjectionMatrix();
+		AActor* BestActor = nullptr;
+		UPrimitiveComponent* BestPrimitive = nullptr;
+		float BestArea = FLT_MAX;
+		float BestDepth = FLT_MAX;
+		float BestScore = FLT_MAX;
+		constexpr float ScreenPickPadding = 12.0f;
+		constexpr float CenterPickRadiusSq = 24.0f * 24.0f;
+
+		for (AActor* Actor : World->GetActors())
+		{
+			if (!Actor || !Actor->IsVisible())
+			{
+				continue;
+			}
+
+			for (UActorComponent* Component : Actor->GetComponents())
+			{
+				UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component);
+				if (!Primitive || !Primitive->IsVisible())
+				{
+					continue;
+				}
+
+				const FBoundingBox Bounds = Primitive->GetWorldBoundingBox();
+				if (!Bounds.IsValid())
+				{
+					continue;
+				}
+
+				FVector Corners[8];
+				BuildBoundingBoxCorners(Bounds, Corners);
+
+				float MinX = FLT_MAX;
+				float MinY = FLT_MAX;
+				float MaxX = -FLT_MAX;
+				float MaxY = -FLT_MAX;
+				float MinDepth = FLT_MAX;
+				bool bProjectedAny = false;
+
+				for (const FVector& Corner : Corners)
+				{
+					float ScreenX = 0.0f;
+					float ScreenY = 0.0f;
+					float Depth = 0.0f;
+					if (!ProjectWorldToViewport(ViewProjection, Corner, ViewportWidth, ViewportHeight, ScreenX, ScreenY, Depth))
+					{
+						continue;
+					}
+
+					MinX = (std::min)(MinX, ScreenX);
+					MinY = (std::min)(MinY, ScreenY);
+					MaxX = (std::max)(MaxX, ScreenX);
+					MaxY = (std::max)(MaxY, ScreenY);
+					MinDepth = (std::min)(MinDepth, Depth);
+					bProjectedAny = true;
+				}
+
+				if (!bProjectedAny)
+				{
+					continue;
+				}
+
+				const float ExpandedMinX = MinX - ScreenPickPadding;
+				const float ExpandedMaxX = MaxX + ScreenPickPadding;
+				const float ExpandedMinY = MinY - ScreenPickPadding;
+				const float ExpandedMaxY = MaxY + ScreenPickPadding;
+				if (MouseViewportX < ExpandedMinX || MouseViewportX > ExpandedMaxX || MouseViewportY < ExpandedMinY || MouseViewportY > ExpandedMaxY)
+				{
+					continue;
+				}
+
+				const float Area = (std::max)(1.0f, MaxX - MinX) * (std::max)(1.0f, MaxY - MinY);
+				const float ClampedX = (std::max)(MinX, (std::min)(MouseViewportX, MaxX));
+				const float ClampedY = (std::max)(MinY, (std::min)(MouseViewportY, MaxY));
+				const float DistanceSq = (MouseViewportX - ClampedX) * (MouseViewportX - ClampedX)
+					+ (MouseViewportY - ClampedY) * (MouseViewportY - ClampedY);
+				if (!BestActor
+					|| DistanceSq < BestScore
+					|| (std::abs(DistanceSq - BestScore) < 1.0f && (Area < BestArea || (std::abs(Area - BestArea) < 1.0f && MinDepth < BestDepth))))
+				{
+					BestActor = Actor;
+					BestPrimitive = Primitive;
+					BestScore = DistanceSq;
+					BestArea = Area;
+					BestDepth = MinDepth;
+				}
+			}
+		}
+
+		if (!BestActor)
+		{
+			for (AActor* Actor : World->GetActors())
+			{
+				if (!Actor || !Actor->IsVisible())
+				{
+					continue;
+				}
+
+				float ScreenX = 0.0f;
+				float ScreenY = 0.0f;
+				float Depth = 0.0f;
+				if (!ProjectWorldToViewport(ViewProjection, Actor->GetActorLocation(), ViewportWidth, ViewportHeight, ScreenX, ScreenY, Depth))
+				{
+					continue;
+				}
+
+				const float DistanceSq = (MouseViewportX - ScreenX) * (MouseViewportX - ScreenX)
+					+ (MouseViewportY - ScreenY) * (MouseViewportY - ScreenY);
+				if (DistanceSq > CenterPickRadiusSq)
+				{
+					continue;
+				}
+
+				BestActor = Actor;
+				BestScore = DistanceSq;
+				BestDepth = Depth;
+				for (UActorComponent* Component : Actor->GetComponents())
+				{
+					UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component);
+					if (Primitive && Primitive->IsVisible())
+					{
+						BestPrimitive = Primitive;
+						break;
+					}
+				}
+				break;
+			}
+		}
+
+		OutPrimitive = BestPrimitive;
+		return BestActor;
 	}
 }
 
@@ -988,9 +1309,16 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	}
 	FInputManager& Input = FInputManager::Get();
 	ImVec2 MousePos = ImGui::GetIO().MousePos;
-	float LocalMouseX = MousePos.x - ViewportScreenRect.X; float LocalMouseY = MousePos.y - ViewportScreenRect.Y;
+	HoveredUIScreenGizmoAxis = HasUIScreenTranslateGizmo() ? HitTestUIScreenTranslateGizmo(MousePos) : 0;
 	float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
 	float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
+	float LocalMouseX = 0.0f;
+	float LocalMouseY = 0.0f;
+	if (!TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, LocalMouseX, LocalMouseY))
+	{
+		LocalMouseX = MousePos.x - ViewportScreenRect.X;
+		LocalMouseY = MousePos.y - ViewportScreenRect.Y;
+	}
 	FRay Ray = Camera->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
 	FRayHitResult HitResult;
 	bool bGizmoHit = FRayUtils::RaycastComponent(Gizmo, Ray, HitResult);
@@ -1013,6 +1341,10 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	else if (Input.IsMouseButtonDown(FInputManager::MOUSE_LEFT))
 	{
 		if (bIsMarqueeSelecting) { MarqueeCurrentPos = FVector(MousePos.x, MousePos.y, 0); }
+		else if (bDraggingUIScreenGizmo)
+		{
+			UpdateUIScreenTranslateDrag(MousePos);
+		}
 		else 
 		{ 
 			if (Gizmo->IsPressedOnHandle() && !Gizmo->IsHolding()) Gizmo->SetHolding(true); 
@@ -1025,7 +1357,11 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	}
 	else if (Input.IsKeyReleased(FInputManager::MOUSE_LEFT))
 	{
-		if (bIsMarqueeSelecting)
+		if (bDraggingUIScreenGizmo)
+		{
+			EndUIScreenTranslateDrag(true);
+		}
+		else if (bIsMarqueeSelecting)
 		{
 			bIsMarqueeSelecting = false;
 			float MinX = (std::min)(MarqueeStartPos.X, MarqueeCurrentPos.X); float MaxX = (std::max)(MarqueeStartPos.X, MarqueeCurrentPos.X);
@@ -1058,6 +1394,10 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	}
 	else if (Input.IsKeyReleased(VK_LBUTTON))
 	{
+		if (bDraggingUIScreenGizmo)
+		{
+			EndUIScreenTranslateDrag(true);
+		}
 		Gizmo->SetPressedOnHandle(false);
 		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
 		{
@@ -1070,6 +1410,10 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 {
 	FInputManager& Input = FInputManager::Get(); if (!bIsHovered) return;
+	if (BeginUIScreenTranslateDrag(ImGui::GetIO().MousePos))
+	{
+		return;
+	}
 	FScopeCycleCounter PickCounter; FRayHitResult HitResult{};
 	if (FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
 	{
@@ -1124,25 +1468,248 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 		}
 		else
 		{
-		AActor* BestActor = nullptr;
-		if (UWorld* W = GetWorld()) { W->RaycastPrimitives(Ray, HitResult, BestActor); }
-		bool bCtrlHeld = Input.IsKeyDown(VK_CONTROL);
-		if (BestActor == nullptr) { if (!bCtrlHeld) SelectionManager->ClearSelection(); }
-		else
-		{
-			if (bCtrlHeld) SelectionManager->ToggleSelect(BestActor);
-			else { if (SelectionManager->GetPrimarySelection() == BestActor) { if (HitResult.HitComponent) SelectionManager->SelectComponent(HitResult.HitComponent); } else SelectionManager->Select(BestActor); }
-		}
+			AActor* BestActor = nullptr;
+			if (UWorld* W = GetWorld())
+			{
+				W->RaycastPrimitives(Ray, HitResult, BestActor);
+				if (!BestActor)
+				{
+					EditorRaycastAllVisiblePrimitives(W, Ray, HitResult, BestActor);
+				}
+				if (!BestActor && Camera)
+				{
+					const ImVec2 MousePos = ImGui::GetIO().MousePos;
+					float LocalMouseX = 0.0f;
+					float LocalMouseY = 0.0f;
+					if (TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, LocalMouseX, LocalMouseY))
+					{
+						UPrimitiveComponent* ScreenHitPrimitive = nullptr;
+						const float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
+						const float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
+						BestActor = FindScreenSpacePrimitiveAt(W, Camera, LocalMouseX, LocalMouseY, VPWidth, VPHeight, ScreenHitPrimitive);
+						if (ScreenHitPrimitive)
+						{
+							HitResult.HitComponent = ScreenHitPrimitive;
+						}
+					}
+				}
+			}
+			bool bCtrlHeld = Input.IsKeyDown(VK_CONTROL);
+			if (BestActor == nullptr) { if (!bCtrlHeld) SelectionManager->ClearSelection(); }
+			else
+			{
+				if (bCtrlHeld) SelectionManager->ToggleSelect(BestActor);
+				else { if (SelectionManager->GetPrimarySelection() == BestActor) { if (HitResult.HitComponent) SelectionManager->SelectComponent(HitResult.HitComponent); } else SelectionManager->Select(BestActor); }
+			}
 		}
 	}
 	if (OverlayStatSystem) { const uint64 PickCycles = PickCounter.Finish(); const double ElapsedMs = FPlatformTime::ToMilliseconds(PickCycles); OverlayStatSystem->RecordPickingAttempt(ElapsedMs); }
 }
 
+bool FEditorViewportClient::HasUIScreenTranslateGizmo() const
+{
+	if (!SelectionManager || !Gizmo || Gizmo->GetMode() != EGizmoMode::Translate)
+	{
+		return false;
+	}
+
+	USceneComponent* SelectedComponent = SelectionManager->GetSelectedComponent();
+	return SelectedComponent && IsUIScreenTransformableComponent(SelectedComponent);
+}
+
+int32 FEditorViewportClient::HitTestUIScreenTranslateGizmo(const ImVec2& MousePos) const
+{
+	if (!HasUIScreenTranslateGizmo())
+	{
+		return static_cast<int32>(EUIScreenGizmoAxis::None);
+	}
+
+	USceneComponent* SelectedComponent = SelectionManager->GetSelectedComponent();
+	float X = 0.0f;
+	float Y = 0.0f;
+	float Width = 0.0f;
+	float Height = 0.0f;
+	if (!GetUIScreenComponentBounds(SelectedComponent, X, Y, Width, Height))
+	{
+		return static_cast<int32>(EUIScreenGizmoAxis::None);
+	}
+
+	float CenterX = X + Width * 0.5f;
+	float CenterY = Y + Height * 0.5f;
+	if (!TryConvertViewportPixelToScreenPoint(CenterX, CenterY, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, CenterX, CenterY))
+	{
+		CenterX += ViewportScreenRect.X;
+		CenterY += ViewportScreenRect.Y;
+	}
+	const ImVec2 Local(MousePos.x - CenterX, MousePos.y - CenterY);
+	const float CenterHalf = 8.0f;
+	const float AxisThickness = 6.0f;
+	const float AxisLength = 48.0f;
+
+	if (std::abs(Local.x) <= CenterHalf && std::abs(Local.y) <= CenterHalf)
+	{
+		return static_cast<int32>(EUIScreenGizmoAxis::XY);
+	}
+
+	if (Local.x >= CenterHalf && Local.x <= AxisLength && std::abs(Local.y) <= AxisThickness)
+	{
+		return static_cast<int32>(EUIScreenGizmoAxis::X);
+	}
+
+	if (Local.y >= CenterHalf && Local.y <= AxisLength && std::abs(Local.x) <= AxisThickness)
+	{
+		return static_cast<int32>(EUIScreenGizmoAxis::Y);
+	}
+
+	return static_cast<int32>(EUIScreenGizmoAxis::None);
+}
+
+bool FEditorViewportClient::BeginUIScreenTranslateDrag(const ImVec2& MousePos)
+{
+	if (!HasUIScreenTranslateGizmo())
+	{
+		return false;
+	}
+
+	const int32 HitAxis = HitTestUIScreenTranslateGizmo(MousePos);
+	if (HitAxis == static_cast<int32>(EUIScreenGizmoAxis::None))
+	{
+		return false;
+	}
+
+	if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+	{
+		EditorEngine->BeginTrackedTransformChange();
+	}
+
+	ActiveUIScreenGizmoAxis = HitAxis;
+	float ViewportMouseX = 0.0f;
+	float ViewportMouseY = 0.0f;
+	if (TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, ViewportMouseX, ViewportMouseY))
+	{
+		LastUIScreenGizmoMousePos = ImVec2(ViewportMouseX, ViewportMouseY);
+	}
+	else
+	{
+		LastUIScreenGizmoMousePos = MousePos;
+	}
+	bDraggingUIScreenGizmo = true;
+	return true;
+}
+
+void FEditorViewportClient::UpdateUIScreenTranslateDrag(const ImVec2& MousePos)
+{
+	if (!bDraggingUIScreenGizmo || !SelectionManager)
+	{
+		return;
+	}
+
+	USceneComponent* SelectedComponent = SelectionManager->GetSelectedComponent();
+	if (!IsUIScreenTransformableComponent(SelectedComponent))
+	{
+		return;
+	}
+
+	FVector ScreenPosition;
+	if (!GetUIScreenComponentPosition(SelectedComponent, ScreenPosition))
+	{
+		return;
+	}
+
+	float ViewportMouseX = 0.0f;
+	float ViewportMouseY = 0.0f;
+	ImVec2 CurrentMouseInViewport = MousePos;
+	if (TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, ViewportMouseX, ViewportMouseY))
+	{
+		CurrentMouseInViewport = ImVec2(ViewportMouseX, ViewportMouseY);
+	}
+
+	const ImVec2 Delta(CurrentMouseInViewport.x - LastUIScreenGizmoMousePos.x, CurrentMouseInViewport.y - LastUIScreenGizmoMousePos.y);
+	switch (static_cast<EUIScreenGizmoAxis>(ActiveUIScreenGizmoAxis))
+	{
+	case EUIScreenGizmoAxis::X:
+		ScreenPosition.X += Delta.x;
+		break;
+	case EUIScreenGizmoAxis::Y:
+		ScreenPosition.Y += Delta.y;
+		break;
+	case EUIScreenGizmoAxis::XY:
+		ScreenPosition.X += Delta.x;
+		ScreenPosition.Y += Delta.y;
+		break;
+	default:
+		return;
+	}
+
+	SetUIScreenComponentPosition(SelectedComponent, ScreenPosition);
+	LastUIScreenGizmoMousePos = CurrentMouseInViewport;
+}
+
+void FEditorViewportClient::EndUIScreenTranslateDrag(bool bCommitChange)
+{
+	if (!bDraggingUIScreenGizmo)
+	{
+		return;
+	}
+
+	bDraggingUIScreenGizmo = false;
+	ActiveUIScreenGizmoAxis = static_cast<int32>(EUIScreenGizmoAxis::None);
+	if (bCommitChange)
+	{
+		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+		{
+			EditorEngine->CommitTrackedTransformChange();
+		}
+	}
+}
+
 void FEditorViewportClient::UpdateLayoutRect()
 {
 	if (!LayoutWindow) return;
-	const FRect& R = LayoutWindow->GetRect(); ViewportScreenRect = R;
-	if (Viewport) { uint32 SlotW = static_cast<uint32>(R.Width); uint32 SlotH = static_cast<uint32>(R.Height); if (SlotW > 0 && SlotH > 0 && (SlotW != Viewport->GetWidth() || SlotH != Viewport->GetHeight())) Viewport->RequestResize(SlotW, SlotH); }
+	const FRect& R = LayoutWindow->GetRect();
+	ViewportScreenRect = R;
+
+	if (!Viewport)
+	{
+		return;
+	}
+
+	if (FProjectSettings::Get().Game.bLockWindowResolution)
+	{
+		const uint32 TargetW = (std::max)(320u, FProjectSettings::Get().Game.WindowWidth);
+		const uint32 TargetH = (std::max)(240u, FProjectSettings::Get().Game.WindowHeight);
+		if (Camera)
+		{
+			Camera->OnResize(static_cast<int32>(TargetW), static_cast<int32>(TargetH));
+		}
+		if (Viewport->GetWidth() != TargetW || Viewport->GetHeight() != TargetH)
+		{
+			Viewport->RequestResize(TargetW, TargetH);
+		}
+
+		if (R.Width > 0.0f && R.Height > 0.0f)
+		{
+			const float Scale = (std::min)(R.Width / static_cast<float>(TargetW), R.Height / static_cast<float>(TargetH));
+			const float DrawW = static_cast<float>(TargetW) * Scale;
+			const float DrawH = static_cast<float>(TargetH) * Scale;
+			ViewportScreenRect.X = R.X + (R.Width - DrawW) * 0.5f;
+			ViewportScreenRect.Y = R.Y + (R.Height - DrawH) * 0.5f;
+			ViewportScreenRect.Width = DrawW;
+			ViewportScreenRect.Height = DrawH;
+		}
+		return;
+	}
+
+	uint32 SlotW = static_cast<uint32>(R.Width);
+	uint32 SlotH = static_cast<uint32>(R.Height);
+	if (Camera && SlotW > 0 && SlotH > 0)
+	{
+		Camera->OnResize(static_cast<int32>(SlotW), static_cast<int32>(SlotH));
+	}
+	if (SlotW > 0 && SlotH > 0 && (SlotW != Viewport->GetWidth() || SlotH != Viewport->GetHeight()))
+	{
+		Viewport->RequestResize(SlotW, SlotH);
+	}
 }
 
 void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
@@ -1173,14 +1740,74 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 		ImVec2 RectMax((std::max)(MarqueeStartPos.X, MarqueeCurrentPos.X), (std::max)(MarqueeStartPos.Y, MarqueeCurrentPos.Y));
 		ForegroundDrawList->AddRect(RectMin, RectMax, IM_COL32(255, 255, 255, 255), 0.0f, 0, 5.0f);
 	}
+
+	DrawUIScreenTranslateGizmo();
+}
+
+void FEditorViewportClient::DrawUIScreenTranslateGizmo()
+{
+	if (!HasUIScreenTranslateGizmo())
+	{
+		return;
+	}
+
+	USceneComponent* SelectedComponent = SelectionManager->GetSelectedComponent();
+	float X = 0.0f;
+	float Y = 0.0f;
+	float Width = 0.0f;
+	float Height = 0.0f;
+	if (!GetUIScreenComponentBounds(SelectedComponent, X, Y, Width, Height))
+	{
+		return;
+	}
+
+	float CenterX = X + Width * 0.5f;
+	float CenterY = Y + Height * 0.5f;
+	if (!TryConvertViewportPixelToScreenPoint(CenterX, CenterY, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, CenterX, CenterY))
+	{
+		CenterX += ViewportScreenRect.X;
+		CenterY += ViewportScreenRect.Y;
+	}
+	const float AxisLength = 48.0f;
+	const float CenterHalf = 8.0f;
+	const float Thickness = 3.0f;
+	const bool bHoverX = HoveredUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::X);
+	const bool bHoverY = HoveredUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::Y);
+	const bool bHoverXY = HoveredUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::XY);
+	const bool bActiveX = ActiveUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::X);
+	const bool bActiveY = ActiveUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::Y);
+	const bool bActiveXY = ActiveUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::XY);
+	const ImU32 XColor = (bHoverX || bActiveX) ? IM_COL32(255, 120, 120, 255) : IM_COL32(230, 70, 70, 255);
+	const ImU32 YColor = (bHoverY || bActiveY) ? IM_COL32(120, 255, 160, 255) : IM_COL32(70, 210, 110, 255);
+	const ImU32 CenterColor = (bHoverXY || bActiveXY) ? IM_COL32(120, 190, 255, 255) : IM_COL32(26, 138, 245, 255);
+
+	ImDrawList* DrawList = ImGui::GetForegroundDrawList(ImGui::GetMainViewport());
+	const ImVec2 Center(CenterX, CenterY);
+	DrawList->AddLine(Center, ImVec2(CenterX + AxisLength, CenterY), XColor, Thickness);
+	DrawList->AddTriangleFilled(ImVec2(CenterX + AxisLength + 8.0f, CenterY), ImVec2(CenterX + AxisLength - 4.0f, CenterY - 6.0f), ImVec2(CenterX + AxisLength - 4.0f, CenterY + 6.0f), XColor);
+	DrawList->AddLine(Center, ImVec2(CenterX, CenterY + AxisLength), YColor, Thickness);
+	DrawList->AddTriangleFilled(ImVec2(CenterX, CenterY + AxisLength + 8.0f), ImVec2(CenterX - 6.0f, CenterY + AxisLength - 4.0f), ImVec2(CenterX + 6.0f, CenterY + AxisLength - 4.0f), YColor);
+	DrawList->AddRectFilled(ImVec2(CenterX - CenterHalf, CenterY - CenterHalf), ImVec2(CenterX + CenterHalf, CenterY + CenterHalf), CenterColor, 2.0f);
+	DrawList->AddRect(ImVec2(CenterX - CenterHalf, CenterY - CenterHalf), ImVec2(CenterX + CenterHalf, CenterY + CenterHalf), IM_COL32(255, 255, 255, 220), 2.0f, 0, 1.5f);
 }
 
 bool FEditorViewportClient::GetCursorViewportPosition(uint32& OutX, uint32& OutY) const
 {
-	if (!bIsActive) return false;
 	ImVec2 MousePos = ImGui::GetIO().MousePos;
-	float LocalX = MousePos.x - ViewportScreenRect.X; float LocalY = MousePos.y - ViewportScreenRect.Y;
-	if (LocalX >= 0 && LocalY >= 0 && LocalX < ViewportScreenRect.Width && LocalY < ViewportScreenRect.Height) { OutX = static_cast<uint32>(LocalX); OutY = static_cast<uint32>(LocalY); return true; }
+	if (!bIsHovered && !bIsActive)
+	{
+		return false;
+	}
+
+	float ViewportX = 0.0f;
+	float ViewportY = 0.0f;
+	if (TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, ViewportX, ViewportY))
+	{
+		OutX = static_cast<uint32>(ViewportX);
+		OutY = static_cast<uint32>(ViewportY);
+		return true;
+	}
+
 	return false;
 }
 

@@ -15,6 +15,7 @@ public:
 
 	void Select(AActor* Actor);
 	void SelectActors(const TArray<AActor*>& Actors);
+	void AddSelect(AActor* Actor);
 	void SelectRange(AActor* ClickedActor, const TArray<AActor*>& ActorList);
 	void ToggleSelect(AActor* Actor);
 	void Deselect(AActor* Actor);

@@ -24,6 +24,8 @@ public:
 
 	void SetBillboardEnabled(bool bEnable) { bIsBillboard = bEnable; }
 	bool IsBillboardEnabled() const { return bIsBillboard; }
+	bool ParticipatesInRenderSpatialStructure() const override { return false; }
+	bool ParticipatesInPickingSpatialStructure() const override { return true; }
 
 	// --- Texture ---
 	void SetTexture(class UTexture2D* InTexture);

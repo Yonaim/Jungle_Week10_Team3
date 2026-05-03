@@ -7,6 +7,7 @@
 void FWindowsWindow::Initialize(HWND InHWindow)
 {
 	HWindow = InHWindow;
+	bResizeLocked = false;
 
 	RECT Rect;
 	GetClientRect(HWindow, &Rect);
@@ -32,7 +33,7 @@ void FWindowsWindow::Minimize() const
 
 void FWindowsWindow::ToggleMaximize() const
 {
-	if (!HWindow)
+	if (!HWindow || bResizeLocked)
 	{
 		return;
 	}
@@ -46,6 +47,55 @@ void FWindowsWindow::Close() const
 	{
 		PostMessage(HWindow, WM_CLOSE, 0, 0);
 	}
+}
+
+void FWindowsWindow::ResizeClientArea(unsigned int InWidth, unsigned int InHeight) const
+{
+	if (!HWindow || InWidth == 0 || InHeight == 0)
+	{
+		return;
+	}
+
+	RECT WindowRect{};
+	RECT ClientRect{};
+	if (!GetWindowRect(HWindow, &WindowRect) || !GetClientRect(HWindow, &ClientRect))
+	{
+		return;
+	}
+
+	const int CurrentWindowWidth = WindowRect.right - WindowRect.left;
+	const int CurrentWindowHeight = WindowRect.bottom - WindowRect.top;
+	const int CurrentClientWidth = ClientRect.right - ClientRect.left;
+	const int CurrentClientHeight = ClientRect.bottom - ClientRect.top;
+	const int TargetWindowWidth = CurrentWindowWidth + (static_cast<int>(InWidth) - CurrentClientWidth);
+	const int TargetWindowHeight = CurrentWindowHeight + (static_cast<int>(InHeight) - CurrentClientHeight);
+
+	SetWindowPos(HWindow, nullptr, 0, 0, TargetWindowWidth, TargetWindowHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void FWindowsWindow::SetResizeLocked(bool bLocked) const
+{
+	if (!HWindow)
+	{
+		return;
+	}
+
+	bResizeLocked = bLocked;
+
+	LONG_PTR Style = GetWindowLongPtr(HWindow, GWL_STYLE);
+	if (bResizeLocked)
+	{
+		Style &= ~static_cast<LONG_PTR>(WS_THICKFRAME);
+		Style &= ~static_cast<LONG_PTR>(WS_MAXIMIZEBOX);
+	}
+	else
+	{
+		Style |= static_cast<LONG_PTR>(WS_THICKFRAME);
+		Style |= static_cast<LONG_PTR>(WS_MAXIMIZEBOX);
+	}
+
+	SetWindowLongPtr(HWindow, GWL_STYLE, Style);
+	SetWindowPos(HWindow, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 }
 
 void FWindowsWindow::StartWindowDrag() const

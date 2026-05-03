@@ -7,6 +7,7 @@
 #include "Debug/DebugDrawQueue.h"
 
 class AActor;
+class UActorComponent;
 class UPrimitiveComponent;
 class UWorld;
 struct FFrameContext;
@@ -37,6 +38,8 @@ public:
 	// --- 선택 ---
 	void SetProxySelected(FPrimitiveSceneProxy* Proxy, bool bSelected);
 	bool IsProxySelected(const FPrimitiveSceneProxy* Proxy) const;
+	void SetSelectedComponent(const UActorComponent* Component) { SelectedComponent = Component; }
+	const UActorComponent* GetSelectedComponent() const { return SelectedComponent; }
 	const TSet<AActor*>& GetSelectedActors() const { return SelectedActors; }
 
 	// --- 조회 ---
@@ -128,6 +131,7 @@ private:
 
 	// 선택된 Actor (프록시 선택/해제 시 자동 관리)
 	TSet<AActor*> SelectedActors;
+	const UActorComponent* SelectedComponent = nullptr;
 
 	// bNeverCull 프록시 (Gizmo 등) — Frustum 쿼리와 무관하게 항상 수집
 	TArray<FPrimitiveSceneProxy*> NeverCullProxies;

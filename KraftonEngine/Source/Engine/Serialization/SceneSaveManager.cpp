@@ -165,6 +165,7 @@ namespace SceneKeys
 	static constexpr const char* Children = "Children";
 	static constexpr const char* HiddenInComponentTree = "bHiddenInComponentTree";
 	static constexpr const char* GameModeClass = "GameModeClass";
+	static constexpr const char* OutlinerFolders = "OutlinerFolders";
 }
 
 static void SerializeComponentEditorMetadata(json::JSON& Node, const UActorComponent* Comp)
@@ -302,6 +303,19 @@ json::JSON FSceneSaveManager::SerializeWorld(UWorld* World, const FWorldContext&
 		if (!GMClass.empty())
 		{
 			w[SceneKeys::GameModeClass] = GMClass;
+		}
+
+		if (!PersistentLevel->GetOutlinerFolders().empty())
+		{
+			JSON FolderNames = json::Array();
+			for (const FString& FolderName : PersistentLevel->GetOutlinerFolders())
+			{
+				if (!FolderName.empty())
+				{
+					FolderNames.append(FolderName);
+				}
+			}
+			w[SceneKeys::OutlinerFolders] = FolderNames;
 		}
 	}
 
@@ -837,6 +851,23 @@ void FSceneSaveManager::LoadSceneFromJSONString(const string& SceneJson, FWorldC
 		if (ULevel* PersistentLevel = World->GetPersistentLevel())
 		{
 			PersistentLevel->SetGameModeClassName(root[SceneKeys::GameModeClass].ToString());
+		}
+	}
+
+	if (root.hasKey(SceneKeys::OutlinerFolders))
+	{
+		if (ULevel* PersistentLevel = World->GetPersistentLevel())
+		{
+			TArray<FString> FolderNames;
+			for (auto& FolderJSON : root[SceneKeys::OutlinerFolders].ArrayRange())
+			{
+				const FString FolderName = FolderJSON.ToString();
+				if (!FolderName.empty())
+				{
+					FolderNames.push_back(FolderName);
+				}
+			}
+			PersistentLevel->SetOutlinerFolders(FolderNames);
 		}
 	}
 

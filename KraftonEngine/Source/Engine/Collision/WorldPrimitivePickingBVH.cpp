@@ -54,7 +54,7 @@ void FWorldPrimitivePickingBVH::BuildNow(const TArray<AActor*>& Actors)
 
 		for (UPrimitiveComponent* Primitive : Actor->GetPrimitiveComponents())
 		{
-			if (!Primitive || !Primitive->IsVisible())
+			if (!Primitive || !Primitive->IsVisible() || !Primitive->ParticipatesInPickingSpatialStructure())
 			{
 				continue;
 			}

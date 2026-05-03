@@ -67,7 +67,7 @@ FBoundingBox FSpatialPartition::BuildActorVisibleBounds(AActor* Actor, bool bUpd
 
 	for (UPrimitiveComponent* Prim : Actor->GetPrimitiveComponents())
 	{
-		if (!Prim || !Prim->IsVisible())
+		if (!Prim || !Prim->IsVisible() || !Prim->ParticipatesInRenderSpatialStructure())
 		{
 			continue;
 		}
@@ -125,7 +125,7 @@ void FSpatialPartition::RebuildRootBounds(const FBoundingBox& RequiredBounds)
 
 		Prim->ClearOctreeLocation();
 
-		if (Prim->IsVisible())
+		if (Prim->IsVisible() && Prim->ParticipatesInRenderSpatialStructure())
 		{
 			ExpandBoundsByBox(NewRootBounds, Prim->GetWorldBoundingBox());
 		}
@@ -143,7 +143,7 @@ void FSpatialPartition::RebuildRootBounds(const FBoundingBox& RequiredBounds)
 
 	for (UPrimitiveComponent* Prim : AllPrimitives)
 	{
-		if (!Prim || !Prim->IsVisible())
+		if (!Prim || !Prim->IsVisible() || !Prim->ParticipatesInRenderSpatialStructure())
 		{
 			continue;
 		}
@@ -203,6 +203,12 @@ void FSpatialPartition::FlushPrimitive()
 		{
 			if (!Prim)
 			{
+				continue;
+			}
+
+			if (!Prim->ParticipatesInRenderSpatialStructure())
+			{
+				RemoveSinglePrimitive(Prim);
 				continue;
 			}
 
@@ -331,7 +337,7 @@ void FSpatialPartition::InsertActor(AActor* Actor)
 
 	for (UPrimitiveComponent* Prim : Actor->GetPrimitiveComponents())
 	{
-		if (!Prim || !Prim->IsVisible()) continue;
+		if (!Prim || !Prim->IsVisible() || !Prim->ParticipatesInRenderSpatialStructure()) continue;
 
 		if (!Octree->Insert(Prim))
 		{
@@ -386,7 +392,7 @@ void FSpatialPartition::QueryFrustumAllPrimitive(const FConvexVolume& ConvexVolu
 
 	for (UPrimitiveComponent* Prim : OverflowPrimitives)
 	{
-		if (!Prim || !Prim->IsVisible()) continue;
+		if (!Prim || !Prim->IsVisible() || !Prim->ParticipatesInRenderSpatialStructure()) continue;
 
 		if (ConvexVolume.IntersectAABB(Prim->GetWorldBoundingBox()))
 		{
@@ -404,7 +410,7 @@ void FSpatialPartition::QueryFrustumAllProxies(const FConvexVolume& ConvexVolume
 
 	for (UPrimitiveComponent* Prim : OverflowPrimitives)
 	{
-		if (!Prim || !Prim->IsVisible()) continue;
+		if (!Prim || !Prim->IsVisible() || !Prim->ParticipatesInRenderSpatialStructure()) continue;
 
 		if (ConvexVolume.IntersectAABB(Prim->GetWorldBoundingBox()))
 		{
@@ -424,7 +430,7 @@ void FSpatialPartition::QueryRayAllPrimitive(const FRay& Ray, TArray<UPrimitiveC
 
 	for (UPrimitiveComponent* Prim : OverflowPrimitives)
 	{
-		if (!Prim || !Prim->IsVisible()) continue;
+		if (!Prim || !Prim->IsVisible() || !Prim->ParticipatesInRenderSpatialStructure()) continue;
 
 		const FBoundingBox Box = Prim->GetWorldBoundingBox();
 		if (FRayUtils::CheckRayAABB(Ray, Box.Min, Box.Max))

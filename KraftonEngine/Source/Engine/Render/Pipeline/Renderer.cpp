@@ -20,7 +20,7 @@ void FRenderer::Create(HWND hWindow)
 
 	if (Device.GetDevice() == nullptr)
 	{
-		UE_LOG("Failed to create D3D Device.");
+		UE_LOG_CATEGORY(Renderer, Error, "Failed to create D3D Device.");
 	}
 
 	{

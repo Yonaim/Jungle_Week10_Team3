@@ -24,6 +24,11 @@ PS_Input_TexColor VS(VS_Input_PTC input)
 
 float4 PS(PS_Input_TexColor input) : SV_TARGET
 {
+    if (input.texcoord.x < 0.0f || input.texcoord.y < 0.0f)
+    {
+        return float4(input.color.rgb, 1.0f);
+    }
+
     float4 col = FontAtlas.Sample(LinearClampSampler, input.texcoord);
     const float coverage = GetFontCoverage(col, input.color.a);
 

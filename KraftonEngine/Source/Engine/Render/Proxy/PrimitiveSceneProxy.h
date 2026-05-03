@@ -53,6 +53,7 @@ public:
 	uint32                GetProxyId()    const { return ProxyId; }
 	EPrimitiveProxyFlags  GetProxyFlags() const { return ProxyFlags; }
 	bool HasProxyFlag(EPrimitiveProxyFlags F) const { return (ProxyFlags & F) != EPrimitiveProxyFlags::None; }
+	const UPrimitiveComponent* GetOwnerComponent() const { return Owner; }
 
 	// --- 가시성 / 선택 / 그림자 ---
 	bool IsVisible()    const { return bVisible; }

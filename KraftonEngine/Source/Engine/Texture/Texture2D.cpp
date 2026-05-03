@@ -2,6 +2,7 @@
 #include "Object/ObjectFactory.h"
 #include "Core/Log.h"
 #include "Platform/Paths.h"
+#include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
 
 #include <algorithm>
@@ -62,6 +63,40 @@ namespace
 			|| Name == L"Bin"
 			|| Name == L"Build"
 			|| Name == L"Intermediate";
+	}
+
+	bool ShouldIncludeInTextureAssetList(const std::filesystem::path& ProjectRelativePath)
+	{
+		const std::filesystem::path NormalizedPath = ProjectRelativePath.lexically_normal();
+		if (NormalizedPath.empty())
+		{
+			return false;
+		}
+
+		auto It = NormalizedPath.begin();
+		if (It == NormalizedPath.end() || *It != L"Asset")
+		{
+			return true;
+		}
+
+		++It;
+		if (It == NormalizedPath.end())
+		{
+			return true;
+		}
+
+		if (*It == L"Editor")
+		{
+			return false;
+		}
+
+		if (*It != L"Content")
+		{
+			return true;
+		}
+
+		++It;
+		return It == NormalizedPath.end() || *It != L"Font";
 	}
 
 	bool LoadCPUTextureRGBA(const FString& FilePath, uint32& OutWidth, uint32& OutHeight, std::vector<uint8>& OutPixels)
@@ -228,9 +263,16 @@ void UTexture2D::ScanTextureAssets()
 		}
 		else if (Entry.is_regular_file(ErrorCode) && IsSupportedTextureExtension(Entry.path()))
 		{
+			const std::filesystem::path RelativePath = Entry.path().lexically_relative(ProjectRoot).lexically_normal();
+			if (!ShouldIncludeInTextureAssetList(RelativePath))
+			{
+				It.increment(ErrorCode);
+				continue;
+			}
+
 			FTextureAssetListItem Item;
 			Item.DisplayName = FPaths::ToUtf8(Entry.path().filename().wstring());
-			Item.FullPath = FPaths::ToUtf8(Entry.path().lexically_relative(ProjectRoot).generic_wstring());
+			Item.FullPath = FPaths::ToUtf8(RelativePath.generic_wstring());
 			AvailableTextureFiles.push_back(std::move(Item));
 		}
 
@@ -298,21 +340,44 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 {
 	const FString NormalizedPath = NormalizeTexturePath(FilePath);
 	const std::wstring WidePath = ResolveTexturePathOnDisk(NormalizedPath);
+	const std::filesystem::path ExtensionPath = std::filesystem::path(WidePath).extension();
+	FString Extension = FPaths::ToUtf8(ExtensionPath.generic_wstring());
+	std::transform(Extension.begin(), Extension.end(), Extension.begin(),
+		[](unsigned char Character)
+		{
+			return static_cast<char>(std::tolower(Character));
+		});
 
 	ID3D11Resource* Resource = nullptr;
-	HRESULT hr = DirectX::CreateWICTextureFromFileEx(
-		Device, WidePath.c_str(),
-		0,                                    // maxsize
-		D3D11_USAGE_DEFAULT,                  // usage
-		D3D11_BIND_SHADER_RESOURCE,           // bindFlags
-		0,                                    // cpuAccessFlags
-		0,                                    // miscFlags
-		DirectX::WIC_LOADER_IGNORE_SRGB,     // sRGB 메타데이터 무시 → UNORM 포맷 강제
-		&Resource, &SRV);
+	HRESULT hr = S_OK;
+	if (Extension == ".dds")
+	{
+		hr = DirectX::CreateDDSTextureFromFileEx(
+			Device, WidePath.c_str(),
+			0,                           // maxsize
+			D3D11_USAGE_DEFAULT,         // usage
+			D3D11_BIND_SHADER_RESOURCE,  // bindFlags
+			0,                           // cpuAccessFlags
+			0,                           // miscFlags
+			DirectX::DDS_LOADER_DEFAULT,
+			&Resource, &SRV);
+	}
+	else
+	{
+		hr = DirectX::CreateWICTextureFromFileEx(
+			Device, WidePath.c_str(),
+			0,                                    // maxsize
+			D3D11_USAGE_DEFAULT,                  // usage
+			D3D11_BIND_SHADER_RESOURCE,           // bindFlags
+			0,                                    // cpuAccessFlags
+			0,                                    // miscFlags
+			DirectX::WIC_LOADER_IGNORE_SRGB,      // sRGB 메타데이터 무시 → UNORM 포맷 강제
+			&Resource, &SRV);
+	}
 
 	if (FAILED(hr))
 	{
-		UE_LOG("Failed to load texture: %s", FilePath.c_str());
+		UE_LOG_CATEGORY(Texture, Error, "Failed to load texture: %s", FilePath.c_str());
 		return false;
 	}
 

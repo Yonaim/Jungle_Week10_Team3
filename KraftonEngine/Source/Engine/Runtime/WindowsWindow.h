@@ -22,8 +22,11 @@ public:
 	void Minimize() const;
 	void ToggleMaximize() const;
 	void Close() const;
+	void ResizeClientArea(unsigned int InWidth, unsigned int InHeight) const;
+	void SetResizeLocked(bool bLocked) const;
 	void StartWindowDrag() const;
 	bool IsWindowMaximized() const;
+	bool IsResizeLocked() const { return bResizeLocked; }
 	float GetTopFrameInset() const;
 	void SetTitleBarDragRegion(float X, float Y, float InWidth, float InHeight);
 	void ClearTitleBarDragRegion();
@@ -38,6 +41,7 @@ private:
 	HWND HWindow = nullptr;
 	float Width = 0.f;
 	float Height = 0.f;
+	mutable bool bResizeLocked = false;
 	RECT TitleBarDragRegion{ 0, 0, 0, 0 };
 	bool bHasTitleBarDragRegion = false;
 };

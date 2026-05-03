@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Core/CoreTypes.h"
 #include "Core/Log.h"
+#include <array>
 #include <cstdarg>
 #include <functional>
 #include <sstream>
@@ -11,6 +12,14 @@
 
 #include "Editor/UI/EditorWidget.h"
 
+struct FConsoleLogEntry
+{
+	ELogLevel Level = ELogLevel::Info;
+	FString Category;
+	FString Message;
+	FString FormattedMessage;
+};
+
 // ============================================================
 // FConsoleLogOutputDevice — ImGui 콘솔에 로그를 출력하는 디바이스
 // FEditorConsoleWidget이 소유하며, Initialize/Shutdown 시 등록/해제한다.
@@ -18,15 +27,15 @@
 class FConsoleLogOutputDevice : public ILogOutputDevice
 {
 public:
-	void Write(const char* Msg) override;
+	void Log(ELogLevel Level, const char* Category, const char* Message, const char* FormattedMessage) override;
 
 	void Clear();
-	int32 GetMessageCount() const { return Messages.Size; }
-	char* GetMessageAt(int32 Index) const { return Messages[Index]; }
-	bool PassFilter(const ImGuiTextFilter& Filter, int32 Index) const { return Filter.PassFilter(Messages[Index]); }
+	int32 GetEntryCount() const { return static_cast<int32>(Entries.size()); }
+	const FConsoleLogEntry& GetEntryAt(int32 Index) const { return Entries[Index]; }
+	const TArray<FConsoleLogEntry>& GetEntries() const { return Entries; }
 
 private:
-	ImVector<char*> Messages;
+	TArray<FConsoleLogEntry> Entries;
 	bool AutoScroll = true;
 	bool ScrollToBottom = true;
 
@@ -53,10 +62,15 @@ public:
 	}
 
 private:
+	static constexpr int32 LogLevelCount = static_cast<int32>(ELogLevel::Error) + 1;
+
 	char InputBuf[256]{};
+	char SearchBuf[256]{};
 	static ImVector<char*> History;
 	int32 HistoryPos = -1;
-	ImGuiTextFilter Filter;
+	bool bReclaimFocus = false;
+	ELogLevel MinimumVisibleLevel = ELogLevel::Verbose;
+	std::array<bool, LogLevelCount> LevelVisibility{ true, true, true, true, true };
 
 	FConsoleLogOutputDevice ConsoleDevice;
 
@@ -79,6 +93,7 @@ private:
 	TMap<FString, FConsoleCommand> Commands;
 	TArray<FCompletionCandidate> CompletionCandidates;
 
+	bool ShouldDisplayEntry(ELogLevel Level, const FString& Text) const;
 	void RegisterCommand(const FString& Name, CommandFn Fn, const FString& Category, const FString& Usage, const FString& Description);
 	void RegisterDefaultCommands();
 	void RegisterSystemCommands();

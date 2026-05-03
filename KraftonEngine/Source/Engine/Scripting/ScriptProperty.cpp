@@ -248,7 +248,7 @@ bool FScriptProperty::LoadDescs(const FString& ScriptPath, TArray<FScriptPropert
 			const FString TypeName = DescTable["type"].get_or(FString("float"));
 			if (!FScriptProperty::TryParseType(TypeName, Type))
 			{
-				UE_LOG("[ScriptProperty] Unknown property type '%s' for '%s'.", TypeName.c_str(), Name.c_str());
+				UE_LOG_CATEGORY(ScriptProperty, Warning, "Unknown property type '%s' for '%s'.", TypeName.c_str(), Name.c_str());
 				continue;
 			}
 
@@ -288,7 +288,7 @@ bool FScriptProperty::LoadDescs(const FString& ScriptPath, TArray<FScriptPropert
 	{
 		const sol::optional<sol::error> MaybeError = Result.get<sol::optional<sol::error>>();
 		OutError = MaybeError ? MaybeError->what() : FString("Unknown Lua property error.");
-		UE_LOG("[ScriptProperty] %s", OutError.c_str());
+		UE_LOG_CATEGORY(ScriptProperty, Error, "%s", OutError.c_str());
 		return false;
 	}
 

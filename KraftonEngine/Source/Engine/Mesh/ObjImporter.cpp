@@ -148,7 +148,7 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 	std::ifstream File(FPaths::ToWide(ObjFilePath), std::ios::binary | std::ios::ate);
 	if (!File.is_open())
 	{
-		UE_LOG("Failed to open OBJ file: %s", ObjFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Error, "Failed to open OBJ file: %s", ObjFilePath.c_str());
 		return false;
 	}
 
@@ -157,7 +157,7 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 	TArray<char> Buffer(FileSize);
 	if (!File.read(Buffer.data(), FileSize))
 	{
-		UE_LOG("Failed to read OBJ file: %s", ObjFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Error, "Failed to read OBJ file: %s", ObjFilePath.c_str());
 		return false;
 	}
 
@@ -235,7 +235,7 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 
 			if (FaceVertices.size() < 3)
 			{
-				UE_LOG("Face with less than 3 vertices");
+				UE_LOG_CATEGORY(ObjImporter, Warning, "Face with less than 3 vertices");
 				continue;
 			}
 
@@ -261,7 +261,7 @@ bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 				if (CommentPos != std::string_view::npos) { Line = Line.substr(0, CommentPos); }
 				FStringParser::TrimLeft(Line);
 				OutObjInfo.MaterialLibraryFilePath = FPaths::ResolveAssetPath(ObjFilePath, std::string(Line));
-				UE_LOG("Found material library: %s", OutObjInfo.MaterialLibraryFilePath.c_str());
+				UE_LOG_CATEGORY(ObjImporter, Info, "Found material library: %s", OutObjInfo.MaterialLibraryFilePath.c_str());
 			}
 			else if (Prefix == "usemtl")
 			{
@@ -313,7 +313,7 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 
 	if (!File.is_open())
 	{
-		UE_LOG("Failed to open MTL file: %s", MtlFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Error, "Failed to open MTL file: %s", MtlFilePath.c_str());
 		return false;
 	}
 
@@ -322,7 +322,7 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 	TArray<char> Buffer(FileSize);
 	if (!File.read(Buffer.data(), FileSize))
 	{
-		UE_LOG("Failed to read MTL file: %s", MtlFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Error, "Failed to read MTL file: %s", MtlFilePath.c_str());
 		return false;
 	}
 
@@ -559,7 +559,7 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 		{
 			MatchedMaterial = &(*It);
 			// 섹션 머티리얼 슬롯 이름과 일치하는 머티리얼 이름이 MTL 파일에서 발견된 경우, 해당 머티리얼 로드 또는 생성
-			UE_LOG("Importer TargetSlotName: %s;", TargetSlotName.c_str());
+			UE_LOG_CATEGORY(ObjImporter, Debug, "Importer TargetSlotName: %s;", TargetSlotName.c_str());
 
 			// Convert() 안에서 기존 직접 세팅 대신
 			FString MaterialPath = ConvertMtlInfoToMat(MatchedMaterial); // .mat 파일 생성
@@ -627,7 +627,7 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 		{
 			// "None" 슬롯이 없고 매칭되는 슬롯도 없는 경우, 기본 머티리얼로 할당
 			MaterialIndex = OutMaterials.size() - 1; // "None" 슬롯이 마지막에 배치되어 있다고 가정
-			UE_LOG("Warning: Material slot '%s' not found. Assigning to Default slot.", RawSection.MaterialSlotName.c_str());
+			UE_LOG_CATEGORY(ObjImporter, Warning, "Material slot '%s' not found. Assigning to Default slot.", RawSection.MaterialSlotName.c_str());
 		}
 
 		for (uint32 i = 0; i < RawSection.NumTriangles; ++i)
@@ -822,7 +822,7 @@ bool FObjImporter::Import(const FString& ObjFilePath, const FImportOptions& Opti
 	FObjInfo ObjInfo;
 	if (!FObjImporter::ParseObj(ObjFilePath, ObjInfo))
 	{
-		UE_LOG("ParseObj failed for: %s", ObjFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Error, "ParseObj failed for: %s", ObjFilePath.c_str());
 		return false;
 	}
 
@@ -830,21 +830,21 @@ bool FObjImporter::Import(const FString& ObjFilePath, const FImportOptions& Opti
 	if (!ObjInfo.MaterialLibraryFilePath.empty()) {
 		if (!FObjImporter::ParseMtl(ObjInfo.MaterialLibraryFilePath, ParsedMtlInfos))
 		{
-			UE_LOG("ParseMtl failed for: %s", ObjInfo.MaterialLibraryFilePath.c_str());
+			UE_LOG_CATEGORY(ObjImporter, Warning, "ParseMtl failed for: %s", ObjInfo.MaterialLibraryFilePath.c_str());
 			ObjInfo.MaterialLibraryFilePath.clear();
 			ParsedMtlInfos.clear();
 		}
 	}
 
 	if (!FObjImporter::Convert(ObjInfo, ParsedMtlInfos, Options, OutMesh, OutMaterials)){
-		UE_LOG("Convert failed for: %s", ObjFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Error, "Convert failed for: %s", ObjFilePath.c_str());
 		return false;
 	}
 	OutMesh.PathFileName = ObjFilePath;
 
 	auto EndTime = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> Duration = EndTime - StartTime;
-	UE_LOG("OBJ Imported successfully. File: %s. Time taken: %.4f seconds", ObjFilePath.c_str(), Duration.count());
+	UE_LOG_CATEGORY(ObjImporter, Info, "OBJ Imported successfully. File: %s. Time taken: %.4f seconds", ObjFilePath.c_str(), Duration.count());
 
 	return true;
 }
@@ -859,13 +859,13 @@ bool FObjImporter::ImportMtl(const FString& MtlFilePath, TArray<FString>* OutGen
 	TArray<FObjMaterialInfo> ParsedMtlInfos;
 	if (!ParseMtl(MtlFilePath, ParsedMtlInfos))
 	{
-		UE_LOG("ParseMtl failed for: %s", MtlFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Error, "ParseMtl failed for: %s", MtlFilePath.c_str());
 		return false;
 	}
 
 	if (ParsedMtlInfos.empty())
 	{
-		UE_LOG("No materials found in MTL file: %s", MtlFilePath.c_str());
+		UE_LOG_CATEGORY(ObjImporter, Warning, "No materials found in MTL file: %s", MtlFilePath.c_str());
 		return false;
 	}
 
@@ -889,6 +889,6 @@ bool FObjImporter::ImportMtl(const FString& MtlFilePath, TArray<FString>* OutGen
 		}
 	}
 
-	UE_LOG("MTL Imported successfully. File: %s. Generated %zu material(s)", MtlFilePath.c_str(), OutGeneratedMatPaths ? OutGeneratedMatPaths->size() : ParsedMtlInfos.size());
+	UE_LOG_CATEGORY(ObjImporter, Info, "MTL Imported successfully. File: %s. Generated %zu material(s)", MtlFilePath.c_str(), OutGeneratedMatPaths ? OutGeneratedMatPaths->size() : ParsedMtlInfos.size());
 	return true;
 }

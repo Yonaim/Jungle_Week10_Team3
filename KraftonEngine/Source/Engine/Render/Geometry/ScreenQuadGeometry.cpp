@@ -48,7 +48,7 @@ void FScreenQuadGeometry::AddScreenQuad(
 	ID3D11ShaderResourceView* SRV,
 	uint16 ZOrder)
 {
-	if (!SRV || Width <= 0.0f || Height <= 0.0f || ViewportWidth <= 0.0f || ViewportHeight <= 0.0f)
+	if (Width <= 0.0f || Height <= 0.0f || ViewportWidth <= 0.0f || ViewportHeight <= 0.0f)
 	{
 		return;
 	}

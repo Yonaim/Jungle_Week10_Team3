@@ -30,6 +30,10 @@ void FSelectionManager::SetWorld(UWorld* InWorld)
 	}
 
 	SyncGizmo();
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
+	}
 }
 
 void FSelectionManager::Shutdown()
@@ -66,6 +70,10 @@ void FSelectionManager::Select(AActor* Actor)
 		SelectedActors.push_back(Actor);
 		SetActorProxiesSelected(Actor, true);
 		SelectedComponent = Actor->GetRootComponent();
+	}
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
 	}
 	SyncGizmo();
 }
@@ -104,6 +112,39 @@ void FSelectionManager::SelectActors(const TArray<AActor*>& Actors)
 	if (!SelectedActors.empty())
 	{
 		SelectedComponent = SelectedActors.front()->GetRootComponent();
+	}
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
+	}
+
+	SyncGizmo();
+}
+
+void FSelectionManager::AddSelect(AActor* Actor)
+{
+	if (!Actor)
+	{
+		return;
+	}
+
+	if (std::find(SelectedActors.begin(), SelectedActors.end(), Actor) != SelectedActors.end())
+	{
+		return;
+	}
+
+	Actor->SetActorSelected(true);
+	SelectedActors.push_back(Actor);
+	SetActorProxiesSelected(Actor, true);
+
+	if (!SelectedComponent)
+	{
+		SelectedComponent = Actor->GetRootComponent();
+	}
+
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
 	}
 
 	SyncGizmo();
@@ -172,6 +213,10 @@ void FSelectionManager::SelectRange(AActor* ClickedActor, const TArray<AActor*>&
 	{
 		SelectedComponent = SelectedActors.front()->GetRootComponent();
 	}
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
+	}
 
 	SyncGizmo();
 }
@@ -201,6 +246,10 @@ void FSelectionManager::ToggleSelect(AActor* Actor)
 			SelectedComponent = Actor->GetRootComponent();
 		}
 	}
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
+	}
 	SyncGizmo();
 }
 
@@ -216,6 +265,10 @@ void FSelectionManager::Deselect(AActor* Actor)
 		{
 			SelectedComponent = SelectedActors.empty() ? nullptr : SelectedActors.front()->GetRootComponent();
 		}
+	}
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
 	}
 	SyncGizmo();
 }
@@ -238,6 +291,10 @@ void FSelectionManager::ClearSelection()
 
 	SelectedActors.clear();
 	SelectedComponent = nullptr;
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(nullptr);
+	}
 	SyncGizmo();
 }
 
@@ -329,15 +386,18 @@ void FSelectionManager::SelectComponent(USceneComponent* Component)
 		return;
 	}
 
-	SelectedComponent = Target;
-
-	if (Target)
+	AActor* TargetOwner = Target ? Target->GetOwner() : nullptr;
+	const bool bNeedsActorSelectionSync = TargetOwner
+		&& (SelectedActors.size() != 1 || SelectedActors.front() != TargetOwner || !IsSelected(TargetOwner));
+	if (bNeedsActorSelectionSync)
 	{
-		AActor* Owner = Target->GetOwner();
-		if (Owner && !IsSelected(Owner))
-		{
-			Select(Owner);
-		}
+		Select(TargetOwner);
+	}
+
+	SelectedComponent = Target;
+	if (World)
+	{
+		World->GetScene().SetSelectedComponent(SelectedComponent);
 	}
 
 	SyncGizmo();
@@ -370,6 +430,13 @@ void FSelectionManager::SyncGizmo()
 	USceneComponent* Primary = SelectedComponent;
 	if (Primary)
 	{
+		if (Primary->SupportsUIScreenPicking() || !Primary->SupportsWorldGizmo())
+		{
+			Gizmo->Deactivate();
+			Gizmo->SetSelectedActors(&SelectedActors);
+			return;
+		}
+
 		Gizmo->SetTarget(Primary);
 		Gizmo->SetSelectedActors(&SelectedActors);
 	}

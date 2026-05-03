@@ -5,6 +5,17 @@
 #include <cstdarg>
 #include <mutex>
 
+enum class ELogLevel : uint8
+{
+	Verbose = 0,
+	Debug,
+	Info,
+	Warning,
+	Error
+};
+
+const char* GetLogLevelLabel(ELogLevel Level);
+
 // ============================================================
 // ILogOutputDevice — 로그 출력 대상 인터페이스
 // ============================================================
@@ -12,7 +23,15 @@ class ILogOutputDevice
 {
 public:
 	virtual ~ILogOutputDevice() = default;
-	virtual void Write(const char* FormattedMessage) = 0;
+	virtual void Log(ELogLevel Level, const char* Category, const char* Message, const char* FormattedMessage) = 0;
+};
+
+struct FBufferedLogEntry
+{
+	ELogLevel Level = ELogLevel::Info;
+	FString Category;
+	FString Message;
+	FString FormattedMessage;
 };
 
 // ============================================================
@@ -33,14 +52,21 @@ public:
 	void AddOutputDevice(ILogOutputDevice* Device);
 	void RemoveOutputDevice(ILogOutputDevice* Device);
 
-	void Log(const char* Fmt, ...);
-	void LogV(const char* Fmt, va_list Args);
+	void SetMinimumLogLevel(ELogLevel InLevel);
+	ELogLevel GetMinimumLogLevel() const;
+	bool ShouldLog(ELogLevel InLevel) const;
+
+	void LogMessage(ELogLevel Level, const char* Category, const char* Fmt, ...);
+	void LogMessageV(ELogLevel Level, const char* Category, const char* Fmt, va_list Args);
 
 private:
 	FLogManager() = default;
 
 	std::mutex Mutex;
 	TArray<ILogOutputDevice*> OutputDevices;
+	TArray<FBufferedLogEntry> BufferedEntries;
+	ELogLevel MinimumLogLevel = ELogLevel::Verbose;
+	bool bInitialized = false;
 
 	// 내장 디바이스 (Initialize에서 생성, Shutdown에서 해제)
 	ILogOutputDevice* DebugOutputDevice = nullptr;
@@ -51,4 +77,7 @@ private:
 // UE_LOG 매크로 — Engine 레이어에서 정의
 // ============================================================
 #define UE_LOG(Format, ...) \
-	FLogManager::Get().Log(Format, ##__VA_ARGS__)
+	FLogManager::Get().LogMessage(ELogLevel::Info, "Log", Format, ##__VA_ARGS__)
+
+#define UE_LOG_CATEGORY(Category, Level, Format, ...) \
+	FLogManager::Get().LogMessage(ELogLevel::Level, #Category, Format, ##__VA_ARGS__)

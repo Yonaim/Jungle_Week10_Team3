@@ -29,7 +29,7 @@ public:
 	static std::wstring ResourceSettingsDir();      // Settings/Resource/
 	static std::wstring EditorResourceFilePath();   // Settings/Resource/EditorResources.ini
 	static std::wstring DefaultContentResourceFilePath(); // Settings/Resource/DefaultContentResources.ini
-	static std::wstring ProjectResourceFilePath();  // Settings/Resource/ProjectResources.ini
+	static std::wstring ProjectResourcePathsFilePath();  // Settings/Resource/ProjectResourcePaths.ini
 	static std::wstring ProjectSettingsFilePath();  // Settings/ProjectSettings.ini
 
 	// 寃쎈줈 寃고빀: FPaths::Combine(L"Asset/Content/Scene", L"Default.Scene")

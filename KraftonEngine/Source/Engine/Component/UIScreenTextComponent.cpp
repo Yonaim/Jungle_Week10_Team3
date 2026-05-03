@@ -1,10 +1,96 @@
 #include "Component/UIScreenTextComponent.h"
 
+#include "Component/CanvasRootComponent.h"
+#include "Component/UIImageComponent.h"
+#include "Engine/Runtime/Engine.h"
+#include "Engine/Runtime/WindowsWindow.h"
 #include "Render/Scene/FScene.h"
 #include "Resource/ResourceManager.h"
 #include "Serialization/Archive.h"
 
+#include <algorithm>
+
 IMPLEMENT_CLASS(UUIScreenTextComponent, UBillboardComponent)
+
+namespace
+{
+	const FVector4 SelectedUIOutlineColor(0.10f, 0.54f, 0.96f, -1.0f);
+	constexpr uint32 FallbackQuestionCodepoint = static_cast<uint32>('?');
+
+	FVector2 GetViewportSize2D()
+	{
+		FVector2 ViewportSize(1920.0f, 1080.0f);
+		if (GEngine)
+		{
+			if (FWindowsWindow* Window = GEngine->GetWindow())
+			{
+				ViewportSize.X = (std::max)(1.0f, Window->GetWidth());
+				ViewportSize.Y = (std::max)(1.0f, Window->GetHeight());
+			}
+		}
+
+		return ViewportSize;
+	}
+
+	bool ResolveParentUILayoutRect(const USceneComponent* StartParent, FVector2& OutPosition, FVector2& OutSize)
+	{
+		for (const USceneComponent* Current = StartParent; Current != nullptr; Current = Current->GetParent())
+		{
+			if (const UCanvasRootComponent* CanvasRoot = dynamic_cast<const UCanvasRootComponent*>(Current))
+			{
+				const FVector& CanvasSize = CanvasRoot->GetCanvasSize();
+				OutPosition = CanvasRoot->GetCanvasOrigin();
+				OutSize = FVector2((std::max)(1.0f, CanvasSize.X), (std::max)(1.0f, CanvasSize.Y));
+				return true;
+			}
+
+			if (const UUIImageComponent* ImageParent = dynamic_cast<const UUIImageComponent*>(Current))
+			{
+				if (ImageParent->ResolveLayoutRect(OutPosition, OutSize))
+				{
+					return true;
+				}
+				continue;
+			}
+
+			if (const UUIScreenTextComponent* TextParent = dynamic_cast<const UUIScreenTextComponent*>(Current))
+			{
+				if (TextParent->ResolveLayoutRect(OutPosition, OutSize))
+				{
+					return true;
+				}
+				continue;
+			}
+		}
+
+		OutPosition = FVector2(0.0f, 0.0f);
+		OutSize = GetViewportSize2D();
+		return true;
+	}
+
+	float GetResolvedGlyphAdvance(const FFontResource* Font, uint32 Codepoint)
+	{
+		if (!Font)
+		{
+			return 0.0f;
+		}
+
+		if (const FFontGlyph* Glyph = Font->FindGlyph(Codepoint))
+		{
+			return Glyph->XAdvance;
+		}
+
+		if (Codepoint != FallbackQuestionCodepoint)
+		{
+			if (const FFontGlyph* FallbackGlyph = Font->FindGlyph(FallbackQuestionCodepoint))
+			{
+				return FallbackGlyph->XAdvance;
+			}
+		}
+
+		return 1.0f;
+	}
+}
 
 UUIScreenTextComponent::UUIScreenTextComponent()
 {
@@ -18,6 +104,10 @@ void UUIScreenTextComponent::Serialize(FArchive& Ar)
 	Ar << Text;
 	Ar << FontName;
 	Ar << ScreenPosition;
+	Ar << bUseAnchoredLayout;
+	Ar << Anchor;
+	Ar << Alignment;
+	Ar << AnchorOffset;
 	Ar << Color;
 	Ar << FontSize;
 }
@@ -28,6 +118,10 @@ void UUIScreenTextComponent::GetEditableProperties(TArray<FPropertyDescriptor>& 
 	OutProps.push_back({ "Text", EPropertyType::String, &Text });
 	OutProps.push_back({ "Font", EPropertyType::Name, &FontName });
 	OutProps.push_back({ "Screen Position", EPropertyType::Vec3, &ScreenPosition, 0.0f, 4096.0f, 1.0f });
+	OutProps.push_back({ "Use Anchored Layout", EPropertyType::Bool, &bUseAnchoredLayout });
+	OutProps.push_back({ "Anchor", EPropertyType::Vec3, &Anchor, 0.0f, 1.0f, 0.01f });
+	OutProps.push_back({ "Alignment", EPropertyType::Vec3, &Alignment, 0.0f, 1.0f, 0.01f });
+	OutProps.push_back({ "Anchor Offset", EPropertyType::Vec3, &AnchorOffset, -4096.0f, 4096.0f, 1.0f });
 	OutProps.push_back({ "Color", EPropertyType::Color4, &Color });
 	OutProps.push_back({ "Font Size", EPropertyType::Float, &FontSize, 0.1f, 100.0f, 0.1f });
 	OutProps.push_back({ "Visible", EPropertyType::Bool, &bIsVisible });
@@ -51,11 +145,156 @@ void UUIScreenTextComponent::ContributeVisuals(FScene& Scene) const
 	}
 
 	const FFontResource* ResolvedFont = FResourceManager::Get().FindFont(FontName);
-	Scene.AddScreenText(Text, FVector2(ScreenPosition.X, ScreenPosition.Y), FontSize, Color, ResolvedFont ? ResolvedFont : CachedFont);
+	float X = 0.0f;
+	float Y = 0.0f;
+	float Width = 0.0f;
+	float Height = 0.0f;
+	if (!ComputeScreenBounds(X, Y, Width, Height))
+	{
+		return;
+	}
+
+	Scene.AddScreenText(Text, FVector2(X, Y), FontSize, Color, ResolvedFont ? ResolvedFont : CachedFont);
+}
+
+void UUIScreenTextComponent::ContributeSelectedVisuals(FScene& Scene) const
+{
+	if (!IsVisible() || Scene.GetSelectedComponent() != this)
+	{
+		return;
+	}
+
+	float X = 0.0f;
+	float Y = 0.0f;
+	float Width = 0.0f;
+	float Height = 0.0f;
+	if (!ComputeScreenBounds(X, Y, Width, Height))
+	{
+		return;
+	}
+
+	constexpr float OutlineThickness = 3.0f;
+	const int32 OutlineZ = 1000;
+
+	Scene.AddScreenQuad(nullptr, FVector2(X - OutlineThickness, Y - OutlineThickness), FVector2(Width + OutlineThickness * 2.0f, OutlineThickness), SelectedUIOutlineColor, OutlineZ);
+	Scene.AddScreenQuad(nullptr, FVector2(X - OutlineThickness, Y + Height), FVector2(Width + OutlineThickness * 2.0f, OutlineThickness), SelectedUIOutlineColor, OutlineZ);
+	Scene.AddScreenQuad(nullptr, FVector2(X - OutlineThickness, Y), FVector2(OutlineThickness, Height), SelectedUIOutlineColor, OutlineZ);
+	Scene.AddScreenQuad(nullptr, FVector2(X + Width, Y), FVector2(OutlineThickness, Height), SelectedUIOutlineColor, OutlineZ);
+}
+
+bool UUIScreenTextComponent::HitTestUIScreenPoint(float X, float Y) const
+{
+	float RectX = 0.0f;
+	float RectY = 0.0f;
+	float RectW = 0.0f;
+	float RectH = 0.0f;
+	if (!ComputeScreenBounds(RectX, RectY, RectW, RectH))
+	{
+		return false;
+	}
+
+	return X >= RectX && X <= RectX + RectW && Y >= RectY && Y <= RectY + RectH;
+}
+
+bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float& OutWidth, float& OutHeight) const
+{
+	if (!IsVisible() || Text.empty())
+	{
+		return false;
+	}
+
+	const FFontResource* Font = FResourceManager::Get().FindFont(FontName);
+	const float Scale = FontSize;
+	float Width = 0.0f;
+	float Height = 23.0f * Scale;
+
+	if (Font && Font->IsLoaded() && Font->bHasGlyphMetrics && Font->LineHeight > 0.0f)
+	{
+		const float PixelScale = (23.0f * Scale) / Font->LineHeight;
+		Height = Font->LineHeight * PixelScale;
+
+		const uint8* Ptr = reinterpret_cast<const uint8*>(Text.c_str());
+		const uint8* const End = Ptr + Text.size();
+		uint32 PrevCodepoint = 0;
+		bool bHasPrevCodepoint = false;
+
+		while (Ptr < End)
+		{
+			uint32 CP = 0;
+			if (Ptr[0] < 0x80) { CP = Ptr[0]; Ptr += 1; }
+			else if ((Ptr[0] & 0xE0) == 0xC0 && Ptr + 1 < End) { CP = ((Ptr[0] & 0x1F) << 6) | (Ptr[1] & 0x3F); Ptr += 2; }
+			else if ((Ptr[0] & 0xF0) == 0xE0 && Ptr + 2 < End) { CP = ((Ptr[0] & 0x0F) << 12) | ((Ptr[1] & 0x3F) << 6) | (Ptr[2] & 0x3F); Ptr += 3; }
+			else if ((Ptr[0] & 0xF8) == 0xF0 && Ptr + 3 < End) { CP = ((Ptr[0] & 0x07) << 18) | ((Ptr[1] & 0x3F) << 12) | ((Ptr[2] & 0x3F) << 6) | (Ptr[3] & 0x3F); Ptr += 4; }
+			else { ++Ptr; continue; }
+
+			if (bHasPrevCodepoint)
+			{
+				Width += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
+			}
+
+			Width += GetResolvedGlyphAdvance(Font, CP) * PixelScale;
+
+			PrevCodepoint = CP;
+			bHasPrevCodepoint = true;
+		}
+	}
+	else
+	{
+		Width = static_cast<float>(Text.size()) * (23.0f * Scale * 0.5f);
+	}
+
+	OutWidth = (std::max)(1.0f, Width);
+	OutHeight = (std::max)(1.0f, Height);
+	const FVector2 ResolvedPosition = ResolveScreenPosition(FVector2(OutWidth, OutHeight));
+	OutX = ResolvedPosition.X;
+	OutY = ResolvedPosition.Y;
+	return true;
+}
+
+bool UUIScreenTextComponent::ResolveLayoutRect(FVector2& OutPosition, FVector2& OutSize) const
+{
+	float X = 0.0f;
+	float Y = 0.0f;
+	float Width = 0.0f;
+	float Height = 0.0f;
+	if (!ComputeScreenBounds(X, Y, Width, Height))
+	{
+		return false;
+	}
+
+	OutPosition = FVector2(X, Y);
+	OutSize = FVector2(Width, Height);
+	return true;
+}
+
+bool UUIScreenTextComponent::GetResolvedScreenBounds(float& OutX, float& OutY, float& OutWidth, float& OutHeight) const
+{
+	return ComputeScreenBounds(OutX, OutY, OutWidth, OutHeight);
 }
 
 void UUIScreenTextComponent::SetFont(const FName& InFontName)
 {
 	FontName = InFontName;
 	CachedFont = FResourceManager::Get().FindFont(FontName);
+}
+
+FVector2 UUIScreenTextComponent::ResolveScreenPosition(const FVector2& ElementSize) const
+{
+	if (!bUseAnchoredLayout)
+	{
+		return FVector2(ScreenPosition.X, ScreenPosition.Y);
+	}
+
+	FVector2 ParentPosition(0.0f, 0.0f);
+	FVector2 ParentSize = GetViewportSize2D();
+	ResolveParentUILayoutRect(GetParent(), ParentPosition, ParentSize);
+
+	const float ClampedAnchorX = (std::clamp)(Anchor.X, 0.0f, 1.0f);
+	const float ClampedAnchorY = (std::clamp)(Anchor.Y, 0.0f, 1.0f);
+	const float ClampedAlignmentX = (std::clamp)(Alignment.X, 0.0f, 1.0f);
+	const float ClampedAlignmentY = (std::clamp)(Alignment.Y, 0.0f, 1.0f);
+
+	return FVector2(
+		ParentPosition.X + ParentSize.X * ClampedAnchorX + AnchorOffset.X - ElementSize.X * ClampedAlignmentX,
+		ParentPosition.Y + ParentSize.Y * ClampedAnchorY + AnchorOffset.Y - ElementSize.Y * ClampedAlignmentY);
 }

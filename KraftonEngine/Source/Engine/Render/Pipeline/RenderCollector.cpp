@@ -183,6 +183,12 @@ void FRenderCollector::CollectWorldBoundsDebug(UWorld* World, FScene& Scene)
 			continue;
 		}
 
+		const UPrimitiveComponent* OwnerComponent = Proxy->GetOwnerComponent();
+		if (!OwnerComponent || !OwnerComponent->ParticipatesInRenderSpatialStructure())
+		{
+			continue;
+		}
+
 		const FBoundingBox& Bounds = Proxy->GetCachedBounds();
 		if (!Bounds.IsValid())
 		{
@@ -244,10 +250,14 @@ void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& 
 	}
 
 #ifndef SHIPPING
-	// 선택된 Actor의 컴포넌트 디버그 시각화 (빛 등 프록시 없는 Comp 포함)
-	CollectSelectedActorVisuals(Scene);
-	// 항상 표시되는 컴포넌트 시각화 (bDrawOnlyIfSelected == false)
-	CollectActorVisuals(World, Scene);
+	const bool bAllowComponentDebugVisuals = World && World->GetWorldType() != EWorldType::PIE;
+	if (bAllowComponentDebugVisuals)
+	{
+		// 선택된 Actor의 컴포넌트 디버그 시각화 (빛 등 프록시 없는 Comp 포함)
+		CollectSelectedActorVisuals(Scene);
+		// 항상 표시되는 컴포넌트 시각화 (bDrawOnlyIfSelected == false)
+		CollectActorVisuals(World, Scene);
+	}
 #endif
 
 	if (OcclusionMut && OcclusionMut->IsInitialized())

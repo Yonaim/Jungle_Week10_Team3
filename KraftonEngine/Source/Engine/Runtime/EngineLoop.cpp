@@ -1,8 +1,8 @@
 ﻿#include "Engine/Runtime/EngineLoop.h"
+#include "Core/Log.h"
 #include "Core/ProjectSettings.h"
 #include "Profiling/StartupProfiler.h"
 #include "Engine/Serialization/SceneSaveManager.h"
-#include <iostream>
 
 #if IS_OBJ_VIEWER
 #include "ObjViewer/ObjViewerEngine.h"
@@ -25,12 +25,21 @@ void FEngineLoop::CreateEngine()
 
 bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 {
+	FLogManager::Get().Initialize();
+	UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Engine loop init begin");
+	UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Loading project settings: %s", FProjectSettings::GetDefaultPath().c_str());
+	FProjectSettings::Get().LoadFromFile(FProjectSettings::GetDefaultPath());
+	UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Project settings loaded");
+
 	{
 		SCOPE_STARTUP_STAT("WindowsApplication::Init");
+		UE_LOG_CATEGORY(EngineInit, Info, "[INIT] WindowsApplication::Init begin");
 		if (!Application.Init(hInstance))
 		{
+			UE_LOG_CATEGORY(EngineInit, Error, "[INIT] WindowsApplication::Init failed");
 			return false;
 		}
+		UE_LOG_CATEGORY(EngineInit, Info, "[INIT] WindowsApplication::Init complete");
 	}
 
 	Application.SetOnSizingCallback([this]()
@@ -47,11 +56,15 @@ bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 			}
 		});
 
+	UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Creating engine instance");
 	CreateEngine();
+	UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Engine instance created");
 
 	{
 		SCOPE_STARTUP_STAT("Engine::Init");
+		UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Engine::Init begin");
 		GEngine->Init(&Application.GetWindow());
+		UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Engine::Init complete");
 	}
 
 	GEngine->SetTimer(&Timer);
@@ -62,11 +75,14 @@ bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 
 	{
 		SCOPE_STARTUP_STAT("Engine::BeginPlay");
+		UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Engine::BeginPlay begin");
 		GEngine->BeginPlay();
+		UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Engine::BeginPlay complete");
 	}
 
 	Timer.Initialize();
 	FStartupProfiler::Get().Finish();
+	UE_LOG_CATEGORY(EngineInit, Info, "[INIT] Engine loop init complete");
 
 	return true;
 }

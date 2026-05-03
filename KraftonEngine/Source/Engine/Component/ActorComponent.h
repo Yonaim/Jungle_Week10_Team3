@@ -61,6 +61,10 @@ public:
 	// FPrimitiveSceneProxy::CollectSelectedVisuals 에서 호출됨
 	virtual void ContributeSelectedVisuals(FScene& Scene) const { (void)Scene; }
 	virtual void ContributeVisuals(FScene& Scene) const { (void)Scene; }
+	virtual bool SupportsUIScreenPicking() const { return false; }
+	virtual bool HitTestUIScreenPoint(float X, float Y) const { (void)X; (void)Y; return false; }
+	virtual int32 GetUIScreenPickingZOrder() const { return INT_MIN; }
+	virtual bool SupportsWorldGizmo() const { return true; }
 	
 	FActorComponentTickFunction PrimaryComponentTick;
 

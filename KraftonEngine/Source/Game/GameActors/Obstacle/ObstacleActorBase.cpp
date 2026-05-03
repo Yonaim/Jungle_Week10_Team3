@@ -25,13 +25,13 @@ void AObstacleActorBase::BeginPlay() {
 }
 
 void AObstacleActorBase::OnHit(const FComponentHitEvent& Other) {
-	UE_LOG("Listening to a Hit Event, UUID: " + this->GetUUID());
+	UE_LOG("Listening to a Hit Event, UUID: %u", GetUUID());
 	if (!Other.HitComponent) return;
 
 }
 
 void AObstacleActorBase::OnOverlap(const FComponentOverlapEvent& Other) {
-	UE_LOG("Listening to an Overlap Event, UUID: " + this->GetUUID());
+	UE_LOG("Listening to an Overlap Event, UUID: %u", GetUUID());
 	if (!Other.OtherComponent) return;
 }
 

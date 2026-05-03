@@ -1,6 +1,7 @@
 ﻿#include "Scripting/LuaScriptInstance.h"
 
 #include "Component/ScriptComponent.h"
+#include "Audio/AudioManager.h"
 #include "Core/Log.h"
 #include "Engine/Input/InputManager.h"
 #include "GameFramework/AActor.h"
@@ -587,6 +588,7 @@ bool FLuaScriptInstance::Initialize(UScriptComponent* InOwnerComponent)
 	BindInputFunctions();
 	BindDebugTimeFunctions();
 	BindPropertyFunctions();
+	BindSoundFunctions();
 	BindWorldFunctions();
 	return true;
 }
@@ -645,6 +647,7 @@ bool FLuaScriptInstance::LoadFromFile(const FString& InScriptPath)
 	BindInputFunctions();
 	BindDebugTimeFunctions();
 	BindPropertyFunctions();
+	BindSoundFunctions();
 	BindWorldFunctions();
 
 	FString ScriptSource;
@@ -1218,7 +1221,7 @@ void FLuaScriptInstance::BindDebugTimeFunctions()
 		return;
 	}
 
-	auto LogLuaMessage = [](const char* Prefix, sol::variadic_args Args)
+	auto LogLuaMessage = [](ELogLevel Level, const char* Prefix, sol::variadic_args Args)
 	{
 		FString Message;
 		for (auto Arg : Args)
@@ -1231,28 +1234,28 @@ void FLuaScriptInstance::BindDebugTimeFunctions()
 			Message += Arg.as<FString>();
 		}
 
-		UE_LOG("%s %s", Prefix, Message.c_str());
+		FLogManager::Get().LogMessage(Level, "Lua", "%s %s", Prefix, Message.c_str());
 	};
 
 	Impl->Env.set_function("log", [LogLuaMessage](sol::variadic_args Args)
 	{
-		LogLuaMessage("[Lua]", Args);
+		LogLuaMessage(ELogLevel::Info, "[Lua]", Args);
 	});
 
 	Impl->Env.set_function("warn", [LogLuaMessage](sol::variadic_args Args)
 	{
-		LogLuaMessage("[Lua][Warn]", Args);
+		LogLuaMessage(ELogLevel::Warning, "[Lua][Warn]", Args);
 	});
 
 	Impl->Env.set_function("error_log", [LogLuaMessage](sol::variadic_args Args)
 	{
-		LogLuaMessage("[Lua][Error]", Args);
+		LogLuaMessage(ELogLevel::Error, "[Lua][Error]", Args);
 	});
 
 	Impl->Env.set_function("print", [LogLuaMessage](sol::variadic_args Args)
 	{
 		// print도 인스턴스 환경에서 엔진 로그로 보내면 WinMain 환경에서도 Lua 로그를 놓치지 않는다.
-		LogLuaMessage("[Lua]", Args);
+		LogLuaMessage(ELogLevel::Info, "[Lua]", Args);
 	});
 
 	Impl->Env.set_function("time", [this]()
@@ -1306,6 +1309,64 @@ void FLuaScriptInstance::BindPropertyFunctions()
 		}
 
 		return MakeLuaObjectFromScriptProperty(Lua, ResolvedValue);
+	});
+}
+
+void FLuaScriptInstance::BindSoundFunctions()
+{
+	if (!Impl)
+	{
+		return;
+	}
+
+	Impl->Env.set_function("play_sfx", [](const FString& SoundPath, sol::optional<bool> Looping)
+	{
+		return FAudioManager::Get().PlaySFX(SoundPath, Looping.value_or(false));
+	});
+
+	Impl->Env.set_function("play_background", [](const FString& SoundPath, sol::optional<bool> Looping)
+	{
+		return FAudioManager::Get().PlayBackground(SoundPath, Looping.value_or(true));
+	});
+
+	Impl->Env.set_function("stop_sound", [](const FString& Handle)
+	{
+		return FAudioManager::Get().StopSound(Handle);
+	});
+
+	Impl->Env.set_function("pause_sound", [](const FString& Handle)
+	{
+		return FAudioManager::Get().PauseSound(Handle);
+	});
+
+	Impl->Env.set_function("resume_sound", [](const FString& Handle)
+	{
+		return FAudioManager::Get().ResumeSound(Handle);
+	});
+
+	Impl->Env.set_function("is_sound_playing", [](const FString& Handle)
+	{
+		return FAudioManager::Get().IsSoundPlaying(Handle);
+	});
+
+	Impl->Env.set_function("stop_background", []()
+	{
+		return FAudioManager::Get().StopBackground();
+	});
+
+	Impl->Env.set_function("pause_background", []()
+	{
+		return FAudioManager::Get().PauseBackground();
+	});
+
+	Impl->Env.set_function("resume_background", []()
+	{
+		return FAudioManager::Get().ResumeBackground();
+	});
+
+	Impl->Env.set_function("is_background_playing", []()
+	{
+		return FAudioManager::Get().IsBackgroundPlaying();
 	});
 }
 
@@ -1473,5 +1534,5 @@ void FLuaScriptInstance::SetError(const FString& ErrorMessage)
 
 	Impl->bHasError = true;
 	Impl->LastError = ErrorMessage;
-	UE_LOG("[LuaScript] %s", ErrorMessage.c_str());
+	UE_LOG_CATEGORY(LuaScript, Error, "%s", ErrorMessage.c_str());
 }

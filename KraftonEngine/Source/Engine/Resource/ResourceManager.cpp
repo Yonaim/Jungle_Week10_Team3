@@ -5,6 +5,8 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 #include <d3d11.h>
 #include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
@@ -20,15 +22,24 @@ namespace ResourceKey
 	constexpr const char* Particle = "Particle";
 	constexpr const char* Texture  = "Texture";
 	constexpr const char* Mesh     = "Mesh";
+	constexpr const char* Sound    = "Sound";
 	constexpr const char* Material = "Material";
 	constexpr const char* PathMap  = "Path";
 	constexpr const char* Path     = "Path";
+	constexpr const char* Category = "Category";
 	constexpr const char* Columns  = "Columns";
 	constexpr const char* Rows     = "Rows";
 }
 
 namespace
 {
+	bool SafeJsonBool(const json::JSON& Value, bool Fallback = false)
+	{
+		bool bBool = false;
+		const bool BoolValue = Value.ToBool(bBool);
+		return bBool ? BoolValue : Fallback;
+	}
+
 	uint32 SafeJsonUInt(const json::JSON& Value, uint32 Fallback = 0)
 	{
 		bool bInt = false;
@@ -75,15 +86,111 @@ namespace
 		}
 		return Value;
 	}
+
+	FString NormalizeGenericPath(FString Value)
+	{
+		for (char& C : Value)
+		{
+			if (C == '\\')
+			{
+				C = '/';
+			}
+		}
+		return ToLowerCopy(Value);
+	}
+
+	FString SanitizeResourceToken(const FString& Value)
+	{
+		FString Result;
+		Result.reserve(Value.size());
+
+		bool bLastWasDot = false;
+		for (const char C : Value)
+		{
+			const unsigned char U = static_cast<unsigned char>(C);
+			if (std::isalnum(U))
+			{
+				Result.push_back(C);
+				bLastWasDot = false;
+			}
+			else if (!bLastWasDot)
+			{
+				Result.push_back('.');
+				bLastWasDot = true;
+			}
+		}
+
+		while (!Result.empty() && Result.front() == '.')
+		{
+			Result.erase(Result.begin());
+		}
+		while (!Result.empty() && Result.back() == '.')
+		{
+			Result.pop_back();
+		}
+
+		return Result;
+	}
+
+	FString MakeGeneratedResourceName(const FString& ResourceType, const FString& RuleName, const FString& RelativePathWithoutExtension)
+	{
+		const FString SanitizedRelativePath = SanitizeResourceToken(RelativePathWithoutExtension);
+		if (!SanitizedRelativePath.empty())
+		{
+			return ResourceType + "." + RuleName + "." + SanitizedRelativePath;
+		}
+
+		return ResourceType + "." + RuleName;
+	}
+
+	std::filesystem::path ToLexicalPath(const FString& Utf8Path)
+	{
+		return std::filesystem::path(FPaths::ToWide(Utf8Path)).lexically_normal();
+	}
+
+	FString MakeRelativeUtf8Path(const std::filesystem::path& FullPath, const std::filesystem::path& RootPath)
+	{
+		return FPaths::ToUtf8(FullPath.lexically_normal().lexically_relative(RootPath).generic_wstring());
+	}
+
+	ESoundCategory InferSoundCategory(const FString& ResourceName, const FString& ResourcePath)
+	{
+		const FString LowerName = ToLowerCopy(ResourceName);
+		const FString LowerPath = ToLowerCopy(ResourcePath);
+		if (LowerName.find("background") != FString::npos
+			|| LowerName.find("bgm") != FString::npos
+			|| LowerPath.find("/background/") != FString::npos
+			|| LowerPath.find("\\background\\") != FString::npos)
+		{
+			return ESoundCategory::Background;
+		}
+
+		return ESoundCategory::SFX;
+	}
 }
 
 void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 {
 	using namespace json;
 
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Resource file load begin: %s", Path.c_str());
+
+	const size_t PrevFontCount = FontResources.size();
+	const size_t PrevParticleCount = ParticleResources.size();
+	const size_t PrevTextureCount = TextureResources.size();
+	const size_t PrevMeshCount = MeshResources.size();
+	const size_t PrevSoundCount = SoundResources.size();
+	const size_t PrevMaterialCount = MaterialResources.size();
+	const size_t PrevPathCount = PathResources.size();
+
+	const std::filesystem::path NormalizedInputPath = std::filesystem::path(FPaths::ToWide(Path)).lexically_normal();
+	const std::filesystem::path NormalizedEditorResourcePath = std::filesystem::path(FPaths::EditorResourceFilePath()).lexically_normal();
+	const bool bIsEditorResourceFile = (NormalizedInputPath == NormalizedEditorResourcePath);
+
 	std::ifstream File(std::filesystem::path(FPaths::ToWide(Path)));
 	if (!File.is_open())
 	{
+		UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Resource file open failed: %s", Path.c_str());
 		return;
 	}
 
@@ -139,6 +246,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			Resource.Columns = 1;
 			Resource.Rows    = 1;
 			Resource.SRV     = nullptr;
+			Resource.bEditorResource = bIsEditorResourceFile;
 			TextureResources[Pair.first] = Resource;
 		}
 	}
@@ -154,6 +262,33 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			Resource.Name = FName(Pair.first.c_str());
 			Resource.Path = Entry[ResourceKey::Path].ToString();
 			MeshResources[Pair.first] = Resource;
+		}
+	}
+
+	// Sound — { "Name": { "Path": "..." } }  (경로 레지스트리 전용)
+	if (Root.hasKey(ResourceKey::Sound))
+	{
+		JSON SoundSection = Root[ResourceKey::Sound];
+		for (auto& Pair : SoundSection.ObjectRange())
+		{
+			JSON Entry = Pair.second;
+			FSoundResource Resource;
+			Resource.Name = FName(Pair.first.c_str());
+			Resource.Path = Entry[ResourceKey::Path].ToString();
+			Resource.Category = InferSoundCategory(Pair.first, Resource.Path);
+			if (Entry.hasKey(ResourceKey::Category))
+			{
+				const FString CategoryText = ToLowerCopy(Entry[ResourceKey::Category].ToString());
+				if (CategoryText == "background" || CategoryText == "bgm")
+				{
+					Resource.Category = ESoundCategory::Background;
+				}
+				else if (CategoryText == "sfx")
+				{
+					Resource.Category = ESoundCategory::SFX;
+				}
+			}
+			SoundResources[Pair.first] = Resource;
 		}
 	}
 
@@ -191,19 +326,43 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 
 	DiscoverBitmapFonts("Asset/Content/Font");
 
+	UE_LOG_CATEGORY(
+		ResourceManager,
+		Info,
+		"[INIT] Parsed resource file: %s | +Font=%zu +Particle=%zu +Texture=%zu +Mesh=%zu +Sound=%zu +Material=%zu +Path=%zu | Total Font=%zu Particle=%zu Texture=%zu Mesh=%zu Sound=%zu Material=%zu Path=%zu",
+		Path.c_str(),
+		FontResources.size() - PrevFontCount,
+		ParticleResources.size() - PrevParticleCount,
+		TextureResources.size() - PrevTextureCount,
+		MeshResources.size() - PrevMeshCount,
+		SoundResources.size() - PrevSoundCount,
+		MaterialResources.size() - PrevMaterialCount,
+		PathResources.size() - PrevPathCount,
+		FontResources.size(),
+		ParticleResources.size(),
+		TextureResources.size(),
+		MeshResources.size(),
+		SoundResources.size(),
+		MaterialResources.size(),
+		PathResources.size());
+
 	if (LoadGPUResources(InDevice))
 	{
-		UE_LOG("Complete Load Resources!");
+		UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] GPU resource upload complete for: %s", Path.c_str());
 	}
 	else
 	{
-		UE_LOG("Failed to Load Resources...");
+		UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] GPU resource upload failed for: %s", Path.c_str());
 	}
 
+	size_t PreloadedMaterialCount = 0;
 	for (const auto& [Key, Resource] : MaterialResources)
 	{
 		FMaterialManager::Get().GetOrCreateMaterial(Resource.Path);
+		++PreloadedMaterialCount;
 	}
+
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Material preload complete: %zu material(s)", PreloadedMaterialCount);
 }
 
 void FResourceManager::DiscoverBitmapFonts(const FString& DirectoryPath)
@@ -212,9 +371,11 @@ void FResourceManager::DiscoverBitmapFonts(const FString& DirectoryPath)
 	const std::filesystem::path FontRoot = RootPath / FPaths::ToWide(DirectoryPath);
 	if (!std::filesystem::exists(FontRoot))
 	{
+		UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Bitmap font directory not found: %s", DirectoryPath.c_str());
 		return;
 	}
 
+	size_t DiscoveredFontCount = 0;
 	for (const auto& Entry : std::filesystem::recursive_directory_iterator(FontRoot))
 	{
 		if (!Entry.is_regular_file())
@@ -245,7 +406,13 @@ void FResourceManager::DiscoverBitmapFonts(const FString& DirectoryPath)
 		}
 
 		FontResources[FontKey] = std::move(Resource);
+		++DiscoveredFontCount;
 	}
+
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Bitmap font discovery complete: dir=%s discovered=%zu total=%zu",
+		DirectoryPath.c_str(),
+		DiscoveredFontCount,
+		FontResources.size());
 }
 
 bool FResourceManager::LoadBitmapFontMetadata(const FString& JsonPath, FFontResource& OutResource) const
@@ -347,6 +514,10 @@ bool FResourceManager::LoadBitmapFontMetadata(const FString& JsonPath, FFontReso
 void FResourceManager::LoadFromDirectory(const FString& Path, ID3D11Device* InDevice)
 {
 	const std::filesystem::path RootPath(FPaths::RootDir());
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Directory texture scan begin: %s", Path.c_str());
+
+	size_t ScannedPngCount = 0;
+	size_t LoadedTextureCount = 0;
 
 	for (const auto& Entry : std::filesystem::recursive_directory_iterator(FPaths::ToWide(Path)))
 	{
@@ -358,18 +529,318 @@ void FResourceManager::LoadFromDirectory(const FString& Path, ID3D11Device* InDe
 		if (Extension != ".png")
 			continue;
 
+		++ScannedPngCount;
 		const FString RelativePath = FPaths::ToUtf8(Entry.path().lexically_normal().lexically_relative(RootPath).generic_wstring());
 		if (UTexture2D* Texture = UTexture2D::LoadFromFile(RelativePath, InDevice))
 		{
 			LoadedResource[RelativePath] = Texture->GetSRV();
+			++LoadedTextureCount;
 		}
 	}
+
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Directory texture scan complete: scanned=%zu loaded=%zu cached=%zu",
+		ScannedPngCount,
+		LoadedTextureCount,
+		LoadedResource.size());
+}
+
+void FResourceManager::LoadFromScanFile(const FString& Path, ID3D11Device* InDevice)
+{
+	using namespace json;
+
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Resource scan file load begin: %s", Path.c_str());
+
+	const size_t PrevFontCount = FontResources.size();
+	const size_t PrevParticleCount = ParticleResources.size();
+	const size_t PrevTextureCount = TextureResources.size();
+	const size_t PrevMeshCount = MeshResources.size();
+	const size_t PrevSoundCount = SoundResources.size();
+	const size_t PrevMaterialCount = MaterialResources.size();
+	const size_t PrevPathCount = PathResources.size();
+
+	std::ifstream File(std::filesystem::path(FPaths::ToWide(Path)));
+	if (!File.is_open())
+	{
+		UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Resource scan file open failed: %s", Path.c_str());
+		return;
+	}
+
+	FString Content((std::istreambuf_iterator<char>(File)), std::istreambuf_iterator<char>());
+	JSON Root = JSON::Load(Content);
+	if (!Root.hasKey("ScanRules"))
+	{
+		UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Resource scan file missing ScanRules: %s", Path.c_str());
+		return;
+	}
+
+	bool bRecursive = true;
+	bool bNormalizeExtensionToLower = true;
+	bool bUseRelativePathFromRoot = true;
+	if (Root.hasKey("Options"))
+	{
+		JSON Options = Root["Options"];
+		if (Options.hasKey("Recursive"))
+		{
+			bRecursive = SafeJsonBool(Options["Recursive"], true);
+		}
+		if (Options.hasKey("NormalizeExtensionToLower"))
+		{
+			bNormalizeExtensionToLower = SafeJsonBool(Options["NormalizeExtensionToLower"], true);
+		}
+		if (Options.hasKey("UseRelativePathFromRoot"))
+		{
+			bUseRelativePathFromRoot = SafeJsonBool(Options["UseRelativePathFromRoot"], true);
+		}
+	}
+
+	const std::filesystem::path RootPath(FPaths::RootDir());
+	JSON ScanRules = Root["ScanRules"];
+	for (auto& TypePair : ScanRules.ObjectRange())
+	{
+		const FString ResourceType = TypePair.first;
+		JSON RuleSection = TypePair.second;
+		for (auto& RulePair : RuleSection.ObjectRange())
+		{
+			const FString RuleName = RulePair.first;
+			JSON Rule = RulePair.second;
+			if (!Rule.hasKey("Directory") || !Rule.hasKey("Extensions"))
+			{
+				continue;
+			}
+
+			const FString DirectoryUtf8 = Rule["Directory"].ToString();
+			const std::filesystem::path RuleRootPath = RootPath / ToLexicalPath(DirectoryUtf8);
+			if (!std::filesystem::exists(RuleRootPath) || !std::filesystem::is_directory(RuleRootPath))
+			{
+				UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Resource scan directory missing: type=%s rule=%s dir=%s",
+					ResourceType.c_str(),
+					RuleName.c_str(),
+					DirectoryUtf8.c_str());
+				continue;
+			}
+
+			std::unordered_set<FString> AllowedExtensions;
+			for (auto& ExtValue : Rule["Extensions"].ArrayRange())
+			{
+				FString Extension = ExtValue.ToString();
+				if (bNormalizeExtensionToLower)
+				{
+					Extension = ToLowerCopy(Extension);
+				}
+				AllowedExtensions.insert(Extension);
+			}
+
+			std::unordered_map<FString, FString> Aliases;
+			if (Rule.hasKey("Aliases"))
+			{
+				for (auto& AliasPair : Rule["Aliases"].ObjectRange())
+				{
+					Aliases[NormalizeGenericPath(AliasPair.first)] = AliasPair.second.ToString();
+				}
+			}
+
+			ESoundCategory SoundCategory = ESoundCategory::SFX;
+			if (Rule.hasKey("Category"))
+			{
+				const FString CategoryText = ToLowerCopy(Rule["Category"].ToString());
+				if (CategoryText == "background" || CategoryText == "bgm")
+				{
+					SoundCategory = ESoundCategory::Background;
+				}
+			}
+
+			std::filesystem::directory_options IteratorOptions = std::filesystem::directory_options::skip_permission_denied;
+			if (bRecursive)
+			{
+				for (const auto& Entry : std::filesystem::recursive_directory_iterator(RuleRootPath, IteratorOptions))
+				{
+					if (!Entry.is_regular_file())
+					{
+						continue;
+					}
+
+					FString Extension = Entry.path().extension().string();
+					if (bNormalizeExtensionToLower)
+					{
+						Extension = ToLowerCopy(Extension);
+					}
+					if (AllowedExtensions.find(Extension) == AllowedExtensions.end())
+					{
+						continue;
+					}
+
+					const std::filesystem::path RelativeToRule = Entry.path().lexically_normal().lexically_relative(RuleRootPath);
+					const std::filesystem::path RelativeNoExtension = RelativeToRule.parent_path() / RelativeToRule.stem();
+					const FString RelativeAliasKey = NormalizeGenericPath(RelativeNoExtension.generic_string());
+					const FString RelativePathUtf8 = bUseRelativePathFromRoot
+						? MakeRelativeUtf8Path(Entry.path(), RootPath)
+						: FPaths::ToUtf8(Entry.path().lexically_normal().generic_wstring());
+
+					FString ResourceName;
+					if (const auto AliasIt = Aliases.find(RelativeAliasKey); AliasIt != Aliases.end())
+					{
+						ResourceName = AliasIt->second;
+					}
+					else
+					{
+						ResourceName = MakeGeneratedResourceName(ResourceType, RuleName, RelativeNoExtension.generic_string());
+					}
+
+					if (ResourceType == ResourceKey::Font)
+					{
+						if (Extension == ".json")
+						{
+							FFontResource Resource;
+							if (!LoadBitmapFontMetadata(FPaths::ToUtf8(Entry.path().lexically_normal().wstring()), Resource))
+							{
+								continue;
+							}
+							if (!ResourceName.empty())
+							{
+								Resource.Name = FName(ResourceName);
+							}
+							FontResources[Resource.Name.ToString()] = std::move(Resource);
+						}
+						else
+						{
+							RegisterPath(FName(ResourceName), RelativePathUtf8);
+						}
+					}
+					else if (ResourceType == ResourceKey::Particle)
+					{
+						RegisterParticle(FName(ResourceName), RelativePathUtf8);
+					}
+					else if (ResourceType == ResourceKey::Texture)
+					{
+						RegisterTexture(FName(ResourceName), RelativePathUtf8);
+					}
+					else if (ResourceType == ResourceKey::Mesh)
+					{
+						RegisterMesh(FName(ResourceName), RelativePathUtf8);
+					}
+					else if (ResourceType == ResourceKey::Sound)
+					{
+						RegisterSound(FName(ResourceName), RelativePathUtf8, SoundCategory);
+					}
+					else if (ResourceType == ResourceKey::Material)
+					{
+						RegisterMaterial(FName(ResourceName), RelativePathUtf8);
+					}
+					else
+					{
+						RegisterPath(FName(ResourceName), RelativePathUtf8);
+					}
+				}
+			}
+			else
+			{
+				for (const auto& Entry : std::filesystem::directory_iterator(RuleRootPath, IteratorOptions))
+				{
+					if (!Entry.is_regular_file())
+					{
+						continue;
+					}
+
+					FString Extension = Entry.path().extension().string();
+					if (bNormalizeExtensionToLower)
+					{
+						Extension = ToLowerCopy(Extension);
+					}
+					if (AllowedExtensions.find(Extension) == AllowedExtensions.end())
+					{
+						continue;
+					}
+
+					const std::filesystem::path RelativeToRule = Entry.path().lexically_normal().lexically_relative(RuleRootPath);
+					const std::filesystem::path RelativeNoExtension = RelativeToRule.parent_path() / RelativeToRule.stem();
+					const FString RelativeAliasKey = NormalizeGenericPath(RelativeNoExtension.generic_string());
+					const FString RelativePathUtf8 = bUseRelativePathFromRoot
+						? MakeRelativeUtf8Path(Entry.path(), RootPath)
+						: FPaths::ToUtf8(Entry.path().lexically_normal().generic_wstring());
+
+					FString ResourceName;
+					if (const auto AliasIt = Aliases.find(RelativeAliasKey); AliasIt != Aliases.end())
+					{
+						ResourceName = AliasIt->second;
+					}
+					else
+					{
+						ResourceName = MakeGeneratedResourceName(ResourceType, RuleName, RelativeNoExtension.generic_string());
+					}
+
+					if (ResourceType == ResourceKey::Particle)
+					{
+						RegisterParticle(FName(ResourceName), RelativePathUtf8);
+					}
+					else if (ResourceType == ResourceKey::Texture)
+					{
+						RegisterTexture(FName(ResourceName), RelativePathUtf8);
+					}
+					else if (ResourceType == ResourceKey::Mesh)
+					{
+						RegisterMesh(FName(ResourceName), RelativePathUtf8);
+					}
+					else if (ResourceType == ResourceKey::Sound)
+					{
+						RegisterSound(FName(ResourceName), RelativePathUtf8, SoundCategory);
+					}
+					else if (ResourceType == ResourceKey::Material)
+					{
+						RegisterMaterial(FName(ResourceName), RelativePathUtf8);
+					}
+					else
+					{
+						RegisterPath(FName(ResourceName), RelativePathUtf8);
+					}
+				}
+			}
+		}
+	}
+
+	UE_LOG_CATEGORY(
+		ResourceManager,
+		Info,
+		"[INIT] Parsed resource scan file: %s | +Font=%zu +Particle=%zu +Texture=%zu +Mesh=%zu +Sound=%zu +Material=%zu +Path=%zu | Total Font=%zu Particle=%zu Texture=%zu Mesh=%zu Sound=%zu Material=%zu Path=%zu",
+		Path.c_str(),
+		FontResources.size() - PrevFontCount,
+		ParticleResources.size() - PrevParticleCount,
+		TextureResources.size() - PrevTextureCount,
+		MeshResources.size() - PrevMeshCount,
+		SoundResources.size() - PrevSoundCount,
+		MaterialResources.size() - PrevMaterialCount,
+		PathResources.size() - PrevPathCount,
+		FontResources.size(),
+		ParticleResources.size(),
+		TextureResources.size(),
+		MeshResources.size(),
+		SoundResources.size(),
+		MaterialResources.size(),
+		PathResources.size());
+
+	if (LoadGPUResources(InDevice))
+	{
+		UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] GPU resource upload complete for scan file: %s", Path.c_str());
+	}
+	else
+	{
+		UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] GPU resource upload failed for scan file: %s", Path.c_str());
+	}
+
+	size_t PreloadedMaterialCount = 0;
+	for (const auto& [Key, Resource] : MaterialResources)
+	{
+		FMaterialManager::Get().GetOrCreateMaterial(Resource.Path);
+		++PreloadedMaterialCount;
+	}
+
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Material preload complete after scan file: %zu material(s)", PreloadedMaterialCount);
 }
 
 bool FResourceManager::LoadGPUResources(ID3D11Device* Device)
 {
 	if (!Device)
 	{
+		UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] LoadGPUResources failed: device is null");
 		return false;
 	}
 
@@ -446,20 +917,43 @@ bool FResourceManager::LoadGPUResources(ID3D11Device* Device)
 		return true;
 	};
 
+	size_t UploadedFontCount = 0;
 	for (auto& [Key, Resource] : FontResources)
 	{
-		if (!LoadSRV(Resource)) return false;
+		if (!LoadSRV(Resource))
+		{
+			UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] Font GPU upload failed: key=%s path=%s", Key.c_str(), Resource.Path.c_str());
+			return false;
+		}
+		++UploadedFontCount;
 	}
 
+	size_t UploadedParticleCount = 0;
 	for (auto& [Key, Resource] : ParticleResources)
 	{
-		if (!LoadSRV(Resource)) return false;
+		if (!LoadSRV(Resource))
+		{
+			UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] Particle GPU upload failed: key=%s path=%s", Key.c_str(), Resource.Path.c_str());
+			return false;
+		}
+		++UploadedParticleCount;
 	}
 
+	size_t UploadedTextureCount = 0;
 	for (auto& [Key, Resource] : TextureResources)
 	{
-		if (!LoadSRV(Resource)) return false;
+		if (!LoadSRV(Resource))
+		{
+			UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] Texture GPU upload failed: key=%s path=%s", Key.c_str(), Resource.Path.c_str());
+			return false;
+		}
+		++UploadedTextureCount;
 	}
+
+	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] GPU upload summary: Font=%zu Particle=%zu Texture=%zu",
+		UploadedFontCount,
+		UploadedParticleCount,
+		UploadedTextureCount);
 
 	return true;
 }
@@ -618,12 +1112,16 @@ void FResourceManager::RegisterTexture(const FName& TextureName, const FString& 
 	TextureResources[TextureName.ToString()] = Resource;
 }
 
-TArray<FString> FResourceManager::GetTextureNames() const
+TArray<FString> FResourceManager::GetTextureNames(bool bIncludeEditorResources) const
 {
 	TArray<FString> Names;
 	Names.reserve(TextureResources.size());
-	for (const auto& [Key, _] : TextureResources)
+	for (const auto& [Key, Resource] : TextureResources)
 	{
+		if (!bIncludeEditorResources && Resource.bEditorResource)
+		{
+			continue;
+		}
 		Names.push_back(Key);
 	}
 	return Names;
@@ -657,6 +1155,53 @@ TArray<FString> FResourceManager::GetMeshNames() const
 	{
 		Names.push_back(Key);
 	}
+	return Names;
+}
+
+FSoundResource* FResourceManager::FindSound(const FName& SoundName)
+{
+	auto It = SoundResources.find(SoundName.ToString());
+	return (It != SoundResources.end()) ? &It->second : nullptr;
+}
+
+const FSoundResource* FResourceManager::FindSound(const FName& SoundName) const
+{
+	auto It = SoundResources.find(SoundName.ToString());
+	return (It != SoundResources.end()) ? &It->second : nullptr;
+}
+
+void FResourceManager::RegisterSound(const FName& SoundName, const FString& InPath, ESoundCategory Category)
+{
+	FSoundResource Resource;
+	Resource.Name = SoundName;
+	Resource.Path = InPath;
+	Resource.Category = Category;
+	SoundResources[SoundName.ToString()] = Resource;
+}
+
+TArray<FString> FResourceManager::GetSoundNames() const
+{
+	TArray<FString> Names;
+	Names.reserve(SoundResources.size());
+	for (const auto& [Key, _] : SoundResources)
+	{
+		Names.push_back(Key);
+	}
+	std::sort(Names.begin(), Names.end());
+	return Names;
+}
+
+TArray<FString> FResourceManager::GetSoundNames(ESoundCategory Category) const
+{
+	TArray<FString> Names;
+	for (const auto& [Key, Resource] : SoundResources)
+	{
+		if (Resource.Category == Category)
+		{
+			Names.push_back(Key);
+		}
+	}
+	std::sort(Names.begin(), Names.end());
 	return Names;
 }
 

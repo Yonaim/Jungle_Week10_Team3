@@ -316,6 +316,8 @@
     <ClCompile Include="Source\Engine\Collision\RayUtilsSIMD.cpp" />
     <ClCompile Include="Source\Engine\Collision\SpatialPartition.cpp" />
     <ClCompile Include="Source\Engine\Collision\WorldPrimitivePickingBVH.cpp" />
+    <ClCompile Include="Source\Engine\Audio\AudioManager.cpp" />
+    <ClCompile Include="ThirdParty\miniaudio\miniaudio.c" />
     <ClCompile Include="Source\Engine\Component\ActorComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\BillboardComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\CameraComponent.cpp" />
@@ -326,7 +328,9 @@
     <ClCompile Include="Source\Engine\Component\HeightFogComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\MeshComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\PrimitiveComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\SoundComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\UIButtonComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\UIBackgroundComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\UIImageComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\UIScreenTextComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\UWindowPanelComponent.cpp" />
@@ -539,6 +543,8 @@
     <ClInclude Include="Source\Engine\Collision\RayUtilsSIMD.h" />
     <ClInclude Include="Source\Engine\Collision\SpatialPartition.h" />
     <ClInclude Include="Source\Engine\Collision\WorldPrimitivePickingBVH.h" />
+    <ClInclude Include="Source\Engine\Audio\AudioManager.h" />
+    <ClInclude Include="Source\Engine\Audio\AudioTypes.h" />
     <ClInclude Include="Source\Engine\Component\ActorComponent.h" />
     <ClInclude Include="Source\Engine\Component\BillboardComponent.h" />
     <ClInclude Include="Source\Engine\Component\CameraComponent.h" />
@@ -549,7 +555,9 @@
     <ClInclude Include="Source\Engine\Component\HeightFogComponent.h" />
     <ClInclude Include="Source\Engine\Component\MeshComponent.h" />
     <ClInclude Include="Source\Engine\Component\PrimitiveComponent.h" />
+    <ClInclude Include="Source\Engine\Component\SoundComponent.h" />
     <ClInclude Include="Source\Engine\Component\UIButtonComponent.h" />
+    <ClInclude Include="Source\Engine\Component\UIBackgroundComponent.h" />
     <ClInclude Include="Source\Engine\Component\UIImageComponent.h" />
     <ClInclude Include="Source\Engine\Component\UIScreenTextComponent.h" />
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h" />
@@ -755,6 +763,7 @@
     <ClInclude Include="ThirdParty\ImGui\imgui_impl_dx11.h" />
     <ClInclude Include="ThirdParty\ImGui\imgui_impl_win32.h" />
     <ClInclude Include="ThirdParty\ImGui\imgui_internal.h" />
+    <ClInclude Include="ThirdParty\miniaudio\miniaudio.h" />
     <ClInclude Include="ThirdParty\ImGui\imstb_rectpack.h" />
     <ClInclude Include="ThirdParty\ImGui\imstb_textedit.h" />
     <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h" />

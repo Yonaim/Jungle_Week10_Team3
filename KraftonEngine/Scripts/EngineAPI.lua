@@ -247,6 +247,43 @@ function ComponentProxy:IsPressed() end
 ---@return boolean
 function ComponentProxy:WasClicked() end
 
+---@param soundPath string
+---@return boolean
+function ComponentProxy:SetSoundPath(soundPath) end
+
+---@return string|nil
+function ComponentProxy:GetSoundPath() end
+
+---@param category '"sfx"'|'"background"'|'"bgm"'
+---@return boolean
+function ComponentProxy:SetSoundCategory(category) end
+
+---@return string|nil
+function ComponentProxy:GetSoundCategory() end
+
+---@param looping boolean
+---@return boolean
+function ComponentProxy:SetSoundLooping(looping) end
+
+---@return boolean
+function ComponentProxy:IsSoundLooping() end
+
+---@param soundPath? string
+---@return boolean
+function ComponentProxy:PlaySound(soundPath) end
+
+---@return boolean
+function ComponentProxy:StopSound() end
+
+---@return boolean
+function ComponentProxy:PauseSound() end
+
+---@return boolean
+function ComponentProxy:ResumeSound() end
+
+---@return boolean
+function ComponentProxy:IsSoundPlaying() end
+
 ---@param speed number
 ---@return boolean
 function ComponentProxy:SetSpeed(speed) end
@@ -441,6 +478,44 @@ function find_actors_by_tag(tag) end
 
 ---@param actor ActorProxy
 function destroy_actor(actor) end
+
+---@param soundPath string
+---@param looping? boolean
+---@return string
+function play_sfx(soundPath, looping) end
+
+---@param soundPath string
+---@param looping? boolean
+---@return string
+function play_background(soundPath, looping) end
+
+---@param handle string
+---@return boolean
+function stop_sound(handle) end
+
+---@param handle string
+---@return boolean
+function pause_sound(handle) end
+
+---@param handle string
+---@return boolean
+function resume_sound(handle) end
+
+---@param handle string
+---@return boolean
+function is_sound_playing(handle) end
+
+---@return boolean
+function stop_background() end
+
+---@return boolean
+function pause_background() end
+
+---@return boolean
+function resume_background() end
+
+---@return boolean
+function is_background_playing() end
 
 function BeginPlay() end
 

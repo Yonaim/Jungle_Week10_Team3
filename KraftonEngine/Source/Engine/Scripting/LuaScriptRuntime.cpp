@@ -137,7 +137,7 @@ bool FLuaScriptRuntime::Initialize()
 		LastError = Exception.what();
 		bInitialized = false;
 		Impl.reset();
-		UE_LOG("[LuaRuntime] Initialize failed: %s", LastError.c_str());
+		UE_LOG_CATEGORY(LuaRuntime, Error, "Initialize failed: %s", LastError.c_str());
 		return false;
 	}
 }
@@ -209,7 +209,7 @@ void FLuaScriptRuntime::InitializeHotReload()
 	const FWatchID WatchID = FDirectoryWatcher::Get().Watch(FPaths::ScriptsDir(), "Scripts/");
 	if (WatchID == 0)
 	{
-		UE_LOG("[LuaRuntime] Failed to watch Scripts directory.");
+		UE_LOG_CATEGORY(LuaRuntime, Warning, "Failed to watch Scripts directory.");
 		return;
 	}
 
@@ -279,7 +279,7 @@ void FLuaScriptRuntime::OnScriptsChanged(const TSet<FString>& ChangedFiles)
 		// 실제 재초기화 순서는 Component가 알고 있으므로 Runtime은 위임만 한다.
 		if (Component->ReloadScript())
 		{
-			UE_LOG("[ScriptHotReload] Reloaded: %s", ComponentScriptPath.c_str());
+			UE_LOG_CATEGORY(ScriptHotReload, Info, "Reloaded: %s", ComponentScriptPath.c_str());
 			FNotificationManager::Get().AddNotification("Script Reloaded: " + ComponentScriptPath, ENotificationType::Success, 3.0f);
 		}
 		else
@@ -287,11 +287,11 @@ void FLuaScriptRuntime::OnScriptsChanged(const TSet<FString>& ChangedFiles)
 			const FString ReloadError = Component->GetLastScriptError();
 			if (ReloadError.empty())
 			{
-				UE_LOG("[ScriptHotReload] Failed: %s", ComponentScriptPath.c_str());
+				UE_LOG_CATEGORY(ScriptHotReload, Error, "Failed: %s", ComponentScriptPath.c_str());
 			}
 			else
 			{
-				UE_LOG("[ScriptHotReload] Failed: %s (%s)", ComponentScriptPath.c_str(), ReloadError.c_str());
+				UE_LOG_CATEGORY(ScriptHotReload, Error, "Failed: %s (%s)", ComponentScriptPath.c_str(), ReloadError.c_str());
 			}
 			FNotificationManager::Get().AddNotification("Script Failed: " + ComponentScriptPath, ENotificationType::Error, 5.0f);
 		}
@@ -401,6 +401,19 @@ void FLuaScriptRuntime::BindComponentProxyType()
 		"IsHovered", &FLuaComponentProxy::IsHovered,
 		"IsPressed", &FLuaComponentProxy::IsPressed,
 		"WasClicked", &FLuaComponentProxy::WasClicked,
+		"SetSoundPath", &FLuaComponentProxy::SetSoundPath,
+		"GetSoundPath", &FLuaComponentProxy::GetSoundPath,
+		"SetSoundCategory", &FLuaComponentProxy::SetSoundCategory,
+		"GetSoundCategory", &FLuaComponentProxy::GetSoundCategory,
+		"SetSoundLooping", &FLuaComponentProxy::SetSoundLooping,
+		"IsSoundLooping", &FLuaComponentProxy::IsSoundLooping,
+		"PlaySound", sol::overload(
+			static_cast<bool(FLuaComponentProxy::*)()>(&FLuaComponentProxy::PlayAudio),
+			&FLuaComponentProxy::PlayAudioPath),
+		"StopSound", &FLuaComponentProxy::StopSound,
+		"PauseSound", &FLuaComponentProxy::PauseSound,
+		"ResumeSound", &FLuaComponentProxy::ResumeSound,
+		"IsSoundPlaying", &FLuaComponentProxy::IsSoundPlaying,
 		"SetSpeed", &FLuaComponentProxy::SetSpeed,
 		"GetSpeed", &FLuaComponentProxy::GetSpeed,
 		"MoveTo", sol::overload(

@@ -85,6 +85,8 @@ struct FViewportRenderOptions
 	bool Enable25DCulling = true;
 
 	// Light debug visualization
+	float DebugLineThickness = 1.0f;
+	float ActorHelperBillboardScale = 1.0f;
 	float DirectionalLightVisualizationScale = 1.0f;
 	float PointLightVisualizationScale = 1.0f;
 	float SpotLightVisualizationScale = 1.0f;

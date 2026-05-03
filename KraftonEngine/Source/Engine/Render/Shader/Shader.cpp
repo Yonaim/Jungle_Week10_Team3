@@ -32,7 +32,7 @@ bool FComputeShader::Create(ID3D11Device* InDevice, const wchar_t* Path, const c
 	{
 		if (ErrBlob)
 		{
-			UE_LOG("[Shader] CS Compile Error: %s", (const char*)ErrBlob->GetBufferPointer());
+			UE_LOG_CATEGORY(Shader, Error, "CS Compile Error: %s", (const char*)ErrBlob->GetBufferPointer());
 			FNotificationManager::Get().AddNotification("CS Compile Error (see log)", ENotificationType::Error, 5.0f);
 			ErrBlob->Release();
 		}
@@ -107,7 +107,7 @@ void FShader::Create(ID3D11Device* InDevice, const wchar_t* InFilePath, const ch
 		if (errorBlob)
 		{
 			const char* Msg = (const char*)errorBlob->GetBufferPointer();
-			UE_LOG("[Shader] VS Compile Error: %s", Msg);
+			UE_LOG_CATEGORY(Shader, Error, "VS Compile Error: %s", Msg);
 			if (ErrorMode == EShaderErrorMode::MessageBox)
 				MessageBoxA(nullptr, Msg, "VS Compile Error", MB_OK | MB_ICONERROR);
 			else
@@ -124,7 +124,7 @@ void FShader::Create(ID3D11Device* InDevice, const wchar_t* InFilePath, const ch
 		if (errorBlob)
 		{
 			const char* Msg = (const char*)errorBlob->GetBufferPointer();
-			UE_LOG("[Shader] PS Compile Error: %s", Msg);
+			UE_LOG_CATEGORY(Shader, Error, "PS Compile Error: %s", Msg);
 			if (ErrorMode == EShaderErrorMode::MessageBox)
 				MessageBoxA(nullptr, Msg, "PS Compile Error", MB_OK | MB_ICONERROR);
 			else

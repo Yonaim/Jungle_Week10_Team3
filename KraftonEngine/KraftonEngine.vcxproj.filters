@@ -58,6 +58,9 @@
     <Filter Include="Source\Engine\Collision">
       <UniqueIdentifier>{0a1ac0a6-fa86-45a3-c38e-91b60c7ce3cf}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Engine\Audio">
+      <UniqueIdentifier>{f4b8ec8e-7d8a-42a4-b87f-0b68a36495f8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Engine\Component">
       <UniqueIdentifier>{22bbd7c0-73bc-1bc4-992f-be08238b1609}</UniqueIdentifier>
     </Filter>
@@ -174,6 +177,9 @@
     </Filter>
     <Filter Include="ThirdParty\ImGui">
       <UniqueIdentifier>{5fdcaaee-156a-a40d-82bd-8b77a5a402df}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\miniaudio">
+      <UniqueIdentifier>{8f7457b3-bd9f-4b8f-9302-2bbd2b2f6e1d}</UniqueIdentifier>
     </Filter>
     <Filter Include="ThirdParty\SimpleJSON">
       <UniqueIdentifier>{b5b63371-405e-e009-4e4e-e3b5a25ee7bd}</UniqueIdentifier>
@@ -413,6 +419,12 @@
     <ClCompile Include="Source\Engine\Collision\WorldPrimitivePickingBVH.cpp">
       <Filter>Source\Engine\Collision</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Audio\AudioManager.cpp">
+      <Filter>Source\Engine\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\miniaudio\miniaudio.c">
+      <Filter>ThirdParty\miniaudio</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\ActorComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
@@ -443,7 +455,13 @@
     <ClCompile Include="Source\Engine\Component\PrimitiveComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Component\SoundComponent.cpp">
+      <Filter>Source\Engine\Component</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Component\UIButtonComponent.cpp">
+      <Filter>Source\Engine\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\UIBackgroundComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\UIImageComponent.cpp">
@@ -1064,6 +1082,12 @@
     <ClInclude Include="Source\Engine\Collision\WorldPrimitivePickingBVH.h">
       <Filter>Source\Engine\Collision</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Audio\AudioManager.h">
+      <Filter>Source\Engine\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Audio\AudioTypes.h">
+      <Filter>Source\Engine\Audio</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Component\ActorComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
@@ -1094,7 +1118,13 @@
     <ClInclude Include="Source\Engine\Component\PrimitiveComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Component\SoundComponent.h">
+      <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Component\UIButtonComponent.h">
+      <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\UIBackgroundComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\UIImageComponent.h">
@@ -1690,6 +1720,9 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\ImGui\imgui.h">
       <Filter>ThirdParty\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\miniaudio\miniaudio.h">
+      <Filter>ThirdParty\miniaudio</Filter>
     </ClInclude>
     <ClInclude Include="ThirdParty\ImGui\imgui_impl_dx11.h">
       <Filter>ThirdParty\ImGui</Filter>

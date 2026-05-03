@@ -154,23 +154,25 @@ void UNineSlicePanelComponent::ContributeVisuals(FScene& Scene) const
 	float SliceRight = (std::clamp)(Slice.Z, 0.0f, TextureWidth - SliceLeft);
 	float SliceBottom = (std::clamp)(Slice.W, 0.0f, TextureHeight - SliceTop);
 
+	const FVector2 ResolvedSize = ResolveScreenSize2D();
+	const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
 	float LeftWidth = SliceLeft;
 	float RightWidth = SliceRight;
 	float TopHeight = SliceTop;
 	float BottomHeight = SliceBottom;
 
-	FitBordersToTarget(ScreenSize.X, LeftWidth, RightWidth);
-	FitBordersToTarget(ScreenSize.Y, TopHeight, BottomHeight);
+	FitBordersToTarget(ResolvedSize.X, LeftWidth, RightWidth);
+	FitBordersToTarget(ResolvedSize.Y, TopHeight, BottomHeight);
 
-	const float CenterWidth = (std::max)(0.0f, ScreenSize.X - LeftWidth - RightWidth);
-	const float CenterHeight = (std::max)(0.0f, ScreenSize.Y - TopHeight - BottomHeight);
+	const float CenterWidth = (std::max)(0.0f, ResolvedSize.X - LeftWidth - RightWidth);
+	const float CenterHeight = (std::max)(0.0f, ResolvedSize.Y - TopHeight - BottomHeight);
 
-	const float X0 = ScreenPosition.X;
+	const float X0 = ResolvedPosition.X;
 	const float X1 = X0 + LeftWidth;
-	const float X2 = X0 + ScreenSize.X - RightWidth;
-	const float Y0 = ScreenPosition.Y;
+	const float X2 = X0 + ResolvedSize.X - RightWidth;
+	const float Y0 = ResolvedPosition.Y;
 	const float Y1 = Y0 + TopHeight;
-	const float Y2 = Y0 + ScreenSize.Y - BottomHeight;
+	const float Y2 = Y0 + ResolvedSize.Y - BottomHeight;
 
 	const float U0 = 0.0f;
 	const float U1 = SliceLeft / TextureWidth;

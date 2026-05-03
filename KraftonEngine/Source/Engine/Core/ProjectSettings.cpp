@@ -27,6 +27,9 @@ namespace PSKey
 	constexpr const char* GameInstanceClass = "GameInstanceClass";
 	constexpr const char* DefaultGameModeClass = "DefaultGameModeClass";
 	constexpr const char* DefaultScene = "DefaultScene";
+	constexpr const char* WindowWidth = "WindowWidth";
+	constexpr const char* WindowHeight = "WindowHeight";
+	constexpr const char* LockWindowResolution = "LockWindowResolution";
 }
 
 void FProjectSettings::SaveToFile(const FString& Path) const
@@ -64,6 +67,9 @@ void FProjectSettings::SaveToFile(const FString& Path) const
 	GameObj[PSKey::GameInstanceClass] = Game.GameInstanceClass;
 	GameObj[PSKey::DefaultGameModeClass] = Game.DefaultGameModeClass;
 	GameObj[PSKey::DefaultScene] = Game.DefaultScene;
+	GameObj[PSKey::WindowWidth] = static_cast<int>(Game.WindowWidth);
+	GameObj[PSKey::WindowHeight] = static_cast<int>(Game.WindowHeight);
+	GameObj[PSKey::LockWindowResolution] = Game.bLockWindowResolution;
 	Root[PSKey::Game] = GameObj;
 
 	std::filesystem::path FilePath(FPaths::ToWide(Path));
@@ -182,6 +188,20 @@ void FProjectSettings::LoadFromFile(const FString& Path)
 		if (G.hasKey(PSKey::DefaultScene))
 		{
 			Game.DefaultScene = G[PSKey::DefaultScene].ToString();
+		}
+		if (G.hasKey(PSKey::WindowWidth))
+		{
+			int v = G[PSKey::WindowWidth].ToInt();
+			Game.WindowWidth = static_cast<uint32>((std::max)(320, (std::min)(v, 7680)));
+		}
+		if (G.hasKey(PSKey::WindowHeight))
+		{
+			int v = G[PSKey::WindowHeight].ToInt();
+			Game.WindowHeight = static_cast<uint32>((std::max)(240, (std::min)(v, 4320)));
+		}
+		if (G.hasKey(PSKey::LockWindowResolution))
+		{
+			Game.bLockWindowResolution = G[PSKey::LockWindowResolution].ToBool();
 		}
 	}
 }

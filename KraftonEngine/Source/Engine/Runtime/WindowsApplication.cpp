@@ -1,5 +1,6 @@
 #include "Engine/Runtime/WindowsApplication.h"
 #include "Engine/Runtime/resource.h"
+#include "Core/ProjectSettings.h"
 
 #include <windowsx.h>
 #include <vector>
@@ -80,7 +81,7 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 		RECT WindowRect{};
 		GetWindowRect(hWnd, &WindowRect);
 		const int ResizeBorderThickness = GetResizeBorderForWindow(hWnd);
-		const bool bAllowResize = !IsZoomed(hWnd) && ResizeBorderThickness > 0;
+		const bool bAllowResize = !Window.IsResizeLocked() && !IsZoomed(hWnd) && ResizeBorderThickness > 0;
 
 		if (bAllowResize)
 		{
@@ -171,13 +172,16 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 
 	RegisterClassExW(&WndClass);
 
+	const uint32 WindowWidth = (std::max)(320u, FProjectSettings::Get().Game.WindowWidth);
+	const uint32 WindowHeight = (std::max)(240u, FProjectSettings::Get().Game.WindowHeight);
+
 	HWND HWindow = CreateWindowExW(
 		0,
 		WindowClass,
 		Title,
 		WindowedStyle,
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		1920, 1080,
+		static_cast<int>(WindowWidth), static_cast<int>(WindowHeight),
 		nullptr, nullptr, HInstance, this);
 
 	if (!HWindow)
@@ -193,6 +197,8 @@ bool FWindowsApplication::Init(HINSTANCE InHInstance)
 	RegisterRawInputDevices(&RawMouseDevice, 1, sizeof(RAWINPUTDEVICE));
 
 	Window.Initialize(HWindow);
+	Window.SetResizeLocked(FProjectSettings::Get().Game.bLockWindowResolution);
+	Window.ResizeClientArea(WindowWidth, WindowHeight);
 	return true;
 }
 

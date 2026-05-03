@@ -117,6 +117,12 @@ private:
 	void TickInput(float DeltaTime);
 	void TickInteraction(float DeltaTime);
 	void HandleDragStart(const FRay& Ray); //픽킹 시작
+	void DrawUIScreenTranslateGizmo();
+	bool HasUIScreenTranslateGizmo() const;
+	int32 HitTestUIScreenTranslateGizmo(const ImVec2& MousePos) const;
+	bool BeginUIScreenTranslateDrag(const ImVec2& MousePos);
+	void UpdateUIScreenTranslateDrag(const ImVec2& MousePos);
+	void EndUIScreenTranslateDrag(bool bCommitChange);
 	void SyncCameraSmoothingTarget();
 	void ApplySmoothedCameraLocation(float DeltaTime);
 
@@ -197,4 +203,8 @@ private:
 	FVector EditorRotateAccumulator = FVector::ZeroVector;
 	FVector EditorPanAccumulator = FVector::ZeroVector;
 	float EditorZoomAccumulator = 0.0f;
+	int32 HoveredUIScreenGizmoAxis = 0;
+	int32 ActiveUIScreenGizmoAxis = 0;
+	bool bDraggingUIScreenGizmo = false;
+	ImVec2 LastUIScreenGizmoMousePos = ImVec2(0.0f, 0.0f);
 };

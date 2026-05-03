@@ -59,12 +59,22 @@ FTrackedSceneSnapshot FSceneHistoryBuilder::CaptureSnapshot(const UEditorEngine&
 		Snapshot.SelectedActorUUIDs.push_back(Actor->GetUUID());
 	}
 
+	if (const ULevel* PersistentLevel = World->GetPersistentLevel())
+	{
+		Snapshot.OutlinerFolders = PersistentLevel->GetOutlinerFolders();
+	}
+
 	return Snapshot;
 }
 
 bool FSceneHistoryBuilder::HasMeaningfulDelta(const FTrackedSceneSnapshot& Before, const FTrackedSceneSnapshot& After)
 {
 	if (Before.ActorOrderUUIDs != After.ActorOrderUUIDs)
+	{
+		return true;
+	}
+
+	if (Before.OutlinerFolders != After.OutlinerFolders)
 	{
 		return true;
 	}
@@ -93,6 +103,8 @@ FTrackedSceneChange FSceneHistoryBuilder::BuildChange(const FTrackedSceneSnapsho
 	Change.AfterSelectedActorUUIDs = After.SelectedActorUUIDs;
 	Change.BeforeActorOrderUUIDs = Before.ActorOrderUUIDs;
 	Change.AfterActorOrderUUIDs = After.ActorOrderUUIDs;
+	Change.BeforeOutlinerFolders = Before.OutlinerFolders;
+	Change.AfterOutlinerFolders = After.OutlinerFolders;
 	Change.BeforeCameraData = Before.CameraData;
 	Change.AfterCameraData = After.CameraData;
 

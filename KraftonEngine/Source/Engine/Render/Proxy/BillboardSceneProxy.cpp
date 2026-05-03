@@ -8,6 +8,27 @@
 #include "Render/Types/FrameContext.h"
 #include "Texture/Texture2D.h"
 
+namespace
+{
+	constexpr float EditorBillboardScreenScale = 0.04f;
+
+	float ComputeEditorBillboardScale(const FFrameContext& Frame, const FVector& WorldLocation)
+	{
+		float Scale = 1.0f;
+		if (Frame.bIsOrtho)
+		{
+			Scale = Frame.OrthoWidth * EditorBillboardScreenScale;
+		}
+		else
+		{
+			const float Distance = FVector::Distance(Frame.CameraPosition, WorldLocation);
+			Scale = Distance * EditorBillboardScreenScale;
+		}
+
+		return (Scale < 0.01f) ? 0.01f : Scale;
+	}
+}
+
 FBillboardSceneProxy::FBillboardSceneProxy(UBillboardComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent)
 {
@@ -17,6 +38,11 @@ FBillboardSceneProxy::FBillboardSceneProxy(UBillboardComponent* InComponent)
 	if (InComponent->IsEditorOnly())
 	{
 		ProxyFlags |= EPrimitiveProxyFlags::EditorOnly;
+	}
+
+	if (!InComponent->ParticipatesInRenderSpatialStructure())
+	{
+		ProxyFlags |= EPrimitiveProxyFlags::NeverCull;
 	}
 }
 
@@ -32,6 +58,8 @@ void FBillboardSceneProxy::UpdateTransform()
 	UBillboardComponent* Comp = GetBillboardComponent();
 	CachedScale = Comp->GetWorldScale();
 	CachedLocation = Comp->GetWorldLocation();
+	CachedWidth = Comp->GetWidth();
+	CachedHeight = Comp->GetHeight();
 }
 
 void FBillboardSceneProxy::UpdateMesh()
@@ -54,7 +82,7 @@ void FBillboardSceneProxy::UpdateMesh()
 			ERenderPass::AlphaBlend,
 			EBlendState::AlphaBlend,
 			EDepthStencilState::Default,
-			ERasterizerState::SolidBackCull,
+			ERasterizerState::SolidNoCull,
 			FShaderManager::Get().GetOrCreate(EShaderPath::Billboard));
 	}
 
@@ -74,8 +102,20 @@ void FBillboardSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 
 	FVector BillboardForward = Frame.CameraForward * -1.0f;
 	FMatrix RotMatrix;
-	RotMatrix.SetAxes(BillboardForward, Frame.CameraRight, Frame.CameraUp);
-	FMatrix BillboardMatrix = FMatrix::MakeScaleMatrix(CachedScale)
+	RotMatrix.SetAxes(BillboardForward, Frame.CameraRight * -1.0f, Frame.CameraUp);
+	FVector BillboardScale = CachedScale;
+	if (UBillboardComponent* Comp = GetBillboardComponent())
+	{
+		if (Comp->IsEditorOnlyComponent())
+		{
+			const float EditorScale = ComputeEditorBillboardScale(Frame, CachedLocation)
+				* Frame.RenderOptions.ActorHelperBillboardScale;
+			BillboardScale *= EditorScale;
+		}
+	}
+	BillboardScale.Y *= CachedWidth;
+	BillboardScale.Z *= CachedHeight;
+	FMatrix BillboardMatrix = FMatrix::MakeScaleMatrix(BillboardScale)
 		* RotMatrix * FMatrix::MakeTranslationMatrix(CachedLocation);
 
 	PerObjectConstants = FPerObjectConstants::FromWorldMatrix(BillboardMatrix);

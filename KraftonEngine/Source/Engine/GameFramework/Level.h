@@ -22,9 +22,15 @@ public:
 	void RemoveActor(AActor* Actor);
 	bool MoveActorBefore(AActor* ActorToMove, AActor* BeforeActor);
 	bool MoveActorToIndex(AActor* ActorToMove, size_t TargetIndex);
+	bool AddOutlinerFolder(const FString& FolderName);
+	bool RenameOutlinerFolder(const FString& OldFolderName, const FString& NewFolderName);
+	bool MoveOutlinerFolderBefore(const FString& FolderToMove, const FString& BeforeFolder);
+	bool MoveOutlinerFolderToIndex(const FString& FolderToMove, size_t TargetIndex);
+	void SetOutlinerFolders(const TArray<FString>& InFolders);
 	void Clear();
 
 	const TArray<AActor*>& GetActors() const { return Actors; }
+	const TArray<FString>& GetOutlinerFolders() const { return OutlinerFolders; }
 	UWorld* GetWorld() const { return OwingWorld; }
 	void SetWorld(UWorld* World) { OwingWorld = World;}
 	void Serialize(FArchive& Ar);
@@ -39,6 +45,7 @@ public:
 private:
 	FName LevelName;
 	TArray<AActor*> Actors;
+	TArray<FString> OutlinerFolders;
 	UWorld* OwingWorld = nullptr;
 	FString GameModeClassName;
 };

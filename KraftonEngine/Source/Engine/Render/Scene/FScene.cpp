@@ -300,11 +300,6 @@ void FScene::AddScreenText(FString Text, const FVector2& Position, float Scale, 
 void FScene::AddScreenQuad(ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, const FVector4& Color, int32 ZOrder,
 	const FVector2& UVMin, const FVector2& UVMax)
 {
-	if (!TextureSRV)
-	{
-		return;
-	}
-
 	ScreenQuads.push_back({ TextureSRV, Position, Size, UVMin, UVMax, Color, ZOrder });
 }
 

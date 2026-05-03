@@ -1,5 +1,6 @@
 ﻿#include "Engine/Runtime/Engine.h"
 
+#include "Audio/AudioManager.h"
 #include "Platform/Paths.h"
 #include "Core/Log.h"
 #include "Core/Notification.h"
@@ -50,14 +51,19 @@ void UEngine::Init(FWindowsWindow* InWindow)
 {
 	Window = InWindow;
 
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] UEngine::Init begin");
+
 	// 싱글턴 초기화 순서 보장
 	FNamePool::Get();
 	FObjectFactory::Get();
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] Core singletons ready");
 
 	// GameInstance를 만들기 전에 ProjectSettings 로드 — 에디터가 다시 로드해도 안전
 	FProjectSettings::Get().LoadFromFile(FProjectSettings::GetDefaultPath());
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] Reloaded project settings from %s", FProjectSettings::GetDefaultPath().c_str());
 
 	const FString& GameInstanceClassName = FProjectSettings::Get().Game.GameInstanceClass;
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] Creating GameInstance class=%s", GameInstanceClassName.c_str());
 	UObject* GameInstanceObj = FObjectFactory::Get().Create(GameInstanceClassName);
 	GameInstance = Cast<UGameInstance>(GameInstanceObj);
 	if (!GameInstance)
@@ -65,53 +71,76 @@ void UEngine::Init(FWindowsWindow* InWindow)
 		// 잘못된 클래스 이름이거나 등록 안된 경우 베이스로 폴백
 		if (GameInstanceObj) UObjectManager::Get().DestroyObject(GameInstanceObj);
 		GameInstance = UObjectManager::Get().CreateObject<UGameInstance>();
+		UE_LOG_CATEGORY(Engine, Warning, "[INIT] GameInstance fallback to UGameInstance");
+	}
+	else
+	{
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] GameInstance created successfully");
 	}
 
 	{
 		SCOPE_STARTUP_STAT("Renderer::Create");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Renderer::Create begin");
 		Renderer.Create(Window->GetHWND());
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Renderer::Create complete");
 	}
 
 	ID3D11Device* Device = Renderer.GetFD3DDevice().GetDevice();
 
 	{
 		SCOPE_STARTUP_STAT("MeshBufferManager::Init");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] MeshBufferManager::Init begin");
 		FMeshBufferManager::Get().Initialize(Device);
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] MeshBufferManager::Init complete");
 	}
 
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadDefaultResources");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading default resources");
 		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::DefaultContentResourceFilePath()), Device);
 	}
 
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadEditorResources");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading editor resources");
 		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::EditorResourceFilePath()), Device);
 	}
 
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadProjectResources");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ProjectResourceFilePath()), Device);
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading project resources");
+		FResourceManager::Get().LoadFromScanFile(FPaths::ToUtf8(FPaths::ProjectResourcePathsFilePath()), Device);
 	}
 
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadFromDir");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning resource directory: %s", FPaths::ToUtf8(FPaths::RootDir()).c_str());
 		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::RootDir()), Device);
 	}
 
 	{
 		SCOPE_STARTUP_STAT("RenderPipeline::Create");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] RenderPipeline::Create begin");
 		SetRenderPipeline(std::make_unique<FDefaultRenderPipeline>(this, Renderer));
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] RenderPipeline::Create complete");
 	}
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] GameInstance::Init begin");
 	GameInstance->Init();
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] GameInstance::Init complete");
 
-	FLogManager::Get().Initialize();
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] FDirectoryWatcher::Initialize begin");
 	FDirectoryWatcher::Get().Initialize();
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] FDirectoryWatcher::Initialize complete");
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] FCollisionDispatcher::Init begin");
 	FCollisionDispatcher::Get().Init();
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] FCollisionDispatcher::Init complete");
+	UE_LOG_CATEGORY(Engine, Info, "[INIT] UEngine::Init complete");
 }
 
 void UEngine::Shutdown()
 {
+	FAudioManager::Get().Shutdown();
+
 	if (GameInstance)
 	{
 		GameInstance->Shutdown();
@@ -145,6 +174,7 @@ void UEngine::Tick(float DeltaTime)
 {
 	FDirectoryWatcher::Get().ProcessChanges();
 	FNotificationManager::Get().Tick(DeltaTime);
+	FAudioManager::Get().Update();
 	FInputManager::Get().Tick();
 	WorldTick(DeltaTime);
 	Render(DeltaTime);

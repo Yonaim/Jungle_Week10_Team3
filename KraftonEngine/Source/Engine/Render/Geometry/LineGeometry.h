@@ -7,6 +7,8 @@
 #include "Render/Types/ViewTypes.h"
 #include "Render/Resource/Buffer.h"
 
+struct FFrameContext;
+
 // FLineVertex — 라인 렌더링용 버텍스 (Position + Color)
 struct FLineVertex
 {
@@ -26,6 +28,10 @@ public:
 	void AddLine(const FVector& Start, const FVector& End, const FVector4& Color);
 	void AddLine(const FVector& Start, const FVector& End, const FVector4& StartColor, const FVector4& EndColor);
 	void AddAABB(const FBoundingBox& Box, const FColor& Color);
+	void AddBillboardLine(const FVector& Start, const FVector& End, const FVector4& Color, const FFrameContext& Frame, float ThicknessPixels);
+	void AddBillboardLine(const FVector& Start, const FVector& End, const FVector4& StartColor, const FVector4& EndColor,
+		const FFrameContext& Frame, float ThicknessPixels);
+	void AddBillboardAABB(const FBoundingBox& Box, const FColor& Color, const FFrameContext& Frame, float ThicknessPixels);
 	void AddWorldHelpers(const FShowFlags& ShowFlags, float GridSpacing, int32 GridHalfLineCount,
 		const FVector& CameraPosition, const FVector& CameraForward, bool bIsOrtho = false);
 
@@ -36,13 +42,17 @@ public:
 	uint32 GetVBStride() const { return VB.GetStride(); }
 	ID3D11Buffer* GetIBBuffer() const { return IB.GetBuffer(); }
 	uint32 GetIndexCount() const { return static_cast<uint32>(Indices.size()); }
+	D3D11_PRIMITIVE_TOPOLOGY GetTopology() const { return Topology; }
 	uint32 GetLineCount() const { return static_cast<uint32>(Indices.size() / 2); }
 
 private:
+	bool EnsureTopology(D3D11_PRIMITIVE_TOPOLOGY InTopology);
+
 	TArray<FLineVertex> IndexedVertices;
 	TArray<uint32> Indices;
 
 	FDynamicVertexBuffer VB;
 	FDynamicIndexBuffer  IB;
 	ID3D11Device* Device = nullptr;
+	D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 };

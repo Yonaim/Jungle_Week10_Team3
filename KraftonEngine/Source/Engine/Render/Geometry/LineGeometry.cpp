@@ -1,11 +1,18 @@
-﻿#include "LineGeometry.h"
+#include "LineGeometry.h"
 #include "Math/MathUtils.h"
+#include "Render/Types/FrameContext.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace
 {
+	struct FViewPoint
+	{
+		FVector Position;
+		float W = 1.0f;
+	};
+
 	float Comp(const FVector& V, int I) { return (&V.X)[I]; }
 
 	FVector MakeGridPoint(int A0, int A1, int N, float V0, float V1, float VN)
@@ -52,6 +59,47 @@ namespace
 		if (AY >= AX && AY >= AZ) return 1;
 		return 2;
 	}
+
+	FViewPoint TransformToView(const FVector& Point, const FMatrix& View)
+	{
+		FViewPoint Result;
+		Result.Position.X = Point.X * View.M[0][0] + Point.Y * View.M[1][0] + Point.Z * View.M[2][0] + View.M[3][0];
+		Result.Position.Y = Point.X * View.M[0][1] + Point.Y * View.M[1][1] + Point.Z * View.M[2][1] + View.M[3][1];
+		Result.Position.Z = Point.X * View.M[0][2] + Point.Y * View.M[1][2] + Point.Z * View.M[2][2] + View.M[3][2];
+		Result.W = Point.X * View.M[0][3] + Point.Y * View.M[1][3] + Point.Z * View.M[2][3] + View.M[3][3];
+		return Result;
+	}
+
+	FVector2 ProjectToNdc(const FVector& ViewPos, const FFrameContext& Frame)
+	{
+		const float ProjX = Frame.Proj.M[0][0];
+		const float ProjY = Frame.Proj.M[1][1];
+		if (Frame.bIsOrtho)
+		{
+			return FVector2(ViewPos.X * ProjX, ViewPos.Y * ProjY);
+		}
+
+		const float SafeZ = std::max(ViewPos.Z, 0.0001f);
+		return FVector2((ViewPos.X * ProjX) / SafeZ, (ViewPos.Y * ProjY) / SafeZ);
+	}
+
+	FVector ComputeViewOffset(const FVector2& PerpNdc, const FVector& ViewPos, const FFrameContext& Frame, float HalfThicknessPixels)
+	{
+		const float SafeWidth = std::max(Frame.ViewportWidth, 1.0f);
+		const float SafeHeight = std::max(Frame.ViewportHeight, 1.0f);
+		const float DeltaNdcX = PerpNdc.X * (2.0f * HalfThicknessPixels / SafeWidth);
+		const float DeltaNdcY = PerpNdc.Y * (2.0f * HalfThicknessPixels / SafeHeight);
+		const float ProjX = std::max(std::fabs(Frame.Proj.M[0][0]), 0.0001f);
+		const float ProjY = std::max(std::fabs(Frame.Proj.M[1][1]), 0.0001f);
+
+		if (Frame.bIsOrtho)
+		{
+			return FVector(DeltaNdcX / ProjX, DeltaNdcY / ProjY, 0.0f);
+		}
+
+		const float SafeZ = std::max(ViewPos.Z, 0.0001f);
+		return FVector((DeltaNdcX * SafeZ) / ProjX, (DeltaNdcY * SafeZ) / ProjY, 0.0f);
+	}
 }
 
 void FLineGeometry::Create(ID3D11Device* InDevice)
@@ -72,6 +120,18 @@ void FLineGeometry::Release()
 	IndexedVertices.clear();
 	Indices.clear();
 	if (Device) { Device->Release(); Device = nullptr; }
+	Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+}
+
+bool FLineGeometry::EnsureTopology(D3D11_PRIMITIVE_TOPOLOGY InTopology)
+{
+	if (!Indices.empty() && Topology != InTopology)
+	{
+		return false;
+	}
+
+	Topology = InTopology;
+	return true;
 }
 
 void FLineGeometry::AddLine(const FVector& Start, const FVector& End, const FVector4& InColor)
@@ -81,6 +141,11 @@ void FLineGeometry::AddLine(const FVector& Start, const FVector& End, const FVec
 
 void FLineGeometry::AddLine(const FVector& Start, const FVector& End, const FVector4& StartColor, const FVector4& EndColor)
 {
+	if (!EnsureTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST))
+	{
+		return;
+	}
+
 	const uint32 BaseVertex = static_cast<uint32>(IndexedVertices.size());
 	IndexedVertices.emplace_back(Start, StartColor);
 	IndexedVertices.emplace_back(End, EndColor);
@@ -90,6 +155,11 @@ void FLineGeometry::AddLine(const FVector& Start, const FVector& End, const FVec
 
 void FLineGeometry::AddAABB(const FBoundingBox& Box, const FColor& InColor)
 {
+	if (!EnsureTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST))
+	{
+		return;
+	}
+
 	const FVector4 BoxColor = InColor.ToVector4();
 	const uint32 BaseVertex = static_cast<uint32>(IndexedVertices.size());
 
@@ -112,6 +182,92 @@ void FLineGeometry::AddAABB(const FBoundingBox& Box, const FColor& InColor)
 	for (uint32 EdgeIndex : AABBEdgeIndices)
 	{
 		Indices.push_back(BaseVertex + EdgeIndex);
+	}
+}
+
+void FLineGeometry::AddBillboardLine(const FVector& Start, const FVector& End, const FVector4& Color, const FFrameContext& Frame, float ThicknessPixels)
+{
+	AddBillboardLine(Start, End, Color, Color, Frame, ThicknessPixels);
+}
+
+void FLineGeometry::AddBillboardLine(const FVector& Start, const FVector& End, const FVector4& StartColor, const FVector4& EndColor,
+	const FFrameContext& Frame, float ThicknessPixels)
+{
+	if (ThicknessPixels <= 1.0f)
+	{
+		AddLine(Start, End, StartColor, EndColor);
+		return;
+	}
+
+	if (!EnsureTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST))
+	{
+		return;
+	}
+
+	const FViewPoint StartView = TransformToView(Start, Frame.View);
+	const FViewPoint EndView = TransformToView(End, Frame.View);
+	if (!Frame.bIsOrtho && (StartView.Position.Z <= 0.0f || EndView.Position.Z <= 0.0f))
+	{
+		return;
+	}
+
+	FVector2 ScreenDir = ProjectToNdc(EndView.Position, Frame) - ProjectToNdc(StartView.Position, Frame);
+	if (ScreenDir.Length() <= 0.0001f)
+	{
+		return;
+	}
+	ScreenDir.Normalize();
+	const FVector2 PerpNdc(-ScreenDir.Y, ScreenDir.X);
+	const float HalfThickness = ThicknessPixels * 0.5f;
+
+	const FVector StartOffsetView = ComputeViewOffset(PerpNdc, StartView.Position, Frame, HalfThickness);
+	const FVector EndOffsetView = ComputeViewOffset(PerpNdc, EndView.Position, Frame, HalfThickness);
+	const FMatrix InvView = Frame.View.GetInverseFast();
+
+	const FVector P0 = (StartView.Position - StartOffsetView) * InvView;
+	const FVector P1 = (StartView.Position + StartOffsetView) * InvView;
+	const FVector P2 = (EndView.Position + EndOffsetView) * InvView;
+	const FVector P3 = (EndView.Position - EndOffsetView) * InvView;
+
+	const uint32 BaseVertex = static_cast<uint32>(IndexedVertices.size());
+	IndexedVertices.emplace_back(P0, StartColor);
+	IndexedVertices.emplace_back(P1, StartColor);
+	IndexedVertices.emplace_back(P2, EndColor);
+	IndexedVertices.emplace_back(P3, EndColor);
+
+	Indices.push_back(BaseVertex + 0);
+	Indices.push_back(BaseVertex + 1);
+	Indices.push_back(BaseVertex + 2);
+	Indices.push_back(BaseVertex + 0);
+	Indices.push_back(BaseVertex + 2);
+	Indices.push_back(BaseVertex + 3);
+}
+
+void FLineGeometry::AddBillboardAABB(const FBoundingBox& Box, const FColor& Color, const FFrameContext& Frame, float ThicknessPixels)
+{
+	const FVector4 BoxColor = Color.ToVector4();
+	const FVector V[8] =
+	{
+		FVector(Box.Min.X, Box.Min.Y, Box.Min.Z),
+		FVector(Box.Max.X, Box.Min.Y, Box.Min.Z),
+		FVector(Box.Max.X, Box.Max.Y, Box.Min.Z),
+		FVector(Box.Min.X, Box.Max.Y, Box.Min.Z),
+		FVector(Box.Min.X, Box.Min.Y, Box.Max.Z),
+		FVector(Box.Max.X, Box.Min.Y, Box.Max.Z),
+		FVector(Box.Max.X, Box.Max.Y, Box.Max.Z),
+		FVector(Box.Min.X, Box.Max.Y, Box.Max.Z)
+	};
+
+	static constexpr uint32 AABBEdges[][2] =
+	{
+		{ 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 },
+		{ 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 },
+		{ 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 }
+	};
+
+	for (const auto& Edge : AABBEdges)
+	{
+		AddBillboardLine(V[Edge[0]], V[Edge[1]], BoxColor, Frame, ThicknessPixels);
 	}
 }
 
@@ -204,6 +360,7 @@ void FLineGeometry::Clear()
 {
 	IndexedVertices.clear();
 	Indices.clear();
+	Topology = D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
 }
 
 bool FLineGeometry::UploadBuffers(ID3D11DeviceContext* Context)

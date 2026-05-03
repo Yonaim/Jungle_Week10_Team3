@@ -267,7 +267,7 @@ void FShaderManager::OnShadersChanged(const TSet<FString>& ChangedFiles)
 	size_t TotalTargets = RecompileTargets.size() + CSRecompileTargets.size();
 	if (TotalTargets == 0) return;
 
-	UE_LOG("[ShaderHotReload] Recompiling %zu shader(s)...", TotalTargets);
+	UE_LOG_CATEGORY(ShaderHotReload, Info, "Recompiling %zu shader(s)...", TotalTargets);
 
 	// VS+PS 리컴파일
 	for (const FShaderKey& Key : RecompileTargets)
@@ -287,12 +287,12 @@ void FShaderManager::OnShadersChanged(const TSet<FString>& ChangedFiles)
 		{
 			*Entry.Shader = std::move(*NewShader);
 			Entry.Includes = std::move(NewIncludes);
-			UE_LOG("[ShaderHotReload] OK: %s", Key.Path.c_str());
+			UE_LOG_CATEGORY(ShaderHotReload, Info, "OK: %s", Key.Path.c_str());
 			FNotificationManager::Get().AddNotification("Shader Recompiled: " + Key.Path, ENotificationType::Success, 3.0f);
 		}
 		else
 		{
-			UE_LOG("[ShaderHotReload] FAILED: %s (keeping previous version)", Key.Path.c_str());
+			UE_LOG_CATEGORY(ShaderHotReload, Error, "FAILED: %s (keeping previous version)", Key.Path.c_str());
 			FNotificationManager::Get().AddNotification("Shader Failed: " + Key.Path, ENotificationType::Error, 5.0f);
 		}
 	}
@@ -315,12 +315,12 @@ void FShaderManager::OnShadersChanged(const TSet<FString>& ChangedFiles)
 			// Detach로 NewCS에서 소유권 분리 후 Swap으로 Entry에 이전
 			Entry.Shader->Swap(NewCS->Detach());
 			Entry.Includes = std::move(NewIncludes);
-			UE_LOG("[ShaderHotReload] CS OK: %s (%s)", Key.Path.c_str(), Key.EntryPoint.c_str());
+			UE_LOG_CATEGORY(ShaderHotReload, Info, "CS OK: %s (%s)", Key.Path.c_str(), Key.EntryPoint.c_str());
 			FNotificationManager::Get().AddNotification("CS Recompiled: " + Key.Path, ENotificationType::Success, 3.0f);
 		}
 		else
 		{
-			UE_LOG("[ShaderHotReload] CS FAILED: %s (keeping previous version)", Key.Path.c_str());
+			UE_LOG_CATEGORY(ShaderHotReload, Error, "CS FAILED: %s (keeping previous version)", Key.Path.c_str());
 			FNotificationManager::Get().AddNotification("CS Failed: " + Key.Path, ENotificationType::Error, 5.0f);
 		}
 	}

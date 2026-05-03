@@ -70,7 +70,7 @@ FWatchID FDirectoryWatcher::Watch(const std::wstring& DirPath, const FString& Pa
 
 	if (hDir == INVALID_HANDLE_VALUE)
 	{
-		UE_LOG("[DirectoryWatcher] Failed to open directory: %s",
+		UE_LOG_CATEGORY(DirectoryWatcher, Error, "Failed to open directory: %s",
 			FPaths::ToUtf8(DirPath).c_str());
 		return 0;
 	}
@@ -91,7 +91,7 @@ FWatchID FDirectoryWatcher::Watch(const std::wstring& DirPath, const FString& Pa
 		Watches.push_back(std::move(Entry));
 	}
 
-	UE_LOG("[DirectoryWatcher] Watching: %s (prefix=\"%s\", id=%u)",
+	UE_LOG_CATEGORY(DirectoryWatcher, Info, "Watching: %s (prefix=\"%s\", id=%u)",
 		FPaths::ToUtf8(DirPath).c_str(), PathPrefix.c_str(), ID);
 	return ID;
 }
@@ -210,7 +210,7 @@ void FDirectoryWatcher::BeginRead(FWatchEntry& Entry)
 		DWORD Err = GetLastError();
 		if (Err != ERROR_IO_PENDING)
 		{
-			UE_LOG("[DirectoryWatcher] ReadDirectoryChangesW failed: %lu", Err);
+			UE_LOG_CATEGORY(DirectoryWatcher, Error, "ReadDirectoryChangesW failed: %lu", Err);
 		}
 	}
 }

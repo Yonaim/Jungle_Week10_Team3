@@ -1,6 +1,12 @@
 #include "FontGeometry.h"
 #include "Resource/ResourceManager.h"
 
+namespace
+{
+	constexpr uint32 FallbackQuestionCodepoint = static_cast<uint32>('?');
+	const FVector4 SolidMagentaColor(1.0f, 0.0f, 1.0f, 1.0f);
+}
+
 void FFontGeometry::Create(ID3D11Device* InDevice)
 {
 	Device = InDevice;
@@ -108,20 +114,11 @@ bool FFontGeometry::HasGlyphForText(const FFontResource* Font, const FString& Te
 
 const FFontResource* FFontGeometry::ResolveFontForText(const FFontResource* PreferredFont, const FString& Text) const
 {
+	(void)Text;
 	const FFontResource* DefaultFont = FResourceManager::Get().FindFont(FName("Default"));
 	if (!PreferredFont || !PreferredFont->IsLoaded())
 	{
 		return (DefaultFont && DefaultFont->IsLoaded()) ? DefaultFont : PreferredFont;
-	}
-
-	if (HasGlyphForText(PreferredFont, Text))
-	{
-		return PreferredFont;
-	}
-
-	if (DefaultFont && DefaultFont != PreferredFont && DefaultFont->IsLoaded())
-	{
-		return DefaultFont;
 	}
 
 	return PreferredFont;
@@ -153,6 +150,28 @@ bool FFontGeometry::GetGlyph(const FFontResource* Resource, uint32 Codepoint, FF
 	OutGlyph.Width = 1.0f;
 	OutGlyph.Height = 1.0f;
 	OutGlyph.XAdvance = 1.0f;
+	return true;
+}
+
+bool FFontGeometry::ResolveGlyph(const FFontResource* Resource, uint32 Codepoint, FResolvedGlyph& OutResolvedGlyph) const
+{
+	OutResolvedGlyph = {};
+
+	if (GetGlyph(Resource, Codepoint, OutResolvedGlyph.Glyph))
+	{
+		return true;
+	}
+
+	if (Codepoint != FallbackQuestionCodepoint && GetGlyph(Resource, FallbackQuestionCodepoint, OutResolvedGlyph.Glyph))
+	{
+		return true;
+	}
+
+	OutResolvedGlyph.bDrawSolidMagenta = true;
+	OutResolvedGlyph.Glyph = {};
+	OutResolvedGlyph.Glyph.Width = 1.0f;
+	OutResolvedGlyph.Glyph.Height = 1.0f;
+	OutResolvedGlyph.Glyph.XAdvance = 1.0f;
 	return true;
 }
 
@@ -213,13 +232,16 @@ void FFontGeometry::AddWorldText(const FString& Text,
 			CursorX += Font->GetKerning(PrevCodepoint, CP) * HorizontalScale;
 		}
 
-		FFontGlyph Glyph;
-		if (!GetGlyph(Font, CP, Glyph))
+		FResolvedGlyph ResolvedGlyph;
+		if (!ResolveGlyph(Font, CP, ResolvedGlyph))
 		{
 			PrevCodepoint = CP;
 			bHasPrevCodepoint = true;
 			continue;
 		}
+
+		const FFontGlyph& Glyph = ResolvedGlyph.Glyph;
+		const FVector4 GlyphColor = ResolvedGlyph.bDrawSolidMagenta ? SolidMagentaColor : VertexColor;
 
 		if (Glyph.Width > 0.0f && Glyph.Height > 0.0f)
 		{
@@ -234,10 +256,12 @@ void FFontGeometry::AddWorldText(const FString& Text,
 			const FVector BottomRight = BottomLeft + TextRight * GlyphWidth;
 
 			const uint32 Vi = static_cast<uint32>(WorldVertices.size());
-			WorldVertices.push_back({ TopLeft, VertexColor, FVector2(Glyph.U0, Glyph.V0) });
-			WorldVertices.push_back({ TopRight, VertexColor, FVector2(Glyph.U1, Glyph.V0) });
-			WorldVertices.push_back({ BottomLeft, VertexColor, FVector2(Glyph.U0, Glyph.V1) });
-			WorldVertices.push_back({ BottomRight, VertexColor, FVector2(Glyph.U1, Glyph.V1) });
+			const FVector2 UV0 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U0, Glyph.V0);
+			const FVector2 UV1 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U1, Glyph.V1);
+			WorldVertices.push_back({ TopLeft, GlyphColor, FVector2(UV0.X, UV0.Y) });
+			WorldVertices.push_back({ TopRight, GlyphColor, FVector2(UV1.X, UV0.Y) });
+			WorldVertices.push_back({ BottomLeft, GlyphColor, FVector2(UV0.X, UV1.Y) });
+			WorldVertices.push_back({ BottomRight, GlyphColor, FVector2(UV1.X, UV1.Y) });
 
 			WorldIndices.push_back(Vi);
 			WorldIndices.push_back(Vi + 1);
@@ -304,21 +328,26 @@ void FFontGeometry::AddScreenText(const FString& Text,
 			else if ((LegacyPtr[0] & 0xF8) == 0xF0 && LegacyPtr + 3 < LegacyEnd) { CP = ((LegacyPtr[0] & 0x07) << 18) | ((LegacyPtr[1] & 0x3F) << 12) | ((LegacyPtr[2] & 0x3F) << 6) | (LegacyPtr[3] & 0x3F); LegacyPtr += 4; }
 			else { ++LegacyPtr; continue; }
 
-			FFontGlyph Glyph;
-			if (!GetGlyph(Font, CP, Glyph))
+			FResolvedGlyph ResolvedGlyph;
+			if (!ResolveGlyph(Font, CP, ResolvedGlyph))
 			{
 				continue;
 			}
+
+			const FFontGlyph& Glyph = ResolvedGlyph.Glyph;
+			const FVector4 GlyphColor = ResolvedGlyph.bDrawSolidMagenta ? SolidMagentaColor : VertexColor;
 
 			const float Left = PixelToClipX(CursorX);
 			const float Right = PixelToClipX(CursorX + CharW);
 			const float Top = PixelToClipY(ScreenY);
 			const float Bottom = PixelToClipY(ScreenY + CharH);
 			const uint32 Vi = static_cast<uint32>(ScreenVertices.size());
-			ScreenVertices.push_back({ FVector(Left,  Top,    0.0f), VertexColor, FVector2(Glyph.U0, Glyph.V0) });
-			ScreenVertices.push_back({ FVector(Right, Top,    0.0f), VertexColor, FVector2(Glyph.U1, Glyph.V0) });
-			ScreenVertices.push_back({ FVector(Left,  Bottom, 0.0f), VertexColor, FVector2(Glyph.U0, Glyph.V1) });
-			ScreenVertices.push_back({ FVector(Right, Bottom, 0.0f), VertexColor, FVector2(Glyph.U1, Glyph.V1) });
+			const FVector2 UV0 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U0, Glyph.V0);
+			const FVector2 UV1 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U1, Glyph.V1);
+			ScreenVertices.push_back({ FVector(Left,  Top,    0.0f), GlyphColor, FVector2(UV0.X, UV0.Y) });
+			ScreenVertices.push_back({ FVector(Right, Top,    0.0f), GlyphColor, FVector2(UV1.X, UV0.Y) });
+			ScreenVertices.push_back({ FVector(Left,  Bottom, 0.0f), GlyphColor, FVector2(UV0.X, UV1.Y) });
+			ScreenVertices.push_back({ FVector(Right, Bottom, 0.0f), GlyphColor, FVector2(UV1.X, UV1.Y) });
 
 			ScreenIndices.push_back(Vi);
 			ScreenIndices.push_back(Vi + 1);
@@ -372,13 +401,16 @@ void FFontGeometry::AddScreenText(const FString& Text,
 			CursorX += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
 		}
 
-		FFontGlyph Glyph;
-		if (!GetGlyph(Font, CP, Glyph))
+		FResolvedGlyph ResolvedGlyph;
+		if (!ResolveGlyph(Font, CP, ResolvedGlyph))
 		{
 			PrevCodepoint = CP;
 			bHasPrevCodepoint = true;
 			continue;
 		}
+
+		const FFontGlyph& Glyph = ResolvedGlyph.Glyph;
+		const FVector4 GlyphColor = ResolvedGlyph.bDrawSolidMagenta ? SolidMagentaColor : VertexColor;
 
 		if (Glyph.Width > 0.0f && Glyph.Height > 0.0f)
 		{
@@ -393,10 +425,12 @@ void FFontGeometry::AddScreenText(const FString& Text,
 			const float Bottom = PixelToClipY(BottomPx);
 
 			const uint32 Vi = static_cast<uint32>(ScreenVertices.size());
-			ScreenVertices.push_back({ FVector(Left,  Top,    0.0f), VertexColor, FVector2(Glyph.U0, Glyph.V0) });
-			ScreenVertices.push_back({ FVector(Right, Top,    0.0f), VertexColor, FVector2(Glyph.U1, Glyph.V0) });
-			ScreenVertices.push_back({ FVector(Left,  Bottom, 0.0f), VertexColor, FVector2(Glyph.U0, Glyph.V1) });
-			ScreenVertices.push_back({ FVector(Right, Bottom, 0.0f), VertexColor, FVector2(Glyph.U1, Glyph.V1) });
+			const FVector2 UV0 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U0, Glyph.V0);
+			const FVector2 UV1 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U1, Glyph.V1);
+			ScreenVertices.push_back({ FVector(Left,  Top,    0.0f), GlyphColor, FVector2(UV0.X, UV0.Y) });
+			ScreenVertices.push_back({ FVector(Right, Top,    0.0f), GlyphColor, FVector2(UV1.X, UV0.Y) });
+			ScreenVertices.push_back({ FVector(Left,  Bottom, 0.0f), GlyphColor, FVector2(UV0.X, UV1.Y) });
+			ScreenVertices.push_back({ FVector(Right, Bottom, 0.0f), GlyphColor, FVector2(UV1.X, UV1.Y) });
 
 			ScreenIndices.push_back(Vi);
 			ScreenIndices.push_back(Vi + 1);

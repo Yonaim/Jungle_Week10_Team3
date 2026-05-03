@@ -49,6 +49,9 @@ public:
 	void UpdateWorldMatrix() const override;
 
 	virtual bool SupportsOutline() const { return true; }
+	virtual bool ParticipatesInSpatialStructure() const { return !IsEditorOnly(); }
+	virtual bool ParticipatesInRenderSpatialStructure() const { return ParticipatesInSpatialStructure(); }
+	virtual bool ParticipatesInPickingSpatialStructure() const { return ParticipatesInSpatialStructure(); }
 
 	// --- 렌더 상태 관리 ---
 	void CreateRenderState() override;

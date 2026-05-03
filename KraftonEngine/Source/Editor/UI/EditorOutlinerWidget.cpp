@@ -35,6 +35,7 @@ namespace
 	constexpr ImVec4 OutlinerButtonBorderColor = ImVec4(0.42f, 0.42f, 0.45f, 0.90f);
 	constexpr float OutlinerToolbarButtonHeight = 0.0f;
 	constexpr float OutlinerFooterButtonHeight = 24.0f;
+	constexpr size_t OutlinerFolderNameCapacity = 128;
 
 	FString GetEditorPathResource(const char* Key)
 	{
@@ -237,6 +238,41 @@ namespace
 		return bClicked;
 	}
 
+	bool IsFolderNameUsed(const UWorld* World, const FString& FolderName, const FString& IgnoredFolderName = FString())
+	{
+		if (!World || FolderName.empty())
+		{
+			return false;
+		}
+
+		if (const ULevel* PersistentLevel = World->GetPersistentLevel())
+		{
+			for (const FString& ExistingFolderName : PersistentLevel->GetOutlinerFolders())
+			{
+				if (ExistingFolderName == FolderName && ExistingFolderName != IgnoredFolderName)
+				{
+					return true;
+				}
+			}
+		}
+
+		for (AActor* Actor : World->GetActors())
+		{
+			if (!Actor)
+			{
+				continue;
+			}
+
+			const FString& ExistingFolderName = Actor->GetFolderPath();
+			if (ExistingFolderName == FolderName && ExistingFolderName != IgnoredFolderName)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 }
 
 void FEditorOutlinerWidget::Initialize(UEditorEngine* InEditorEngine)
@@ -371,20 +407,23 @@ void FEditorOutlinerWidget::Render(float DeltaTime)
 	if (ImGui::BeginPopup("##NewOutlinerFolder"))
 	{
 		ImGui::InputText("Folder Name", NewFolderBuffer, sizeof(NewFolderBuffer));
+		UWorld* PopupWorld = EditorEngine ? EditorEngine->GetWorld() : nullptr;
+		const FString NewFolderName = NewFolderBuffer;
 		const bool bCanCreate = NewFolderBuffer[0] != '\0'
-			&& !EditorEngine->GetSelectionManager().GetSelectedActors().empty();
+			&& PopupWorld
+			&& PopupWorld->GetPersistentLevel()
+			&& !IsFolderNameUsed(PopupWorld, NewFolderName);
 		if (!bCanCreate)
 		{
 			ImGui::BeginDisabled();
 		}
 		if (ImGui::Button("Create"))
 		{
-			for (AActor* Actor : EditorEngine->GetSelectionManager().GetSelectedActors())
+			if (ULevel* PersistentLevel = PopupWorld ? PopupWorld->GetPersistentLevel() : nullptr)
 			{
-				if (Actor)
-				{
-					Actor->SetFolderPath(NewFolderBuffer);
-				}
+				EditorEngine->BeginTrackedSceneChange();
+				PersistentLevel->AddOutlinerFolder(NewFolderName);
+				EditorEngine->CommitTrackedSceneChange();
 			}
 			ImGui::CloseCurrentPopup();
 		}
@@ -493,10 +532,24 @@ void FEditorOutlinerWidget::StartActorRename(AActor* Actor)
 		return;
 	}
 
+	CancelFolderRename();
 	RenamingActor = Actor;
 	bFocusRenameInput = true;
 	const FString CurrentName = Actor->GetFName().ToString().empty() ? Actor->GetClass()->GetName() : Actor->GetFName().ToString();
 	strncpy_s(RenameBuffer, CurrentName.c_str(), _TRUNCATE);
+}
+
+void FEditorOutlinerWidget::StartFolderRename(const FString& FolderName)
+{
+	if (FolderName.empty())
+	{
+		return;
+	}
+
+	CancelActorRename();
+	RenamingFolder = FolderName;
+	bFocusRenameInput = true;
+	strncpy_s(FolderRenameBuffer, FolderName.c_str(), _TRUNCATE);
 }
 
 void FEditorOutlinerWidget::CommitActorRename()
@@ -523,11 +576,55 @@ void FEditorOutlinerWidget::CommitActorRename()
 	CancelActorRename();
 }
 
+void FEditorOutlinerWidget::CommitFolderRename()
+{
+	if (!EditorEngine || RenamingFolder.empty())
+	{
+		CancelFolderRename();
+		return;
+	}
+
+	UWorld* World = EditorEngine->GetWorld();
+	ULevel* PersistentLevel = World ? World->GetPersistentLevel() : nullptr;
+	if (!PersistentLevel)
+	{
+		CancelFolderRename();
+		return;
+	}
+
+	FString NewFolderName = FolderRenameBuffer;
+	if (NewFolderName.empty() || NewFolderName == RenamingFolder || IsFolderNameUsed(World, NewFolderName, RenamingFolder))
+	{
+		CancelFolderRename();
+		return;
+	}
+
+	EditorEngine->BeginTrackedSceneChange();
+	PersistentLevel->RenameOutlinerFolder(RenamingFolder, NewFolderName);
+	for (AActor* Actor : World->GetActors())
+	{
+		if (Actor && Actor->GetFolderPath() == RenamingFolder)
+		{
+			Actor->SetFolderPath(NewFolderName);
+		}
+	}
+	EditorEngine->CommitTrackedSceneChange();
+
+	CancelFolderRename();
+}
+
 void FEditorOutlinerWidget::CancelActorRename()
 {
 	RenamingActor = nullptr;
 	bFocusRenameInput = false;
 	RenameBuffer[0] = '\0';
+}
+
+void FEditorOutlinerWidget::CancelFolderRename()
+{
+	RenamingFolder.clear();
+	bFocusRenameInput = false;
+	FolderRenameBuffer[0] = '\0';
 }
 
 bool FEditorOutlinerWidget::DrawVisibilityToggle(const char* Id, bool bVisible) const
@@ -575,7 +672,13 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 	std::unordered_map<FString, TArray<int32>> FolderToActors;
 	TArray<int32> RootActorIndices;
 	TArray<FString> FolderNames;
+	ULevel* PersistentLevel = World->GetPersistentLevel();
 	ValidActorIndices.clear();
+
+	if (PersistentLevel)
+	{
+		FolderNames = PersistentLevel->GetOutlinerFolders();
+	}
 
 	for (int32 i = 0; i < static_cast<int32>(Actors.size()); ++i)
 	{
@@ -613,15 +716,16 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		{
 			if (!FolderToActors.contains(Folder))
 			{
-				FolderNames.push_back(Folder);
+				if (std::find(FolderNames.begin(), FolderNames.end(), Folder) == FolderNames.end())
+				{
+					FolderNames.push_back(Folder);
+				}
 			}
 			FolderToActors[Folder].push_back(i);
 		}
 
 		ValidActorIndices.push_back(i);
 	}
-
-	std::sort(FolderNames.begin(), FolderNames.end());
 
 	TArray<AActor*> VisibleActors;
 	VisibleActors.reserve(ValidActorIndices.size());
@@ -740,7 +844,7 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		{
 			if (ImGui::GetIO().KeyShift)
 			{
-				Selection.SelectRange(Actor, VisibleActors);
+				Selection.AddSelect(Actor);
 			}
 			else if (ImGui::GetIO().KeyCtrl)
 			{
@@ -785,6 +889,7 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
 		{
 			FOutlinerDragPayload Payload;
+			Payload.ItemType = FOutlinerDragPayload::EItemType::Actor;
 			Payload.Actor = Actor;
 			ImGui::SetDragDropPayload("OUTLINER_ACTOR_ROW", &Payload, sizeof(Payload));
 			ImGui::TextUnformatted(Label.c_str());
@@ -795,7 +900,7 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload("OUTLINER_ACTOR_ROW"))
 			{
 				const FOutlinerDragPayload* DragPayload = static_cast<const FOutlinerDragPayload*>(Payload->Data);
-				if (DragPayload && DragPayload->Actor)
+				if (DragPayload && DragPayload->ItemType == FOutlinerDragPayload::EItemType::Actor && DragPayload->Actor)
 				{
 					HandleActorDrop(DragPayload->Actor, Actor);
 				}
@@ -808,7 +913,16 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		}
 
 		ImGui::TableSetColumnIndex(3);
-		ImGui::TextDisabled("%s", Type.c_str());
+		if (bIsSelected)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+			ImGui::TextUnformatted(Type.c_str());
+			ImGui::PopStyleColor();
+		}
+		else
+		{
+			ImGui::TextDisabled("%s", Type.c_str());
+		}
 	};
 
 	for (const FString& FolderName : FolderNames)
@@ -873,69 +987,130 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		{
 			FolderFlags |= ImGuiTreeNodeFlags_Selected;
 		}
-		const FString FolderLabel = "    " + FolderName;
-		ImGui::PushStyleColor(ImGuiCol_Text, OutlinerItemLabelColor);
-		ImGui::PushStyleColor(ImGuiCol_Text, OutlinerFolderArrowColor);
-		ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
-		const bool bOpen = ImGui::TreeNodeEx((FolderName + "##Folder").c_str(), FolderFlags, "%s", FolderLabel.c_str());
-		ImGui::PopStyleColor(3);
-		ImGui::PopStyleColor();
-		ImGui::PopStyleColor();
-		if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+		const bool bIsRenamingFolder = RenamingFolder == FolderName;
+		bool bOpen = false;
+
+		if (bIsRenamingFolder)
 		{
-			TArray<AActor*> FolderActors;
-			FolderActors.reserve(FolderActorIndices.size());
-			for (int32 ActorIndex : FolderActorIndices)
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
+			ImGui::SetNextItemWidth((std::max)(120.0f, ImGui::GetContentRegionAvail().x));
+			if (bFocusRenameInput)
 			{
-				if (ActorIndex >= 0 && ActorIndex < static_cast<int32>(Actors.size()) && Actors[ActorIndex])
+				ImGui::SetKeyboardFocusHere();
+				bFocusRenameInput = false;
+			}
+
+			const bool bSubmitted = ImGui::InputText(
+				("##FolderRename" + FolderName).c_str(),
+				FolderRenameBuffer,
+				sizeof(FolderRenameBuffer),
+				ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+			if (bSubmitted || ImGui::IsItemDeactivatedAfterEdit())
+			{
+				CommitFolderRename();
+			}
+			else if (ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape))
+			{
+				CancelFolderRename();
+			}
+			ImGui::PopStyleVar();
+		}
+		else
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, OutlinerItemLabelColor);
+			ImGui::PushStyleColor(ImGuiCol_Text, OutlinerFolderArrowColor);
+			ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
+			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
+			ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
+			bOpen = ImGui::TreeNodeEx((FolderName + "##Folder").c_str(), FolderFlags, "%s", FolderName.c_str());
+			ImGui::PopStyleColor(3);
+			ImGui::PopStyleColor();
+			ImGui::PopStyleColor();
+
+			if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+			{
+				TArray<AActor*> FolderActors;
+				FolderActors.reserve(FolderActorIndices.size());
+				for (int32 ActorIndex : FolderActorIndices)
 				{
-					FolderActors.push_back(Actors[ActorIndex]);
+					if (ActorIndex >= 0 && ActorIndex < static_cast<int32>(Actors.size()) && Actors[ActorIndex])
+					{
+						FolderActors.push_back(Actors[ActorIndex]);
+					}
+				}
+
+				if (ImGui::GetIO().KeyCtrl)
+				{
+					for (AActor* FolderActor : FolderActors)
+					{
+						Selection.ToggleSelect(FolderActor);
+					}
+				}
+				else
+				{
+					Selection.SelectActors(FolderActors);
 				}
 			}
 
-			if (ImGui::GetIO().KeyCtrl)
+			if (ID3D11ShaderResourceView* FolderIcon = GetEditorIcon(bOpen ? "Editor.Icon.FolderOpen" : "Editor.Icon.FolderClosed"))
 			{
-				for (AActor* FolderActor : FolderActors)
+				const ImVec2 Min = ImGui::GetItemRectMin();
+				const float IconSize = 14.0f;
+				const float LabelStartX = Min.x + ImGui::GetTreeNodeToLabelSpacing();
+				const float X = LabelStartX - IconSize - 4.0f;
+				const float Y = Min.y + (ImGui::GetItemRectSize().y - IconSize) * 0.5f;
+				ImGui::GetWindowDrawList()->AddImage(
+					reinterpret_cast<ImTextureID>(FolderIcon),
+					ImVec2(X, Y),
+					ImVec2(X + IconSize, Y + IconSize),
+					ImVec2(0.0f, 0.0f),
+					ImVec2(1.0f, 1.0f),
+					OutlinerFolderIconTint);
+			}
+
+			if (ImGui::BeginPopupContextItem((FolderName + "##FolderContext").c_str()))
+			{
+				if (DrawIconLabelButton("##RenameFolderContext", "Editor.Icon.Actor", "Rename", ImVec2(120.0f, 0.0f)))
 				{
-					Selection.ToggleSelect(FolderActor);
+					StartFolderRename(FolderName);
+					ImGui::CloseCurrentPopup();
 				}
+				ImGui::EndPopup();
 			}
-			else
+
+			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
 			{
-				Selection.SelectActors(FolderActors);
+				FOutlinerDragPayload Payload;
+				Payload.ItemType = FOutlinerDragPayload::EItemType::Folder;
+				strncpy_s(Payload.FolderName, FolderName.c_str(), _TRUNCATE);
+				ImGui::SetDragDropPayload("OUTLINER_ACTOR_ROW", &Payload, sizeof(Payload));
+				ImGui::TextUnformatted(FolderName.c_str());
+				ImGui::EndDragDropSource();
 			}
-		}
-		if (ID3D11ShaderResourceView* FolderIcon = GetEditorIcon(bOpen ? "Editor.Icon.FolderOpen" : "Editor.Icon.FolderClosed"))
-		{
-			const ImVec2 Min = ImGui::GetItemRectMin();
-			const float IconSize = 14.0f;
-			const float X = Min.x + ImGui::GetFontSize() + 9.0f;
-			const float Y = Min.y + (ImGui::GetItemRectSize().y - IconSize) * 0.5f;
-			ImGui::GetWindowDrawList()->AddImage(
-				reinterpret_cast<ImTextureID>(FolderIcon),
-				ImVec2(X, Y),
-				ImVec2(X + IconSize, Y + IconSize),
-				ImVec2(0.0f, 0.0f),
-				ImVec2(1.0f, 1.0f),
-				OutlinerFolderIconTint);
-		}
-		if (ImGui::BeginDragDropTarget())
-		{
-			if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload("OUTLINER_ACTOR_ROW"))
+
+			if (ImGui::BeginDragDropTarget())
 			{
-				const FOutlinerDragPayload* DragPayload = static_cast<const FOutlinerDragPayload*>(Payload->Data);
-				if (DragPayload && DragPayload->Actor)
+				if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload("OUTLINER_ACTOR_ROW"))
 				{
-					HandleFolderDrop(DragPayload->Actor, FolderName);
+					const FOutlinerDragPayload* DragPayload = static_cast<const FOutlinerDragPayload*>(Payload->Data);
+					if (DragPayload)
+					{
+						if (DragPayload->ItemType == FOutlinerDragPayload::EItemType::Actor && DragPayload->Actor)
+						{
+							HandleFolderDrop(DragPayload->Actor, FolderName);
+						}
+						else if (DragPayload->ItemType == FOutlinerDragPayload::EItemType::Folder && DragPayload->FolderName[0] != '\0')
+						{
+							HandleFolderDrop(DragPayload->FolderName, FolderName);
+						}
+					}
 				}
+				ImGui::EndDragDropTarget();
 			}
-			ImGui::EndDragDropTarget();
 		}
 		ImGui::TableSetColumnIndex(3);
 		ImGui::TextDisabled("%d Actors", static_cast<int32>(FolderActorIndices.size()));
-		if (bOpen)
+		if (!bIsRenamingFolder && bOpen)
 		{
 			for (int32 ActorIndex : FolderActorIndices)
 			{
@@ -955,9 +1130,16 @@ void FEditorOutlinerWidget::RenderActorOutliner()
 		if (const ImGuiPayload* Payload = ImGui::AcceptDragDropPayload("OUTLINER_ACTOR_ROW"))
 		{
 			const FOutlinerDragPayload* DragPayload = static_cast<const FOutlinerDragPayload*>(Payload->Data);
-			if (DragPayload && DragPayload->Actor)
+			if (DragPayload)
 			{
-				HandleRootDrop(DragPayload->Actor);
+				if (DragPayload->ItemType == FOutlinerDragPayload::EItemType::Actor && DragPayload->Actor)
+				{
+					HandleRootDrop(DragPayload->Actor);
+				}
+				else if (DragPayload->ItemType == FOutlinerDragPayload::EItemType::Folder && DragPayload->FolderName[0] != '\0')
+				{
+					HandleRootDrop(DragPayload->FolderName);
+				}
 			}
 		}
 		ImGui::EndDragDropTarget();
@@ -980,8 +1162,10 @@ void FEditorOutlinerWidget::HandleActorDrop(AActor* DraggedActor, AActor* Target
 		return;
 	}
 
+	EditorEngine->BeginTrackedSceneChange();
 	DraggedActor->SetFolderPath(TargetActor->GetFolderPath());
 	World->MoveActorBefore(DraggedActor, TargetActor);
+	EditorEngine->CommitTrackedSceneChange();
 }
 
 void FEditorOutlinerWidget::HandleFolderDrop(AActor* DraggedActor, const FString& FolderName) const
@@ -996,6 +1180,8 @@ void FEditorOutlinerWidget::HandleFolderDrop(AActor* DraggedActor, const FString
 	{
 		return;
 	}
+
+	ULevel* PersistentLevel = World->GetPersistentLevel();
 
 	const TArray<AActor*> Actors = World->GetActors().ToArray();
 	size_t InsertIndex = Actors.size();
@@ -1016,11 +1202,36 @@ void FEditorOutlinerWidget::HandleFolderDrop(AActor* DraggedActor, const FString
 		}
 	}
 
+	EditorEngine->BeginTrackedSceneChange();
+	if (PersistentLevel)
+	{
+		PersistentLevel->AddOutlinerFolder(FolderName);
+	}
 	DraggedActor->SetFolderPath(FolderName);
 	if (bFoundFolder)
 	{
 		World->MoveActorToIndex(DraggedActor, InsertIndex);
 	}
+	EditorEngine->CommitTrackedSceneChange();
+}
+
+void FEditorOutlinerWidget::HandleFolderDrop(const FString& DraggedFolder, const FString& TargetFolder) const
+{
+	if (!EditorEngine || DraggedFolder.empty() || TargetFolder.empty() || DraggedFolder == TargetFolder)
+	{
+		return;
+	}
+
+	UWorld* World = EditorEngine->GetWorld();
+	ULevel* PersistentLevel = World ? World->GetPersistentLevel() : nullptr;
+	if (!PersistentLevel)
+	{
+		return;
+	}
+
+	EditorEngine->BeginTrackedSceneChange();
+	PersistentLevel->MoveOutlinerFolderBefore(DraggedFolder, TargetFolder);
+	EditorEngine->CommitTrackedSceneChange();
 }
 
 void FEditorOutlinerWidget::HandleRootDrop(AActor* DraggedActor) const
@@ -1053,6 +1264,27 @@ void FEditorOutlinerWidget::HandleRootDrop(AActor* DraggedActor) const
 		}
 	}
 
+	EditorEngine->BeginTrackedSceneChange();
 	DraggedActor->SetFolderPath("");
 	World->MoveActorToIndex(DraggedActor, RootInsertIndex);
+	EditorEngine->CommitTrackedSceneChange();
+}
+
+void FEditorOutlinerWidget::HandleRootDrop(const FString& DraggedFolder) const
+{
+	if (!EditorEngine || DraggedFolder.empty())
+	{
+		return;
+	}
+
+	UWorld* World = EditorEngine->GetWorld();
+	ULevel* PersistentLevel = World ? World->GetPersistentLevel() : nullptr;
+	if (!PersistentLevel)
+	{
+		return;
+	}
+
+	EditorEngine->BeginTrackedSceneChange();
+	PersistentLevel->MoveOutlinerFolderToIndex(DraggedFolder, PersistentLevel->GetOutlinerFolders().size());
+	EditorEngine->CommitTrackedSceneChange();
 }

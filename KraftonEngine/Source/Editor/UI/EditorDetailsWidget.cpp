@@ -12,6 +12,7 @@
 #include "Component/GizmoComponent.h"
 #include "Component/HeightFogComponent.h"
 #include "Component/UIButtonComponent.h"
+#include "Component/UIBackgroundComponent.h"
 #include "Component/UIImageComponent.h"
 #include "Component/UIScreenTextComponent.h"
 #include "Component/UWindowPanelComponent.h"
@@ -21,10 +22,13 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "Component/ScriptComponent.h"
+#include "Component/SoundComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Core/ClassTypes.h"
 #include "Core/PropertyTypes.h"
+#include "Engine/Runtime/Engine.h"
+#include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/World.h"
 #include "ImGui/imgui.h"
 #include "Materials/Material.h"
@@ -350,9 +354,17 @@ namespace
 
     constexpr ImVec4 AddComponentGroupHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
     constexpr ImVec4 DetailsVectorLabelColor = ImVec4(0.83f, 0.84f, 0.87f, 1.0f);
-    constexpr float  DetailsVectorLabelWidth = 108.0f;
-    constexpr float  DetailsPropertyLabelWidth = 108.0f;
+    constexpr ImVec4 DetailsVectorFieldBg = ImVec4(10.0f / 255.0f, 10.0f / 255.0f, 10.0f / 255.0f, 1.0f);
+    constexpr ImVec4 DetailsVectorFieldHoverBg = ImVec4(15.0f / 255.0f, 15.0f / 255.0f, 15.0f / 255.0f, 1.0f);
+    constexpr ImVec4 DetailsVectorFieldActiveBg = ImVec4(20.0f / 255.0f, 20.0f / 255.0f, 20.0f / 255.0f, 1.0f);
+    constexpr ImVec4 DetailsVectorResetButtonColor = ImVec4(0.22f, 0.22f, 0.23f, 1.0f);
+    constexpr ImVec4 DetailsVectorResetButtonHoveredColor = ImVec4(0.30f, 0.30f, 0.32f, 1.0f);
+    constexpr ImVec4 DetailsVectorResetButtonActiveColor = ImVec4(0.36f, 0.36f, 0.38f, 1.0f);
+    constexpr ImVec4 DetailsVectorResetButtonBorderColor = ImVec4(0.52f, 0.52f, 0.55f, 0.95f);
+    constexpr float  DetailsVectorLabelWidth = 124.0f;
+    constexpr float  DetailsPropertyLabelWidth = 124.0f;
     constexpr float  DetailsPropertyVerticalSpacing = 6.0f;
+    constexpr float  DetailsVectorResetSpacing = 6.0f;
 
     void PushDetailsFieldStyle()
     {
@@ -363,6 +375,31 @@ namespace
     }
 
     void PopDetailsFieldStyle() { ImGui::PopStyleColor(4); }
+
+    void PushDetailsVectorFieldStyle()
+    {
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, DetailsVectorFieldBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, DetailsVectorFieldHoverBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, DetailsVectorFieldActiveBg);
+        ImGui::PushStyleColor(ImGuiCol_Border, PopupPalette::FieldBorder);
+    }
+
+    void PopDetailsVectorFieldStyle() { ImGui::PopStyleColor(4); }
+
+    void PushDetailsVectorResetButtonStyle()
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, DetailsVectorResetButtonColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DetailsVectorResetButtonHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, DetailsVectorResetButtonActiveColor);
+        ImGui::PushStyleColor(ImGuiCol_Border, DetailsVectorResetButtonBorderColor);
+    }
+
+    void PopDetailsVectorResetButtonStyle()
+    {
+        ImGui::PopStyleColor(4);
+        ImGui::PopStyleVar();
+    }
 
     bool DrawLabeledField(const char *Label, const std::function<bool()> &DrawField)
     {
@@ -389,15 +426,151 @@ namespace
                 || Component->IsA<UNineSlicePanelComponent>());
     }
 
-    float GetAxisFieldWidth(int32 AxisCount)
+    bool IsScreenCoordinateLayoutProperty(const FString& Name)
     {
-        const float AvailableWidth = ImGui::GetContentRegionAvail().x;
+        return Name == "ScreenPosition" || Name == "Screen Position";
+    }
+
+    bool IsAnchorLayoutProperty(const FString& Name)
+    {
+        return Name == "Anchor"
+            || Name == "Alignment"
+            || Name == "AnchorOffset"
+            || Name == "Anchor Offset";
+    }
+
+    bool IsAnchoredLayoutEnabledForDetails(const UActorComponent* Component)
+    {
+        if (const UUIImageComponent* ImageComponent = dynamic_cast<const UUIImageComponent*>(Component))
+        {
+            return ImageComponent->IsAnchoredLayoutEnabled();
+        }
+
+        if (const UUIScreenTextComponent* TextComponent = dynamic_cast<const UUIScreenTextComponent*>(Component))
+        {
+            return TextComponent->IsAnchoredLayoutEnabled();
+        }
+
+        return false;
+    }
+
+    bool ShouldRenderDetailsProperty(const UActorComponent* Component, const FPropertyDescriptor& Prop)
+    {
+        if (!IsUIComponentForDetails(Component))
+        {
+            return true;
+        }
+
+        if (IsScreenCoordinateLayoutProperty(Prop.Name))
+        {
+            return !IsAnchoredLayoutEnabledForDetails(Component);
+        }
+
+        if (IsAnchorLayoutProperty(Prop.Name))
+        {
+            return IsAnchoredLayoutEnabledForDetails(Component);
+        }
+
+        return true;
+    }
+
+    int32 GetDetailsSectionPriority(const char *SectionName)
+    {
+        if (!SectionName)
+        {
+            return 100;
+        }
+        if (strcmp(SectionName, "Default") == 0)
+        {
+            return 0;
+        }
+        if (strcmp(SectionName, "Transform") == 0)
+        {
+            return 1;
+        }
+        if (strcmp(SectionName, "Visibility") == 0)
+        {
+            return 2;
+        }
+        if (strcmp(SectionName, "Appearance") == 0)
+        {
+            return 3;
+        }
+        if (strcmp(SectionName, "Content") == 0)
+        {
+            return 4;
+        }
+        if (strcmp(SectionName, "Behavior") == 0)
+        {
+            return 5;
+        }
+        if (strcmp(SectionName, "Layout") == 0)
+        {
+            return 6;
+        }
+        if (strcmp(SectionName, "Materials") == 0)
+        {
+            return 7;
+        }
+        if (strcmp(SectionName, "Static Mesh") == 0)
+        {
+            return 8;
+        }
+        return 50;
+    }
+
+    void SortDetailsSections(TArray<const char *> &Sections)
+    {
+        std::sort(Sections.begin(), Sections.end(), [](const char *A, const char *B)
+        {
+            const int32 PriorityA = GetDetailsSectionPriority(A);
+            const int32 PriorityB = GetDetailsSectionPriority(B);
+            if (PriorityA != PriorityB)
+            {
+                return PriorityA < PriorityB;
+            }
+            return strcmp(A, B) < 0;
+        });
+    }
+
+    float GetAxisFieldWidth(int32 AxisCount, float AdditionalReservedWidth = 0.0f)
+    {
+        const float AvailableWidth = ImGui::GetContentRegionAvail().x - AdditionalReservedWidth;
         const float InterAxisSpacing = ImGui::GetStyle().ItemSpacing.x;
         const float BarWidth = 3.0f;
         const float BarSpacing = 3.0f;
         const float TotalReserved = (BarWidth + BarSpacing) * static_cast<float>(AxisCount);
         const float TotalSpacing = InterAxisSpacing * static_cast<float>((std::max)(0, AxisCount - 1));
         return (std::max)(22.0f, (AvailableWidth - TotalReserved - TotalSpacing) / static_cast<float>(AxisCount));
+    }
+
+    int32 GetUIComponentSortPriority(const UClass* ComponentClass)
+    {
+        if (ComponentClass == UCanvasRootComponent::StaticClass())
+        {
+            return 0;
+        }
+        if (ComponentClass == UUIBackgroundComponent::StaticClass())
+        {
+            return 1;
+        }
+        if (ComponentClass == UUIImageComponent::StaticClass())
+        {
+            return 2;
+        }
+        if (ComponentClass == UIButtonComponent::StaticClass())
+        {
+            return 3;
+        }
+        if (ComponentClass == UUIScreenTextComponent::StaticClass())
+        {
+            return 4;
+        }
+        if (ComponentClass == UNineSlicePanelComponent::StaticClass())
+        {
+            return 5;
+        }
+        return 100;
     }
 
     void AddComponentClassGroup(TArray<FComponentClassGroup> &Groups, const char *Label, UClass *AnchorClass)
@@ -464,6 +637,7 @@ namespace
         AddComponentClassGroup(CachedGroups, "LIGHT", ULightComponentBase::StaticClass());
         AddComponentClassGroup(CachedGroups, "EFFECTS", UBillboardComponent::StaticClass());
         AddComponentClassGroup(CachedGroups, "MOVEMENT", UMovementComponent::StaticClass());
+        AddComponentClassGroup(CachedGroups, "SOUND", USoundComponent::StaticClass());
         AddComponentClassGroup(CachedGroups, "SCENE", USceneComponent::StaticClass());
         AddComponentClassGroup(CachedGroups, "UI", UCanvasRootComponent::StaticClass());
         AddComponentClassGroup(CachedGroups, "OTHER", nullptr);
@@ -489,7 +663,19 @@ namespace
         for (FComponentClassGroup &Group : CachedGroups)
         {
             std::sort(Group.Classes.begin(), Group.Classes.end(),
-                      [](const UClass *A, const UClass *B) { return strcmp(A->GetName(), B->GetName()) < 0; });
+                      [AnchorClass = Group.AnchorClass](const UClass *A, const UClass *B)
+                      {
+                          if (AnchorClass == UCanvasRootComponent::StaticClass())
+                          {
+                              const int32 PriorityA = GetUIComponentSortPriority(A);
+                              const int32 PriorityB = GetUIComponentSortPriority(B);
+                              if (PriorityA != PriorityB)
+                              {
+                                  return PriorityA < PriorityB;
+                              }
+                          }
+                          return strcmp(A->GetName(), B->GetName()) < 0;
+                      });
         }
 
         return CachedGroups;
@@ -612,8 +798,40 @@ static FString GetDisplayClassLabel(const UClass *Class)
         return "Unknown";
     }
 
+    if (Class == UBackgroundSoundComponent::StaticClass())
+    {
+        return "BGM";
+    }
+    if (Class == UCanvasRootComponent::StaticClass())
+    {
+        return "Canvas";
+    }
+    if (Class == UUIBackgroundComponent::StaticClass())
+    {
+        return "Screen";
+    }
+    if (Class == UUIImageComponent::StaticClass())
+    {
+        return "Image";
+    }
+    if (Class == UIButtonComponent::StaticClass())
+    {
+        return "Button";
+    }
+    if (Class == UUIScreenTextComponent::StaticClass())
+    {
+        return "Text";
+    }
+
     FString RawName = Class->GetName();
-    if (RawName.size() > 1 && (RawName[0] == 'U' || RawName[0] == 'A') && std::isupper(static_cast<unsigned char>(RawName[1])))
+    const bool bStartsWithUIAcronym = RawName.size() > 2
+        && RawName[0] == 'U'
+        && RawName[1] == 'I'
+        && std::isupper(static_cast<unsigned char>(RawName[2])) != 0;
+    if (!bStartsWithUIAcronym
+        && RawName.size() > 1
+        && (RawName[0] == 'U' || RawName[0] == 'A')
+        && std::isupper(static_cast<unsigned char>(RawName[1])) != 0)
     {
         RawName.erase(RawName.begin());
     }
@@ -641,7 +859,14 @@ static FString GetDisplayClassLabel(const UClass *Class)
         }
 
         const bool bIsUpper = std::isupper(static_cast<unsigned char>(C)) != 0;
-        const bool bNeedsSpace = i > 0 && bIsUpper && Result.back() != ' ' && !std::isupper(static_cast<unsigned char>(RawName[i - 1]));
+        const bool bPrevIsUpper = i > 0 && std::isupper(static_cast<unsigned char>(RawName[i - 1])) != 0;
+        const bool bPrevIsLowerOrDigit = i > 0
+            && (std::islower(static_cast<unsigned char>(RawName[i - 1])) != 0 || std::isdigit(static_cast<unsigned char>(RawName[i - 1])) != 0);
+        const bool bNextIsLower = i + 1 < RawName.size() && std::islower(static_cast<unsigned char>(RawName[i + 1])) != 0;
+        const bool bNeedsSpace = i > 0
+            && bIsUpper
+            && Result.back() != ' '
+            && (bPrevIsLowerOrDigit || (bPrevIsUpper && bNextIsLower));
         if (bNeedsSpace)
         {
             Result.push_back(' ');
@@ -664,6 +889,10 @@ FString FEditorDetailsWidget::GetPropertySectionName(const FPropertyDescriptor &
         if (Prop.Name == "ScreenPosition" || Prop.Name == "Screen Position"
             || Prop.Name == "ScreenSize" || Prop.Name == "Screen Size"
             || Prop.Name == "CanvasSize" || Prop.Name == "Canvas Size"
+            || Prop.Name == "UseAnchoredLayout" || Prop.Name == "Use Anchored Layout"
+            || Prop.Name == "Anchor"
+            || Prop.Name == "Alignment"
+            || Prop.Name == "AnchorOffset" || Prop.Name == "Anchor Offset"
             || Prop.Name == "LabelOffset" || Prop.Name == "Label Offset"
             || Prop.Name == "Slice"
             || Prop.Name == "Nine Slice Border"
@@ -712,7 +941,7 @@ FString FEditorDetailsWidget::GetPropertySectionName(const FPropertyDescriptor &
     return "Default";
 }
 
-bool FEditorDetailsWidget::DrawColoredFloat3(const char *Label, float Values[3], float Speed)
+bool FEditorDetailsWidget::DrawColoredFloat3(const char *Label, float Values[3], float Speed, bool bShowReset, const float *ResetValues)
 {
     ImGui::PushID(Label);
     ImGui::AlignTextToFramePadding();
@@ -721,7 +950,9 @@ bool FEditorDetailsWidget::DrawColoredFloat3(const char *Label, float Values[3],
     ImGui::PopStyleColor();
     ImGui::SameLine(DetailsVectorLabelWidth);
 
-    const float  Width = GetAxisFieldWidth(3);
+    const float  ResetButtonWidth =
+        bShowReset ? ImGui::CalcTextSize("RESET").x + ImGui::GetStyle().FramePadding.x * 2.0f + DetailsVectorResetSpacing : 0.0f;
+    const float  Width = GetAxisFieldWidth(3, ResetButtonWidth);
     const ImVec4 AxisColors[3] = {ImVec4(0.85f, 0.22f, 0.22f, 1.0f), ImVec4(0.36f, 0.74f, 0.25f, 1.0f), ImVec4(0.23f, 0.54f, 0.92f, 1.0f)};
 
     bool bChanged = false;
@@ -737,16 +968,29 @@ bool FEditorDetailsWidget::DrawColoredFloat3(const char *Label, float Values[3],
         ImGui::GetWindowDrawList()->AddRectFilled(Start, ImVec2(Start.x + BarWidth, Start.y + ImGui::GetFrameHeight()),
                                                   ImGui::ColorConvertFloat4ToU32(AxisColors[Axis]), 2.0f);
         ImGui::SetCursorScreenPos(ImVec2(Start.x + BarWidth + Spacing, Start.y));
-        PushDetailsFieldStyle();
+        PushDetailsVectorFieldStyle();
         ImGui::SetNextItemWidth((std::max)(18.0f, Width));
         bChanged |= ImGui::DragFloat(Axis == 0 ? "##X" : Axis == 1 ? "##Y" : "##Z", &Values[Axis], Speed, 0.0f, 0.0f, "%.3f");
-        PopDetailsFieldStyle();
+        PopDetailsVectorFieldStyle();
+    }
+    if (bShowReset)
+    {
+        ImGui::SameLine(0.0f, DetailsVectorResetSpacing);
+        PushDetailsVectorResetButtonStyle();
+        if (ImGui::Button("RESET"))
+        {
+            Values[0] = ResetValues ? ResetValues[0] : 0.0f;
+            Values[1] = ResetValues ? ResetValues[1] : 0.0f;
+            Values[2] = ResetValues ? ResetValues[2] : 0.0f;
+            bChanged = true;
+        }
+        PopDetailsVectorResetButtonStyle();
     }
     ImGui::PopID();
     return bChanged;
 }
 
-bool FEditorDetailsWidget::DrawColoredFloat4(const char *Label, float Values[4], float Speed)
+bool FEditorDetailsWidget::DrawColoredFloat4(const char *Label, float Values[4], float Speed, bool bShowReset)
 {
     ImGui::PushID(Label);
     ImGui::AlignTextToFramePadding();
@@ -755,7 +999,9 @@ bool FEditorDetailsWidget::DrawColoredFloat4(const char *Label, float Values[4],
     ImGui::PopStyleColor();
     ImGui::SameLine(DetailsVectorLabelWidth);
 
-    const float  Width = GetAxisFieldWidth(4);
+    const float  ResetButtonWidth =
+        bShowReset ? ImGui::CalcTextSize("RESET").x + ImGui::GetStyle().FramePadding.x * 2.0f + DetailsVectorResetSpacing : 0.0f;
+    const float  Width = GetAxisFieldWidth(4, ResetButtonWidth);
     const ImVec4 AxisColors[4] = {
         ImVec4(0.85f, 0.22f, 0.22f, 1.0f),
         ImVec4(0.36f, 0.74f, 0.25f, 1.0f),
@@ -777,17 +1023,31 @@ bool FEditorDetailsWidget::DrawColoredFloat4(const char *Label, float Values[4],
         ImGui::GetWindowDrawList()->AddRectFilled(Start, ImVec2(Start.x + BarWidth, Start.y + ImGui::GetFrameHeight()),
                                                   ImGui::ColorConvertFloat4ToU32(AxisColors[Axis]), 2.0f);
         ImGui::SetCursorScreenPos(ImVec2(Start.x + BarWidth + Spacing, Start.y));
-        PushDetailsFieldStyle();
+        PushDetailsVectorFieldStyle();
         ImGui::SetNextItemWidth((std::max)(16.0f, Width));
         bChanged |= ImGui::DragFloat(Axis == 0 ? "##X" : Axis == 1 ? "##Y" : Axis == 2 ? "##Z" : "##W", &Values[Axis], Speed, 0.0f, 0.0f, "%.3f");
-        PopDetailsFieldStyle();
+        PopDetailsVectorFieldStyle();
+    }
+    if (bShowReset)
+    {
+        ImGui::SameLine(0.0f, DetailsVectorResetSpacing);
+        PushDetailsVectorResetButtonStyle();
+        if (ImGui::Button("RESET"))
+        {
+            Values[0] = 0.0f;
+            Values[1] = 0.0f;
+            Values[2] = 0.0f;
+            Values[3] = 0.0f;
+            bChanged = true;
+        }
+        PopDetailsVectorResetButtonStyle();
     }
 
     ImGui::PopID();
     return bChanged;
 }
 
-bool FEditorDetailsWidget::DrawNamedFloat4(const char *Label, float Values[4], float Speed, const char *AxisLabels[4])
+bool FEditorDetailsWidget::DrawNamedFloat4(const char *Label, float Values[4], float Speed, const char *AxisLabels[4], bool bShowReset)
 {
     ImGui::PushID(Label);
     ImGui::AlignTextToFramePadding();
@@ -796,7 +1056,9 @@ bool FEditorDetailsWidget::DrawNamedFloat4(const char *Label, float Values[4], f
     ImGui::PopStyleColor();
     ImGui::SameLine(DetailsVectorLabelWidth);
 
-    const float Width = (std::max)(52.0f, GetAxisFieldWidth(4));
+    const float ResetButtonWidth =
+        bShowReset ? ImGui::CalcTextSize("RESET").x + ImGui::GetStyle().FramePadding.x * 2.0f + DetailsVectorResetSpacing : 0.0f;
+    const float Width = (std::max)(52.0f, GetAxisFieldWidth(4, ResetButtonWidth));
     bool        bChanged = false;
     for (int32 Axis = 0; Axis < 4; ++Axis)
     {
@@ -816,10 +1078,24 @@ bool FEditorDetailsWidget::DrawNamedFloat4(const char *Label, float Values[4], f
             ImGui::SameLine(0.0f, 6.0f);
         }
 
-        PushDetailsFieldStyle();
+        PushDetailsVectorFieldStyle();
         ImGui::SetNextItemWidth(FieldWidth);
         bChanged |= ImGui::DragFloat(Axis == 0 ? "##Left" : Axis == 1 ? "##Top" : Axis == 2 ? "##Right" : "##Bottom", &Values[Axis], Speed, 0.0f, 0.0f, "%.3f");
-        PopDetailsFieldStyle();
+        PopDetailsVectorFieldStyle();
+    }
+    if (bShowReset)
+    {
+        ImGui::SameLine(0.0f, DetailsVectorResetSpacing);
+        PushDetailsVectorResetButtonStyle();
+        if (ImGui::Button("RESET"))
+        {
+            Values[0] = 0.0f;
+            Values[1] = 0.0f;
+            Values[2] = 0.0f;
+            Values[3] = 0.0f;
+            bChanged = true;
+        }
+        PopDetailsVectorResetButtonStyle();
     }
 
     ImGui::PopID();
@@ -898,10 +1174,10 @@ void FEditorPropertyWidget::Render(float DeltaTime)
     // Actor 선택이 바뀌면 초기화
     if (PrimaryActor != LastSelectedActor)
     {
-        SelectedComponent = nullptr;
+        SelectedComponent = PrimaryActor->GetRootComponent();
         ScriptPathEditComponent = nullptr;
         LastSelectedActor = PrimaryActor;
-        bActorSelected = true;
+        bActorSelected = (SelectedComponent == nullptr);
         bEditingActorName = false;
         bScriptPathEditActive = false;
         ScriptPathEditBuffer[0] = '\0';
@@ -969,12 +1245,15 @@ void FEditorDetailsWidget::RenderDetailsFilterBar(const TArray<const char *> &Av
     DrawSearchInputWithIcon("##DetailsSearch", "Search", DetailSearchBuffer, sizeof(DetailSearchBuffer), SearchWidth);
     ImGui::Spacing();
 
+    TArray<const char *> SortedSections = AvailableSections;
+    SortDetailsSections(SortedSections);
+
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 5.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    for (int32 SectionIndex = -1; SectionIndex < static_cast<int32>(AvailableSections.size()); ++SectionIndex)
+    for (int32 SectionIndex = -1; SectionIndex < static_cast<int32>(SortedSections.size()); ++SectionIndex)
     {
-        const char       *Label = SectionIndex < 0 ? "All" : AvailableSections[SectionIndex];
+        const char       *Label = SectionIndex < 0 ? "All" : SortedSections[SectionIndex];
         const std::string ButtonId = std::string(Label) + "##DetailsFilter";
         const bool        bActive = ActiveSectionFilter == Label;
         if (SectionIndex >= 0)
@@ -982,9 +1261,9 @@ void FEditorDetailsWidget::RenderDetailsFilterBar(const TArray<const char *> &Av
             ImGui::SameLine(0.0f, 4.0f);
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Button, bActive ? ImVec4(64.0f / 255.0f, 64.0f / 255.0f, 64.0f / 255.0f, 1.0f) : ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bActive ? ImVec4(76.0f / 255.0f, 76.0f / 255.0f, 76.0f / 255.0f, 1.0f) : ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, bActive ? ImVec4(52.0f / 255.0f, 52.0f / 255.0f, 52.0f / 255.0f, 1.0f) : ImVec4(30.0f / 255.0f, 30.0f / 255.0f, 30.0f / 255.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, bActive ? EditorAccentColor::WithAlpha(0.92f) : ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, bActive ? EditorAccentColor::Value : ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, bActive ? EditorAccentColor::Value : ImVec4(30.0f / 255.0f, 30.0f / 255.0f, 30.0f / 255.0f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f));
         if (ImGui::Button(ButtonId.c_str()))
         {
@@ -1015,6 +1294,11 @@ bool FEditorDetailsWidget::SectionMatchesSearch(const char *SectionName, const T
             continue;
         }
 
+        if (!ShouldRenderDetailsProperty(SelectedComponent, Props[PropIndex]))
+        {
+            continue;
+        }
+
         if (ContainsCaseInsensitive(GetDisplayPropertyLabel(Props[PropIndex].Name), Query) || ContainsCaseInsensitive(Props[PropIndex].Name, Query))
         {
             return true;
@@ -1032,6 +1316,26 @@ bool FEditorDetailsWidget::ShouldDisplaySection(const char *SectionName, const T
     }
 
     if (ActiveSectionFilter != "All" && ActiveSectionFilter != SectionName)
+    {
+        return false;
+    }
+
+    bool bHasVisibleProperty = false;
+    for (int32 PropIndex : Indices)
+    {
+        if (PropIndex < 0 || PropIndex >= static_cast<int32>(Props.size()))
+        {
+            continue;
+        }
+
+        if (ShouldRenderDetailsProperty(SelectedComponent, Props[PropIndex]))
+        {
+            bHasVisibleProperty = true;
+            break;
+        }
+    }
+
+    if (!bHasVisibleProperty)
     {
         return false;
     }
@@ -1225,6 +1529,18 @@ void FEditorDetailsWidget::RenderAddComponentButton(AActor *Actor)
             {
                 World->EndDeferredPickingBVHUpdate();
             }
+
+            SelectedComponent = Comp;
+            bActorSelected = false;
+            ScriptPathEditComponent = nullptr;
+            bScriptPathEditActive = false;
+            ScriptPathEditBuffer[0] = '\0';
+
+            if (USceneComponent* SceneComponent = Cast<USceneComponent>(Comp))
+            {
+                EditorEngine->GetSelectionManager().SelectComponent(SceneComponent);
+            }
+
             EditorEngine->CommitTrackedSceneChange();
             ImGui::CloseCurrentPopup();
             break;
@@ -1294,6 +1610,7 @@ void FEditorPropertyWidget::RenderActorProperties(AActor *PrimaryActor, const TA
         AvailableSections.push_back("Transform");
     }
     AvailableSections.push_back("Visibility");
+    SortDetailsSections(AvailableSections);
     RenderDetailsFilterBar(AvailableSections);
 
     const FString SearchQuery = DetailSearchBuffer;
@@ -1320,7 +1637,10 @@ void FEditorPropertyWidget::RenderActorProperties(AActor *PrimaryActor, const TA
                 FVector Scale = PrimaryActor->GetActorScale();
                 float   ScaleArray[3] = {Scale.X, Scale.Y, Scale.Z};
 
-                if (DrawColoredFloat3("Location", PosArray, 0.1f))
+                static const float ZeroVectorReset[3] = { 0.0f, 0.0f, 0.0f };
+                static const float UnitScaleReset[3] = { 1.0f, 1.0f, 1.0f };
+
+                if (DrawColoredFloat3("Location", PosArray, 0.1f, true, ZeroVectorReset))
                 {
                     EditorEngine->BeginTrackedSceneChange();
                     FVector Delta = FVector(PosArray[0], PosArray[1], PosArray[2]) - Pos;
@@ -1337,7 +1657,7 @@ void FEditorPropertyWidget::RenderActorProperties(AActor *PrimaryActor, const TA
                     FRotator  PrevRot = CachedRot;
                     float     RotXYZ[3] = {CachedRot.Roll, CachedRot.Pitch, CachedRot.Yaw};
 
-                    if (DrawColoredFloat3("Rotation", RotXYZ, 0.1f))
+                    if (DrawColoredFloat3("Rotation", RotXYZ, 0.1f, true, ZeroVectorReset))
                     {
                         EditorEngine->BeginTrackedSceneChange();
                         CachedRot.Roll = RotXYZ[0];
@@ -1364,7 +1684,7 @@ void FEditorPropertyWidget::RenderActorProperties(AActor *PrimaryActor, const TA
                         EditorEngine->CommitTrackedSceneChange();
                     }
                 }
-                if (DrawColoredFloat3("Scale", ScaleArray, 0.1f))
+                if (DrawColoredFloat3("Scale", ScaleArray, 0.1f, true, UnitScaleReset))
                 {
                     EditorEngine->BeginTrackedSceneChange();
                     FVector Delta = FVector(ScaleArray[0], ScaleArray[1], ScaleArray[2]) - Scale;
@@ -1704,6 +2024,7 @@ void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArra
         AvailableSections.push_back("Behavior");
     if (!DefaultIndices.empty())
         AvailableSections.push_back("Default");
+    SortDetailsSections(AvailableSections);
     RenderDetailsFilterBar(AvailableSections);
 
     bool bRenderedAnySection = false;
@@ -1837,6 +2158,11 @@ void FEditorDetailsWidget::RenderPropertySection(const char *SectionName, TArray
 
     for (int32 PropIndex : Indices)
     {
+        if (!ShouldRenderDetailsProperty(SelectedComponent, Props[PropIndex]))
+        {
+            continue;
+        }
+
         if (DetailSearchBuffer[0] != '\0' && !ContainsCaseInsensitive(GetDisplayPropertyLabel(Props[PropIndex].Name), Query) &&
             !ContainsCaseInsensitive(Props[PropIndex].Name, Query))
         {
@@ -2022,7 +2348,37 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Pr
     case EPropertyType::Vec3:
     {
         float *Val = static_cast<float *>(Prop.ValuePtr);
-        bChanged = DrawColoredFloat3(Label, Val, Prop.Speed);
+        const bool bIsCanvasSizeProperty = SelectedComponent
+            && SelectedComponent->IsA<UCanvasRootComponent>()
+            && (Prop.Name == "CanvasSize" || Prop.Name == "Canvas Size");
+        static const float ZeroVectorReset[3] = { 0.0f, 0.0f, 0.0f };
+        static const float UnitScaleReset[3] = { 1.0f, 1.0f, 1.0f };
+        static const float DefaultCanvasSizeReset[3] = { 1920.0f, 1080.0f, 0.0f };
+        const float *ResetValues = ZeroVectorReset;
+        if (Prop.Name == "Scale")
+        {
+            ResetValues = UnitScaleReset;
+        }
+        else if (bIsCanvasSizeProperty)
+        {
+            ResetValues = DefaultCanvasSizeReset;
+        }
+        bChanged = DrawColoredFloat3(Label, Val, Prop.Speed, true, ResetValues);
+        if (bIsCanvasSizeProperty)
+        {
+            ImGui::SameLine();
+            PushDetailsVectorResetButtonStyle();
+            if (ImGui::Button("FULL SCREEN") && GEngine)
+            {
+                if (FWindowsWindow *Window = GEngine->GetWindow())
+                {
+                    Val[0] = (std::max)(1.0f, Window->GetWidth());
+                    Val[1] = (std::max)(1.0f, Window->GetHeight());
+                    bChanged = true;
+                }
+            }
+            PopDetailsVectorResetButtonStyle();
+        }
         break;
     }
     case EPropertyType::Rotator:
@@ -2030,7 +2386,8 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Pr
         // FRotator 메모리 레이아웃 [Pitch,Yaw,Roll] → UI X=Roll(X축), Y=Pitch(Y축), Z=Yaw(Z축)
         FRotator *Rot = static_cast<FRotator *>(Prop.ValuePtr);
         float     RotXYZ[3] = {Rot->Roll, Rot->Pitch, Rot->Yaw};
-        bChanged = DrawColoredFloat3(Label, RotXYZ, Prop.Speed);
+        static const float ZeroVectorReset[3] = { 0.0f, 0.0f, 0.0f };
+        bChanged = DrawColoredFloat3(Label, RotXYZ, Prop.Speed, true, ZeroVectorReset);
         if (bChanged)
         {
             Rot->Roll = RotXYZ[0];
@@ -2050,11 +2407,11 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Pr
         if (Prop.Name == "Slice" || Prop.Name == "Nine Slice Border")
         {
             const char *AxisLabels[4] = {"Left", "Top", "Right", "Bottom"};
-            bChanged = DrawNamedFloat4(Label, Val, Prop.Speed, AxisLabels);
+            bChanged = DrawNamedFloat4(Label, Val, Prop.Speed, AxisLabels, true);
         }
         else
         {
-            bChanged = DrawColoredFloat4(Label, Val, Prop.Speed);
+            bChanged = DrawColoredFloat4(Label, Val, Prop.Speed, true);
         }
         PopDetailsFieldStyle();
         break;
@@ -2414,8 +2771,15 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Pr
             Names = FResourceManager::Get().GetFontNames();
         else if (strcmp(Prop.Name.c_str(), "Particle") == 0)
             Names = FResourceManager::Get().GetParticleNames();
+        else if (strcmp(Prop.Name.c_str(), "FilePath") == 0)
+        {
+            if (USoundComponent *SoundComponent = Cast<USoundComponent>(SelectedComponent))
+                Names = FResourceManager::Get().GetSoundNames(SoundComponent->GetCategory());
+            else
+                Names = FResourceManager::Get().GetSoundNames();
+        }
         else if (strcmp(Prop.Name.c_str(), "Texture") == 0)
-            Names = FResourceManager::Get().GetTextureNames();
+            Names = FResourceManager::Get().GetTextureNames(false);
 
         if (!Names.empty())
         {

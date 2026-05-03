@@ -23,4 +23,6 @@ protected:
 
 	FVector CachedScale;
 	FVector CachedLocation;
+	float CachedWidth = 1.0f;
+	float CachedHeight = 1.0f;
 };

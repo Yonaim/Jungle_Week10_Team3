@@ -36,6 +36,8 @@ namespace Key
 	constexpr const char* bShowShadowFrustum = "bShowShadowFrustum";
 	constexpr const char* GridSpacing = "GridSpacing";
 	constexpr const char* GridHalfLineCount = "GridHalfLineCount";
+	constexpr const char* DebugLineThickness = "DebugLineThickness";
+	constexpr const char* ActorHelperBillboardScale = "ActorHelperBillboardScale";
 	constexpr const char* CameraMoveSensitivity = "CameraMoveSensitivity";
 	constexpr const char* CameraRotateSensitivity = "CameraRotateSensitivity";
 	constexpr const char* DirectionalLightVisualizationScale = "DirectionalLightVisualizationScale";
@@ -137,6 +139,8 @@ void FEditorSettings::SaveToFile(const FString& Path) const
 		SlotObj[Key::bShowShadowFrustum] = Opts.ShowFlags.bShowShadowFrustum;
 		SlotObj[Key::GridSpacing] = Opts.GridSpacing;
 		SlotObj[Key::GridHalfLineCount] = Opts.GridHalfLineCount;
+		SlotObj[Key::DebugLineThickness] = Opts.DebugLineThickness;
+		SlotObj[Key::ActorHelperBillboardScale] = Opts.ActorHelperBillboardScale;
 		SlotObj[Key::CameraMoveSensitivity] = Opts.CameraMoveSensitivity;
 		SlotObj[Key::CameraRotateSensitivity] = Opts.CameraRotateSensitivity;
 		SlotObj[Key::DirectionalLightVisualizationScale] = Opts.DirectionalLightVisualizationScale;
@@ -307,6 +311,10 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 					Opts.GridSpacing = static_cast<float>(S[Key::GridSpacing].ToFloat());
 				if (S.hasKey(Key::GridHalfLineCount))
 					Opts.GridHalfLineCount = S[Key::GridHalfLineCount].ToInt();
+				if (S.hasKey(Key::DebugLineThickness))
+					Opts.DebugLineThickness = static_cast<float>(S[Key::DebugLineThickness].ToFloat());
+				if (S.hasKey(Key::ActorHelperBillboardScale))
+					Opts.ActorHelperBillboardScale = static_cast<float>(S[Key::ActorHelperBillboardScale].ToFloat());
 				if (S.hasKey(Key::CameraMoveSensitivity))
 					Opts.CameraMoveSensitivity = static_cast<float>(S[Key::CameraMoveSensitivity].ToFloat());
 				if (S.hasKey(Key::CameraRotateSensitivity))

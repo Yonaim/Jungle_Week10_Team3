@@ -80,20 +80,24 @@ void UIButtonComponent::ContributeVisuals(FScene& Scene) const
 
 	if (ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV())
 	{
+		const FVector2 ResolvedSize = ResolveScreenSize2D();
+		const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
 		Scene.AddScreenQuad(
 			SRV,
-			FVector2(ScreenPosition.X, ScreenPosition.Y),
-			FVector2(ScreenSize.X, ScreenSize.Y),
+			ResolvedPosition,
+			ResolvedSize,
 			GetCurrentTint(),
 			ZOrder);
 	}
 
 	if (!Label.empty())
 	{
+		const FVector2 ResolvedSize = ResolveScreenSize2D();
+		const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
 		const FFontResource* ResolvedFont = FResourceManager::Get().FindFont(FontName);
 		Scene.AddScreenText(
 			Label,
-			FVector2(ScreenPosition.X + LabelOffset.X, ScreenPosition.Y + LabelOffset.Y),
+			FVector2(ResolvedPosition.X + LabelOffset.X, ResolvedPosition.Y + LabelOffset.Y),
 			LabelScale,
 			LabelColor,
 			ResolvedFont ? ResolvedFont : CachedFont);
@@ -123,8 +127,10 @@ FVector4 UIButtonComponent::GetCurrentTint() const
 
 bool UIButtonComponent::IsPointInsideButton(float X, float Y) const
 {
-	return X >= ScreenPosition.X
-		&& X <= ScreenPosition.X + ScreenSize.X
-		&& Y >= ScreenPosition.Y
-		&& Y <= ScreenPosition.Y + ScreenSize.Y;
+	const FVector2 ResolvedSize = ResolveScreenSize2D();
+	const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
+	return X >= ResolvedPosition.X
+		&& X <= ResolvedPosition.X + ResolvedSize.X
+		&& Y >= ResolvedPosition.Y
+		&& Y <= ResolvedPosition.Y + ResolvedSize.Y;
 }

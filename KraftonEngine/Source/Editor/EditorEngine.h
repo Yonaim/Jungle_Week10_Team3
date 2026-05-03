@@ -151,6 +151,7 @@ private:
 	void ApplyTrackedSceneChange(const FTrackedSceneChange& Change, bool bRedo);
 	void ApplyTrackedActorDeltas(const FTrackedSceneChange& Change, bool bRedo);
 	void RestoreTrackedActorOrder(const TArray<uint32>& OrderedUUIDs);
+	void RestoreTrackedFolderOrder(const TArray<FString>& OrderedFolders);
 	void RestoreTrackedSelection(const TArray<uint32>& SelectedUUIDs);
 	void InvalidateTrackedSceneSnapshotCache();
 

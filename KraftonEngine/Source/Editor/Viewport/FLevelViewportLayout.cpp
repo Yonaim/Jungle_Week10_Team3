@@ -293,8 +293,12 @@ void DrawShowFlagsPopupContent(FViewportRenderOptions& Opts)
 
 		ImGui::Checkbox("World Axis", &Opts.ShowFlags.bWorldAxis);
 		ImGui::Checkbox("Gizmo", &Opts.ShowFlags.bGizmo);
+		ImGui::SetNextItemWidth(CompactSliderWidth);
+		ImGui::SliderFloat("Billboard Icon Scale", &Opts.ActorHelperBillboardScale, 0.1f, 5.0f, "%.2f");
 
 		DrawCompactPopupSectionLabel("DEBUG");
+		ImGui::SetNextItemWidth(CompactSliderWidth);
+		ImGui::SliderFloat("Line Thickness", &Opts.DebugLineThickness, 1.0f, 12.0f, "%.1f");
 		ImGui::Checkbox("Scene BVH (Green)", &Opts.ShowFlags.bSceneBVH);
 		ImGui::Checkbox("Scene Octree (Cyan)", &Opts.ShowFlags.bOctree);
 		ImGui::Checkbox("World Bound (Magenta)", &Opts.ShowFlags.bWorldBound);
@@ -1845,8 +1849,10 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 				}
 			}
 
+			const bool bLockViewportResolution = FProjectSettings::Get().Game.bLockWindowResolution;
+
 			// 遺꾪븷 諛??쒕옒洹?
-			if (RootSplitter && LayoutTransition == EViewportLayoutTransition::None)
+			if (RootSplitter && LayoutTransition == EViewportLayoutTransition::None && !bLockViewportResolution)
 			{
 				if (ImGui::IsMouseClicked(0))
 				{
@@ -1886,6 +1892,10 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 							ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
 					}
 				}
+			}
+			else if (bLockViewportResolution)
+			{
+				DraggingSplitter = nullptr;
 			}
 
 			// ?쒖꽦 酉고룷???꾪솚 (遺꾪븷 諛??쒕옒洹?以묒씠 ?꾨땺 ??

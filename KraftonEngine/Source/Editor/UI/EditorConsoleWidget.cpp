@@ -19,6 +19,64 @@
 
 namespace
 {
+	ImVec4 GetLogTextColor(ELogLevel Level)
+	{
+		switch (Level)
+		{
+		case ELogLevel::Verbose:
+			return ImVec4(0.50f, 0.50f, 0.50f, 1.0f);
+		case ELogLevel::Debug:
+			return ImVec4(0.96f, 0.96f, 0.96f, 1.0f);
+		case ELogLevel::Info:
+			return ImVec4(0.35f, 0.86f, 1.0f, 1.0f);
+		case ELogLevel::Warning:
+			return ImVec4(0.98f, 0.86f, 0.20f, 1.0f);
+		case ELogLevel::Error:
+			return ImVec4(0.95f, 0.24f, 0.24f, 1.0f);
+		default:
+			return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+
+	ImVec4 GetLogChipColor(ELogLevel Level)
+	{
+		return GetLogTextColor(Level);
+	}
+
+	ImVec4 Dim(const ImVec4& Color, float Factor)
+	{
+		return ImVec4(Color.x * Factor, Color.y * Factor, Color.z * Factor, Color.w);
+	}
+
+	ImVec4 Brighten(const ImVec4& Color, float Amount)
+	{
+		return ImVec4(
+			(std::min)(1.0f, Color.x + Amount),
+			(std::min)(1.0f, Color.y + Amount),
+			(std::min)(1.0f, Color.z + Amount),
+			Color.w);
+	}
+
+	ImVec4 GetLogButtonTextColor(ELogLevel Level)
+	{
+		switch (Level)
+		{
+		case ELogLevel::Debug:
+		case ELogLevel::Info:
+		case ELogLevel::Warning:
+			return ImVec4(0.08f, 0.08f, 0.08f, 1.0f);
+		case ELogLevel::Verbose:
+		case ELogLevel::Error:
+		default:
+			return ImVec4(0.97f, 0.97f, 0.97f, 1.0f);
+		}
+	}
+
+	const char* GetLogLevelDisplayName(ELogLevel Level)
+	{
+		return GetLogLevelLabel(Level);
+	}
+
 	FString ToLower(FString Value)
 	{
 		std::transform(Value.begin(), Value.end(), Value.begin(),
@@ -160,16 +218,20 @@ namespace
 // FConsoleLogOutputDevice
 // ============================================================
 
-void FConsoleLogOutputDevice::Write(const char* Msg)
+void FConsoleLogOutputDevice::Log(ELogLevel Level, const char* Category, const char* Message, const char* FormattedMessage)
 {
-	Messages.push_back(_strdup(Msg));
+	FConsoleLogEntry Entry;
+	Entry.Level = Level;
+	Entry.Category = Category != nullptr ? Category : "";
+	Entry.Message = Message != nullptr ? Message : "";
+	Entry.FormattedMessage = FormattedMessage != nullptr ? FormattedMessage : Entry.Message;
+	Entries.push_back(std::move(Entry));
 	if (AutoScroll) ScrollToBottom = true;
 }
 
 void FConsoleLogOutputDevice::Clear()
 {
-	for (int32 i = 0; i < Messages.Size; i++) free(Messages[i]);
-	Messages.clear();
+	Entries.clear();
 }
 
 // ============================================================
@@ -179,10 +241,56 @@ void FConsoleLogOutputDevice::Clear()
 // 기존 코드 호환용 static 래퍼: UE_LOG로 위임
 void FEditorConsoleWidget::AddLog(const char* fmt, ...)
 {
+	char Buffer[2048];
 	va_list args;
 	va_start(args, fmt);
-	FLogManager::Get().LogV(fmt, args);
+	vsnprintf(Buffer, sizeof(Buffer), fmt, args);
 	va_end(args);
+
+	FString Message = Buffer;
+	while (!Message.empty() && (Message.back() == '\n' || Message.back() == '\r'))
+	{
+		Message.pop_back();
+	}
+
+	ELogLevel Level = ELogLevel::Info;
+	constexpr const char* InfoPrefix = "[INFO] ";
+	constexpr const char* ErrorPrefix = "[ERROR] ";
+	constexpr const char* WarningPrefix = "[WARNING] ";
+	constexpr const char* WarnPrefix = "[WARN] ";
+	constexpr const char* DebugPrefix = "[DEBUG] ";
+	constexpr const char* VerbosePrefix = "[VERBOSE] ";
+	if (StartsWith(Message, InfoPrefix))
+	{
+		Message.erase(0, strlen(InfoPrefix));
+	}
+	else if (StartsWith(Message, ErrorPrefix))
+	{
+		Level = ELogLevel::Error;
+		Message.erase(0, strlen(ErrorPrefix));
+	}
+	else if (StartsWith(Message, WarningPrefix))
+	{
+		Level = ELogLevel::Warning;
+		Message.erase(0, strlen(WarningPrefix));
+	}
+	else if (StartsWith(Message, WarnPrefix))
+	{
+		Level = ELogLevel::Warning;
+		Message.erase(0, strlen(WarnPrefix));
+	}
+	else if (StartsWith(Message, DebugPrefix))
+	{
+		Level = ELogLevel::Debug;
+		Message.erase(0, strlen(DebugPrefix));
+	}
+	else if (StartsWith(Message, VerbosePrefix))
+	{
+		Level = ELogLevel::Verbose;
+		Message.erase(0, strlen(VerbosePrefix));
+	}
+
+	FLogManager::Get().LogMessage(Level, "Console", "%s", Message.c_str());
 }
 
 void FEditorConsoleWidget::Initialize(UEditorEngine* InEditorEngine)
@@ -270,6 +378,28 @@ void FEditorConsoleWidget::Clear()
 	ConsoleDevice.Clear();
 }
 
+bool FEditorConsoleWidget::ShouldDisplayEntry(ELogLevel Level, const FString& Text) const
+{
+	const int32 LevelIndex = static_cast<int32>(Level);
+	if (LevelIndex < 0 || LevelIndex >= LogLevelCount)
+	{
+		return false;
+	}
+
+	if (!LevelVisibility[LevelIndex] || static_cast<uint8>(Level) < static_cast<uint8>(MinimumVisibleLevel))
+	{
+		return false;
+	}
+
+	const FString SearchText = ToLower(SearchBuf);
+	if (SearchText.empty())
+	{
+		return true;
+	}
+
+	return ToLower(Text).find(SearchText) != FString::npos;
+}
+
 void FEditorConsoleWidget::Render(float DeltaTime)
 {
 	(void)DeltaTime;
@@ -304,51 +434,73 @@ void FEditorConsoleWidget::Render(float DeltaTime)
 
 void FEditorConsoleWidget::RenderDrawerToolbar()
 {
-	if (ImGui::BeginPopup("ConsoleOptions"))
+	ImGui::TextUnformatted("Minimum Level");
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(100.0f);
+	if (ImGui::BeginCombo("##MinimumLevel", GetLogLevelDisplayName(MinimumVisibleLevel)))
 	{
-		ImGui::Checkbox("Auto-scroll", &ConsoleDevice.AutoScroll);
-		ImGui::EndPopup();
+		for (int32 Index = static_cast<int32>(ELogLevel::Verbose); Index <= static_cast<int32>(ELogLevel::Error); ++Index)
+		{
+			const ELogLevel Level = static_cast<ELogLevel>(Index);
+			const bool bSelected = MinimumVisibleLevel == Level;
+			if (ImGui::Selectable(GetLogLevelDisplayName(Level), bSelected))
+			{
+				MinimumVisibleLevel = Level;
+			}
+
+			if (bSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
 	}
 
-	if (ImGui::SmallButton("Clear")) { Clear(); }
-	ImGui::SameLine();
-	if (ImGui::SmallButton("Options"))
+	for (int32 Index = static_cast<int32>(ELogLevel::Verbose); Index <= static_cast<int32>(ELogLevel::Error); ++Index)
 	{
-		ImGui::OpenPopup("ConsoleOptions");
+		ImGui::SameLine();
+		const ELogLevel Level = static_cast<ELogLevel>(Index);
+		const bool bVisible = LevelVisibility[Index];
+		const ImVec4 BaseColor = bVisible ? GetLogChipColor(Level) : Dim(GetLogChipColor(Level), 0.28f);
+		const ImVec4 TextColor = bVisible ? GetLogButtonTextColor(Level) : ImVec4(0.62f, 0.62f, 0.62f, 1.0f);
+
+		ImGui::PushStyleColor(ImGuiCol_Button, BaseColor);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Brighten(BaseColor, 0.08f));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, Brighten(BaseColor, 0.14f));
+		ImGui::PushStyleColor(ImGuiCol_Text, TextColor);
+		if (ImGui::Button(GetLogLevelDisplayName(Level), ImVec2(76.0f, 0.0f)))
+		{
+			LevelVisibility[Index] = !LevelVisibility[Index];
+		}
+		ImGui::PopStyleColor(4);
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Clear"))
+	{
+		Clear();
 	}
 	ImGui::SameLine();
-	Filter.Draw("Filter (\"incl,-excl\")", 180.0f);
+	ImGui::Checkbox("Auto-scroll", &ConsoleDevice.AutoScroll);
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(240.0f);
+	ImGui::InputTextWithHint("##ConsoleSearch", "Search logs...", SearchBuf, sizeof(SearchBuf));
 }
 
 void FEditorConsoleWidget::RenderLogContents(float Height)
 {
-	if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, Height), false, ImGuiWindowFlags_HorizontalScrollbar)) {
-		for (int32 i = 0; i < ConsoleDevice.GetMessageCount(); ++i) {
-			char* Item = ConsoleDevice.GetMessageAt(i);
-			if (!Filter.PassFilter(Item)) continue;
-
-			ImVec4 Color;
-			bool bHasColor = false;
-			if (strncmp(Item, "[ERROR]", 7) == 0) {
-				Color = ImVec4(1, 0.4f, 0.4f, 1);
-				bHasColor = true;
-			}
-			else if (strncmp(Item, "[WARN]", 6) == 0) {
-				Color = ImVec4(1, 0.8f, 0.2f, 1);
-				bHasColor = true;
-			}
-			else if (strncmp(Item, "#", 1) == 0) {
-				Color = ImVec4(1, 0.8f, 0.6f, 1);
-				bHasColor = true;
+	if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, Height), false, ImGuiWindowFlags_HorizontalScrollbar))
+	{
+		for (const FConsoleLogEntry& Entry : ConsoleDevice.GetEntries())
+		{
+			if (!ShouldDisplayEntry(Entry.Level, Entry.FormattedMessage))
+			{
+				continue;
 			}
 
-			if (bHasColor) {
-				ImGui::PushStyleColor(ImGuiCol_Text, Color);
-			}
-			ImGui::TextUnformatted(Item);
-			if (bHasColor) {
-				ImGui::PopStyleColor();
-			}
+			ImGui::PushStyleColor(ImGuiCol_Text, GetLogTextColor(Entry.Level));
+			ImGui::TextUnformatted(Entry.FormattedMessage.c_str());
+			ImGui::PopStyleColor();
 		}
 
 		if (ConsoleDevice.ScrollToBottom || (ConsoleDevice.AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())) {
@@ -442,8 +594,8 @@ void FEditorConsoleWidget::RenderInputLine(const char* Label, float Width, bool 
 
 const char* FEditorConsoleWidget::GetLatestLogMessage() const
 {
-	const int32 MessageCount = ConsoleDevice.GetMessageCount();
-	return MessageCount > 0 ? ConsoleDevice.GetMessageAt(MessageCount - 1) : "";
+	const int32 EntryCount = ConsoleDevice.GetEntryCount();
+	return EntryCount > 0 ? ConsoleDevice.GetEntryAt(EntryCount - 1).FormattedMessage.c_str() : "";
 }
 
 void FEditorConsoleWidget::RegisterCommand(const FString& Name, CommandFn Fn, const FString& Category, const FString& Usage, const FString& Description)
@@ -596,7 +748,7 @@ bool FEditorConsoleWidget::PrintCompactHelp(const FString& CategoryFilter)
 
 void FEditorConsoleWidget::ExecCommand(const char* CommandLine)
 {
-	AddLog("# %s\n", CommandLine);
+	UE_LOG_CATEGORY(Console, Debug, "> %s", CommandLine);
 	History.push_back(_strdup(CommandLine));
 	HistoryPos = -1;
 
@@ -617,7 +769,7 @@ void FEditorConsoleWidget::ExecCommand(const char* CommandLine)
 	}
 	else
 	{
-		AddLog("[ERROR] Unknown command: '%s'\n", JoinTokens(Tokens, 0).c_str());
+		UE_LOG_CATEGORY(Console, Error, "Unknown command: '%s'", JoinTokens(Tokens, 0).c_str());
 	}
 }
 

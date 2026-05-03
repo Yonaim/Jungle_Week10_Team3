@@ -8,6 +8,7 @@ struct FTrackedSceneSnapshot
 {
 	std::unordered_map<uint32, FString> ActorStates;
 	TArray<uint32> ActorOrderUUIDs;
+	TArray<FString> OutlinerFolders;
 	FPerspectiveCameraData CameraData;
 	TArray<uint32> SelectedActorUUIDs;
 };
@@ -40,6 +41,8 @@ struct FTrackedSceneChange
 	TArray<uint32> AfterSelectedActorUUIDs;
 	TArray<uint32> BeforeActorOrderUUIDs;
 	TArray<uint32> AfterActorOrderUUIDs;
+	TArray<FString> BeforeOutlinerFolders;
+	TArray<FString> AfterOutlinerFolders;
 	FPerspectiveCameraData BeforeCameraData;
 	FPerspectiveCameraData AfterCameraData;
 };

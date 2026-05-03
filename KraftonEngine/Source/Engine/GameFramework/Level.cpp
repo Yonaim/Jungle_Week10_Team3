@@ -95,6 +95,106 @@ bool ULevel::MoveActorToIndex(AActor* ActorToMove, size_t TargetIndex)
 	return true;
 }
 
+bool ULevel::AddOutlinerFolder(const FString& FolderName)
+{
+	if (FolderName.empty())
+	{
+		return false;
+	}
+
+	if (std::find(OutlinerFolders.begin(), OutlinerFolders.end(), FolderName) != OutlinerFolders.end())
+	{
+		return false;
+	}
+
+	OutlinerFolders.push_back(FolderName);
+	return true;
+}
+
+bool ULevel::RenameOutlinerFolder(const FString& OldFolderName, const FString& NewFolderName)
+{
+	if (OldFolderName.empty() || NewFolderName.empty() || OldFolderName == NewFolderName)
+	{
+		return false;
+	}
+
+	auto OldIt = std::find(OutlinerFolders.begin(), OutlinerFolders.end(), OldFolderName);
+	if (OldIt == OutlinerFolders.end())
+	{
+		return false;
+	}
+
+	if (std::find(OutlinerFolders.begin(), OutlinerFolders.end(), NewFolderName) != OutlinerFolders.end())
+	{
+		return false;
+	}
+
+	*OldIt = NewFolderName;
+	return true;
+}
+
+bool ULevel::MoveOutlinerFolderBefore(const FString& FolderToMove, const FString& BeforeFolder)
+{
+	if (FolderToMove.empty() || BeforeFolder.empty() || FolderToMove == BeforeFolder)
+	{
+		return false;
+	}
+
+	auto MoveIt = std::find(OutlinerFolders.begin(), OutlinerFolders.end(), FolderToMove);
+	auto BeforeIt = std::find(OutlinerFolders.begin(), OutlinerFolders.end(), BeforeFolder);
+	if (MoveIt == OutlinerFolders.end() || BeforeIt == OutlinerFolders.end())
+	{
+		return false;
+	}
+
+	FString MovedFolder = *MoveIt;
+	OutlinerFolders.erase(MoveIt);
+	BeforeIt = std::find(OutlinerFolders.begin(), OutlinerFolders.end(), BeforeFolder);
+	OutlinerFolders.insert(BeforeIt, MovedFolder);
+	return true;
+}
+
+bool ULevel::MoveOutlinerFolderToIndex(const FString& FolderToMove, size_t TargetIndex)
+{
+	if (FolderToMove.empty())
+	{
+		return false;
+	}
+
+	auto MoveIt = std::find(OutlinerFolders.begin(), OutlinerFolders.end(), FolderToMove);
+	if (MoveIt == OutlinerFolders.end())
+	{
+		return false;
+	}
+
+	FString MovedFolder = *MoveIt;
+	OutlinerFolders.erase(MoveIt);
+	if (TargetIndex > OutlinerFolders.size())
+	{
+		TargetIndex = OutlinerFolders.size();
+	}
+
+	OutlinerFolders.insert(OutlinerFolders.begin() + static_cast<std::ptrdiff_t>(TargetIndex), MovedFolder);
+	return true;
+}
+
+void ULevel::SetOutlinerFolders(const TArray<FString>& InFolders)
+{
+	OutlinerFolders.clear();
+	for (const FString& FolderName : InFolders)
+	{
+		if (FolderName.empty())
+		{
+			continue;
+		}
+
+		if (std::find(OutlinerFolders.begin(), OutlinerFolders.end(), FolderName) == OutlinerFolders.end())
+		{
+			OutlinerFolders.push_back(FolderName);
+		}
+	}
+}
+
 void ULevel::Clear()
 {
 	for (AActor* Actor : Actors)
@@ -106,6 +206,7 @@ void ULevel::Clear()
 	}
 
 	Actors.clear();
+	OutlinerFolders.clear();
 }
 
 void ULevel::Tick(float DeltaTime) {

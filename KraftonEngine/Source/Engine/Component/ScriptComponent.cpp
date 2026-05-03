@@ -823,7 +823,7 @@ bool UScriptComponent::RefreshScriptPropertyDescs(bool bLogFailure)
 		LastScriptPropertyError = LoadError;
 		if (bLogFailure)
 		{
-			UE_LOG("[ScriptComponent] Script property scan failed: %s", LoadError.c_str());
+			UE_LOG_CATEGORY(ScriptComponent, Warning, "Script property scan failed: %s", LoadError.c_str());
 		}
 		return false;
 	}
@@ -931,7 +931,7 @@ void UScriptComponent::BindOwnerShapeCollisionEvents()
 	AActor* OwnerActor = GetOwner();
 	if (!OwnerActor)
 	{
-		UE_LOG("[ScriptComponent] Owner Actor isn't exist");
+		UE_LOG_CATEGORY(ScriptComponent, Warning, "Owner Actor isn't exist");
 		return;
 	}
 
@@ -1082,7 +1082,7 @@ void UScriptComponent::SetScriptError(const FString& ErrorMessage)
 {
 	bHasScriptError = true;
 	LastScriptError = ErrorMessage;
-	UE_LOG("[ScriptComponent] %s", ErrorMessage.c_str());
+	UE_LOG_CATEGORY(ScriptComponent, Error, "%s", ErrorMessage.c_str());
 }
 
 void UScriptComponent::RefreshScriptErrorState()

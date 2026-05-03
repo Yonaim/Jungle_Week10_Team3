@@ -72,10 +72,17 @@ public:
 	const TArray<FTextBatch>& GetScreenBatches() const { return ScreenBatches; }
 
 private:
+	struct FResolvedGlyph
+	{
+		FFontGlyph Glyph;
+		bool bDrawSolidMagenta = false;
+	};
+
 	void BuildCharInfoMap(uint32 Columns, uint32 Rows);
 	const FFontResource* ResolveFontForText(const FFontResource* PreferredFont, const FString& Text) const;
 	bool HasGlyphForText(const FFontResource* Font, const FString& Text) const;
 	bool GetGlyph(const FFontResource* Resource, uint32 Codepoint, FFontGlyph& OutGlyph) const;
+	bool ResolveGlyph(const FFontResource* Resource, uint32 Codepoint, FResolvedGlyph& OutGlyph) const;
 
 	// CPU 누적 배열
 	TArray<FTextureVertex> WorldVertices;
