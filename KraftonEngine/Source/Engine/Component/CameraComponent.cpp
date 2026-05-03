@@ -117,9 +117,22 @@ void UCameraComponent::StartCameraShake(float Intensity, float duration)
 	ActiveShakes.push_back(NewShake);
 }
 
+void UCameraComponent::AddHitEffect(float Intensity, float Duration)
+{
+	HitEffectIntensity = Intensity;
+	HitEffectDuration = (Duration > 0.0f) ? Duration : 1.0f;
+}
+
 void UCameraComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
 {
 	USceneComponent::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// Hit Effect Fade out
+	if (HitEffectIntensity > 0.0f)
+	{
+		HitEffectIntensity -= (1.0f / HitEffectDuration) * DeltaTime;
+		if (HitEffectIntensity < 0.0f) HitEffectIntensity = 0.0f;
+	}
 
 	AdditiveLocationOffset = FVector::ZeroVector;
 	AdditiveRotationOffset = FRotator::ZeroRotator;

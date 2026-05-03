@@ -972,9 +972,23 @@ bool FLuaComponentProxy::IsMoveDone() const
 
 bool FLuaComponentProxy::StartCameraShake(float Intensity, float Duration)
 {
-	if (UCameraComponent* Camera = Cast<UCameraComponent>(GetComponent()))
+	UActorComponent* TargetComp = this->GetComponent();
+	if (TargetComp && TargetComp->IsA<UCameraComponent>())
 	{
+		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
 		Camera->StartCameraShake(Intensity, Duration);
+		return true;
+	}
+	return false;
+}
+
+bool FLuaComponentProxy::AddHitEffect(float Intensity, float Duration)
+{
+	UActorComponent* TargetComp = this->GetComponent();
+	if (TargetComp && TargetComp->IsA<UCameraComponent>())
+	{
+		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
+		Camera->AddHitEffect(Intensity, Duration);
 		return true;
 	}
 	return false;
@@ -982,7 +996,8 @@ bool FLuaComponentProxy::StartCameraShake(float Intensity, float Duration)
 
 bool FLuaComponentProxy::SetBoxExtent(const FVector& Extent)
 {
-	UBoxComponent* BoxComponent = Cast<UBoxComponent>(GetComponent());
+	UActorComponent* TargetComp = this->GetComponent();
+	UBoxComponent* BoxComponent = (TargetComp && TargetComp->IsA<UBoxComponent>()) ? static_cast<UBoxComponent*>(TargetComp) : nullptr;
 	if (!BoxComponent)
 	{
 	return false;

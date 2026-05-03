@@ -1,7 +1,7 @@
 ﻿#include "Camera/CameraShake.h"
 #include <cmath>
 
-IMPLEMENT_CLASS(UCameraShakeBase, UObject)
+IMPLEMENT_ABSTRACT_CLASS(UCameraShakeBase, UObject)
 IMPLEMENT_CLASS(USinWaveCameraShake, UCameraShakeBase)
 
 void USinWaveCameraShake::UpdateShake(float DeltaTime, FVector& OutLoc, FRotator& OutRot)
