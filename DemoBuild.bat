@@ -2,7 +2,7 @@
 setlocal
 
 set SOLUTION_DIR=%~dp0
-set PROJECT_DIR=%SOLUTION_DIR%KraftonEngine
+set PROJECT_DIR=%SOLUTION_DIR%LunaticEngine
 set BUILD_OUTPUT=%PROJECT_DIR%\Bin\Demo
 set DEMO_DIR=%SOLUTION_DIR%DemoBuild
 
@@ -23,7 +23,7 @@ echo ============================================
 :: 1. MSBuild로 Demo x64 빌드
 echo.
 echo [1/3] Building Demo x64...
-msbuild "%SOLUTION_DIR%KraftonEngine.sln" /p:Configuration=Demo /p:Platform=x64 /m /v:minimal
+msbuild "%SOLUTION_DIR%LunaticEngine.sln" /p:Configuration=Demo /p:Platform=x64 /m /v:minimal
 if %ERRORLEVEL% neq 0 (
     echo BUILD FAILED
     pause
@@ -41,7 +41,7 @@ echo.
 echo [3/3] Copying files...
 
 :: 실행 파일 (루트에)
-copy "%BUILD_OUTPUT%\KraftonEngine.exe" "%DEMO_DIR%\" >nul
+copy "%BUILD_OUTPUT%\LunaticEngine.exe" "%DEMO_DIR%\" >nul
 
 :: 런타임 DLL (lua51.dll 등)
 copy "%BUILD_OUTPUT%\*.dll" "%DEMO_DIR%\" >nul 2>&1
@@ -67,7 +67,7 @@ echo  Build complete: %DEMO_DIR%
 echo ============================================
 echo.
 echo  DemoBuild/
-echo    KraftonEngine.exe
+echo    LunaticEngine.exe
 echo    Shaders/
 echo    Asset/
 echo    Data/

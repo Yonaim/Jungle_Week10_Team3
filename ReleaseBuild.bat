@@ -2,7 +2,7 @@
 setlocal
 
 set SOLUTION_DIR=%~dp0
-set PROJECT_DIR=%SOLUTION_DIR%KraftonEngine
+set PROJECT_DIR=%SOLUTION_DIR%LunaticEngine
 set BUILD_OUTPUT=%PROJECT_DIR%\Bin\Release
 set RELEASE_DIR=%SOLUTION_DIR%ReleaseBuild
 
@@ -23,7 +23,7 @@ echo ============================================
 :: 1. MSBuild로 Release x64 빌드
 echo.
 echo [1/3] Building Release x64...
-msbuild "%SOLUTION_DIR%KraftonEngine.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
+msbuild "%SOLUTION_DIR%LunaticEngine.sln" /p:Configuration=Release /p:Platform=x64 /m /v:minimal
 if %ERRORLEVEL% neq 0 (
     echo BUILD FAILED
     pause
@@ -41,7 +41,7 @@ echo.
 echo [3/3] Copying files...
 
 :: 실행 파일 (루트에)
-copy "%BUILD_OUTPUT%\KraftonEngine.exe" "%RELEASE_DIR%\" >nul
+copy "%BUILD_OUTPUT%\LunaticEngine.exe" "%RELEASE_DIR%\" >nul
 
 :: 런타임 DLL (lua51.dll 등)
 copy "%BUILD_OUTPUT%\*.dll" "%RELEASE_DIR%\" >nul 2>&1
@@ -67,7 +67,7 @@ echo  Build complete: %RELEASE_DIR%
 echo ============================================
 echo.
 echo  ReleaseBuild/
-echo    KraftonEngine.exe
+echo    LunaticEngine.exe
 echo    Shaders/
 echo    Asset/
 echo    Data/
