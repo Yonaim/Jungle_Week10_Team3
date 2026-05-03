@@ -59,6 +59,18 @@ public:
 		return nullptr;
 	}
 
+	// 등록된 클래스 중 BaseClass를 상속한 모든 클래스 반환 (BaseClass 자신 포함).
+	static TArray<UClass*> GetSubclassesOf(const UClass* BaseClass)
+	{
+		TArray<UClass*> Result;
+		if (!BaseClass) return Result;
+		for (UClass* C : GetAllClasses())
+		{
+			if (C && C->IsA(BaseClass)) Result.push_back(C);
+		}
+		return Result;
+	}
+
 private:
 	const char* Name        = nullptr;
 	UClass*     SuperClass  = nullptr;

@@ -284,16 +284,16 @@ bool FScene::IsProxySelected(const FPrimitiveSceneProxy* Proxy) const
 // ============================================================
 void FScene::ClearFrameData()
 {
-	OverlayTexts.clear();
+	ScreenTexts.clear();
 	DebugAABBs.clear();
 	DebugLines.clear();
 	Grid = {};
 	LightVisualizationSettings = {};
 }
 
-void FScene::AddOverlayText(FString Text, const FVector2& Position, float Scale)
+void FScene::AddScreenText(FString Text, const FVector2& Position, float Scale)
 {
-	OverlayTexts.push_back({ std::move(Text), Position, Scale });
+	ScreenTexts.push_back({ std::move(Text), Position, Scale });
 }
 
 void FScene::AddDebugAABB(const FVector& Min, const FVector& Max, const FColor& Color)

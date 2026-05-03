@@ -15,7 +15,7 @@ public:
 	virtual void Tick(float DeltaTime) {};
 	virtual void EndPlay() {};
 
-	void InitDefaultComponents(const FString& UStaticMeshFileName) override;
+	virtual void InitDefaultComponents(const FString& UStaticMeshFileName) override;
 
 protected:
 	virtual ~AObstacleActorBase() = default;

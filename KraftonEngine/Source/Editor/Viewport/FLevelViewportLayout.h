@@ -77,6 +77,7 @@ public:
 		Pawn,
 		Character,
 		StaticMeshActor,
+		WorldText,
 		ScreenText,
 		Cube,
 		Sphere,
@@ -90,6 +91,8 @@ public:
 		PointLight,
 		SpotLight,
 		SimpleObstacle,
+		Wireball,
+		VerticalWires,
 	};
 
 	AActor* SpawnPlaceActor(EViewportPlaceActorType Type, const FVector& Location);

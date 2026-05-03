@@ -44,12 +44,23 @@ public:
 
 	static void SaveSceneAsJSON(const string& SceneName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
 	static string SerializeWorldToJSONString(FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
+	static string SerializeActorToJSONString(AActor* Actor);
 	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 	static void SaveWorldToBinary(const FString& FilePath, UWorld* World);
 	static void LoadWorldFromBinary(const FString& FilePath, UWorld* World);
 	static void LoadSceneFromJSONString(const string& SceneJson, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
+	static AActor* LoadActorFromJSONString(const string& ActorJson, UWorld* World);
+	static bool ApplyActorFromJSONString(AActor* Actor, const string& ActorJson);
 
 	static TArray<FString> GetSceneFileList();
+
+	// Cooking (Editor -> Shipping 변환) 
+	// .Scene을 로드해 editor-only 컴포넌트 제거 + WorldType=Game 강제 후 .umap 바이너리로 저장.
+	//  성공 시 true, 입력 파일 누락이거나 파싱 실패 시 false.
+	static bool CookSceneToBinary(const FString& InSceneJsonPath, const FString& OutUmapPath);
+
+	// 모든 .Scene 파일을 일괄 쿠킹. 같은 디렉터리에 .umap 파일을 생성한다.
+	static int32 CookAllScenes();
 
 private:
 	// ---- Serialization ----
@@ -71,6 +82,7 @@ private:
 	static USceneComponent* DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner);
 	static void DeserializeProperties(UActorComponent* Comp, json::JSON& PropsJSON);
 	static void DeserializePropertyValue(FPropertyDescriptor& Prop, json::JSON& Value);
+	static AActor* DeserializeActorIntoWorld(UWorld* World, json::JSON& ActorJSON, AActor* ExistingActor = nullptr);
 
 	static string GetCurrentTimeStamp();
 };

@@ -45,10 +45,10 @@ public:
 	// ===== Per-frame ephemeral data (cleared each viewport render) =====
 	void ClearFrameData();
 
-	// --- Overlay text (screen-space) ---
-	struct FOverlayText { FString Text; FVector2 Position; float Scale; };
-	void AddOverlayText(FString Text, const FVector2& Position, float Scale);
-	const TArray<FOverlayText>& GetOverlayTexts() const { return OverlayTexts; }
+	// --- Screen text (screen-space) ---
+	struct FScreenTextEntry { FString Text; FVector2 Position; float Scale; };
+	void AddScreenText(FString Text, const FVector2& Position, float Scale);
+	const TArray<FScreenTextEntry>& GetScreenTexts() const { return ScreenTexts; }
 
 	// --- Debug AABB ---
 	struct FDebugAABB { FVector Min; FVector Max; FColor Color; };
@@ -113,7 +113,7 @@ private:
 	TArray<uint32> FreeSlots;
 
 	// --- Per-frame ephemeral data ---
-	TArray<FOverlayText> OverlayTexts;
+	TArray<FScreenTextEntry> ScreenTexts;
 	TArray<FDebugAABB>   DebugAABBs;
 	TArray<FDebugLine>   DebugLines;
 

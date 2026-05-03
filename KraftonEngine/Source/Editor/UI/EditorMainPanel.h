@@ -38,6 +38,8 @@ private:
 	void RenderShortcutOverlay();
 	void RenderCreditsOverlay();
 	void HandleGlobalShortcuts();
+	void PackageGameBuild(const char* BatFileName);
+	void CookCurrentScene();
 
 	FWindowsWindow* Window = nullptr;
 	UEditorEngine* EditorEngine = nullptr;

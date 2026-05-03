@@ -11,6 +11,7 @@ class FEngineLoop
 public:
 	bool Init(HINSTANCE hInstance, int nShowCmd);
 	int Run();
+	int RunCookOnly();
 	void Shutdown();
 
 private:

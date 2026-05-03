@@ -25,6 +25,7 @@
 #include "Object/FName.h"
 #include "Profiling/PlatformTime.h"
 #include "Engine/Serialization/WindowsArchive.h"
+#include "Engine/Runtime/Engine.h"  // GIsEditor 플래그
 // ---- JSON vector helpers ---------------------------------------------------
 
 static void WriteVec3(json::JSON& Obj, const char* Key, const FVector& V)
@@ -194,6 +195,9 @@ static void DeserializeComponentEditorMetadata(UActorComponent* Comp, json::JSON
 
 static void EnsureEditorBillboardMetadata(UActorComponent* Comp)
 {
+	// Game/Shipping에서는 에디터 빌보드(아이콘 sprite)가 필요 없음 — 텍스처가 누락돼 로드 실패함.
+	if (!GIsEditor) return;
+
 	if (ULightComponentBase* LightComponent = Cast<ULightComponentBase>(Comp))
 	{
 		LightComponent->EnsureEditorBillboard();
@@ -222,6 +226,11 @@ static EWorldType StringToWorldType(const string& Str)
 	if (Str == "Game") return EWorldType::Game;
 	if (Str == "PIE")  return EWorldType::PIE;
 	return EWorldType::Editor;
+}
+
+static bool IsGameModeClassName(const string& ClassName)
+{
+	return ClassName == "AGameModeBase";
 }
 
 // ============================================================
@@ -263,6 +272,18 @@ string FSceneSaveManager::SerializeWorldToJSONString(FWorldContext& WorldContext
 
 	json::JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectiveCam);
 	Root[SceneKeys::Version] = 2;
+	return Root.dump();
+}
+
+string FSceneSaveManager::SerializeActorToJSONString(AActor* Actor)
+{
+	if (!Actor)
+	{
+		return string();
+	}
+
+	json::JSON Root = json::Object();
+	Root["Actor"] = SerializeActor(Actor);
 	return Root.dump();
 }
 
@@ -635,9 +656,142 @@ void FSceneSaveManager::DeserializeCamera(json::JSON& CameraJSON, FPerspectiveCa
 	OutCam.bValid = true;
 }
 
+AActor* FSceneSaveManager::DeserializeActorIntoWorld(UWorld* World, json::JSON& ActorJSON, AActor* ExistingActor)
+{
+	if (!World || !ActorJSON.hasKey(SceneKeys::ClassName))
+	{
+		return nullptr;
+	}
+
+	const string ActorClass = ActorJSON[SceneKeys::ClassName].ToString();
+	AActor* Actor = ExistingActor;
+
+	if (!Actor)
+	{
+		if (IsGameModeClassName(ActorClass))
+		{
+			Actor = reinterpret_cast<AActor*>(World->GetAuthorGameMode());
+		}
+		else
+		{
+			UObject* ActorObj = FObjectFactory::Get().Create(ActorClass, World);
+			if (!ActorObj || !ActorObj->IsA<AActor>())
+			{
+				return nullptr;
+			}
+
+			Actor = static_cast<AActor*>(ActorObj);
+			World->AddActor(Actor);
+		}
+	}
+
+	if (!Actor)
+	{
+		return nullptr;
+	}
+
+	if (ActorJSON.hasKey(SceneKeys::UUID))
+	{
+		Actor->SetUUID(static_cast<uint32>(ActorJSON[SceneKeys::UUID].ToInt()));
+	}
+	if (ActorJSON.hasKey(SceneKeys::ObjectName))
+	{
+		Actor->SetFName(FName(ActorJSON[SceneKeys::ObjectName].ToString()));
+	}
+
+	if (ActorJSON.hasKey(SceneKeys::Visible)) {
+		Actor->SetVisible(ActorJSON[SceneKeys::Visible].ToBool());
+	}
+	if (ActorJSON.hasKey(SceneKeys::FolderPath)) {
+		Actor->SetFolderPath(ActorJSON[SceneKeys::FolderPath].ToString());
+	}
+
+	ClearActorComponentsForDeserialization(Actor);
+
+	if (ActorJSON.hasKey(SceneKeys::RootComponent)) {
+		json::JSON& RootJSON = ActorJSON[SceneKeys::RootComponent];
+		USceneComponent* Root = DeserializeSceneComponentTree(RootJSON, Actor);
+		if (Root) Actor->SetRootComponent(Root);
+	}
+
+	if (ActorJSON.hasKey(SceneKeys::NonSceneComponents)) {
+		for (auto& CompJSON : ActorJSON[SceneKeys::NonSceneComponents].ArrayRange()) {
+			string CompClass = CompJSON[SceneKeys::ClassName].ToString();
+			UObject* CompObj = FObjectFactory::Get().Create(CompClass, Actor);
+			if (!CompObj || !CompObj->IsA<UActorComponent>()) continue;
+
+			UActorComponent* Comp = static_cast<UActorComponent*>(CompObj);
+			Actor->RegisterComponent(Comp);
+			if (CompJSON.hasKey(SceneKeys::ObjectName))
+			{
+				Comp->SetFName(FName(CompJSON[SceneKeys::ObjectName].ToString()));
+			}
+
+			if (CompJSON.hasKey(SceneKeys::Properties)) {
+				json::JSON& PropsJSON = CompJSON[SceneKeys::Properties];
+				DeserializeProperties(Comp, PropsJSON);
+			}
+			DeserializeComponentEditorMetadata(Comp, CompJSON);
+		}
+	}
+
+	Actor->EnsureEditorBillboardForActor();
+
+	World->RemoveActorToOctree(Actor);
+	World->InsertActorToOctree(Actor);
+
+	return Actor;
+}
+
 // ============================================================
 // Load
 // ============================================================
+
+AActor* FSceneSaveManager::LoadActorFromJSONString(const string& ActorJson, UWorld* World)
+{
+	if (!World || ActorJson.empty())
+	{
+		return nullptr;
+	}
+
+	json::JSON Root = json::JSON::Load(ActorJson);
+	if (!Root.hasKey("Actor"))
+	{
+		return nullptr;
+	}
+
+	json::JSON& ActorJSON = Root["Actor"];
+	return DeserializeActorIntoWorld(World, ActorJSON);
+}
+
+bool FSceneSaveManager::ApplyActorFromJSONString(AActor* Actor, const string& ActorJson)
+{
+	if (!Actor || ActorJson.empty())
+	{
+		return false;
+	}
+
+	ULevel* OwningLevel = Cast<ULevel>(Actor->GetOuter());
+	if (!OwningLevel)
+	{
+		return false;
+	}
+
+	UWorld* World = OwningLevel->GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	json::JSON Root = json::JSON::Load(ActorJson);
+	if (!Root.hasKey("Actor"))
+	{
+		return false;
+	}
+
+	json::JSON& ActorJSON = Root["Actor"];
+	return DeserializeActorIntoWorld(World, ActorJSON, Actor) != nullptr;
+}
 
 void FSceneSaveManager::LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam)
 {
@@ -675,7 +829,16 @@ void FSceneSaveManager::LoadSceneFromJSONString(const string& SceneJson, FWorldC
 		? root[SceneKeys::ContextHandle].ToString()
 		: ContextName;
 
+	// GameMode 클래스를 InitWorld 전에 PersistentLevel에 주입할 수 없으므로
+	// 일단 World를 만든 뒤 PersistentLevel에 메타데이터로 설정한다.
 	World->InitWorld();
+	if (root.hasKey(SceneKeys::GameModeClass))
+	{
+		if (ULevel* PersistentLevel = World->GetPersistentLevel())
+		{
+			PersistentLevel->SetGameModeClassName(root[SceneKeys::GameModeClass].ToString());
+		}
+	}
 
 	std::unordered_map<string, AActor*> CreatedFromPrimitives;
 	if (root.hasKey("Primitives")) {
@@ -694,7 +857,6 @@ void FSceneSaveManager::LoadSceneFromJSONString(const string& SceneJson, FWorldC
 	if (root.hasKey(SceneKeys::Actors))
 	{
 		for (auto& ActorJSON : root[SceneKeys::Actors].ArrayRange()) {
-			string ActorClass = ActorJSON[SceneKeys::ClassName].ToString();
 			AActor* Actor = nullptr;
 			if (ActorJSON.hasKey("PrimitiveKey")) {
 				string pk = ActorJSON["PrimitiveKey"].ToString();
@@ -704,62 +866,7 @@ void FSceneSaveManager::LoadSceneFromJSONString(const string& SceneJson, FWorldC
 				}
 			}
 
-			if (!Actor) {
-				UObject* ActorObj = FObjectFactory::Get().Create(ActorClass, World);
-				if (!ActorObj || !ActorObj->IsA<AActor>()) continue;
-				Actor = static_cast<AActor*>(ActorObj);
-				World->AddActor(Actor);
-			}
-
-			if (ActorJSON.hasKey(SceneKeys::UUID))
-			{
-				Actor->SetUUID(static_cast<uint32>(ActorJSON[SceneKeys::UUID].ToInt()));
-			}
-			if (ActorJSON.hasKey(SceneKeys::ObjectName))
-			{
-				Actor->SetFName(FName(ActorJSON[SceneKeys::ObjectName].ToString()));
-			}
-
-			if (ActorJSON.hasKey(SceneKeys::Visible)) {
-				Actor->SetVisible(ActorJSON[SceneKeys::Visible].ToBool());
-			}
-			if (ActorJSON.hasKey(SceneKeys::FolderPath)) {
-				Actor->SetFolderPath(ActorJSON[SceneKeys::FolderPath].ToString());
-			}
-
-			ClearActorComponentsForDeserialization(Actor);
-
-			if (ActorJSON.hasKey(SceneKeys::RootComponent)) {
-				JSON& RootJSON = ActorJSON[SceneKeys::RootComponent];
-				USceneComponent* Root = DeserializeSceneComponentTree(RootJSON, Actor);
-				if (Root) Actor->SetRootComponent(Root);
-			}
-
-			if (ActorJSON.hasKey(SceneKeys::NonSceneComponents)) {
-				for (auto& CompJSON : ActorJSON[SceneKeys::NonSceneComponents].ArrayRange()) {
-					string CompClass = CompJSON[SceneKeys::ClassName].ToString();
-					UObject* CompObj = FObjectFactory::Get().Create(CompClass, Actor);
-					if (!CompObj || !CompObj->IsA<UActorComponent>()) continue;
-
-					UActorComponent* Comp = static_cast<UActorComponent*>(CompObj);
-					Actor->RegisterComponent(Comp);
-					if (CompJSON.hasKey(SceneKeys::ObjectName))
-					{
-						Comp->SetFName(FName(CompJSON[SceneKeys::ObjectName].ToString()));
-					}
-
-					if (CompJSON.hasKey(SceneKeys::Properties)) {
-						JSON& PropsJSON = CompJSON[SceneKeys::Properties];
-						DeserializeProperties(Comp, PropsJSON);
-					}
-					DeserializeComponentEditorMetadata(Comp, CompJSON);
-				}
-			}
-
-			Actor->EnsureEditorBillboardForActor();
-
-			World->RemoveActorToOctree(Actor);
-			World->InsertActorToOctree(Actor);
+			DeserializeActorIntoWorld(World, ActorJSON, Actor);
 		}
 	}
 
@@ -806,6 +913,133 @@ void FSceneSaveManager::LoadWorldFromBinary(const FString& FilePath, UWorld* Wor
 	{
 		std::cerr << "Failed to open file for reading: " << FilePath << std::endl;
 	}
+}
+
+// ============================================================
+// Cooking — Editor용 .Scene(JSON)을 Shipping용 .umap(바이너리)로 변환.
+// 핵심:
+//   JSON 로드해서 임시 UWorld 생성
+//   모든 Actor의 EditorOnly 컴포넌트 제거 
+//   WorldType을 Game으로 강제
+//   바이너리로 저장
+// ============================================================
+namespace
+{
+	// 액터에서 editor-only 컴포넌트들을 모두 떼어낸다.
+	void StripEditorOnlyComponentsFromActor(AActor* Actor)
+	{
+		if (!Actor) return;
+
+		//  RemoveComponent가 컨테이너를 변경하므로 안전한 방향으로
+		const TArray<UActorComponent*> Snapshot = Actor->GetComponents();
+		for (auto It = Snapshot.rbegin(); It != Snapshot.rend(); ++It)
+		{
+			UActorComponent* Comp = *It;
+			if (!Comp) continue;
+			if (Comp->IsEditorOnlyComponent())
+			{
+				Actor->RemoveComponent(Comp);
+			}
+		}
+	}
+}
+
+bool FSceneSaveManager::CookSceneToBinary(const FString& InSceneJsonPath, const FString& OutUmapPath)
+{
+	std::filesystem::path InPath(FPaths::ToWide(InSceneJsonPath));
+	if (!std::filesystem::exists(InPath))
+	{
+		std::cerr << "[Cook] Source scene not found: " << InSceneJsonPath << std::endl;
+		return false;
+	}
+
+	// JSON을 임시 컨텍스트에 로드 — 자체 World가 새로 생성됨
+	FWorldContext TempCtx;
+	TempCtx.WorldType = EWorldType::Game;
+	TempCtx.ContextHandle = FName("CookTarget");
+	TempCtx.ContextName = "CookTarget";
+	FPerspectiveCameraData DummyCam;
+	LoadSceneFromJSON(InSceneJsonPath, TempCtx, DummyCam);
+
+	UWorld* World = TempCtx.World;
+	if (!World)
+	{
+		std::cerr << "[Cook] Failed to deserialize scene: " << InSceneJsonPath << std::endl;
+		return false;
+	}
+
+	// 모든 액터의 editor-only 컴포넌트 제거
+	for (AActor* Actor : World->GetActors())
+	{
+		if (!Actor) continue;
+		StripEditorOnlyComponentsFromActor(Actor);
+	}
+
+	// 런타임용으로 WorldType 강제
+	World->SetWorldType(EWorldType::Game);
+
+	// 다시 JSON으로 직렬화 — 바이너리 경로(AActor::Serialize)가 컴포넌트를 저장하지 않으므로
+	// "stripped JSON"을 .umap에 쓴다. 런타임은 .umap을 만나면 JSON 파서로 처리한다.
+	TempCtx.WorldType = EWorldType::Game;
+	const std::string CookedJson = SerializeWorldToJSONString(TempCtx, /*PerspectiveCam=*/nullptr);
+
+	std::filesystem::path OutPath(FPaths::ToWide(OutUmapPath));
+	if (OutPath.has_parent_path())
+	{
+		std::filesystem::create_directories(OutPath.parent_path());
+	}
+
+	std::ofstream Out(OutPath, std::ios::binary);
+	if (!Out.is_open())
+	{
+		std::cerr << "[Cook] Failed to open output: " << OutUmapPath << std::endl;
+		return false;
+	}
+	Out << CookedJson;
+	Out.close();
+
+	const bool bOk = std::filesystem::exists(OutPath);
+	if (bOk)
+	{
+		std::cerr << "[Cook] OK: " << InSceneJsonPath << " -> " << OutUmapPath << std::endl;
+	}
+	else
+	{
+		std::cerr << "[Cook] FAILED to write: " << OutUmapPath << std::endl;
+	}
+
+	// 임시 World는 의도적으로 누수 — destroy 시 외부 참조(Render proxy 등)와 충돌 위험
+	return bOk;
+}
+
+int32 FSceneSaveManager::CookAllScenes()
+{
+	int32 Cooked = 0;
+	const std::wstring SceneDir = GetSceneDirectory();
+	if (!std::filesystem::exists(SceneDir))
+	{
+		return 0;
+	}
+
+	for (auto& Entry : std::filesystem::directory_iterator(SceneDir))
+	{
+		if (!Entry.is_regular_file()) continue;
+		const std::wstring Ext = Entry.path().extension().wstring();
+		if (Ext != SceneExtension) continue;
+
+		const std::filesystem::path InPath = Entry.path();
+		std::filesystem::path OutPath = InPath;
+		OutPath.replace_extension(L".umap");
+
+		const FString InUtf8 = FPaths::ToUtf8(InPath.wstring());
+		const FString OutUtf8 = FPaths::ToUtf8(OutPath.wstring());
+		if (CookSceneToBinary(InUtf8, OutUtf8))
+		{
+			++Cooked;
+		}
+	}
+
+	return Cooked;
 }
 
 USceneComponent* FSceneSaveManager::DeserializeSceneComponentTree(json::JSON& Node, AActor* Owner)

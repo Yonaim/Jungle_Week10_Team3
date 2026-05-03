@@ -1,11 +1,15 @@
 ﻿#include "Engine/Runtime/EngineLoop.h"
 #include "Core/ProjectSettings.h"
 #include "Profiling/StartupProfiler.h"
+#include "Engine/Serialization/SceneSaveManager.h"
+#include <iostream>
 
 #if IS_OBJ_VIEWER
 #include "ObjViewer/ObjViewerEngine.h"
 #elif WITH_EDITOR
 #include "Editor/EditorEngine.h"
+#else
+#include "Engine/Runtime/GameEngine.h"
 #endif
 
 void FEngineLoop::CreateEngine()
@@ -15,7 +19,7 @@ void FEngineLoop::CreateEngine()
 #elif WITH_EDITOR
 	GEngine = UObjectManager::Get().CreateObject<UEditorEngine>();
 #else
-	GEngine = UObjectManager::Get().CreateObject<UEngine>();
+	GEngine = UObjectManager::Get().CreateObject<UGameEngine>();
 #endif
 }
 
@@ -65,6 +69,13 @@ bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 	FStartupProfiler::Get().Finish();
 
 	return true;
+}
+
+int FEngineLoop::RunCookOnly()
+{
+	const int32 Cooked = FSceneSaveManager::CookAllScenes();
+	std::cerr << "[Cook] Total cooked: " << Cooked << " scenes" << std::endl;
+	return Cooked > 0 ? 0 : 1;
 }
 
 int FEngineLoop::Run()

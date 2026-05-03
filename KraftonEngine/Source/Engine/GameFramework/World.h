@@ -160,6 +160,7 @@ public:
 	FActorRange GetActors() const { return FActorRange(Levels); }
 
 	ULevel* GetPersistentLevel() const { return PersistentLevel; }
+	AGameModeBase* GetAuthorGameMode() const { return AuthorGameMode; }
 
 	// LOD 컨텍스트를 FFrameContext에 전달 (Collect 단계에서 LOD 인라인 갱신용)
 	FLODUpdateContext PrepareLODContext();
@@ -170,6 +171,10 @@ public:
 	void EndPlay();        // Cleanup before world is destroyed
 
 	bool HasBegunPlay() const { return bHasBegunPlay; }
+
+	// GameMode — BeginPlay 시점에 PersistentLevel/ProjectSettings의 클래스명으로 스폰됨
+	AGameModeBase* GetAuthGameMode() const { return AuthorGameMode; }
+	void SpawnGameMode();
 
 	// Active Camera — EditorViewportClient 또는 PlayerController가 세팅
 	void SetActiveCamera(UCameraComponent* InCamera) { ActiveCamera = InCamera; }

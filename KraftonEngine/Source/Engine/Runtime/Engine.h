@@ -87,3 +87,6 @@ private:
 };
 
 extern UEngine* GEngine;
+
+
+extern bool GIsEditor;

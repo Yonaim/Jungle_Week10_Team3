@@ -1,11 +1,11 @@
-﻿#include "OverlayFontPass.h"
+#include "ScreenTextPass.h"
 #include "RenderPassRegistry.h"
 
-REGISTER_RENDER_PASS(FOverlayFontPass)
+REGISTER_RENDER_PASS(FScreenTextPass)
 
-FOverlayFontPass::FOverlayFontPass()
+FScreenTextPass::FScreenTextPass()
 {
-	PassType    = ERenderPass::OverlayFont;
+	PassType    = ERenderPass::ScreenText;
 	RenderState = { EDepthStencilState::NoDepth, EBlendState::AlphaBlend,
 	                ERasterizerState::SolidBackCull, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, false };
 }

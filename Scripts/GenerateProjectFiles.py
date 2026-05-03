@@ -31,6 +31,7 @@ CONFIGURATIONS = [
     ("Release", "x64"),
     ("ObjViewDebug", "x64"),
     ("Demo", "x64"),
+    ("Shipping", "x64"),
 ]
 
 # Per-configuration overrides (base is derived from the name)
@@ -45,6 +46,10 @@ CONFIG_PROPS = {
     "Demo": {
         "release_like": True,
         "extra_defines": ["STATS=0"],
+    },
+    "Shipping": {
+        "release_like": True,
+        "extra_defines": ["SHIPPING=1"],
     },
 }
 
@@ -72,6 +77,7 @@ INCLUDE_PATHS = [
     "Source",
     "ThirdParty",
     "ThirdParty\\ImGui",
+    "ThirdParty\\sol2",
     "Source\\Editor",
     "Source\\ObjViewer",
     ".",
@@ -83,6 +89,7 @@ LIBRARY_PATHS = []
 # NuGet packages (id, version) — restored via packages.config
 NUGET_PACKAGES = [
     ("directxtk_desktop_win10", "2025.10.28.2"),
+    ("luajit.native", "2.1.1739213504"),
 ]
 
 NS = "http://schemas.microsoft.com/developer/msbuild/2003"
@@ -282,7 +289,12 @@ def generate_vcxproj(files: dict[str, list[str]]):
         if is_win32:
             base_defs.append("WIN32")
         base_defs.append("NDEBUG" if is_release else "_DEBUG")
-        base_defs.extend(["_CONSOLE", "WITH_EDITOR=1"])
+        base_defs.append("_CONSOLE")
+        
+        # Don't include WITH_EDITOR for Shipping build
+        if cfg != "Shipping":
+            base_defs.append("WITH_EDITOR=1")
+        
         base_defs.extend(props.get("extra_defines", []))
         base_defs.append("%(PreprocessorDefinitions)")
         ET.SubElement(cl, "PreprocessorDefinitions").text = ";".join(base_defs)

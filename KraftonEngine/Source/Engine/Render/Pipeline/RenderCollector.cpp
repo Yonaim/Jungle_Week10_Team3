@@ -68,7 +68,7 @@ void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, F
 	Scene.SetGrid(GridSpacing, GridHalfLineCount);
 }
 
-void FRenderCollector::CollectOverlayText(const FOverlayStatSystem& OverlaySystem, const UEditorEngine& Editor, FScene& Scene)
+void FRenderCollector::CollectScreenText(const FOverlayStatSystem& OverlaySystem, const UEditorEngine& Editor, FScene& Scene)
 {
 	TArray<FOverlayStatLine> Lines;
 	OverlaySystem.BuildLines(Editor, Lines);
@@ -76,7 +76,7 @@ void FRenderCollector::CollectOverlayText(const FOverlayStatSystem& OverlaySyste
 
 	for (FOverlayStatLine& Line : Lines)
 	{
-		Scene.AddOverlayText(std::move(Line.Text), Line.ScreenPosition, TextScale);
+		Scene.AddScreenText(std::move(Line.Text), Line.ScreenPosition, TextScale);
 	}
 }
 
@@ -210,10 +210,12 @@ void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& 
 		Output.RenderableProxies.push_back(Proxy);
 	}
 
+#ifndef SHIPPING
 	// 선택된 Actor의 컴포넌트 디버그 시각화 (빛 등 프록시 없는 Comp 포함)
 	CollectSelectedActorVisuals(Scene);
 	// 항상 표시되는 컴포넌트 시각화 (bDrawOnlyIfSelected == false)
 	CollectActorVisuals(World, Scene);
+#endif
 
 	if (OcclusionMut && OcclusionMut->IsInitialized())
 		OcclusionMut->EndGatherAABB();

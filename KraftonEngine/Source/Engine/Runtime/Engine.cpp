@@ -26,6 +26,9 @@ DEFINE_CLASS(UEngine, UObject)
 
 UEngine* GEngine = nullptr;
 
+
+bool GIsEditor = false;
+
 namespace
 {
 	ELevelTick ToLevelTickType(EWorldType WorldType)

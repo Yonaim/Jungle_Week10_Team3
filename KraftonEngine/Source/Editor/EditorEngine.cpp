@@ -5,6 +5,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Engine/Platform/DirectoryWatcher.h"
+#include "Editor/History/SceneHistoryBuilder.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "GameFramework/World.h"
@@ -22,6 +23,7 @@
 #include "Texture/Texture2D.h"
 #include "Object/Object.h"
 #include <filesystem>
+#include <set>
 
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
@@ -85,6 +87,9 @@ bool ImportAssetFile(
 
 void UEditorEngine::Init(FWindowsWindow* InWindow)
 {
+	
+	GIsEditor = true;
+
 	// 엔진 공통 초기화 (Renderer, D3D, 싱글턴 등)
 	UEngine::Init(InWindow);
 
@@ -639,12 +644,7 @@ void UEditorEngine::BeginTrackedSceneChange()
 	}
 	else
 	{
-		Snapshot = CaptureTrackedSceneSnapshot();
-	}
-
-	if (Snapshot.SerializedScene.empty())
-	{
-		return;
+		Snapshot = FSceneHistoryBuilder::CaptureSnapshot(*this);
 	}
 
 	PendingTrackedSceneBefore = Snapshot;
@@ -659,23 +659,25 @@ void UEditorEngine::CommitTrackedSceneChange()
 	}
 
 	const FTrackedSceneSnapshot Before = *PendingTrackedSceneBefore;
-	const FTrackedSceneSnapshot After = CaptureTrackedSceneSnapshot();
+	const FTrackedSceneSnapshot After = FSceneHistoryBuilder::CaptureSnapshot(*this);
 
 	PendingTrackedSceneBefore.reset();
 	bTrackingSceneChange = false;
 	CachedTrackedSceneSnapshot = After;
 
-	if (!HasMeaningfulSceneDelta(Before, After))
+	if (!FSceneHistoryBuilder::HasMeaningfulDelta(Before, After))
 	{
 		return;
 	}
+
+	const FTrackedSceneChange Change = FSceneHistoryBuilder::BuildChange(Before, After);
 
 	if (SceneHistoryCursor + 1 < static_cast<int32>(SceneHistory.size()))
 	{
 		SceneHistory.erase(SceneHistory.begin() + (SceneHistoryCursor + 1), SceneHistory.end());
 	}
 
-	SceneHistory.push_back({ Before, After });
+	SceneHistory.push_back(Change);
 	if (SceneHistory.size() > 10)
 	{
 		SceneHistory.erase(SceneHistory.begin());
@@ -707,7 +709,7 @@ void UEditorEngine::UndoTrackedSceneChange()
 	}
 
 	const FTrackedSceneChange& Change = SceneHistory[SceneHistoryCursor];
-	ApplyTrackedSceneSnapshot(Change.Before);
+	ApplyTrackedSceneChange(Change, false);
 	--SceneHistoryCursor;
 }
 
@@ -719,7 +721,8 @@ void UEditorEngine::RedoTrackedSceneChange()
 	}
 
 	const int32 RedoIndex = SceneHistoryCursor + 1;
-	ApplyTrackedSceneSnapshot(SceneHistory[RedoIndex].After);
+	const FTrackedSceneChange& Change = SceneHistory[RedoIndex];
+	ApplyTrackedSceneChange(Change, true);
 	SceneHistoryCursor = RedoIndex;
 }
 
@@ -762,80 +765,145 @@ void UEditorEngine::RedoTrackedTransformChange()
 	RedoTrackedSceneChange();
 }
 
-bool UEditorEngine::HasMeaningfulSceneDelta(const FTrackedSceneSnapshot& Before, const FTrackedSceneSnapshot& After) const
+void UEditorEngine::ApplyTrackedSceneChange(const FTrackedSceneChange& Change, bool bRedo)
 {
-	return Before.SerializedScene != After.SerializedScene;
+	SelectionManager.ClearSelection();
+	ApplyTrackedActorDeltas(Change, bRedo);
+	RestoreTrackedActorOrder(bRedo ? Change.AfterActorOrderUUIDs : Change.BeforeActorOrderUUIDs);
+	if (UWorld* World = GetWorld())
+	{
+		World->WarmupPickingData();
+	}
+	RestoreViewportCamera(bRedo ? Change.AfterCameraData : Change.BeforeCameraData);
+
+	TArray<uint32> PreferredSelection = FSceneHistoryBuilder::GetChangedActorUUIDs(Change, bRedo);
+	if (PreferredSelection.empty())
+	{
+		PreferredSelection = bRedo ? Change.AfterSelectedActorUUIDs : Change.BeforeSelectedActorUUIDs;
+	}
+	RestoreTrackedSelection(PreferredSelection);
+	CachedTrackedSceneSnapshot = FSceneHistoryBuilder::CaptureSnapshot(*this);
 }
 
-UEditorEngine::FTrackedSceneSnapshot UEditorEngine::CaptureTrackedSceneSnapshot() const
+void UEditorEngine::ApplyTrackedActorDeltas(const FTrackedSceneChange& Change, bool bRedo)
 {
-	FTrackedSceneSnapshot Snapshot;
-
-	if (!GetWorld())
+	UWorld* World = GetWorld();
+	if (!World)
 	{
-		return Snapshot;
+		return;
 	}
 
-	const FWorldContext* Context = GetWorldContextFromHandle(GetActiveWorldHandle());
-	if (!Context || !Context->World)
+	if (bRedo)
 	{
-		return Snapshot;
+		for (const FDeletedActorDelta& Delta : Change.DeletedActors)
+		{
+			AActor* ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
+			if (ExistingActor)
+			{
+				World->DestroyActor(ExistingActor);
+			}
+		}
+
+		for (const FCreatedActorDelta& Delta : Change.CreatedActors)
+		{
+			AActor* ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
+			if (!ExistingActor)
+			{
+				FSceneSaveManager::LoadActorFromJSONString(Delta.SerializedActor, World);
+			}
+		}
+
+		for (const FModifiedActorDelta& Delta : Change.ModifiedActors)
+		{
+			AActor* ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
+			if (ExistingActor)
+			{
+				if (!FSceneSaveManager::ApplyActorFromJSONString(ExistingActor, Delta.AfterSerializedActor))
+				{
+					World->DestroyActor(ExistingActor);
+					FSceneSaveManager::LoadActorFromJSONString(Delta.AfterSerializedActor, World);
+				}
+			}
+			else
+			{
+				FSceneSaveManager::LoadActorFromJSONString(Delta.AfterSerializedActor, World);
+			}
+		}
+		return;
 	}
 
-	FWorldContext MutableContext = *Context;
-	Snapshot.SerializedScene = FSceneSaveManager::SerializeWorldToJSONString(MutableContext, FindSceneViewportCamera());
-	if (UCameraComponent* Camera = FindSceneViewportCamera())
+	for (const FCreatedActorDelta& Delta : Change.CreatedActors)
 	{
-		Snapshot.CameraData.Location = Camera->GetWorldLocation();
-		const FRotator Rotation = Camera->GetRelativeRotation();
-		Snapshot.CameraData.Rotation = FVector(Rotation.Roll, Rotation.Pitch, Rotation.Yaw);
-		const FCameraState CameraState = Camera->GetCameraState();
-		Snapshot.CameraData.FOV = CameraState.FOV;
-		Snapshot.CameraData.NearClip = CameraState.NearZ;
-		Snapshot.CameraData.FarClip = CameraState.FarZ;
-		Snapshot.CameraData.bValid = true;
+		AActor* ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
+		if (ExistingActor)
+		{
+			World->DestroyActor(ExistingActor);
+		}
 	}
 
-	for (AActor* Actor : SelectionManager.GetSelectedActors())
+	for (const FDeletedActorDelta& Delta : Change.DeletedActors)
 	{
+		AActor* ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
+		if (!ExistingActor)
+		{
+			FSceneSaveManager::LoadActorFromJSONString(Delta.SerializedActor, World);
+		}
+	}
+
+	for (const FModifiedActorDelta& Delta : Change.ModifiedActors)
+	{
+		AActor* ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
+		if (ExistingActor)
+		{
+			if (!FSceneSaveManager::ApplyActorFromJSONString(ExistingActor, Delta.BeforeSerializedActor))
+			{
+				World->DestroyActor(ExistingActor);
+				FSceneSaveManager::LoadActorFromJSONString(Delta.BeforeSerializedActor, World);
+			}
+		}
+		else
+		{
+			FSceneSaveManager::LoadActorFromJSONString(Delta.BeforeSerializedActor, World);
+		}
+	}
+}
+
+void UEditorEngine::RestoreTrackedActorOrder(const TArray<uint32>& OrderedUUIDs)
+{
+	UWorld* World = GetWorld();
+	ULevel* PersistentLevel = World ? World->GetPersistentLevel() : nullptr;
+	if (!World || !PersistentLevel || OrderedUUIDs.empty())
+	{
+		return;
+	}
+
+	std::set<uint32> OrderedUUIDSet(OrderedUUIDs.begin(), OrderedUUIDs.end());
+	size_t PrefixCount = 0;
+	for (AActor* Actor : PersistentLevel->GetActors())
+	{
+		if (!Actor || OrderedUUIDSet.find(Actor->GetUUID()) != OrderedUUIDSet.end())
+		{
+			break;
+		}
+		++PrefixCount;
+	}
+
+	for (size_t Index = 0; Index < OrderedUUIDs.size(); ++Index)
+	{
+		AActor* Actor = Cast<AActor>(UObjectManager::Get().FindByUUID(OrderedUUIDs[Index]));
 		if (!Actor)
 		{
 			continue;
 		}
 
-		Snapshot.SelectedActorUUIDs.push_back(Actor->GetUUID());
+		World->MoveActorToIndex(Actor, PrefixCount + Index);
 	}
-
-	return Snapshot;
 }
 
-void UEditorEngine::ApplyTrackedSceneSnapshot(const FTrackedSceneSnapshot& Snapshot)
+void UEditorEngine::RestoreTrackedSelection(const TArray<uint32>& SelectedUUIDs)
 {
-	if (Snapshot.SerializedScene.empty() || IsPlayingInEditor())
-	{
-		return;
-	}
-
-	DestroyCurrentSceneWorlds(false, false);
-
-	FWorldContext LoadContext;
-	FPerspectiveCameraData CameraData = Snapshot.CameraData;
-	FSceneSaveManager::LoadSceneFromJSONString(Snapshot.SerializedScene, LoadContext, CameraData);
-	if (!LoadContext.World)
-	{
-		return;
-	}
-
-	WorldList.push_back(LoadContext);
-	SetActiveWorld(LoadContext.ContextHandle);
-	SelectionManager.SetWorld(LoadContext.World);
-	LoadContext.World->WarmupPickingData();
-	CachedTrackedSceneSnapshot = Snapshot;
-	ResetViewport();
-	RestoreViewportCamera(CameraData);
-
 	TArray<AActor*> RestoredSelection;
-	for (uint32 SelectedUUID : Snapshot.SelectedActorUUIDs)
+	for (uint32 SelectedUUID : SelectedUUIDs)
 	{
 		if (AActor* Actor = Cast<AActor>(UObjectManager::Get().FindByUUID(SelectedUUID)))
 		{

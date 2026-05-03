@@ -271,7 +271,7 @@ EBlendState FMaterialManager::StringToBlendState(const FString& Str, ERenderPass
 	case ERenderPass::EditorLines:
 	case ERenderPass::PostProcess:
 	case ERenderPass::GizmoInner:
-	case ERenderPass::OverlayFont:
+	case ERenderPass::ScreenText:
 		return EBlendState::AlphaBlend;
 	case ERenderPass::AdditiveDecal:
 		return EBlendState::Additive;
@@ -297,7 +297,7 @@ EDepthStencilState FMaterialManager::StringToDepthStencilState(const FString& St
 	case ERenderPass::SelectionMask:
 		return EDepthStencilState::StencilWrite;
 	case ERenderPass::PostProcess:
-	case ERenderPass::OverlayFont:
+	case ERenderPass::ScreenText:
 		return EDepthStencilState::NoDepth;
 	case ERenderPass::GizmoOuter:
 		return EDepthStencilState::GizmoOutside;

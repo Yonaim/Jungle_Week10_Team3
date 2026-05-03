@@ -48,6 +48,15 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 	}
 
 	Renderer.BeginFrame();
-	Renderer.Render(Frame, *Scene);
+	if (Scene)
+	{
+		Renderer.Render(Frame, *Scene);
+	}
+	else
+	{
+		// 카메라가 없으면 Scene이 null이므로 빈 프레임만 발행 (clear).
+		// FRenderer::Render는 Scene 참조를 deref하므로 여기서 가드 필요.
+		// (Game/Shipping 초기화 직후 World에 ActiveCamera가 안 잡혔을 때 진입)
+	}
 	Renderer.EndFrame();
 }

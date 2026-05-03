@@ -11,6 +11,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Platform/Paths.h"
 #include "Serialization/WindowsArchive.h"
+#include "Core/ProjectSettings.h"
 IMPLEMENT_CLASS(UWorld, UObject)
 
 
@@ -412,18 +413,56 @@ void UWorld::InitWorld()
 {
 	Partition.Reset(FBoundingBox());
 	ClearLevels();
-	
+
 	PersistentLevel = UObjectManager::Get().CreateObject<ULevel>(this);
 	PersistentLevel->SetWorld(this);
 	Levels.push_back(PersistentLevel);
 	CurrentLevel = PersistentLevel;
-	
-	AuthorGameMode = SpawnActor<AGameModeBase>();
+
+	// GameMode는 BeginPlay 시점에 스폰 — Editor 월드는 GameMode 인스턴스 없이 둔다.
+}
+
+void UWorld::SpawnGameMode()
+{
+	if (AuthorGameMode) return;
+
+	// 1) 레벨이 명시한 GameMode 클래스 우선
+	FString ClassName;
+	if (PersistentLevel)
+	{
+		ClassName = PersistentLevel->GetGameModeClassName();
+	}
+	// 2) 없으면 ProjectSettings의 기본값 사용
+	if (ClassName.empty())
+	{
+		ClassName = FProjectSettings::Get().Game.DefaultGameModeClass;
+	}
+	if (ClassName.empty())
+	{
+		ClassName = "AGameModeBase";
+	}
+
+	UObject* Obj = FObjectFactory::Get().Create(ClassName, CurrentLevel);
+	AGameModeBase* GameMode = Cast<AGameModeBase>(Obj);
+	if (!GameMode)
+	{
+		// 폴백 — 잘못된 클래스명이거나 등록 안된 경우
+		if (Obj) UObjectManager::Get().DestroyObject(Obj);
+		GameMode = SpawnActor<AGameModeBase>();
+	}
+	else
+	{
+		AddActor(GameMode);
+	}
+	AuthorGameMode = GameMode;
 }
 
 void UWorld::BeginPlay()
 {
 	bHasBegunPlay = true;
+
+	SpawnGameMode();
+
 	for (ULevel* Level : Levels)
 	{
 		if (Level) Level->BeginPlay();
@@ -438,9 +477,7 @@ void UWorld::Tick(float DeltaTime, ELevelTick TickType)
 		SCOPE_STAT_CAT("FlushPrimitive", "1_WorldTick");
 		Partition.FlushPrimitive();
 	}
-
 	Scene.GetDebugDrawQueue().Tick(DeltaTime);
-
 	TickManager.Tick(this, DeltaTime, TickType);
 	ProcessOverlapEvents();
 }
