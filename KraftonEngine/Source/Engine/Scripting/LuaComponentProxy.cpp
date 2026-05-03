@@ -1,4 +1,4 @@
-﻿#include "Scripting/LuaComponentProxy.h"
+#include "Scripting/LuaComponentProxy.h"
 
 #include "Component/ActorComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
@@ -767,7 +767,7 @@ bool FLuaComponentProxy::WasClicked() const
 	return ButtonComponent ? ButtonComponent->WasClicked() : false;
 }
 
-bool FLuaComponentProxy::SetSoundPath(const FString& SoundPath)
+bool FLuaComponentProxy::SetAudioPath(const FString& AudioPath)
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	if (!SoundComponent)
@@ -775,11 +775,11 @@ bool FLuaComponentProxy::SetSoundPath(const FString& SoundPath)
 		return false;
 	}
 
-	SoundComponent->SetSound(FName(SoundPath));
+	SoundComponent->SetSound(FName(AudioPath));
 	return true;
 }
 
-sol::optional<FString> FLuaComponentProxy::GetSoundPath() const
+sol::optional<FString> FLuaComponentProxy::GetAudioPath() const
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	if (!SoundComponent)
@@ -790,7 +790,7 @@ sol::optional<FString> FLuaComponentProxy::GetSoundPath() const
 	return SoundComponent->GetSound().ToString();
 }
 
-bool FLuaComponentProxy::SetSoundCategory(const FString& CategoryName)
+bool FLuaComponentProxy::SetAudioCategory(const FString& CategoryName)
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	if (!SoundComponent)
@@ -808,7 +808,7 @@ bool FLuaComponentProxy::SetSoundCategory(const FString& CategoryName)
 	return true;
 }
 
-sol::optional<FString> FLuaComponentProxy::GetSoundCategory() const
+sol::optional<FString> FLuaComponentProxy::GetAudioCategory() const
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	if (!SoundComponent)
@@ -819,7 +819,7 @@ sol::optional<FString> FLuaComponentProxy::GetSoundCategory() const
 	return USoundComponent::CategoryToString(SoundComponent->GetCategory());
 }
 
-bool FLuaComponentProxy::SetSoundLooping(bool bLooping)
+bool FLuaComponentProxy::SetAudioLooping(bool bLooping)
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	if (!SoundComponent)
@@ -831,7 +831,7 @@ bool FLuaComponentProxy::SetSoundLooping(bool bLooping)
 	return true;
 }
 
-bool FLuaComponentProxy::IsSoundLooping() const
+bool FLuaComponentProxy::IsAudioLooping() const
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	return SoundComponent ? SoundComponent->IsLooping() : false;
@@ -843,31 +843,31 @@ bool FLuaComponentProxy::PlayAudio()
 	return SoundComponent ? SoundComponent->Play() : false;
 }
 
-bool FLuaComponentProxy::PlayAudioPath(const FString& SoundPath)
+bool FLuaComponentProxy::PlayAudioPath(const FString& AudioPath)
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
-	return SoundComponent ? SoundComponent->PlayPath(SoundPath) : false;
+	return SoundComponent ? SoundComponent->PlayPath(AudioPath) : false;
 }
 
-bool FLuaComponentProxy::StopSound()
+bool FLuaComponentProxy::StopAudio()
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	return SoundComponent ? SoundComponent->Stop() : false;
 }
 
-bool FLuaComponentProxy::PauseSound()
+bool FLuaComponentProxy::PauseAudio()
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	return SoundComponent ? SoundComponent->Pause() : false;
 }
 
-bool FLuaComponentProxy::ResumeSound()
+bool FLuaComponentProxy::ResumeAudio()
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	return SoundComponent ? SoundComponent->Resume() : false;
 }
 
-bool FLuaComponentProxy::IsSoundPlaying() const
+bool FLuaComponentProxy::IsAudioPlaying() const
 {
 	USoundComponent* SoundComponent = Cast<USoundComponent>(GetComponent());
 	return SoundComponent ? SoundComponent->IsPlaying() : false;
