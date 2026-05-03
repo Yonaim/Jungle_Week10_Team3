@@ -124,6 +124,7 @@ namespace
 		{ "World Text", "world text 3d billboard font label", "Editor.Icon.ScreenText", EPlaceType::WorldText, ECategory::Text },
 		{ "Screen Text", "screen text overlay ui hud widget", "Editor.Icon.ScreenText", EPlaceType::ScreenText, ECategory::Text },
 		{ "UI Root", "ui root canvas hud menu widget", "Editor.ToolIcon.WorldSpace", EPlaceType::UIRoot, ECategory::UI },
+		{ "Map Manager", "Map Manager", "Editor.Icon.Cube", EPlaceType::MapManager, ECategory::Basic },
 	};
 
 	const char* GetCategoryLabel(ECategory Category)

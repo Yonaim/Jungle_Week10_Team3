@@ -480,6 +480,8 @@
     <ClCompile Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\VerticalWireActor.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\WireballActor.cpp" />
+    <ClCompile Include="Source\Game\Map\AMapChunk.cpp" />
+    <ClCompile Include="Source\Game\Map\AMapManager.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerEngine.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerPanel.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerRenderPipeline.cpp" />
@@ -746,6 +748,9 @@
     <ClInclude Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\VerticalWireActor.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\WireballActor.h" />
+    <ClInclude Include="Source\Game\Map\AMapChunk.h" />
+    <ClInclude Include="Source\Game\Map\AMapManager.h" />
+    <ClInclude Include="Source\Game\Map\MapChunkTemplate.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerEngine.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerPanel.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerRenderPipeline.h" />

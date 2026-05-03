@@ -24,6 +24,10 @@ void AObstacleActorBase::BeginPlay() {
 	}
 }
 
+void AObstacleActorBase::EndPlay() {
+	Super::EndPlay();
+}
+
 void AObstacleActorBase::OnHit(const FComponentHitEvent& Other) {
 	UE_LOG("Listening to a Hit Event, UUID: " + this->GetUUID());
 	if (!Other.HitComponent) return;
