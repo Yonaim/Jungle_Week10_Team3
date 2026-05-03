@@ -1116,8 +1116,19 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON&
 	Comp->GetEditableProperties(Descriptors);
 
 	for (auto& Prop : Descriptors) {
-		if (!PropsJSON.hasKey(Prop.Name.c_str())) continue;
-		json::JSON& Value = PropsJSON[Prop.Name.c_str()];
+		const char* PropertyKey = Prop.Name.c_str();
+		if (!PropsJSON.hasKey(PropertyKey))
+		{
+			if (Prop.Name == "Nine Slice Border" && PropsJSON.hasKey("Slice"))
+			{
+				PropertyKey = "Slice";
+			}
+			else
+			{
+				continue;
+			}
+		}
+		json::JSON& Value = PropsJSON[PropertyKey];
 		DeserializePropertyValue(Prop, Value);
 		Comp->PostEditProperty(Prop.Name.c_str());
 	}

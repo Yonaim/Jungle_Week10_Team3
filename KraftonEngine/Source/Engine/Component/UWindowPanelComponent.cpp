@@ -1,13 +1,18 @@
 #include "Component/UWindowPanelComponent.h"
 
 #include "Object/ObjectFactory.h"
+#include "Engine/Runtime/Engine.h"
+#include "Platform/Paths.h"
 #include "Render/Scene/FScene.h"
 #include "Serialization/Archive.h"
 #include "Texture/Texture2D.h"
 
 #include <algorithm>
+#include <filesystem>
 
-IMPLEMENT_CLASS(UWindowPanelComponent, UUIImageComponent)
+IMPLEMENT_CLASS(UNineSlicePanelComponent, UUIImageComponent)
+IMPLEMENT_CLASS(UWindowPanelComponent, UNineSlicePanelComponent)
+HIDE_FROM_COMPONENT_LIST(UWindowPanelComponent)
 
 namespace
 {
@@ -26,38 +31,104 @@ namespace
 	}
 }
 
-UWindowPanelComponent::UWindowPanelComponent()
+UNineSlicePanelComponent::UNineSlicePanelComponent()
 {
 	Slice = FVector4(8.0f, 24.0f, 8.0f, 8.0f);
 }
 
-void UWindowPanelComponent::Serialize(FArchive& Ar)
+void UNineSlicePanelComponent::Serialize(FArchive& Ar)
 {
 	UUIImageComponent::Serialize(Ar);
 	Ar << Slice;
 	Ar << bDrawBorder;
 	Ar << bDrawCenter;
+	Ar << TopLeftTextureSlot.Path;
+	Ar << TopTextureSlot.Path;
+	Ar << TopRightTextureSlot.Path;
+	Ar << LeftTextureSlot.Path;
+	Ar << CenterTextureSlot.Path;
+	Ar << RightTextureSlot.Path;
+	Ar << BottomLeftTextureSlot.Path;
+	Ar << BottomTextureSlot.Path;
+	Ar << BottomRightTextureSlot.Path;
 }
 
-void UWindowPanelComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
+void UNineSlicePanelComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
 	UUIImageComponent::GetEditableProperties(OutProps);
-	OutProps.push_back({ "Slice", EPropertyType::Vec4, &Slice, 0.0f, 4096.0f, 1.0f });
+	OutProps.push_back({ "Nine Slice Border", EPropertyType::Vec4, &Slice, 0.0f, 4096.0f, 1.0f });
 	OutProps.push_back({ "Draw Border", EPropertyType::Bool, &bDrawBorder });
 	OutProps.push_back({ "Draw Center", EPropertyType::Bool, &bDrawCenter });
+	OutProps.push_back({ "Top Left Texture", EPropertyType::TextureSlot, &TopLeftTextureSlot });
+	OutProps.push_back({ "Top Texture", EPropertyType::TextureSlot, &TopTextureSlot });
+	OutProps.push_back({ "Top Right Texture", EPropertyType::TextureSlot, &TopRightTextureSlot });
+	OutProps.push_back({ "Left Texture", EPropertyType::TextureSlot, &LeftTextureSlot });
+	OutProps.push_back({ "Center Texture", EPropertyType::TextureSlot, &CenterTextureSlot });
+	OutProps.push_back({ "Right Texture", EPropertyType::TextureSlot, &RightTextureSlot });
+	OutProps.push_back({ "Bottom Left Texture", EPropertyType::TextureSlot, &BottomLeftTextureSlot });
+	OutProps.push_back({ "Bottom Texture", EPropertyType::TextureSlot, &BottomTextureSlot });
+	OutProps.push_back({ "Bottom Right Texture", EPropertyType::TextureSlot, &BottomRightTextureSlot });
 }
 
-void UWindowPanelComponent::PostEditProperty(const char* PropertyName)
+void UNineSlicePanelComponent::PostEditProperty(const char* PropertyName)
 {
 	UUIImageComponent::PostEditProperty(PropertyName);
 
-	if (strcmp(PropertyName, "Slice") == 0 || strcmp(PropertyName, "Texture") == 0)
+	if (strcmp(PropertyName, "Slice") == 0
+		|| strcmp(PropertyName, "Nine Slice Border") == 0
+		|| strcmp(PropertyName, "Texture") == 0)
 	{
 		ClampSlice();
 	}
+
+	if (strcmp(PropertyName, "Top Left Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(TopLeftTextureSlot, TopLeftTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Top Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(TopTextureSlot, TopTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Top Right Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(TopRightTextureSlot, TopRightTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Left Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(LeftTextureSlot, LeftTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Center Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(CenterTextureSlot, CenterTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Right Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(RightTextureSlot, RightTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Bottom Left Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(BottomLeftTextureSlot, BottomLeftTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Bottom Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(BottomTextureSlot, BottomTexture);
+		MarkRenderStateDirty();
+	}
+	else if (strcmp(PropertyName, "Bottom Right Texture") == 0)
+	{
+		ResolveOptionalTextureSlot(BottomRightTextureSlot, BottomRightTexture);
+		MarkRenderStateDirty();
+	}
 }
 
-void UWindowPanelComponent::ContributeVisuals(FScene& Scene) const
+void UNineSlicePanelComponent::ContributeVisuals(FScene& Scene) const
 {
 	if (!IsVisible())
 	{
@@ -112,25 +183,57 @@ void UWindowPanelComponent::ContributeVisuals(FScene& Scene) const
 
 	if (bDrawBorder)
 	{
-		AddPanelQuad(Scene, SRV, X0, Y0, LeftWidth, TopHeight, U0, V0, U1, V1);
-		AddPanelQuad(Scene, SRV, X1, Y0, CenterWidth, TopHeight, U1, V0, U2, V1);
-		AddPanelQuad(Scene, SRV, X2, Y0, RightWidth, TopHeight, U2, V0, U3, V1);
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(TopLeftTextureSlot, TopLeftTexture))
+			AddPanelQuad(Scene, OverrideSRV, X0, Y0, LeftWidth, TopHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X0, Y0, LeftWidth, TopHeight, U0, V0, U1, V1);
 
-		AddPanelQuad(Scene, SRV, X0, Y1, LeftWidth, CenterHeight, U0, V1, U1, V2);
-		AddPanelQuad(Scene, SRV, X2, Y1, RightWidth, CenterHeight, U2, V1, U3, V2);
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(TopTextureSlot, TopTexture))
+			AddPanelQuad(Scene, OverrideSRV, X1, Y0, CenterWidth, TopHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X1, Y0, CenterWidth, TopHeight, U1, V0, U2, V1);
 
-		AddPanelQuad(Scene, SRV, X0, Y2, LeftWidth, BottomHeight, U0, V2, U1, V3);
-		AddPanelQuad(Scene, SRV, X1, Y2, CenterWidth, BottomHeight, U1, V2, U2, V3);
-		AddPanelQuad(Scene, SRV, X2, Y2, RightWidth, BottomHeight, U2, V2, U3, V3);
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(TopRightTextureSlot, TopRightTexture))
+			AddPanelQuad(Scene, OverrideSRV, X2, Y0, RightWidth, TopHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X2, Y0, RightWidth, TopHeight, U2, V0, U3, V1);
+
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(LeftTextureSlot, LeftTexture))
+			AddPanelQuad(Scene, OverrideSRV, X0, Y1, LeftWidth, CenterHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X0, Y1, LeftWidth, CenterHeight, U0, V1, U1, V2);
+
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(RightTextureSlot, RightTexture))
+			AddPanelQuad(Scene, OverrideSRV, X2, Y1, RightWidth, CenterHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X2, Y1, RightWidth, CenterHeight, U2, V1, U3, V2);
+
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(BottomLeftTextureSlot, BottomLeftTexture))
+			AddPanelQuad(Scene, OverrideSRV, X0, Y2, LeftWidth, BottomHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X0, Y2, LeftWidth, BottomHeight, U0, V2, U1, V3);
+
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(BottomTextureSlot, BottomTexture))
+			AddPanelQuad(Scene, OverrideSRV, X1, Y2, CenterWidth, BottomHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X1, Y2, CenterWidth, BottomHeight, U1, V2, U2, V3);
+
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(BottomRightTextureSlot, BottomRightTexture))
+			AddPanelQuad(Scene, OverrideSRV, X2, Y2, RightWidth, BottomHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X2, Y2, RightWidth, BottomHeight, U2, V2, U3, V3);
 	}
 
 	if (bDrawCenter)
 	{
-		AddPanelQuad(Scene, SRV, X1, Y1, CenterWidth, CenterHeight, U1, V1, U2, V2);
+		if (ID3D11ShaderResourceView* OverrideSRV = GetOptionalTextureSRV(CenterTextureSlot, CenterTexture))
+			AddPanelQuad(Scene, OverrideSRV, X1, Y1, CenterWidth, CenterHeight, 0.0f, 0.0f, 1.0f, 1.0f);
+		else
+			AddPanelQuad(Scene, SRV, X1, Y1, CenterWidth, CenterHeight, U1, V1, U2, V2);
 	}
 }
 
-void UWindowPanelComponent::ClampSlice()
+void UNineSlicePanelComponent::ClampSlice()
 {
 	Slice.X = (std::max)(0.0f, Slice.X);
 	Slice.Y = (std::max)(0.0f, Slice.Y);
@@ -151,7 +254,43 @@ void UWindowPanelComponent::ClampSlice()
 	Slice.W = (std::clamp)(Slice.W, 0.0f, TextureHeight - Slice.Y);
 }
 
-void UWindowPanelComponent::AddPanelQuad(FScene& Scene, ID3D11ShaderResourceView* SRV, float X, float Y, float Width, float Height,
+bool UNineSlicePanelComponent::ResolveOptionalTextureSlot(FTextureSlot& Slot, UTexture2D*& LoadedTexture)
+{
+	if (Slot.Path.empty() || Slot.Path == "None")
+	{
+		Slot.Path = "None";
+		LoadedTexture = nullptr;
+		return true;
+	}
+
+	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+	if (!Device)
+	{
+		return false;
+	}
+
+	const FString ResolvedPath = FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(Slot.Path)).lexically_normal().wstring());
+	if (UTexture2D* Texture2D = UTexture2D::LoadFromFile(ResolvedPath, Device))
+	{
+		Slot.Path = ResolvedPath;
+		LoadedTexture = Texture2D;
+		return true;
+	}
+
+	return false;
+}
+
+ID3D11ShaderResourceView* UNineSlicePanelComponent::GetOptionalTextureSRV(const FTextureSlot& Slot, UTexture2D* LoadedTexture) const
+{
+	if (Slot.Path.empty() || Slot.Path == "None" || !LoadedTexture || !LoadedTexture->IsLoaded())
+	{
+		return nullptr;
+	}
+
+	return LoadedTexture->GetSRV();
+}
+
+void UNineSlicePanelComponent::AddPanelQuad(FScene& Scene, ID3D11ShaderResourceView* SRV, float X, float Y, float Width, float Height,
 	float U0, float V0, float U1, float V1) const
 {
 	if (Width <= 0.0f || Height <= 0.0f)

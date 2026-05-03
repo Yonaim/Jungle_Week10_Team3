@@ -37,7 +37,8 @@ private:
 	static FString GetDisplayPropertyLabel(const FString& RawName);
 	static bool DrawColoredFloat3(const char* Label, float Values[3], float Speed);
 	static bool DrawColoredFloat4(const char* Label, float Values[4], float Speed);
-	static FString GetPropertySectionName(const struct FPropertyDescriptor& Prop);
+	static bool DrawNamedFloat4(const char* Label, float Values[4], float Speed, const char* AxisLabels[4]);
+	FString GetPropertySectionName(const struct FPropertyDescriptor& Prop) const;
 
 	UActorComponent* SelectedComponent = nullptr;
 	AActor* LastSelectedActor = nullptr;

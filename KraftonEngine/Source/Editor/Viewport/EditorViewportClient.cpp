@@ -20,6 +20,10 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/MeshComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/UIImageComponent.h"
+#include "Component/UIButtonComponent.h"
+#include "Component/UIScreenTextComponent.h"
+#include "Component/UWindowPanelComponent.h"
 #include "Collision/RayUtils.h"
 #include "Object/Object.h"
 #include "Editor/Selection/SelectionManager.h"
@@ -27,6 +31,7 @@
 #include "Editor/EditorEngine.h"
 #include "GameFramework/AActor.h"
 #include "Viewport/GameViewportClient.h"
+#include "Resource/ResourceManager.h"
 #include "ImGui/imgui.h"
 #include "Component/Light/LightComponentBase.h"
 
@@ -44,6 +49,149 @@ namespace
 		bool bValid = false;
 	};
 	static FCameraBookmark GCameraBookmarks[10];
+
+	bool IsPointInsideRect(float X, float Y, float RectX, float RectY, float RectW, float RectH)
+	{
+		return X >= RectX
+			&& X <= RectX + RectW
+			&& Y >= RectY
+			&& Y <= RectY + RectH;
+	}
+
+	bool IsUIComponentSelectable(const UActorComponent* Component)
+	{
+		return Component
+			&& !Component->IsHiddenInComponentTree()
+			&& !Component->IsEditorOnlyComponent();
+	}
+
+	bool ComputeScreenTextBounds(const UUIScreenTextComponent* TextComponent, float& OutX, float& OutY, float& OutW, float& OutH)
+	{
+		if (!TextComponent || !TextComponent->IsVisible())
+		{
+			return false;
+		}
+
+		const FString& Text = TextComponent->GetText();
+		if (Text.empty())
+		{
+			return false;
+		}
+
+		const FVector& ScreenPosition = TextComponent->GetScreenPosition();
+		const float Scale = TextComponent->GetFontSize();
+		const FFontResource* Font = FResourceManager::Get().FindFont(TextComponent->GetFontName());
+
+		float Width = 0.0f;
+		float Height = 23.0f * Scale;
+		if (Font && Font->IsLoaded() && Font->bHasGlyphMetrics && Font->LineHeight > 0.0f)
+		{
+			const float PixelScale = (23.0f * Scale) / Font->LineHeight;
+			Height = Font->LineHeight * PixelScale;
+
+			const uint8* Ptr = reinterpret_cast<const uint8*>(Text.c_str());
+			const uint8* const End = Ptr + Text.size();
+			uint32 PrevCodepoint = 0;
+			bool bHasPrevCodepoint = false;
+
+			while (Ptr < End)
+			{
+				uint32 CP = 0;
+				if (Ptr[0] < 0x80) { CP = Ptr[0]; Ptr += 1; }
+				else if ((Ptr[0] & 0xE0) == 0xC0 && Ptr + 1 < End) { CP = ((Ptr[0] & 0x1F) << 6) | (Ptr[1] & 0x3F); Ptr += 2; }
+				else if ((Ptr[0] & 0xF0) == 0xE0 && Ptr + 2 < End) { CP = ((Ptr[0] & 0x0F) << 12) | ((Ptr[1] & 0x3F) << 6) | (Ptr[2] & 0x3F); Ptr += 3; }
+				else if ((Ptr[0] & 0xF8) == 0xF0 && Ptr + 3 < End) { CP = ((Ptr[0] & 0x07) << 18) | ((Ptr[1] & 0x3F) << 12) | ((Ptr[2] & 0x3F) << 6) | (Ptr[3] & 0x3F); Ptr += 4; }
+				else { ++Ptr; continue; }
+
+				if (bHasPrevCodepoint)
+				{
+					Width += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
+				}
+
+				if (const FFontGlyph* Glyph = Font->FindGlyph(CP))
+				{
+					Width += Glyph->XAdvance * PixelScale;
+				}
+
+				PrevCodepoint = CP;
+				bHasPrevCodepoint = true;
+			}
+		}
+		else
+		{
+			Width = static_cast<float>(Text.size()) * (23.0f * Scale * 0.5f);
+		}
+
+		OutX = ScreenPosition.X;
+		OutY = ScreenPosition.Y;
+		OutW = (std::max)(1.0f, Width);
+		OutH = (std::max)(1.0f, Height);
+		return true;
+	}
+
+	USceneComponent* FindTopmostUIComponentAt(UWorld* World, float X, float Y)
+	{
+		if (!World)
+		{
+			return nullptr;
+		}
+
+		USceneComponent* BestComponent = nullptr;
+		int32 BestZOrder = INT_MIN;
+
+		for (AActor* Actor : World->GetActors())
+		{
+			if (!Actor || !Actor->IsVisible())
+			{
+				continue;
+			}
+
+			for (UActorComponent* Component : Actor->GetComponents())
+			{
+				if (!IsUIComponentSelectable(Component))
+				{
+					continue;
+				}
+
+				if (UUIScreenTextComponent* TextComponent = Cast<UUIScreenTextComponent>(Component))
+				{
+					float RectX = 0.0f;
+					float RectY = 0.0f;
+					float RectW = 0.0f;
+					float RectH = 0.0f;
+					if (ComputeScreenTextBounds(TextComponent, RectX, RectY, RectW, RectH)
+						&& IsPointInsideRect(X, Y, RectX, RectY, RectW, RectH)
+						&& BestZOrder <= 0)
+					{
+						BestComponent = TextComponent;
+						BestZOrder = 0;
+					}
+					continue;
+				}
+
+				UUIImageComponent* UIImage = Cast<UUIImageComponent>(Component);
+				if (!UIImage || !UIImage->IsVisible())
+				{
+					continue;
+				}
+
+				const FVector& ScreenPosition = UIImage->GetScreenPosition();
+				const FVector& ScreenSize = UIImage->GetScreenSize();
+				if (!IsPointInsideRect(X, Y, ScreenPosition.X, ScreenPosition.Y, ScreenSize.X, ScreenSize.Y))
+				{
+					continue;
+				}
+
+				if (!BestComponent || UIImage->GetZOrder() >= BestZOrder)
+				{
+					BestComponent = UIImage;
+					BestZOrder = UIImage->GetZOrder();
+				}
+			}
+		}
+
+		return BestComponent;
+	}
 }
 
 FEditorViewportClient::FEditorViewportClient()
@@ -944,6 +1092,38 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 	}
 	else
 	{
+		uint32 CursorX = 0;
+		uint32 CursorY = 0;
+		USceneComponent* HitUIComponent = GetCursorViewportPosition(CursorX, CursorY)
+			? FindTopmostUIComponentAt(GetWorld(), static_cast<float>(CursorX), static_cast<float>(CursorY))
+			: nullptr;
+		if (HitUIComponent)
+		{
+			AActor* HitActor = HitUIComponent->GetOwner();
+			const bool bCtrlHeld = Input.IsKeyDown(VK_CONTROL);
+			if (HitActor)
+			{
+				if (bCtrlHeld)
+				{
+					const bool bWasSelected = SelectionManager->IsSelected(HitActor);
+					SelectionManager->ToggleSelect(HitActor);
+					if (!bWasSelected)
+					{
+						SelectionManager->SelectComponent(HitUIComponent);
+					}
+				}
+				else
+				{
+					if (SelectionManager->GetPrimarySelection() != HitActor)
+					{
+						SelectionManager->Select(HitActor);
+					}
+					SelectionManager->SelectComponent(HitUIComponent);
+				}
+			}
+		}
+		else
+		{
 		AActor* BestActor = nullptr;
 		if (UWorld* W = GetWorld()) { W->RaycastPrimitives(Ray, HitResult, BestActor); }
 		bool bCtrlHeld = Input.IsKeyDown(VK_CONTROL);
@@ -952,6 +1132,7 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 		{
 			if (bCtrlHeld) SelectionManager->ToggleSelect(BestActor);
 			else { if (SelectionManager->GetPrimarySelection() == BestActor) { if (HitResult.HitComponent) SelectionManager->SelectComponent(HitResult.HitComponent); } else SelectionManager->Select(BestActor); }
+		}
 		}
 	}
 	if (OverlayStatSystem) { const uint64 PickCycles = PickCounter.Finish(); const double ElapsedMs = FPlatformTime::ToMilliseconds(PickCycles); OverlayStatSystem->RecordPickingAttempt(ElapsedMs); }
