@@ -26,24 +26,95 @@ function Tick(dt)
     local speed = property("MoveSpeed", 5.0)
     local turn  = property("TurnSpeed", 90.0)
 
-    -- 평면 이동 (월드 축 기준)
+    -- 1. 회전 처리 (Mouse + Q/E)
+    local r = obj.Rotation
+    
+    -- 마우스 Yaw (Actor 회전)
+    local mouse_dx = GetMouseDeltaX()
+    if math.abs(mouse_dx) > 0 then
+        r.z = r.z + mouse_dx * 0.15
+    end
+    
+    if GetKey("E") then r.z = r.z + turn * dt end
+    if GetKey("Q") then r.z = r.z - turn * dt end
+    obj.Rotation = r
+
+    -- 마우스 Pitch (Camera 회전)
+    local cam = obj:GetComponent("PlayerCamera")
+    if cam and cam:IsValid() then
+        local mouse_dy = GetMouseDeltaY()
+        if math.abs(mouse_dy) > 0 then
+            local cr = cam:GetLocalRotation()
+            -- Vector.y is Pitch (euler convention in this engine)
+            cr.y = cr.y + mouse_dy * 0.15
+            -- Pitch Clamp (-80 ~ 80)
+            if cr.y > 80 then cr.y = 80 end
+            if cr.y < -80 then cr.y = -80 end
+            cam:SetLocalRotation(cr)
+        end
+    end
+
+    -- 2. 이동 처리 (카메라 방향 기준 상대 이동)
+    local forward, right
+    
+    if cam and cam:IsValid() then
+        forward = cam:GetForwardVector()
+        right = cam:GetRightVector()
+        
+        -- 지면 이동을 위해 Z축 성분 제거
+        forward.z = 0
+        right.z = 0
+        
+        -- 정규화
+        local f_len = math.sqrt(forward.x * forward.x + forward.y * forward.y)
+        local r_len = math.sqrt(right.x * right.x + right.y * right.y)
+        if f_len > 0.001 then 
+            forward.x, forward.y = forward.x/f_len, forward.y/f_len 
+        else
+            -- 카메라가 수직으로 보고 있을 경우 Actor 방향 사용
+            forward = obj:GetForwardVector()
+            forward.z = 0
+        end
+        
+        if r_len > 0.001 then 
+            right.x, right.y = right.x/r_len, right.y/r_len 
+        else
+            right = obj:GetRightVector()
+            right.z = 0
+        end
+    else
+        forward = obj:GetForwardVector()
+        right = obj:GetRightVector()
+    end
+
     local mx, my, mz = 0, 0, 0
-    if GetKey("W") then my = my + 1 end
-    if GetKey("S") then my = my - 1 end
-    if GetKey("D") then mx = mx + 1 end
-    if GetKey("A") then mx = mx - 1 end
+    if GetKey("W") then
+        mx = mx + forward.x
+        my = my + forward.y
+        mz = mz + forward.z
+    end
+    if GetKey("S") then
+        mx = mx - forward.x
+        my = my - forward.y
+        mz = mz - forward.z
+    end
+    if GetKey("D") then
+        mx = mx + right.x
+        my = my + right.y
+        mz = mz + right.z
+    end
+    if GetKey("A") then
+        mx = mx - right.x
+        my = my - right.y
+        mz = mz - right.z
+    end
+    
     if GetKey("Space")    then mz = mz + 1 end
     if GetKey("LControl") then mz = mz - 1 end
 
     if mx ~= 0 or my ~= 0 or mz ~= 0 then
         obj:AddWorldOffset(mx * speed * dt, my * speed * dt, mz * speed * dt)
     end
-
-    -- Yaw 회전 (Z축)
-    local r = obj.Rotation
-    if GetKey("E") then r.z = r.z + turn * dt end
-    if GetKey("Q") then r.z = r.z - turn * dt end
-    obj.Rotation = r
 
     -- 위치 리셋
     if GetKeyDown("F") then
