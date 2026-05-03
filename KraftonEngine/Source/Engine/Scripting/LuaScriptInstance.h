@@ -82,9 +82,11 @@ private:
 
 	// Lua에 노출할 ActorProxy를 현재 owner actor 기준으로 다시 만든다.
 	FLuaActorProxy MakeActorProxy(AActor* Actor) const;
+	FLuaComponentProxy MakeComponentProxy(UActorComponent* Component);
 
 	// 내부 상태에 에러를 저장하고 로그에 남긴다.
 	void SetError(const FString& ErrorMessage);
+
 
 private:
 	struct FInstanceImpl;

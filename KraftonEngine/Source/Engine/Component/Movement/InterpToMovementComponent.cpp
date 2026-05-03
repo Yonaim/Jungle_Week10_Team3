@@ -2,7 +2,11 @@
 #include "Object/ObjectFactory.h"
 #include "Component/SceneComponent.h"
 #include "Math/Quat.h"
+#include "Math/MathUtils.h"
 #include "Serialization/Archive.h"
+
+#include <algorithm>
+#include <cmath>
 
 IMPLEMENT_CLASS(UInterpToMovementComponent, UMovementComponent)
 
@@ -54,6 +58,7 @@ void UInterpToMovementComponent::GetEditableProperties(TArray<FPropertyDescripto
 	OutProps.push_back({ "Auto Activate",		  EPropertyType::Bool,		 &bAutoActivate });
 	OutProps.push_back({ "Orient To Movement",	  EPropertyType::Bool,		 &bFaceTargetDir });
 	OutProps.push_back({ "Interp Duration",		  EPropertyType::Float,      &Duration,       0.1f, 2048.0f, 0.1f });
+	OutProps.push_back({ "Move Speed",			  EPropertyType::Float,      &MoveSpeed,      0.0f, 100000.0f, 10.0f });
 	static const char* InterpBehaviourNames[] = { "One Shot", "One Shot Reverse", "Loop", "Ping-Pong" };
 	OutProps.push_back({ "Interp Mode",			  EPropertyType::Enum,		 &InterpBehaviour, 0,0,0, InterpBehaviourNames, 4 });
 	OutProps.push_back({ "Control Points",		  EPropertyType::Vec3Array,  &ControlPoints });
@@ -94,6 +99,11 @@ void UInterpToMovementComponent::SetControlPoint(uint32 Index, FVector InPoint) 
 void UInterpToMovementComponent::SetInterpDuration(float InDuration) {
 	if (InDuration <= 0) return;
 	Duration = InDuration;
+}
+
+void UInterpToMovementComponent::SetSpeed(float InSpeed)
+{
+	MoveSpeed = (std::max)(0.0f, std::isfinite(InSpeed) ? InSpeed : 0.0f);
 }
 
 // --- Interpolation Behaviour --------------------------------------------
@@ -139,6 +149,53 @@ void UInterpToMovementComponent::Reset() {
 void UInterpToMovementComponent::ResetAndHalt() {
 	Reset();
 	bisLerping = false;
+}
+
+void UInterpToMovementComponent::MoveTo(const FVector& TargetLocation)
+{
+	if (!UpdatedComponent)
+	{
+		ResolveUpdatedComponent();
+	}
+	if (!UpdatedComponent)
+	{
+		return;
+	}
+
+	const FVector StartLocation = UpdatedComponent->GetWorldLocation();
+	const float Distance = FVector::Distance(StartLocation, TargetLocation);
+	if (Distance <= FMath::Epsilon)
+	{
+		UpdatedComponent->SetWorldLocation(TargetLocation);
+		ResetAndHalt();
+		return;
+	}
+
+	ControlPoints.clear();
+	ControlPoints.push_back(StartLocation);
+	ControlPoints.push_back(TargetLocation);
+	InterpBehaviour = EInterpBehaviour::OneShot;
+	Duration = MoveSpeed > FMath::Epsilon ? Distance / MoveSpeed : Duration;
+	if (Duration <= FMath::Epsilon)
+	{
+		Duration = 0.01f;
+	}
+
+	Initiate();
+}
+
+void UInterpToMovementComponent::MoveBy(const FVector& Delta)
+{
+	if (!UpdatedComponent)
+	{
+		ResolveUpdatedComponent();
+	}
+	if (!UpdatedComponent)
+	{
+		return;
+	}
+
+	MoveTo(UpdatedComponent->GetWorldLocation() + Delta);
 }
 
 // --- Private -----------------------------------------------------------

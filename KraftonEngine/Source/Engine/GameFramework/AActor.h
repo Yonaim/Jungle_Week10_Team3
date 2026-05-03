@@ -89,6 +89,9 @@ public:
 	void SetActorMovementLocked(bool bLocked) { bLockActorMovement = bLocked; }
 	const FString& GetFolderPath() const { return FolderPath; }
 	void SetFolderPath(const FString& InFolderPath) { FolderPath = InFolderPath; }
+	const FString& GetTag() const { return Tag; }
+	void SetTag(const FString& InTag) { Tag = InTag; }
+	bool HasTag(const FString& InTag) const { return !InTag.empty() && Tag == InTag; }
 
 	// Tick 필요 여부 — false면 Tick 호출 자체를 건너뜀 (StaticMesh 등)
 	bool bNeedsTick = true;
@@ -126,6 +129,9 @@ protected:
 	bool bVisible = true;
 	bool bLockActorMovement = false;
 	FString FolderPath;
+	// TODO: 임시 프로토타입용 Tag입니다.
+	// 장기적으로는 GameplayTag 또는 Editor Property 기반 식별 방식으로 교체해야 합니다.
+	FString Tag;
 
 	TArray<UActorComponent*> OwnedComponents;
 

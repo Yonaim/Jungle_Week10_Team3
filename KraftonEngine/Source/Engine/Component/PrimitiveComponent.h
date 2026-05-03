@@ -90,8 +90,9 @@ public:
 	void MarkUpdateOverlaps();
 	//bool UpdateOverlapsOnNextTransform() const { return bUpdateOverlapsOnNextTransform; }
 	bool IsCollisionEnabled() const { return bCollisionEnabled; }
-	void SetCollisionEnabled(bool bInCollisionFlag) { bCollisionEnabled = bInCollisionFlag; }
+	void SetCollisionEnabled(bool bInCollisionFlag);
 	EOverlapBehaviour GetOverlapBehaviour() const { return bGenerateOverlapEvents; }
+	void SetGenerateOverlapEvents(bool bInGenerateOverlapEvents);
 
 	const TArray<FOverlapInfo>& GetOverlapInfos() const;
 	void  BeginComponentOverlap(const FOverlapInfo& OtherOverlap, bool bDoNotifies);

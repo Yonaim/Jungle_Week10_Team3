@@ -76,6 +76,31 @@ void UPrimitiveComponent::SetCastShadow(bool bNewCastShadow)
 	MarkRenderVisibilityDirty();
 }
 
+void UPrimitiveComponent::SetCollisionEnabled(bool bInCollisionFlag)
+{
+	if (bCollisionEnabled == bInCollisionFlag)
+	{
+		return;
+	}
+
+	bCollisionEnabled = bInCollisionFlag;
+	MarkUpdateOverlaps();
+}
+
+void UPrimitiveComponent::SetGenerateOverlapEvents(bool bInGenerateOverlapEvents)
+{
+	const EOverlapBehaviour NewBehaviour = bInGenerateOverlapEvents
+		? EOverlapBehaviour::Overlap
+		: EOverlapBehaviour::Ignore;
+	if (bGenerateOverlapEvents == NewBehaviour)
+	{
+		return;
+	}
+
+	bGenerateOverlapEvents = NewBehaviour;
+	MarkUpdateOverlaps();
+}
+
 // ============================================================
 // MarkRenderTransformDirty / MarkRenderVisibilityDirty
 //   프록시 dirty + Octree(액터 단위 dirty) + PickingBVH dirty

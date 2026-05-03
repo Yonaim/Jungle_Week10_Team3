@@ -19,6 +19,8 @@ class UScriptComponent : public UActorComponent
 public:
 	DECLARE_CLASS(UScriptComponent, UActorComponent)
 
+	~UScriptComponent() override;
+
 	// Actor 생명주기에 맞춰 Lua 스크립트를 로드/정리한다.
 	void BeginPlay() override;
 	void EndPlay() override;

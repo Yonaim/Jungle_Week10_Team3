@@ -276,6 +276,11 @@ namespace
 }
 #pragma endregion
 
+UScriptComponent::~UScriptComponent()
+{
+	UnbindOwnerShapeCollisionEvents();
+}
+
 void UScriptComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -572,6 +577,7 @@ bool UScriptComponent::ReloadScript()
 {
 	// 수동 reload와 파일 변경 기반 hot-reload가 모두 이 경로를 사용한다.
 	// 이미 owner가 연결된 경우에는 그 상태를 재사용하고, 아니면 다시 초기화한다.
+	UnbindOwnerShapeCollisionEvents();
 	bLoaded = false;
 
 	if (ScriptPath.empty())
@@ -634,7 +640,12 @@ bool UScriptComponent::ReloadScript()
 	if (!bBeginPlaySucceeded)
 	{
 		ScriptInstance.StopAllCoroutines();
+		UnbindOwnerShapeCollisionEvents();
 		bLoaded = false;
+	}
+	else if (bReloaded && GetOwner() && GetOwner()->HasActorBegunPlay())
+	{
+		BindOwnerShapeCollisionEvents();
 	}
 	return bReloaded && bBeginPlaySucceeded;
 }
@@ -930,6 +941,11 @@ void UScriptComponent::BindOwnerShapeCollisionEvents()
 	// OwnerActor의 PrimitiveComponent들을 순회
 	for (UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
 	{
+		if (!PrimitiveComponent || !IsAliveObject(PrimitiveComponent))
+		{
+			continue;
+		}
+
 		// ShapeComponent가 있다면 Delegate Binding
 		UShapeComponent* ShapeComponent = Cast<UShapeComponent>(PrimitiveComponent);
 		if (!ShapeComponent)
@@ -963,7 +979,7 @@ void UScriptComponent::UnbindOwnerShapeCollisionEvents()
 	// 캐싱된 ShapeCollisionBinding들을 순회하면서 Delegate Bind 해제
 	for (FShapeCollisionBinding& Binding : ShapeCollisionBindings)
 	{
-		if (!Binding.ShapeComponent)
+		if (!Binding.ShapeComponent || !IsAliveObject(Binding.ShapeComponent))
 		{
 			continue;
 		}
