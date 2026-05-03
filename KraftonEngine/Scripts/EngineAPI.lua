@@ -213,6 +213,40 @@ function ComponentProxy:SetText(text) end
 ---@return string|nil
 function ComponentProxy:GetText() end
 
+---@param texturePath string
+---@return boolean
+function ComponentProxy:SetTexture(texturePath) end
+
+---@return string|nil
+function ComponentProxy:GetTexturePath() end
+
+---@param tint Vector
+---@return boolean
+function ComponentProxy:SetTint(tint) end
+
+---@param r number
+---@param g number
+---@param b number
+---@param a number
+---@return boolean
+function ComponentProxy:SetTint(r, g, b, a) end
+
+---@param label string
+---@return boolean
+function ComponentProxy:SetLabel(label) end
+
+---@return string|nil
+function ComponentProxy:GetLabel() end
+
+---@return boolean
+function ComponentProxy:IsHovered() end
+
+---@return boolean
+function ComponentProxy:IsPressed() end
+
+---@return boolean
+function ComponentProxy:WasClicked() end
+
 ---@param speed number
 ---@return boolean
 function ComponentProxy:SetSpeed(speed) end

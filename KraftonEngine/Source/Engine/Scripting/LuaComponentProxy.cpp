@@ -7,6 +7,8 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/UIButtonComponent.h"
+#include "Component/UIImageComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Engine/Runtime/Engine.h"
 #include "GameFramework/AActor.h"
@@ -324,6 +326,86 @@ sol::optional<FString> FLuaComponentProxy::GetText() const
 	}
 
 	return TextComponent->GetText();
+}
+
+bool FLuaComponentProxy::SetTexture(const FString& TexturePath)
+{
+	UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent());
+	if (!ImageComponent)
+	{
+		return false;
+	}
+
+	return ImageComponent->SetTexturePath(TexturePath);
+}
+
+sol::optional<FString> FLuaComponentProxy::GetTexturePath() const
+{
+	UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent());
+	if (!ImageComponent)
+	{
+		return sol::nullopt;
+	}
+
+	return ImageComponent->GetTexturePath();
+}
+
+bool FLuaComponentProxy::SetTint(const FVector& TintRGB)
+{
+	return SetTintRGBA(TintRGB.X, TintRGB.Y, TintRGB.Z, 1.0f);
+}
+
+bool FLuaComponentProxy::SetTintRGBA(float R, float G, float B, float A)
+{
+	UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent());
+	if (!ImageComponent)
+	{
+		return false;
+	}
+
+	ImageComponent->SetTint(FVector4(R, G, B, A));
+	return true;
+}
+
+bool FLuaComponentProxy::SetLabel(const FString& Label)
+{
+	UIButtonComponent* ButtonComponent = Cast<UIButtonComponent>(GetComponent());
+	if (!ButtonComponent)
+	{
+		return false;
+	}
+
+	ButtonComponent->SetLabel(Label);
+	return true;
+}
+
+sol::optional<FString> FLuaComponentProxy::GetLabel() const
+{
+	UIButtonComponent* ButtonComponent = Cast<UIButtonComponent>(GetComponent());
+	if (!ButtonComponent)
+	{
+		return sol::nullopt;
+	}
+
+	return ButtonComponent->GetLabel();
+}
+
+bool FLuaComponentProxy::IsHovered() const
+{
+	UIButtonComponent* ButtonComponent = Cast<UIButtonComponent>(GetComponent());
+	return ButtonComponent ? ButtonComponent->IsHovered() : false;
+}
+
+bool FLuaComponentProxy::IsPressed() const
+{
+	UIButtonComponent* ButtonComponent = Cast<UIButtonComponent>(GetComponent());
+	return ButtonComponent ? ButtonComponent->IsPressed() : false;
+}
+
+bool FLuaComponentProxy::WasClicked() const
+{
+	UIButtonComponent* ButtonComponent = Cast<UIButtonComponent>(GetComponent());
+	return ButtonComponent ? ButtonComponent->WasClicked() : false;
 }
 
 bool FLuaComponentProxy::SetSpeed(float Speed)

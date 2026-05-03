@@ -391,6 +391,16 @@ void FLuaScriptRuntime::BindComponentProxyType()
 		"SetStaticMesh", &FLuaComponentProxy::SetStaticMesh,
 		"SetText", &FLuaComponentProxy::SetText,
 		"GetText", &FLuaComponentProxy::GetText,
+		"SetTexture", &FLuaComponentProxy::SetTexture,
+		"GetTexturePath", &FLuaComponentProxy::GetTexturePath,
+		"SetTint", sol::overload(
+			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetTint),
+			&FLuaComponentProxy::SetTintRGBA),
+		"SetLabel", &FLuaComponentProxy::SetLabel,
+		"GetLabel", &FLuaComponentProxy::GetLabel,
+		"IsHovered", &FLuaComponentProxy::IsHovered,
+		"IsPressed", &FLuaComponentProxy::IsPressed,
+		"WasClicked", &FLuaComponentProxy::WasClicked,
 		"SetSpeed", &FLuaComponentProxy::SetSpeed,
 		"GetSpeed", &FLuaComponentProxy::GetSpeed,
 		"MoveTo", sol::overload(
