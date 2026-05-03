@@ -1,4 +1,4 @@
-#include "Scripting/LuaComponentProxy.h"
+﻿#include "Scripting/LuaComponentProxy.h"
 
 #include "Component/ActorComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
@@ -16,6 +16,9 @@
 #include "Object/Object.h"
 #include "Object/UClass.h"
 #include "Scripting/LuaActorProxy.h"
+#include "Component/Shape/BoxComponent.h"
+#include "Component/Shape/CapsuleComponent.h"
+#include "Component/Shape/SphereComponent.h"
 
 #include <algorithm>
 #include <cmath>
@@ -142,7 +145,7 @@ bool FLuaComponentProxy::IsActive() const
 	return TargetComponent ? TargetComponent->IsActive() : false;
 }
 
-sol::optional<FVector> FLuaComponentProxy::GetLocation() const
+sol::optional<FVector> FLuaComponentProxy::GetWorldLocation() const
 {
 	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
 	if (!SceneComponent)
@@ -153,7 +156,7 @@ sol::optional<FVector> FLuaComponentProxy::GetLocation() const
 	return SceneComponent->GetWorldLocation();
 }
 
-bool FLuaComponentProxy::SetLocation(const FVector& InLocation)
+bool FLuaComponentProxy::SetWorldLocation(const FVector& InLocation)
 {
 	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
 	if (!SceneComponent)
@@ -165,9 +168,37 @@ bool FLuaComponentProxy::SetLocation(const FVector& InLocation)
 	return true;
 }
 
-bool FLuaComponentProxy::SetLocationXYZ(float X, float Y, float Z)
+bool FLuaComponentProxy::SetWorldLocationXYZ(float X, float Y, float Z)
 {
-	return SetLocation(FVector(X, Y, Z));
+	return SetWorldLocation(FVector(X, Y, Z));
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetLocalLocation() const
+{
+	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
+	if (!SceneComponent)
+	{
+		return sol::nullopt;
+	}
+
+	return SceneComponent->GetRelativeLocation();
+}
+
+bool FLuaComponentProxy::SetLocalLocation(const FVector& InLocation)
+{
+	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
+	if (!SceneComponent)
+	{
+		return false;
+	}
+
+	SceneComponent->SetRelativeLocation(InLocation);
+	return true;
+}
+
+bool FLuaComponentProxy::SetLocalLocationXYZ(float X, float Y, float Z)
+{
+	return SetLocalLocation(FVector(X, Y, Z));
 }
 
 bool FLuaComponentProxy::AddWorldOffset(const FVector& Delta)
@@ -187,7 +218,54 @@ bool FLuaComponentProxy::AddWorldOffsetXYZ(float X, float Y, float Z)
 	return AddWorldOffset(FVector(X, Y, Z));
 }
 
-sol::optional<FVector> FLuaComponentProxy::GetRotation() const
+bool FLuaComponentProxy::AddLocalOffset(const FVector& Delta)
+{
+	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
+	if (!SceneComponent)
+	{
+		return false;
+	}
+
+	SceneComponent->SetRelativeLocation(SceneComponent->GetRelativeLocation() + Delta);
+	return true;
+}
+
+bool FLuaComponentProxy::AddLocalOffsetXYZ(float X, float Y, float Z)
+{
+	return AddLocalOffset(FVector(X, Y, Z));
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetWorldRotation() const
+{
+	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
+	if (!SceneComponent)
+	{
+		return sol::nullopt;
+	}
+
+	// TODO: USceneComponent에 World Rotation getter가 추가되면 그 API로 교체한다.
+	return SceneComponent->GetRelativeRotation().ToVector();
+}
+
+bool FLuaComponentProxy::SetWorldRotation(const FVector& InRotation)
+{
+	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
+	if (!SceneComponent)
+	{
+		return false;
+	}
+
+	// TODO: USceneComponent에 World Rotation setter가 추가되면 그 API로 교체한다.
+	SceneComponent->SetRelativeRotation(InRotation);
+	return true;
+}
+
+bool FLuaComponentProxy::SetWorldRotationXYZ(float X, float Y, float Z)
+{
+	return SetWorldRotation(FVector(X, Y, Z));
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetLocalRotation() const
 {
 	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
 	if (!SceneComponent)
@@ -198,7 +276,7 @@ sol::optional<FVector> FLuaComponentProxy::GetRotation() const
 	return SceneComponent->GetRelativeRotation().ToVector();
 }
 
-bool FLuaComponentProxy::SetRotation(const FVector& InRotation)
+bool FLuaComponentProxy::SetLocalRotation(const FVector& InRotation)
 {
 	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
 	if (!SceneComponent)
@@ -210,12 +288,41 @@ bool FLuaComponentProxy::SetRotation(const FVector& InRotation)
 	return true;
 }
 
-bool FLuaComponentProxy::SetRotationXYZ(float X, float Y, float Z)
+bool FLuaComponentProxy::SetLocalRotationXYZ(float X, float Y, float Z)
 {
-	return SetRotation(FVector(X, Y, Z));
+	return SetLocalRotation(FVector(X, Y, Z));
 }
 
-sol::optional<FVector> FLuaComponentProxy::GetScale() const
+sol::optional<FVector> FLuaComponentProxy::GetWorldScale() const
+{
+	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
+	if (!SceneComponent)
+	{
+		return sol::nullopt;
+	}
+
+	return SceneComponent->GetWorldScale();
+}
+
+bool FLuaComponentProxy::SetWorldScale(const FVector& InScale)
+{
+	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
+	if (!SceneComponent)
+	{
+		return false;
+	}
+
+	// TODO: USceneComponent에 World Scale setter가 추가되면 그 API로 교체한다.
+	SceneComponent->SetRelativeScale(InScale);
+	return true;
+}
+
+bool FLuaComponentProxy::SetWorldScaleXYZ(float X, float Y, float Z)
+{
+	return SetWorldScale(FVector(X, Y, Z));
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetLocalScale() const
 {
 	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
 	if (!SceneComponent)
@@ -226,7 +333,7 @@ sol::optional<FVector> FLuaComponentProxy::GetScale() const
 	return SceneComponent->GetRelativeScale();
 }
 
-bool FLuaComponentProxy::SetScale(const FVector& InScale)
+bool FLuaComponentProxy::SetLocalScale(const FVector& InScale)
 {
 	USceneComponent* SceneComponent = Cast<USceneComponent>(GetComponent());
 	if (!SceneComponent)
@@ -238,9 +345,9 @@ bool FLuaComponentProxy::SetScale(const FVector& InScale)
 	return true;
 }
 
-bool FLuaComponentProxy::SetScaleXYZ(float X, float Y, float Z)
+bool FLuaComponentProxy::SetLocalScaleXYZ(float X, float Y, float Z)
 {
-	return SetScale(FVector(X, Y, Z));
+	return SetLocalScale(FVector(X, Y, Z));
 }
 
 bool FLuaComponentProxy::SetCollisionEnabled(bool bEnabled)
@@ -277,6 +384,187 @@ bool FLuaComponentProxy::IsOverlappingActor(const FLuaActorProxy& OtherActor) co
 	}
 
 	return PrimitiveComponent->IsOverlappingActor(TargetActor);
+}
+
+FString FLuaComponentProxy::GetShapeType() const
+{
+	UActorComponent* TargetComponent = GetComponent();
+	if (Cast<UBoxComponent>(TargetComponent))
+	{
+		return "Box";
+	}
+	if (Cast<USphereComponent>(TargetComponent))
+	{
+		return "Sphere";
+	}
+	if (Cast<UCapsuleComponent>(TargetComponent))
+	{
+		return "Capsule";
+	}
+
+	return "Unknown";
+}
+
+sol::optional<float> FLuaComponentProxy::GetShapeHalfHeight() const
+{
+	UActorComponent* TargetComponent = GetComponent();
+	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
+	{
+		return BoxComponent->GetBoxExtent().Z;
+	}
+	if (USphereComponent* SphereComponent = Cast<USphereComponent>(TargetComponent))
+	{
+		return SphereComponent->GetSphereRadius();
+	}
+	if (UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(TargetComponent))
+	{
+		return CapsuleComponent->GetCapsuleHalfHeight();
+	}
+
+	return sol::nullopt;
+}
+
+bool FLuaComponentProxy::SetShapeHalfHeight(float HalfHeight)
+{
+	const float SafeHalfHeight = (std::max)(1.0f, std::isfinite(HalfHeight) ? HalfHeight : 1.0f);
+	UActorComponent* TargetComponent = GetComponent();
+	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
+	{
+		FVector Extent = BoxComponent->GetBoxExtent();
+		Extent.Z = SafeHalfHeight;
+		BoxComponent->SetBoxExtent(Extent);
+		BoxComponent->MarkWorldBoundsDirty();
+		BoxComponent->MarkUpdateOverlaps();
+		return true;
+	}
+	if (USphereComponent* SphereComponent = Cast<USphereComponent>(TargetComponent))
+	{
+		SphereComponent->SetSphereRadius(SafeHalfHeight);
+		SphereComponent->MarkWorldBoundsDirty();
+		SphereComponent->MarkUpdateOverlaps();
+		return true;
+	}
+	if (UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(TargetComponent))
+	{
+		CapsuleComponent->SetCapsuleHalfHeight(SafeHalfHeight);
+		CapsuleComponent->MarkWorldBoundsDirty();
+		CapsuleComponent->MarkUpdateOverlaps();
+		return true;
+	}
+
+	return false;
+}
+
+sol::optional<float> FLuaComponentProxy::GetShapeRadius() const
+{
+	UActorComponent* TargetComponent = GetComponent();
+	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
+	{
+		const FVector Extent = BoxComponent->GetBoxExtent();
+		return (std::max)(Extent.X, Extent.Y);
+	}
+	if (USphereComponent* SphereComponent = Cast<USphereComponent>(TargetComponent))
+	{
+		return SphereComponent->GetSphereRadius();
+	}
+	if (UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(TargetComponent))
+	{
+		return CapsuleComponent->GetCapsuleRadius();
+	}
+
+	return sol::nullopt;
+}
+
+bool FLuaComponentProxy::SetShapeRadius(float Radius)
+{
+	const float SafeRadius = (std::max)(1.0f, std::isfinite(Radius) ? Radius : 1.0f);
+	UActorComponent* TargetComponent = GetComponent();
+	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
+	{
+		FVector Extent = BoxComponent->GetBoxExtent();
+		Extent.X = SafeRadius;
+		Extent.Y = SafeRadius;
+		BoxComponent->SetBoxExtent(Extent);
+		BoxComponent->MarkWorldBoundsDirty();
+		BoxComponent->MarkUpdateOverlaps();
+		return true;
+	}
+	if (USphereComponent* SphereComponent = Cast<USphereComponent>(TargetComponent))
+	{
+		SphereComponent->SetSphereRadius(SafeRadius);
+		SphereComponent->MarkWorldBoundsDirty();
+		SphereComponent->MarkUpdateOverlaps();
+		return true;
+	}
+	if (UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(TargetComponent))
+	{
+		CapsuleComponent->SetCapsuleRadius(SafeRadius);
+		CapsuleComponent->MarkWorldBoundsDirty();
+		CapsuleComponent->MarkUpdateOverlaps();
+		return true;
+	}
+
+	return false;
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetShapeExtent() const
+{
+	UActorComponent* TargetComponent = GetComponent();
+	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
+	{
+		return BoxComponent->GetBoxExtent();
+	}
+	if (USphereComponent* SphereComponent = Cast<USphereComponent>(TargetComponent))
+	{
+		const float Radius = SphereComponent->GetSphereRadius();
+		return FVector(Radius, Radius, Radius);
+	}
+	if (UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(TargetComponent))
+	{
+		return FVector(
+			CapsuleComponent->GetCapsuleRadius(),
+			CapsuleComponent->GetCapsuleRadius(),
+			CapsuleComponent->GetCapsuleHalfHeight());
+	}
+
+	return sol::nullopt;
+}
+
+bool FLuaComponentProxy::SetShapeExtent(const FVector& Extent)
+{
+	const FVector SafeExtent(
+		(std::max)(1.0f, std::isfinite(Extent.X) ? Extent.X : 1.0f),
+		(std::max)(1.0f, std::isfinite(Extent.Y) ? Extent.Y : 1.0f),
+		(std::max)(1.0f, std::isfinite(Extent.Z) ? Extent.Z : 1.0f)
+	);
+
+	UActorComponent* TargetComponent = GetComponent();
+	if (UBoxComponent* BoxComponent = Cast<UBoxComponent>(TargetComponent))
+	{
+		BoxComponent->SetBoxExtent(SafeExtent);
+		BoxComponent->MarkWorldBoundsDirty();
+		BoxComponent->MarkUpdateOverlaps();
+		return true;
+	}
+	if (USphereComponent* SphereComponent = Cast<USphereComponent>(TargetComponent))
+	{
+		const float Radius = (std::max)((std::max)(SafeExtent.X, SafeExtent.Y), SafeExtent.Z);
+		SphereComponent->SetSphereRadius(Radius);
+		SphereComponent->MarkWorldBoundsDirty();
+		SphereComponent->MarkUpdateOverlaps();
+		return true;
+	}
+	if (UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(TargetComponent))
+	{
+		const float Radius = (std::max)(SafeExtent.X, SafeExtent.Y);
+		CapsuleComponent->SetCapsuleHalfHeight((std::max)(SafeExtent.Z, Radius));
+		CapsuleComponent->SetCapsuleRadius(Radius);
+		CapsuleComponent->MarkWorldBoundsDirty();
+		CapsuleComponent->MarkUpdateOverlaps();
+		return true;
+	}
+
+	return false;
 }
 
 bool FLuaComponentProxy::SetStaticMesh(const FString& MeshPath)
@@ -543,4 +831,41 @@ bool FLuaComponentProxy::IsMoveDone() const
 	}
 
 	return false;
+}
+
+bool FLuaComponentProxy::SetBoxExtent(const FVector& Extent)
+{
+	UBoxComponent* BoxComponent = Cast<UBoxComponent>(GetComponent());
+	if (!BoxComponent)
+	{
+		return false;
+	}
+
+	const FVector SafeExtent(
+		std::max(1.0f, Extent.X),
+		std::max(1.0f, Extent.Y),
+		std::max(1.0f, Extent.Z)
+	);
+
+	BoxComponent->SetBoxExtent(SafeExtent);
+	BoxComponent->MarkTransformDirty();
+	BoxComponent->MarkWorldBoundsDirty();
+
+	return true;
+}
+
+bool FLuaComponentProxy::SetBoxExtentXYZ(float X, float Y, float Z)
+{
+	return SetBoxExtent(FVector(X, Y, Z));
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetBoxExtent() const
+{
+	UBoxComponent* BoxComponent = Cast<UBoxComponent>(GetComponent());
+	if (!BoxComponent)
+	{
+		return sol::nullopt;
+	}
+
+	return BoxComponent->GetBoxExtent();
 }

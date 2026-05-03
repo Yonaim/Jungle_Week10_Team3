@@ -1,7 +1,12 @@
 #include "Scripting/LuaActorProxy.h"
 
 #include "Component/ActorComponent.h"
+#include "Component/PrimitiveComponent.h"
 #include "Component/ScriptComponent.h"
+#include "Component/Shape/BoxComponent.h"
+#include "Component/Shape/CapsuleComponent.h"
+#include "Component/Shape/ShapeComponent.h"
+#include "Component/Shape/SphereComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Core/Log.h"
 #include "GameFramework/AActor.h"
@@ -13,6 +18,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <limits>
 
 struct FLuaActorProxy::FLuaActorTaskState
 {
@@ -122,6 +128,64 @@ namespace
 
 		return nullptr;
 	}
+
+	float GetShapeHalfHeight(const UPrimitiveComponent* PrimitiveComponent)
+	{
+		if (const UBoxComponent* BoxComponent = Cast<UBoxComponent>(PrimitiveComponent))
+		{
+			return BoxComponent->GetBoxExtent().Z;
+		}
+		if (const USphereComponent* SphereComponent = Cast<USphereComponent>(PrimitiveComponent))
+		{
+			return SphereComponent->GetSphereRadius();
+		}
+		if (const UCapsuleComponent* CapsuleComponent = Cast<UCapsuleComponent>(PrimitiveComponent))
+		{
+			return CapsuleComponent->GetCapsuleHalfHeight();
+		}
+
+		const FBoundingBox Bounds = PrimitiveComponent ? PrimitiveComponent->GetWorldBoundingBox() : FBoundingBox();
+		return Bounds.IsValid() ? Bounds.GetExtent().Z : 0.0f;
+	}
+
+	UPrimitiveComponent* GetPrimaryCollisionPrimitive(AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return nullptr;
+		}
+
+		if (UPrimitiveComponent* RootPrimitive = Cast<UPrimitiveComponent>(Actor->GetRootComponent()))
+		{
+			return RootPrimitive;
+		}
+
+		for (UPrimitiveComponent* PrimitiveComponent : Actor->GetPrimitiveComponents())
+		{
+			if (PrimitiveComponent && IsAliveObject(PrimitiveComponent) && PrimitiveComponent->IsCollisionEnabled())
+			{
+				return PrimitiveComponent;
+			}
+		}
+
+		return nullptr;
+	}
+
+	bool IsGroundCandidatePrimitive(const UPrimitiveComponent* PrimitiveComponent)
+	{
+		if (!PrimitiveComponent || !IsAliveObject(PrimitiveComponent) || !PrimitiveComponent->IsCollisionEnabled())
+		{
+			return false;
+		}
+
+		return PrimitiveComponent->IsA<UShapeComponent>() || PrimitiveComponent->IsA<UStaticMeshComponent>();
+	}
+
+	bool HasHorizontalOverlap(const FBoundingBox& A, const FBoundingBox& B, float SkinWidth)
+	{
+		return (A.Min.X - SkinWidth <= B.Max.X && A.Max.X + SkinWidth >= B.Min.X)
+			&& (A.Min.Y - SkinWidth <= B.Max.Y && A.Max.Y + SkinWidth >= B.Min.Y);
+	}
 }
 
 FLuaActorProxy::FLuaActorProxy()
@@ -176,13 +240,13 @@ bool FLuaActorProxy::HasTag(const FString& InTag) const
 	return TargetActor ? TargetActor->HasTag(InTag) : false;
 }
 
-FVector FLuaActorProxy::GetLocation() const
+FVector FLuaActorProxy::GetWorldLocation() const
 {
 	AActor* TargetActor = GetActor();
 	return TargetActor ? TargetActor->GetActorLocation() : FVector(0.0f, 0.0f, 0.0f);
 }
 
-void FLuaActorProxy::SetLocation(const FVector& InLocation)
+void FLuaActorProxy::SetWorldLocation(const FVector& InLocation)
 {
 	AActor* TargetActor = GetActor();
 	if (!TargetActor)
@@ -193,13 +257,18 @@ void FLuaActorProxy::SetLocation(const FVector& InLocation)
 	TargetActor->SetActorLocation(InLocation);
 }
 
-FVector FLuaActorProxy::GetRotation() const
+void FLuaActorProxy::SetWorldLocationXYZ(float X, float Y, float Z)
+{
+	SetWorldLocation(FVector(X, Y, Z));
+}
+
+FVector FLuaActorProxy::GetWorldRotation() const
 {
 	AActor* TargetActor = GetActor();
 	return TargetActor ? TargetActor->GetActorRotation().ToVector() : FVector(0.0f, 0.0f, 0.0f);
 }
 
-void FLuaActorProxy::SetRotation(const FVector& InRotation)
+void FLuaActorProxy::SetWorldRotation(const FVector& InRotation)
 {
 	AActor* TargetActor = GetActor();
 	if (!TargetActor)
@@ -211,13 +280,18 @@ void FLuaActorProxy::SetRotation(const FVector& InRotation)
 	TargetActor->SetActorRotation(InRotation);
 }
 
-FVector FLuaActorProxy::GetScale() const
+void FLuaActorProxy::SetWorldRotationXYZ(float X, float Y, float Z)
+{
+	SetWorldRotation(FVector(X, Y, Z));
+}
+
+FVector FLuaActorProxy::GetWorldScale() const
 {
 	AActor* TargetActor = GetActor();
 	return TargetActor ? TargetActor->GetActorScale() : FVector(1.0f, 1.0f, 1.0f);
 }
 
-void FLuaActorProxy::SetScale(const FVector& InScale)
+void FLuaActorProxy::SetWorldScale(const FVector& InScale)
 {
 	AActor* TargetActor = GetActor();
 	if (!TargetActor)
@@ -226,6 +300,11 @@ void FLuaActorProxy::SetScale(const FVector& InScale)
 	}
 
 	TargetActor->SetActorScale(InScale);
+}
+
+void FLuaActorProxy::SetWorldScaleXYZ(float X, float Y, float Z)
+{
+	SetWorldScale(FVector(X, Y, Z));
 }
 
 FVector FLuaActorProxy::GetVelocity() const
@@ -254,6 +333,94 @@ void FLuaActorProxy::AddWorldOffsetXYZ(float X, float Y, float Z)
 	AddWorldOffset(FVector(X, Y, Z));
 }
 
+FLuaGroundHit FLuaActorProxy::FindGround(float MaxDistance, float SkinWidth) const
+{
+	FLuaGroundHit Result;
+
+	AActor* TargetActor = GetActor();
+	if (!TargetActor)
+	{
+		return Result;
+	}
+
+	UWorld* World = TargetActor->GetWorld();
+	UPrimitiveComponent* PrimaryPrimitive = GetPrimaryCollisionPrimitive(TargetActor);
+	if (!World || !PrimaryPrimitive)
+	{
+		return Result;
+	}
+
+	const float SafeMaxDistance = (std::max)(0.0f, std::isfinite(MaxDistance) ? MaxDistance : 0.0f);
+	const float SafeSkinWidth = (std::max)(0.0f, std::isfinite(SkinWidth) ? SkinWidth : 0.0f);
+	const FVector ActorLocation = TargetActor->GetActorLocation();
+	const float FootZ = ActorLocation.Z - GetShapeHalfHeight(PrimaryPrimitive);
+
+	FBoundingBox QueryBounds = PrimaryPrimitive->GetWorldBoundingBox();
+	if (!QueryBounds.IsValid())
+	{
+		const float HalfHeight = GetShapeHalfHeight(PrimaryPrimitive);
+		QueryBounds = FBoundingBox(
+			ActorLocation - FVector(1.0f, 1.0f, HalfHeight),
+			ActorLocation + FVector(1.0f, 1.0f, HalfHeight));
+	}
+
+	float BestGroundZ = -std::numeric_limits<float>::infinity();
+	float BestDistance = std::numeric_limits<float>::max();
+	AActor* BestActor = nullptr;
+	UPrimitiveComponent* BestComponent = nullptr;
+
+	for (AActor* CandidateActor : World->GetActors())
+	{
+		if (!CandidateActor || !IsAliveObject(CandidateActor) || CandidateActor == TargetActor)
+		{
+			continue;
+		}
+
+		for (UPrimitiveComponent* CandidateComponent : CandidateActor->GetPrimitiveComponents())
+		{
+			if (!IsGroundCandidatePrimitive(CandidateComponent))
+			{
+				continue;
+			}
+
+			const FBoundingBox CandidateBounds = CandidateComponent->GetWorldBoundingBox();
+			if (!CandidateBounds.IsValid() || !HasHorizontalOverlap(QueryBounds, CandidateBounds, SafeSkinWidth))
+			{
+				continue;
+			}
+
+			const float CandidateTopZ = CandidateBounds.Max.Z;
+			const float Distance = FootZ - CandidateTopZ;
+			if (CandidateTopZ > FootZ + SafeSkinWidth || Distance > SafeMaxDistance)
+			{
+				continue;
+			}
+
+			if (CandidateTopZ > BestGroundZ)
+			{
+				BestGroundZ = CandidateTopZ;
+				BestDistance = Distance;
+				BestActor = CandidateActor;
+				BestComponent = CandidateComponent;
+			}
+		}
+	}
+
+	if (!BestActor || !BestComponent)
+	{
+		return Result;
+	}
+
+	Result.bHit = true;
+	Result.GroundZ = BestGroundZ;
+	Result.Distance = BestDistance;
+	Result.Location = FVector(ActorLocation.X, ActorLocation.Y, BestGroundZ);
+	Result.Normal = FVector(0.0f, 0.0f, 1.0f);
+	Result.Actor.Actor = ResolveAliveActor(BestActor);
+	Result.Component = MakeComponentProxy(BestComponent);
+	return Result;
+}
+
 void FLuaActorProxy::MoveTo(const FVector& Target)
 {
 	if (!TaskState)
@@ -270,7 +437,7 @@ void FLuaActorProxy::MoveTo(const FVector& Target)
 
 void FLuaActorProxy::MoveTo2D(float X, float Y)
 {
-	const FVector CurrentLocation = GetLocation();
+	const FVector CurrentLocation = GetWorldLocation();
 	MoveTo(FVector(X, Y, CurrentLocation.Z));
 }
 
@@ -281,7 +448,7 @@ void FLuaActorProxy::MoveTo3D(float X, float Y, float Z)
 
 void FLuaActorProxy::MoveBy(const FVector& Delta)
 {
-	MoveTo(GetLocation() + Delta);
+	MoveTo(GetWorldLocation() + Delta);
 }
 
 void FLuaActorProxy::MoveBy2D(float X, float Y)
@@ -305,7 +472,7 @@ void FLuaActorProxy::MoveToActor(const FLuaActorProxy& TargetActor)
 	TaskState->bMoveActive = true;
 	TaskState->bMoveToActor = true;
 	TaskState->MoveTargetActor = TargetActor.GetActor();
-	TaskState->MoveTargetLocation = TargetActor.GetLocation();
+	TaskState->MoveTargetLocation = TargetActor.GetWorldLocation();
 }
 
 void FLuaActorProxy::StopMove()
@@ -481,7 +648,7 @@ void FLuaActorProxy::TickMovement(float DeltaTime)
 
 void FLuaActorProxy::PrintLocation() const
 {
-	const FVector Location = GetLocation();
+	const FVector Location = GetWorldLocation();
 	UE_LOG("[Lua] Actor %u Location = (%.3f, %.3f, %.3f)", GetUUID(), Location.X, Location.Y, Location.Z);
 }
 
