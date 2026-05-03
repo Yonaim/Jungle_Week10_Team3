@@ -860,6 +860,25 @@ void FEditorMainPanel::RenderProjectSettingsWindow()
 	};
 	DrawClassDropdown("GameInstance Class", UGameInstance::StaticClass(), ProjectSettings.Game.GameInstanceClass);
 	DrawClassDropdown("Default GameMode Class", AGameModeBase::StaticClass(), ProjectSettings.Game.DefaultGameModeClass);
+
+	// Default Map
+	{
+		const TArray<FString> Scenes = FSceneSaveManager::GetSceneFileList();
+		const char* Preview = ProjectSettings.Game.DefaultScene.empty() ? "(none)" : ProjectSettings.Game.DefaultScene.c_str();
+		if (ImGui::BeginCombo("Default Map", Preview))
+		{
+			for (const FString& Stem : Scenes)
+			{
+				const bool bSelected = (ProjectSettings.Game.DefaultScene == Stem);
+				if (ImGui::Selectable(Stem.c_str(), bSelected))
+				{
+					ProjectSettings.Game.DefaultScene = Stem;
+				}
+				if (bSelected) ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+	}
 	ImGui::TextDisabled("(GameInstance class change requires restart)");
 
 	if (ImGui::Button("Save"))

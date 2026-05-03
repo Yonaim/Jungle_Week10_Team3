@@ -12,6 +12,8 @@ public:
 
 	APawnActor();
 
+	void BeginPlay() override;
+
 	void InitDefaultComponents();
 
 private:

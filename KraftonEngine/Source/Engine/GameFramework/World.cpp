@@ -28,13 +28,28 @@ UObject* UWorld::Duplicate(UObject* NewOuter) const
 		return nullptr;
 	}
 	NewWorld->SetOuter(NewOuter);
-	NewWorld->InitWorld();
 
-	for (AActor* Src : GetActors())
+	if (PersistentLevel)
 	{
-		if (!Src) continue;
-		Src->Duplicate(NewWorld);
+		NewWorld->PersistentLevel = Cast<ULevel>(PersistentLevel->Duplicate(NewWorld));
+		if (NewWorld->PersistentLevel)
+		{
+			NewWorld->PersistentLevel->SetWorld(NewWorld);
+			NewWorld->Levels.push_back(NewWorld->PersistentLevel);
+			NewWorld->CurrentLevel = NewWorld->PersistentLevel;
+
+			for (AActor* Actor : NewWorld->PersistentLevel->GetActors())
+			{
+				if (Actor)
+				{
+					NewWorld->InsertActorToOctree(Actor);
+				}
+			}
+			NewWorld->MarkWorldPrimitivePickingBVHDirty();
+		}
 	}
+
+	NewWorld->StreamingLevels = StreamingLevels;
 
 	NewWorld->PostDuplicate();
 	return NewWorld;
@@ -46,13 +61,28 @@ UWorld* UWorld::DuplicateAs(EWorldType InWorldType) const
 	if (!NewWorld) return nullptr;
 
 	NewWorld->SetWorldType(InWorldType);
-	NewWorld->InitWorld();
 
-	for (AActor* Src : GetActors())
+	if (PersistentLevel)
 	{
-		if (!Src) continue;
-		Src->Duplicate(NewWorld);
+		NewWorld->PersistentLevel = Cast<ULevel>(PersistentLevel->Duplicate(NewWorld));
+		if (NewWorld->PersistentLevel)
+		{
+			NewWorld->PersistentLevel->SetWorld(NewWorld);
+			NewWorld->Levels.push_back(NewWorld->PersistentLevel);
+			NewWorld->CurrentLevel = NewWorld->PersistentLevel;
+
+			for (AActor* Actor : NewWorld->PersistentLevel->GetActors())
+			{
+				if (Actor)
+				{
+					NewWorld->InsertActorToOctree(Actor);
+				}
+			}
+			NewWorld->MarkWorldPrimitivePickingBVHDirty();
+		}
 	}
+
+	NewWorld->StreamingLevels = StreamingLevels;
 
 	NewWorld->PostDuplicate();
 	return NewWorld;

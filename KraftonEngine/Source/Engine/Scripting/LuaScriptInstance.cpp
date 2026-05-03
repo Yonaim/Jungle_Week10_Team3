@@ -1000,22 +1000,32 @@ void FLuaScriptInstance::BindInputFunctions()
 
 	// 입력 바인딩은 문자열 기반 API로 노출해서
 	// Lua 스크립트가 엔진 키코드 상수를 직접 알 필요 없게 만든다.
+	// ImGui가 키보드를 캡처 중이면(text input 등) 게임 입력을 받지 않는다 — PIE에서 입력 분리.
 	Impl->Env.set_function("GetKey", [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? FInputManager::Get().IsKeyDown(VirtualKey) : false;
+		if (!TryParseVirtualKey(KeyName, VirtualKey)) return false;
+		FInputManager& Input = FInputManager::Get();
+		if (Input.IsGuiUsingKeyboard()) return false;
+		return Input.IsKeyDown(VirtualKey);
 	});
 
 	Impl->Env.set_function("GetKeyDown", [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? FInputManager::Get().IsKeyPressed(VirtualKey) : false;
+		if (!TryParseVirtualKey(KeyName, VirtualKey)) return false;
+		FInputManager& Input = FInputManager::Get();
+		if (Input.IsGuiUsingKeyboard()) return false;
+		return Input.IsKeyPressed(VirtualKey);
 	});
 
 	Impl->Env.set_function("GetKeyUp", [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		return TryParseVirtualKey(KeyName, VirtualKey) ? FInputManager::Get().IsKeyReleased(VirtualKey) : false;
+		if (!TryParseVirtualKey(KeyName, VirtualKey)) return false;
+		FInputManager& Input = FInputManager::Get();
+		if (Input.IsGuiUsingKeyboard()) return false;
+		return Input.IsKeyReleased(VirtualKey);
 	});
 
 	// Mouse Delta & Wheel
