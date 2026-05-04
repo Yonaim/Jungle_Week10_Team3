@@ -12,6 +12,7 @@
 #include "Object/ObjectFactory.h"
 #include "Platform/Paths.h"
 #include "Platform/ScriptPaths.h"
+#include "SimpleJSON/json.hpp"
 #include "Scripting/ScriptProperty.h"
 
 // Sol.hpp에 있는 Check 매크로 겹침 방지 목적 제거
@@ -44,6 +45,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iterator>
 #include "Input/InputAction.h"
@@ -484,6 +487,57 @@ namespace
 		}
 	}
 
+	std::filesystem::path ResolveDataFilePath(const FString& Path)
+	{
+		const std::filesystem::path InputPath(FPaths::ToWide(Path));
+		if (InputPath.is_absolute())
+		{
+			return InputPath.lexically_normal();
+		}
+
+		return (std::filesystem::path(FPaths::RootDir()) / InputPath).lexically_normal();
+	}
+
+	sol::object MakeLuaObjectFromJson(sol::state_view Lua, const json::JSON& Value)
+	{
+		using JsonClass = json::JSON::Class;
+
+		switch (Value.JSONType())
+		{
+		case JsonClass::Null:
+			return sol::make_object(Lua, sol::lua_nil);
+		case JsonClass::Boolean:
+			return sol::make_object(Lua, Value.ToBool());
+		case JsonClass::Integral:
+			return sol::make_object(Lua, Value.ToInt());
+		case JsonClass::Floating:
+			return sol::make_object(Lua, Value.ToFloat());
+		case JsonClass::String:
+			return sol::make_object(Lua, Value.ToString());
+		case JsonClass::Array:
+		{
+			sol::table Result = Lua.create_table();
+			int LuaIndex = 1;
+			for (auto& Entry : Value.ArrayRange())
+			{
+				Result[LuaIndex++] = MakeLuaObjectFromJson(Lua, Entry);
+			}
+			return sol::make_object(Lua, Result);
+		}
+		case JsonClass::Object:
+		{
+			sol::table Result = Lua.create_table();
+			for (auto& Pair : Value.ObjectRange())
+			{
+				Result[Pair.first] = MakeLuaObjectFromJson(Lua, Pair.second);
+			}
+			return sol::make_object(Lua, Result);
+		}
+		default:
+			return sol::make_object(Lua, sol::lua_nil);
+		}
+	}
+
 	sol::object FindLuaObjectByPath(sol::environment& Env, const FString& Path)
 	{
 		// Env["EnemyAI.start"]는 Lua table 내부 함수를 찾지 못한다.
@@ -591,6 +645,7 @@ bool FLuaScriptInstance::Initialize(UScriptComponent* InOwnerComponent)
 	BindPropertyFunctions();
 	BindSoundFunctions();
 	BindWorldFunctions();
+	BindDataFunctions();
 	return true;
 }
 
@@ -650,6 +705,7 @@ bool FLuaScriptInstance::LoadFromFile(const FString& InScriptPath)
 	BindPropertyFunctions();
 	BindSoundFunctions();
 	BindWorldFunctions();
+	BindDataFunctions();
 
 	FString ScriptSource;
 	FString FileReadError;
@@ -1522,6 +1578,39 @@ void FLuaScriptInstance::BindWorldFunctions()
 	Impl->Env.set_function("load_scene", [](const FString& SceneReference)
 	{
 		return GEngine ? GEngine->RequestSceneLoad(SceneReference) : false;
+	});
+}
+
+void FLuaScriptInstance::BindDataFunctions()
+{
+	if (!Impl)
+	{
+		return;
+	}
+
+	Impl->Env.set_function("load_json_file", [](const FString& FilePath)
+	{
+		sol::state_view Lua = FLuaScriptRuntime::Get().GetLuaState();
+		if (FilePath.empty())
+		{
+			return sol::make_object(Lua, sol::lua_nil);
+		}
+
+		const std::filesystem::path AbsolutePath = ResolveDataFilePath(FilePath);
+		std::ifstream File(AbsolutePath);
+		if (!File.is_open())
+		{
+			return sol::make_object(Lua, sol::lua_nil);
+		}
+
+		FString Content((std::istreambuf_iterator<char>(File)), std::istreambuf_iterator<char>());
+		if (Content.empty())
+		{
+			return sol::make_object(Lua, sol::lua_nil);
+		}
+
+		const json::JSON Root = json::JSON::Load(Content);
+		return MakeLuaObjectFromJson(Lua, Root);
 	});
 }
 

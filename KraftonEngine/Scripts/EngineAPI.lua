@@ -604,6 +604,10 @@ function play_sfx(soundPath, looping) end
 ---@return string
 function play_bgm(soundPath, looping) end
 
+---@param filePath string
+---@return table|nil
+function load_json_file(filePath) end
+
 ---@param handle string
 ---@return boolean
 function stop_audio_by_handle(handle) end
