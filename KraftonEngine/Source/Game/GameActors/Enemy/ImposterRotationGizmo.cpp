@@ -66,10 +66,10 @@ FRotator AImposterRotationGizmo::GetRotationOffset() {
 	switch (OffsetAxis)
 	{
 	case 0:
-		return FRotator(Angle, 0.0f, 0.0f);
-	case 1:
-		return FRotator(0.0f, Angle, 0.0f);
-	default:
 		return FRotator(0.0f, 0.0f, Angle);
+	case 1:
+		return FRotator(Angle, 0.0f, 0.0f);
+	default:
+		return FRotator(0.0f, Angle, 0.0f);
 	}
 }

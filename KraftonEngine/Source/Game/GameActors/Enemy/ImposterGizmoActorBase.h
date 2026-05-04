@@ -3,6 +3,8 @@
 #include "Scripting/LuaActorProxy.h"
 #include "Component/GizmoComponent.h"
 
+class UPrimitiveComponent;
+
 // "Captures" Actor (Obstacles). 
 // Obstacles could be captured and move, rotate, and scale arbitraily (in a way that does not coerce game over)
 class AImposterGizmoActorBase : public AGimmickActorBase {
@@ -22,6 +24,8 @@ public:
 protected:
 	virtual ~AImposterGizmoActorBase() = default;
 	bool HasAliveTarget() const;
+	void ApplyCapturedActorTint();
+	void ReleaseCapturedActorTint();
 
 protected:
 	UGizmoComponent* PreviewGizmo = nullptr; 
@@ -31,4 +35,7 @@ protected:
 	float	Elapsed			= 0.f;
 	bool	bTransforming   = false;
 	uint8	OffsetAxis		= 0;
+	bool	bCapturedActorWasSelected = false;
+	TArray<UPrimitiveComponent*> CapturedTintedComponents;
+	TArray<bool> CapturedTintedComponentWasSelected;
 };
