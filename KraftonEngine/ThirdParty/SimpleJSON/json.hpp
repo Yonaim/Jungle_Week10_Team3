@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <cmath>
-#include <cctype>
 #include <string>
 #include <deque>
 #include <map>
@@ -25,6 +24,10 @@ namespace json {
 	using std::is_floating_point;
 
 	namespace {
+		inline bool is_ascii_whitespace(char c) {
+			return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
+		}
+
 		string json_escape(const string& str) {
 			string output;
 			for (unsigned i = 0; i < str.length(); ++i)
@@ -445,7 +448,9 @@ namespace json {
 		JSON parse_next(const string&, size_t&);
 
 		void consume_ws(const string& str, size_t& offset) {
-			while (isspace(str[offset])) ++offset;
+			while (offset < str.size() && is_ascii_whitespace(str[offset])) {
+				++offset;
+			}
 		}
 
 		JSON parse_object(const string& str, size_t& offset) {
@@ -575,7 +580,7 @@ namespace json {
 					c = str[offset++];
 					if (c >= '0' && c <= '9')
 						exp_str += c;
-					else if (!isspace(c) && c != ',' && c != ']' && c != '}') {
+					else if (!is_ascii_whitespace(c) && c != ',' && c != ']' && c != '}') {
 						std::cerr << "ERROR: Number: Expected a number for exponent, found '" << c << "'\n";
 						return std::move(JSON::Make(JSON::Class::Null));
 					}
@@ -584,7 +589,7 @@ namespace json {
 				}
 				exp = std::stol(exp_str);
 			}
-			else if (!isspace(c) && c != ',' && c != ']' && c != '}') {
+			else if (!is_ascii_whitespace(c) && c != ',' && c != ']' && c != '}') {
 				std::cerr << "ERROR: Number: unexpected character '" << c << "'\n";
 				return std::move(JSON::Make(JSON::Class::Null));
 			}
@@ -628,6 +633,9 @@ namespace json {
 		JSON parse_next(const string& str, size_t& offset) {
 			char value;
 			consume_ws(str, offset);
+			if (offset >= str.size()) {
+				return JSON();
+			}
 			value = str[offset];
 			switch (value) {
 			case '[': return std::move(parse_array(str, offset));
@@ -646,6 +654,12 @@ namespace json {
 
 	inline JSON JSON::Load(const string& str) {
 		size_t offset = 0;
+		if (str.size() >= 3 &&
+			static_cast<unsigned char>(str[0]) == 0xEF &&
+			static_cast<unsigned char>(str[1]) == 0xBB &&
+			static_cast<unsigned char>(str[2]) == 0xBF) {
+			offset = 3;
+		}
 		return std::move(parse_next(str, offset));
 	}
 

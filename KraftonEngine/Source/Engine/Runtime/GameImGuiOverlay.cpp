@@ -1,6 +1,7 @@
 #include "Engine/Runtime/GameImGuiOverlay.h"
 
 #include "Engine/Runtime/WindowsWindow.h"
+#include "Core/AsciiUtils.h"
 #include "UI/SWindow.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Platform/Paths.h"
@@ -9,7 +10,6 @@
 #include "ImGui/imgui_impl_win32.h"
 #include "SimpleJSON/json.hpp"
 
-#include <cctype>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -205,7 +205,7 @@ void FGameImGuiOverlay::SanitizeNicknameBuffer()
 			continue;
 		}
 
-		Sanitized[WriteIndex++] = static_cast<char>(std::toupper(static_cast<unsigned char>(Character)));
+		Sanitized[WriteIndex++] = AsciiUtils::ToUpper(Character);
 		if (WriteIndex >= 6)
 		{
 			break;

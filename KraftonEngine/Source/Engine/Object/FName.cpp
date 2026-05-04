@@ -1,6 +1,7 @@
-﻿#include "FName.h"
+#include "FName.h"
+#include "Core/AsciiUtils.h"
+
 #include <algorithm>
-#include <cctype>
 
 // ============================================================
 // FNamePool
@@ -33,8 +34,7 @@ const FString& FNamePool::Resolve(uint32 Index) const
 // ============================================================
 static void ToLower(FString& Str)
 {
-    for (char& C : Str)
-        C = static_cast<char>(std::tolower(static_cast<unsigned char>(C)));
+	AsciiUtils::ToLowerInPlace(Str);
 }
 
 const FName FName::None = "Name_None";

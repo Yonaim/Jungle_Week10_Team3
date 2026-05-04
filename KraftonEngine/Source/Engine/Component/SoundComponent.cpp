@@ -1,12 +1,12 @@
 #include "Component/SoundComponent.h"
 
 #include "Audio/AudioManager.h"
+#include "Core/AsciiUtils.h"
 #include "Object/ObjectFactory.h"
 #include "Resource/ResourceManager.h"
 #include "Serialization/Archive.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cstring>
 
 IMPLEMENT_CLASS(USoundComponent, UActorComponent)
@@ -144,14 +144,7 @@ bool USoundComponent::IsPlaying() const
 bool USoundComponent::TryParseCategory(const FString& InValue, ESoundCategory& OutCategory)
 {
 	FString Lower = InValue;
-	std::transform(
-		Lower.begin(),
-		Lower.end(),
-		Lower.begin(),
-		[](unsigned char Character)
-		{
-			return static_cast<char>(std::tolower(Character));
-		});
+	AsciiUtils::ToLowerInPlace(Lower);
 
 	if (Lower == "sfx")
 	{

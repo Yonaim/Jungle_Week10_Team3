@@ -26,6 +26,7 @@
 #include "Component/StaticMeshComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Core/ClassTypes.h"
+#include "Core/AsciiUtils.h"
 #include "Core/PropertyTypes.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
@@ -45,7 +46,6 @@
 #include <Windows.h>
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cfloat>
 #include <commdlg.h>
 #include <cstring>
@@ -153,8 +153,7 @@ namespace
             }
 
             FString FileName = FPaths::ToUtf8(Entry.path().filename().wstring());
-            std::transform(FileName.begin(), FileName.end(), FileName.begin(),
-                [](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+            AsciiUtils::ToLowerInPlace(FileName);
             if (FileName != "nineslice.json")
             {
                 continue;
@@ -185,8 +184,7 @@ namespace
             }
 
             FString Extension = FPaths::ToUtf8(Entry.path().extension().wstring());
-            std::transform(Extension.begin(), Extension.end(), Extension.begin(),
-                [](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+            AsciiUtils::ToLowerInPlace(Extension);
             if (Extension != ".lua")
             {
                 continue;
@@ -399,13 +397,13 @@ namespace
     FString TrimWhitespace(const FString& Value)
     {
         size_t Start = 0;
-        while (Start < Value.size() && std::isspace(static_cast<unsigned char>(Value[Start])))
+        while (Start < Value.size() && AsciiUtils::IsSpace(Value[Start]))
         {
             ++Start;
         }
 
         size_t End = Value.size();
-        while (End > Start && std::isspace(static_cast<unsigned char>(Value[End - 1])))
+        while (End > Start && AsciiUtils::IsSpace(Value[End - 1]))
         {
             --End;
         }
@@ -421,7 +419,7 @@ namespace
         }
 
         const unsigned char First = static_cast<unsigned char>(Name[0]);
-        if (!(std::isalpha(First) || Name[0] == '_'))
+        if (!(AsciiUtils::IsAlpha(static_cast<char>(First)) || Name[0] == '_'))
         {
             return false;
         }
@@ -429,7 +427,7 @@ namespace
         for (char Character : Name)
         {
             const unsigned char Ch = static_cast<unsigned char>(Character);
-            if (!(std::isalnum(Ch) || Character == '_'))
+            if (!(AsciiUtils::IsAlnum(static_cast<char>(Ch)) || Character == '_'))
             {
                 return false;
             }
@@ -595,7 +593,7 @@ namespace
 
     FString ToLowerCopy(FString Value)
     {
-        std::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+        AsciiUtils::ToLowerInPlace(Value);
         return Value;
     }
 
@@ -1224,7 +1222,7 @@ FString FEditorDetailsWidget::GetDisplayPropertyLabel(const FString &RawName)
     FString Result;
     Result.reserve(RawName.size() + 8);
     size_t StartIndex = 0;
-    if (RawName.size() > 1 && RawName[0] == 'b' && std::isupper(static_cast<unsigned char>(RawName[1])))
+    if (RawName.size() > 1 && RawName[0] == 'b' && AsciiUtils::IsUpper(RawName[1]))
     {
         StartIndex = 1;
     }
@@ -1238,8 +1236,8 @@ FString FEditorDetailsWidget::GetDisplayPropertyLabel(const FString &RawName)
             continue;
         }
 
-        const bool bIsUpper = std::isupper(static_cast<unsigned char>(C)) != 0;
-        const bool bNeedsSpace = i > StartIndex && bIsUpper && Result.back() != ' ' && !std::isupper(static_cast<unsigned char>(RawName[i - 1]));
+        const bool bIsUpper = AsciiUtils::IsUpper(C);
+        const bool bNeedsSpace = i > StartIndex && bIsUpper && Result.back() != ' ' && !AsciiUtils::IsUpper(RawName[i - 1]);
         if (bNeedsSpace)
         {
             Result.push_back(' ');
@@ -1286,11 +1284,11 @@ static FString GetDisplayClassLabel(const UClass *Class)
     const bool bStartsWithUIAcronym = RawName.size() > 2
         && RawName[0] == 'U'
         && RawName[1] == 'I'
-        && std::isupper(static_cast<unsigned char>(RawName[2])) != 0;
+        && AsciiUtils::IsUpper(RawName[2]);
     if (!bStartsWithUIAcronym
         && RawName.size() > 1
         && (RawName[0] == 'U' || RawName[0] == 'A')
-        && std::isupper(static_cast<unsigned char>(RawName[1])) != 0)
+        && AsciiUtils::IsUpper(RawName[1]))
     {
         RawName.erase(RawName.begin());
     }
@@ -1317,11 +1315,11 @@ static FString GetDisplayClassLabel(const UClass *Class)
             continue;
         }
 
-        const bool bIsUpper = std::isupper(static_cast<unsigned char>(C)) != 0;
-        const bool bPrevIsUpper = i > 0 && std::isupper(static_cast<unsigned char>(RawName[i - 1])) != 0;
+        const bool bIsUpper = AsciiUtils::IsUpper(C);
+        const bool bPrevIsUpper = i > 0 && AsciiUtils::IsUpper(RawName[i - 1]);
         const bool bPrevIsLowerOrDigit = i > 0
-            && (std::islower(static_cast<unsigned char>(RawName[i - 1])) != 0 || std::isdigit(static_cast<unsigned char>(RawName[i - 1])) != 0);
-        const bool bNextIsLower = i + 1 < RawName.size() && std::islower(static_cast<unsigned char>(RawName[i + 1])) != 0;
+            && (AsciiUtils::IsLower(RawName[i - 1]) || AsciiUtils::IsDigit(RawName[i - 1]));
+        const bool bNextIsLower = i + 1 < RawName.size() && AsciiUtils::IsLower(RawName[i + 1]);
         const bool bNeedsSpace = i > 0
             && bIsUpper
             && Result.back() != ' '

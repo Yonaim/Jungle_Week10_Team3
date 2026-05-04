@@ -4,7 +4,26 @@
 namespace
 {
 	constexpr uint32 FallbackQuestionCodepoint = static_cast<uint32>('?');
+	constexpr uint32 NewLineCodepoint = static_cast<uint32>('\n');
+	constexpr uint32 CarriageReturnCodepoint = static_cast<uint32>('\r');
+	constexpr float MultiLineSpacingScale = 1.14f;
 	const FVector4 SolidMagentaColor(1.0f, 0.0f, 1.0f, 1.0f);
+
+	bool DecodeNextUtf8Codepoint(const uint8*& Ptr, const uint8* End, uint32& OutCodepoint)
+	{
+		if (Ptr >= End)
+		{
+			return false;
+		}
+
+		if (Ptr[0] < 0x80) { OutCodepoint = Ptr[0]; Ptr += 1; return true; }
+		if ((Ptr[0] & 0xE0) == 0xC0 && Ptr + 1 < End) { OutCodepoint = ((Ptr[0] & 0x1F) << 6) | (Ptr[1] & 0x3F); Ptr += 2; return true; }
+		if ((Ptr[0] & 0xF0) == 0xE0 && Ptr + 2 < End) { OutCodepoint = ((Ptr[0] & 0x0F) << 12) | ((Ptr[1] & 0x3F) << 6) | (Ptr[2] & 0x3F); Ptr += 3; return true; }
+		if ((Ptr[0] & 0xF8) == 0xF0 && Ptr + 3 < End) { OutCodepoint = ((Ptr[0] & 0x07) << 18) | ((Ptr[1] & 0x3F) << 12) | ((Ptr[2] & 0x3F) << 6) | (Ptr[3] & 0x3F); Ptr += 4; return true; }
+
+		++Ptr;
+		return false;
+	}
 }
 
 void FFontGeometry::Create(ID3D11Device* InDevice)
@@ -306,6 +325,7 @@ void FFontGeometry::AddScreenText(const FString& Text,
 		const float LetterSpacing = -0.5f * CharW;
 		const uint32 IdxBase = static_cast<uint32>(ScreenIndices.size());
 		float CursorX = ScreenX;
+		float CursorY = ScreenY;
 
 		auto PixelToClipX = [ViewportWidth](float X) -> float
 			{
@@ -322,11 +342,22 @@ void FFontGeometry::AddScreenText(const FString& Text,
 		while (LegacyPtr < LegacyEnd)
 		{
 			uint32 CP = 0;
-			if (LegacyPtr[0] < 0x80) { CP = LegacyPtr[0]; LegacyPtr += 1; }
-			else if ((LegacyPtr[0] & 0xE0) == 0xC0 && LegacyPtr + 1 < LegacyEnd) { CP = ((LegacyPtr[0] & 0x1F) << 6) | (LegacyPtr[1] & 0x3F); LegacyPtr += 2; }
-			else if ((LegacyPtr[0] & 0xF0) == 0xE0 && LegacyPtr + 2 < LegacyEnd) { CP = ((LegacyPtr[0] & 0x0F) << 12) | ((LegacyPtr[1] & 0x3F) << 6) | (LegacyPtr[2] & 0x3F); LegacyPtr += 3; }
-			else if ((LegacyPtr[0] & 0xF8) == 0xF0 && LegacyPtr + 3 < LegacyEnd) { CP = ((LegacyPtr[0] & 0x07) << 18) | ((LegacyPtr[1] & 0x3F) << 12) | ((LegacyPtr[2] & 0x3F) << 6) | (LegacyPtr[3] & 0x3F); LegacyPtr += 4; }
-			else { ++LegacyPtr; continue; }
+			if (!DecodeNextUtf8Codepoint(LegacyPtr, LegacyEnd, CP))
+			{
+				continue;
+			}
+
+			if (CP == CarriageReturnCodepoint)
+			{
+				continue;
+			}
+
+			if (CP == NewLineCodepoint)
+			{
+				CursorX = ScreenX;
+				CursorY += CharH * MultiLineSpacingScale;
+				continue;
+			}
 
 			FResolvedGlyph ResolvedGlyph;
 			if (!ResolveGlyph(Font, CP, ResolvedGlyph))
@@ -339,8 +370,8 @@ void FFontGeometry::AddScreenText(const FString& Text,
 
 			const float Left = PixelToClipX(CursorX);
 			const float Right = PixelToClipX(CursorX + CharW);
-			const float Top = PixelToClipY(ScreenY);
-			const float Bottom = PixelToClipY(ScreenY + CharH);
+			const float Top = PixelToClipY(CursorY);
+			const float Bottom = PixelToClipY(CursorY + CharH);
 			const uint32 Vi = static_cast<uint32>(ScreenVertices.size());
 			const FVector2 UV0 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U0, Glyph.V0);
 			const FVector2 UV1 = ResolvedGlyph.bDrawSolidMagenta ? FVector2(-1.0f, -1.0f) : FVector2(Glyph.U1, Glyph.V1);
@@ -374,6 +405,7 @@ void FFontGeometry::AddScreenText(const FString& Text,
 	const uint8* const End = Ptr + Text.size();
 
 	float CursorX = ScreenX;
+	float CursorY = ScreenY;
 	uint32 PrevCodepoint = 0;
 	bool bHasPrevCodepoint = false;
 
@@ -390,11 +422,24 @@ void FFontGeometry::AddScreenText(const FString& Text,
 	while (Ptr < End)
 	{
 		uint32 CP = 0;
-		if (Ptr[0] < 0x80) { CP = Ptr[0]; Ptr += 1; }
-		else if ((Ptr[0] & 0xE0) == 0xC0 && Ptr + 1 < End) { CP = ((Ptr[0] & 0x1F) << 6) | (Ptr[1] & 0x3F); Ptr += 2; }
-		else if ((Ptr[0] & 0xF0) == 0xE0 && Ptr + 2 < End) { CP = ((Ptr[0] & 0x0F) << 12) | ((Ptr[1] & 0x3F) << 6) | (Ptr[2] & 0x3F); Ptr += 3; }
-		else if ((Ptr[0] & 0xF8) == 0xF0 && Ptr + 3 < End) { CP = ((Ptr[0] & 0x07) << 18) | ((Ptr[1] & 0x3F) << 12) | ((Ptr[2] & 0x3F) << 6) | (Ptr[3] & 0x3F); Ptr += 4; }
-		else { ++Ptr; continue; }
+		if (!DecodeNextUtf8Codepoint(Ptr, End, CP))
+		{
+			continue;
+		}
+
+		if (CP == CarriageReturnCodepoint)
+		{
+			continue;
+		}
+
+		if (CP == NewLineCodepoint)
+		{
+			CursorX = ScreenX;
+			CursorY += SourceLineHeight * PixelScale * MultiLineSpacingScale;
+			PrevCodepoint = 0;
+			bHasPrevCodepoint = false;
+			continue;
+		}
 
 		if (bHasPrevCodepoint)
 		{
@@ -415,7 +460,7 @@ void FFontGeometry::AddScreenText(const FString& Text,
 		if (Glyph.Width > 0.0f && Glyph.Height > 0.0f)
 		{
 			const float LeftPx = CursorX + Glyph.XOffset * PixelScale;
-			const float TopPx = ScreenY + Glyph.YOffset * PixelScale;
+			const float TopPx = CursorY + Glyph.YOffset * PixelScale;
 			const float RightPx = LeftPx + Glyph.Width * PixelScale;
 			const float BottomPx = TopPx + Glyph.Height * PixelScale;
 

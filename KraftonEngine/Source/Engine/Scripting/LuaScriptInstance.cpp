@@ -3,6 +3,7 @@
 #include "Component/ScriptComponent.h"
 #include "Audio/AudioManager.h"
 #include "Core/Log.h"
+#include "Core/AsciiUtils.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Runtime/GameEngine.h"
 #include "GameFramework/AActor.h"
@@ -44,7 +45,6 @@
 #pragma endregion
 
 #include <algorithm>
-#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -331,14 +331,7 @@ namespace
 		}
 
 		FString UpperKey = KeyName;
-		std::transform(
-			UpperKey.begin(),
-			UpperKey.end(),
-			UpperKey.begin(),
-			[](unsigned char Character)
-			{
-				return static_cast<char>(std::toupper(Character));
-			});
+		AsciiUtils::ToUpperInPlace(UpperKey);
 
 		if (UpperKey.size() == 1)
 		{

@@ -5,13 +5,13 @@
 #include "Editor/UI/EditorAccentColor.h"
 #include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Core/AsciiUtils.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Resource/ResourceManager.h"
 #include "ImGui/imgui.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cfloat>
 #include <string>
 
@@ -334,10 +334,10 @@ bool FEditorPlaceActorsWidget::MatchesSearch(const FPlaceActorEntry& Entry) cons
 	}
 
 	FString Query = SearchBuffer;
-	std::transform(Query.begin(), Query.end(), Query.begin(), [](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+	AsciiUtils::ToLowerInPlace(Query);
 
 	FString SearchKey = Entry.SearchKey;
-	std::transform(SearchKey.begin(), SearchKey.end(), SearchKey.begin(), [](unsigned char C) { return static_cast<char>(std::tolower(C)); });
+	AsciiUtils::ToLowerInPlace(SearchKey);
 
 	return SearchKey.find(Query) != FString::npos;
 }

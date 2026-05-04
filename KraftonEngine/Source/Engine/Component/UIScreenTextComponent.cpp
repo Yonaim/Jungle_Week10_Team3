@@ -20,6 +20,9 @@ namespace
 {
 	const FVector4 SelectedUIOutlineColor(0.10f, 0.54f, 0.96f, -1.0f);
 	constexpr uint32 FallbackQuestionCodepoint = static_cast<uint32>('?');
+	constexpr uint32 NewLineCodepoint = static_cast<uint32>('\n');
+	constexpr uint32 CarriageReturnCodepoint = static_cast<uint32>('\r');
+	constexpr float MultiLineSpacingScale = 1.14f;
 
 	FVector2 GetViewportSize2D()
 	{
@@ -129,6 +132,22 @@ namespace
 		}
 
 		return 1.0f;
+	}
+
+	bool DecodeNextUtf8Codepoint(const uint8*& Ptr, const uint8* End, uint32& OutCodepoint)
+	{
+		if (Ptr >= End)
+		{
+			return false;
+		}
+
+		if (Ptr[0] < 0x80) { OutCodepoint = Ptr[0]; Ptr += 1; return true; }
+		if ((Ptr[0] & 0xE0) == 0xC0 && Ptr + 1 < End) { OutCodepoint = ((Ptr[0] & 0x1F) << 6) | (Ptr[1] & 0x3F); Ptr += 2; return true; }
+		if ((Ptr[0] & 0xF0) == 0xE0 && Ptr + 2 < End) { OutCodepoint = ((Ptr[0] & 0x0F) << 12) | ((Ptr[1] & 0x3F) << 6) | (Ptr[2] & 0x3F); Ptr += 3; return true; }
+		if ((Ptr[0] & 0xF8) == 0xF0 && Ptr + 3 < End) { OutCodepoint = ((Ptr[0] & 0x07) << 18) | ((Ptr[1] & 0x3F) << 12) | ((Ptr[2] & 0x3F) << 6) | (Ptr[3] & 0x3F); Ptr += 4; return true; }
+
+		++Ptr;
+		return false;
 	}
 }
 
@@ -245,13 +264,15 @@ bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float
 
 	const FFontResource* Font = FResourceManager::Get().FindFont(FontName);
 	const float Scale = FontSize;
-	float Width = 0.0f;
-	float Height = 23.0f * Scale;
+	float MaxWidth = 0.0f;
+	float CurrentLineWidth = 0.0f;
+	float LineHeight = 23.0f * Scale;
+	int32 LineCount = 1;
 
 	if (Font && Font->IsLoaded() && Font->bHasGlyphMetrics && Font->LineHeight > 0.0f)
 	{
 		const float PixelScale = (23.0f * Scale) / Font->LineHeight;
-		Height = Font->LineHeight * PixelScale;
+		LineHeight = Font->LineHeight * PixelScale;
 
 		const uint8* Ptr = reinterpret_cast<const uint8*>(Text.c_str());
 		const uint8* const End = Ptr + Text.size();
@@ -261,30 +282,75 @@ bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float
 		while (Ptr < End)
 		{
 			uint32 CP = 0;
-			if (Ptr[0] < 0x80) { CP = Ptr[0]; Ptr += 1; }
-			else if ((Ptr[0] & 0xE0) == 0xC0 && Ptr + 1 < End) { CP = ((Ptr[0] & 0x1F) << 6) | (Ptr[1] & 0x3F); Ptr += 2; }
-			else if ((Ptr[0] & 0xF0) == 0xE0 && Ptr + 2 < End) { CP = ((Ptr[0] & 0x0F) << 12) | ((Ptr[1] & 0x3F) << 6) | (Ptr[2] & 0x3F); Ptr += 3; }
-			else if ((Ptr[0] & 0xF8) == 0xF0 && Ptr + 3 < End) { CP = ((Ptr[0] & 0x07) << 18) | ((Ptr[1] & 0x3F) << 12) | ((Ptr[2] & 0x3F) << 6) | (Ptr[3] & 0x3F); Ptr += 4; }
-			else { ++Ptr; continue; }
+			if (!DecodeNextUtf8Codepoint(Ptr, End, CP))
+			{
+				continue;
+			}
+
+			if (CP == CarriageReturnCodepoint)
+			{
+				continue;
+			}
+
+			if (CP == NewLineCodepoint)
+			{
+				MaxWidth = (std::max)(MaxWidth, CurrentLineWidth);
+				CurrentLineWidth = 0.0f;
+				PrevCodepoint = 0;
+				bHasPrevCodepoint = false;
+				++LineCount;
+				continue;
+			}
 
 			if (bHasPrevCodepoint)
 			{
-				Width += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
+				CurrentLineWidth += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
 			}
 
-			Width += GetResolvedGlyphAdvance(Font, CP) * PixelScale;
+			CurrentLineWidth += GetResolvedGlyphAdvance(Font, CP) * PixelScale;
 
 			PrevCodepoint = CP;
 			bHasPrevCodepoint = true;
 		}
+
+		MaxWidth = (std::max)(MaxWidth, CurrentLineWidth);
 	}
 	else
 	{
-		Width = static_cast<float>(Text.size()) * (23.0f * Scale * 0.5f);
+		const float FallbackAdvance = 23.0f * Scale * 0.5f;
+		const uint8* Ptr = reinterpret_cast<const uint8*>(Text.c_str());
+		const uint8* const End = Ptr + Text.size();
+
+		while (Ptr < End)
+		{
+			uint32 CP = 0;
+			if (!DecodeNextUtf8Codepoint(Ptr, End, CP))
+			{
+				continue;
+			}
+
+			if (CP == CarriageReturnCodepoint)
+			{
+				continue;
+			}
+
+			if (CP == NewLineCodepoint)
+			{
+				MaxWidth = (std::max)(MaxWidth, CurrentLineWidth);
+				CurrentLineWidth = 0.0f;
+				++LineCount;
+				continue;
+			}
+
+			CurrentLineWidth += FallbackAdvance;
+		}
+
+		MaxWidth = (std::max)(MaxWidth, CurrentLineWidth);
 	}
 
-	OutWidth = (std::max)(1.0f, Width);
-	OutHeight = (std::max)(1.0f, Height);
+	OutWidth = (std::max)(1.0f, MaxWidth);
+	const float TotalHeight = LineHeight + (std::max)(0, LineCount - 1) * (LineHeight * MultiLineSpacingScale);
+	OutHeight = (std::max)(1.0f, TotalHeight);
 	const FVector2 ResolvedPosition = ResolveScreenPosition(FVector2(OutWidth, OutHeight));
 	OutX = ResolvedPosition.X;
 	OutY = ResolvedPosition.Y;

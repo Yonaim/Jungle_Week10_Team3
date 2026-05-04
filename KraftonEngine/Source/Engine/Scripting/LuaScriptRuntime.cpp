@@ -2,6 +2,7 @@
 
 #include "Component/ScriptComponent.h"
 #include "Core/EngineTypes.h"
+#include "Core/AsciiUtils.h"
 #include "Core/Log.h"
 #include "Core/Notification.h"
 #include "Object/Object.h"
@@ -37,7 +38,6 @@
 #pragma endregion
 
 #include <algorithm>
-#include <cctype>
 #include <filesystem>
 
 struct FLuaScriptRuntime::FRuntimeImpl
@@ -78,14 +78,7 @@ namespace
 		// DirectoryWatcher는 prefix 포함 상대 경로를 넘겨주므로 확장자만 보고 Lua 대상인지 빠르게 걸러낸다.
 		const std::filesystem::path FilePath(FPaths::ToWide(Path));
 		FString Extension = FPaths::ToUtf8(FilePath.extension().wstring());
-		std::transform(
-			Extension.begin(),
-			Extension.end(),
-			Extension.begin(),
-			[](unsigned char Character)
-			{
-				return static_cast<char>(std::tolower(Character));
-			});
+		AsciiUtils::ToLowerInPlace(Extension);
 		return Extension == ".lua";
 	}
 }
