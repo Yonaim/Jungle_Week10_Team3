@@ -63,7 +63,7 @@ void UGameViewportClient::SetPIEPossessedInputEnabled(bool bEnabled)
 
 void UGameViewportClient::SetCursorClipRect(const FRect& InViewportScreenRect)
 {
-	if (InViewportScreenRect.Width <= 1.0f || InViewportScreenRect.Height <= 1.0f)
+	if (InViewportScreenRect.Width <= 1.0f || InViewportScreenRect.Height <= 1.0f || !OwnerHWnd)
 	{
 		bHasCursorClipRect = false;
 		if (bCursorCaptured)
@@ -73,10 +73,18 @@ void UGameViewportClient::SetCursorClipRect(const FRect& InViewportScreenRect)
 		return;
 	}
 
-	CursorClipClientRect.left = static_cast<LONG>(InViewportScreenRect.X);
-	CursorClipClientRect.top = static_cast<LONG>(InViewportScreenRect.Y);
-	CursorClipClientRect.right = static_cast<LONG>(InViewportScreenRect.X + InViewportScreenRect.Width);
-	CursorClipClientRect.bottom = static_cast<LONG>(InViewportScreenRect.Y + InViewportScreenRect.Height);
+	// InViewportScreenRect는 ImGui의 Screen Space(전체 모니터 기준) 좌표
+	// 하지만 UGameViewportClient는 내부적으로 ClientRect를 사용하며, 
+	// 이후 ApplyCursorClip()이나 Tick()에서 ClientToScreen()을 한 번 더 호출
+	// 따라서 여기서 미리 Client 좌표로 변환해 두어야 이중 오프셋 적용을 막dma
+	POINT TopLeft = { static_cast<LONG>(InViewportScreenRect.X), static_cast<LONG>(InViewportScreenRect.Y) };
+	::ScreenToClient(OwnerHWnd, &TopLeft);
+
+	CursorClipClientRect.left = TopLeft.x;
+	CursorClipClientRect.top = TopLeft.y;
+	CursorClipClientRect.right = TopLeft.x + static_cast<LONG>(InViewportScreenRect.Width);
+	CursorClipClientRect.bottom = TopLeft.y + static_cast<LONG>(InViewportScreenRect.Height);
+
 	bHasCursorClipRect = CursorClipClientRect.right > CursorClipClientRect.left
 		&& CursorClipClientRect.bottom > CursorClipClientRect.top;
 

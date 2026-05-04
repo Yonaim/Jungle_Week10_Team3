@@ -339,8 +339,13 @@ namespace
 
 		if (UpperKey.size() == 1)
 		{
-			OutVirtualKey = static_cast<unsigned char>(UpperKey[0]);
-			return true;
+			unsigned char KeyChar = static_cast<unsigned char>(UpperKey[0]);
+			// A-Z or 0-9
+			if ((KeyChar >= 'A' && KeyChar <= 'Z') || (KeyChar >= '0' && KeyChar <= '9'))
+			{
+				OutVirtualKey = KeyChar;
+				return true;
+			}
 		}
 
 		if (UpperKey == "SPACE")
