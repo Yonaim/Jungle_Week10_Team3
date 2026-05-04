@@ -663,7 +663,10 @@ void UWorld::ProcessOverlapEvents() {
 				ResolvePenetration(Shape, Other, Info.HitResult);
 				Other->MarkUpdateOverlaps();
 			}
-			else if (Other->GetOverlapBehaviour() == EOverlapBehaviour::Overlap) {
+			// 한쪽이라도 Overlap이면 overlap pair를 만듭니다.
+			// 예: ItemTrigger=Overlap, PlayerCollider=Hit 조합에서도 item 쪽 Lua OnBeginOverlap이 반드시 호출되어야 합니다.
+			else if (Shape->GetOverlapBehaviour() == EOverlapBehaviour::Overlap ||
+				Other->GetOverlapBehaviour() == EOverlapBehaviour::Overlap) {
 				// Overlap
 				FOverlapInfo Info;
 				Info.HitResult.bBlocking = false;
@@ -671,6 +674,12 @@ void UWorld::ProcessOverlapEvents() {
 				if (FCollisionDispatcher::Get().CheckCollision(Shape, Other, Info)) {
 					Shape->BeginComponentOverlap(Info, true);
 					Shape->ShapeColor = FColor(255, 0, 0);
+
+					// 기존 코드는 Shape 기준으로만 이벤트를 보냈습니다.
+					// reverse overlap을 함께 등록해야 Other owner의 ScriptComponent도 selfComp=Other 기준으로 begin/end pair를 유지할 수 있습니다.
+					FOverlapInfo ReverseInfo = Info;
+					ReverseInfo.HitResult.Component = Shape;
+					Other->BeginComponentOverlap(ReverseInfo, true);
 				}
 				Other->MarkUpdateOverlaps();
 			}

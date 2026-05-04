@@ -11,6 +11,9 @@ local GameManager = {
 
     state = "Ready",
     score = 0,
+    -- distance/time 기반 점수는 Tick에서 매 프레임 재계산됩니다.
+    -- 아이템 점수를 score에 직접 더하기만 하면 다음 Tick에서 사라지므로 bonus_score를 따로 누적합니다.
+    bonus_score = 0,
     distance = 0.0,
     elapsed_time = 0.0,
     score_log_timer = 0.0,
@@ -29,6 +32,7 @@ end
 function GameManager.StartGame()
     GameManager.state = GameManager.State.Running
     GameManager.score = 0
+    GameManager.bonus_score = 0
     GameManager.distance = 0.0
     GameManager.elapsed_time = 0.0
     GameManager.score_log_timer = 0.0
@@ -50,7 +54,7 @@ function GameManager.Tick(dt, moved_distance)
     GameManager.score = math.floor(
         GameManager.distance * Config.score.distance_weight
         + GameManager.elapsed_time * Config.score.survival_time_weight
-    )
+    ) + GameManager.bonus_score
 
     GameManager.score_log_timer = GameManager.score_log_timer + safe_dt
     if GameManager.score_log_timer >= score_log_interval() then
@@ -61,6 +65,19 @@ function GameManager.Tick(dt, moved_distance)
             " elapsed_time=" .. tostring(GameManager.elapsed_time)
         )
     end
+end
+
+function GameManager.AddScore(amount, reason)
+    -- 아이템/보너스 점수 공통 진입점입니다.
+    -- score와 bonus_score를 같이 갱신해서 즉시 UI/log에 보이고, 다음 Tick 재계산 후에도 유지되게 합니다.
+    local safe_amount = amount or 0
+    GameManager.bonus_score = GameManager.bonus_score + safe_amount
+    GameManager.score = GameManager.score + safe_amount
+    log(
+        "[GameManager] AddScore amount=" .. tostring(safe_amount) ..
+        " score=" .. tostring(GameManager.score) ..
+        " reason=" .. tostring(reason or "Unknown")
+    )
 end
 
 function GameManager.GameOver(reason)
