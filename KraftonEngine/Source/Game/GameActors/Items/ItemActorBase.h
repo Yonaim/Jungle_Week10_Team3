@@ -6,11 +6,8 @@ class UBillboardComponent;
 class UBoxComponent;
 class UPrimitiveComponent;
 class UScriptComponent;
-class UStaticMeshComponent;
-class UTextRenderComponent;
 
-// 아이템 공통 동작을 C++/Lua 양쪽에서 같은 이름으로 다루기 위한 플래그입니다
-// C++는 안전한 기본 구조와 충돌 설정을 담당하고, 실제 효과/점수/소멸 로직은 Lua에서 선택적으로 사용합니다
+// Item 동작 flag -> Lua 쪽에도 동시에 존재. 같이 수정해줘야함.
 enum class EItemFeatureFlags : uint32
 {
 	None = 0,
@@ -23,8 +20,6 @@ enum class EItemFeatureFlags : uint32
 	FloatingMotion = 1 << 6,    // 향후 떠다니는 연출을 위한 예약 플래그입니다.
 	RotatingMotion = 1 << 7,    // 향후 회전 연출을 위한 예약 플래그입니다.
 	DebugLog = 1 << 8,          // Lua item script에서 디버그 로그를 켭니다.
-	InteractOnClick = 1 << 9,   // 향후 click 상호작용 아이템을 위한 확장 지점입니다.
-	InteractOnKey = 1 << 10,    // 향후 key press 상호작용 아이템을 위한 확장 지점입니다.
 };
 
 // 아이템별로 반복되는 값을 한곳에 묶어 둡니다.
@@ -40,9 +35,9 @@ struct FItemInteractionConfig
 	bool bDestroyOnPickup = true;
 };
 
-// 범용 아이템 Actor의 C++ 기반 클래스입니다.
-// Trigger는 overlap 판정만 담당하고, visual/presentation component는 collision을 끈 상태로 자유롭게 조합합니다.
-// 아이템별 개성은 ItemBase.lua를 require/override하는 Lua script에서 구현합니다.
+// Item Actor 기반 클래스
+// Trigger: overlap / 아이템 표시: Billboard component
+// Item 별 동작 흐름은 Lua script에서 구현
 class AItemActorBase : public AActor
 {
 public:
@@ -50,33 +45,23 @@ public:
 
 	AItemActorBase();
 
+	// Life Cycle
 	void BeginPlay() override;
 	void Tick(float DeltaTime) override;
 	void EndPlay() override;
 	void Serialize(FArchive& Ar) override;
 
+	// Item Getter
 	UPrimitiveComponent* GetItemTrigger() const;
 	UBoxComponent* GetItemTriggerBox() const { return ItemTrigger; }
 	UScriptComponent* GetItemScript() const { return ItemScript; }
-	const TArray<UPrimitiveComponent*>& GetPresentationComponents() const { return PresentationComponents; }
+	UBillboardComponent* GetItemImage() const { return ItemImage; }
 
 	void SetItemScript(const FString& ScriptPath);
 
-	UStaticMeshComponent* AddStaticMeshPresentation(const FString& StaticMeshPath = "None");
-	UTextRenderComponent* AddTextPresentation(const FString& Text = "Item");
 	UBillboardComponent* AddBillboardPresentation(const FString& TexturePath = "None");
 
-	// AddPresentation Helper
-	// 등록된 presentation component는 자동으로 trigger에 attach, collision/overlap이 비활성화됩니다.
-	template<typename T>
-	T* AddPresentationComponent()
-	{
-		static_assert(std::is_base_of_v<UPrimitiveComponent, T>, "Presentation component must derive from UPrimitiveComponent");
-		T* Component = AddComponent<T>();
-		RegisterPresentationComponent(Component);
-		return Component;
-	}
-
+	// Item Flag 관련
 	bool HasFeature(EItemFeatureFlags Feature) const;
 	void SetFeatureEnabled(EItemFeatureFlags Feature, bool bEnabled);
 	void AddFeature(EItemFeatureFlags Feature);
@@ -91,17 +76,13 @@ public:
 	bool IsTriggerEnabled() const;
 
 protected:
-	void RegisterPresentationComponent(UPrimitiveComponent* Component);
-	void ApplyPresentationDefaults(UPrimitiveComponent* Component);
+	void ApplyBillboardDefaults();
 	void ApplyTriggerDefaults();
 
-	// 실제 overlap 판정을 담당합니다.
+	
 	UBoxComponent* ItemTrigger = nullptr;
-	// ItemBase.lua, LogItem.lua/CrashDumpItem.lua/EffectItem.lua 같은 item별 script로 교체 가능
-	// 상속받은 페이지에서 접근해서 수정 (아이템 공통 속성)
 	UScriptComponent* ItemScript = nullptr;
-	// StaticMesh/Text/Billboard 등 표시용 component 추적 (충돌X)
-	TArray<UPrimitiveComponent*> PresentationComponents;
+	UBillboardComponent* ItemImage = nullptr;
 
 	FItemInteractionConfig InteractionConfig;
 

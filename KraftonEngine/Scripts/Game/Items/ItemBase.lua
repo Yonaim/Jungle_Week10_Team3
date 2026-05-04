@@ -31,10 +31,6 @@ local DefaultFeatures = {
     RotatingMotion = false,
     -- DebugLog는 아이템 pickup 흐름을 콘솔로 확인할 때 켭니다.
     DebugLog = false,
-    -- InteractOnClick은 클릭 상호작용이 필요한 아이템용 예비 플래그입니다.
-    InteractOnClick = false,
-    -- InteractOnKey는 키 입력 상호작용이 필요한 아이템용 예비 플래그입니다.
-    InteractOnKey = false,
 }
 
 local function merge_features(features)

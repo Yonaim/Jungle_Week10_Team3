@@ -1,13 +1,9 @@
-﻿#include "GameFramework/ItemActorBase.h"
+﻿#include "ItemActorBase.h"
 
 #include "Component/BillboardComponent.h"
-#include "Component/PrimitiveComponent.h"
 #include "Component/ScriptComponent.h"
-#include "Component/StaticMeshComponent.h"
-#include "Component/TextRenderComponent.h"
 #include "Component/Shape/BoxComponent.h"
 #include "Engine/Runtime/Engine.h"
-#include "Mesh/ObjManager.h"
 #include "Serialization/Archive.h"
 #include "Texture/Texture2D.h"
 
@@ -23,6 +19,9 @@ AItemActorBase::AItemActorBase()
 	ApplyTriggerDefaults();
 	SetRootComponent(ItemTrigger);
 
+	ItemImage = AddComponent<UBillboardComponent>();
+	ApplyBillboardDefaults();
+
 	// 기본 script만 붙여도 overlap pickup 흐름을 탈 수 있게 합니다.
 	// item별 동작은 SetItemScript("Scripts/Game/Items/LogItem.lua")처럼 교체해서 확장합니다.
 	ItemScript = AddComponent<UScriptComponent>();
@@ -31,8 +30,9 @@ AItemActorBase::AItemActorBase()
 
 void AItemActorBase::BeginPlay()
 {
-	// 저장/복제/스크립트 수정 과정에서 trigger 설정이 바뀌었을 수 있으므로 BeginPlay 직전에 한 번 더 보정합니다.
+	// 저장/복제/스크립트 수정 과정에서 설정이 바뀌었을 수 있으므로 BeginPlay 직전에 한 번 더 보정합니다.
 	ApplyTriggerDefaults();
+	ApplyBillboardDefaults();
 	Super::BeginPlay();
 }
 
@@ -75,42 +75,24 @@ void AItemActorBase::SetItemScript(const FString& ScriptPath)
 	}
 }
 
-UStaticMeshComponent* AItemActorBase::AddStaticMeshPresentation(const FString& StaticMeshPath)
-{
-	// StaticMesh는 표시 전용입니다. 실제 pickup 판정은 ItemTrigger가 담당합니다.
-	UStaticMeshComponent* Component = AddPresentationComponent<UStaticMeshComponent>();
-	if (Component && !StaticMeshPath.empty() && StaticMeshPath != "None" && GEngine)
-	{
-		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-		Component->SetStaticMesh(FObjManager::LoadObjStaticMesh(StaticMeshPath, Device));
-	}
-	return Component;
-}
-
-UTextRenderComponent* AItemActorBase::AddTextPresentation(const FString& Text)
-{
-	// 텍스트만 있는 아이템도 trigger 기반으로 동작할 수 있도록 presentation helper로 분리
-	UTextRenderComponent* Component = AddPresentationComponent<UTextRenderComponent>();
-	if (Component)
-	{
-		Component->SetText(Text);
-	}
-	return Component;
-}
-
 UBillboardComponent* AItemActorBase::AddBillboardPresentation(const FString& TexturePath)
 {
-	// Billboard sprite 아이템도 static mesh와 같은 방식으로 추가합니다.
-	UBillboardComponent* Component = AddPresentationComponent<UBillboardComponent>();
-	if (Component && !TexturePath.empty() && TexturePath != "None" && GEngine)
+	if (!ItemImage)
+	{
+		ItemImage = AddComponent<UBillboardComponent>();
+	}
+
+	ApplyBillboardDefaults();
+
+	if (ItemImage && !TexturePath.empty() && TexturePath != "None" && GEngine)
 	{
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 		if (UTexture2D* Texture = UTexture2D::LoadFromFile(TexturePath, Device))
 		{
-			Component->SetTexture(Texture);
+			ItemImage->SetTexture(Texture);
 		}
 	}
-	return Component;
+	return ItemImage;
 }
 
 bool AItemActorBase::HasFeature(EItemFeatureFlags Feature) const
@@ -153,33 +135,19 @@ bool AItemActorBase::IsTriggerEnabled() const
 	return ItemTrigger && ItemTrigger->IsCollisionEnabled();
 }
 
-void AItemActorBase::RegisterPresentationComponent(UPrimitiveComponent* Component)
+void AItemActorBase::ApplyBillboardDefaults()
 {
-	if (!Component)
+	if (!ItemImage)
 	{
 		return;
 	}
 
-	// presentation component가 overlap 후보가 되면 아이템 pickup이 중복/오동작 가능성 존재
-	// 등록 시점에 collision을 끄고, trigger 아래에 붙여 transform만 따라가게 진행
-	ApplyPresentationDefaults(Component);
-	PresentationComponents.push_back(Component);
-	if (ItemTrigger && Component != ItemTrigger)
+	ItemImage->SetCollisionEnabled(false);
+	ItemImage->SetGenerateOverlapEvents(false);
+	if (ItemTrigger)
 	{
-		Component->AttachToComponent(ItemTrigger);
+		ItemImage->AttachToComponent(ItemTrigger);
 	}
-}
-
-void AItemActorBase::ApplyPresentationDefaults(UPrimitiveComponent* Component)
-{
-	if (!Component)
-	{
-		return;
-	}
-
-	// visual/presentation component는 절대 item pickup 판정에 참여하지 않습니다.
-	Component->SetCollisionEnabled(false);
-	Component->SetGenerateOverlapEvents(false);
 }
 
 void AItemActorBase::ApplyTriggerDefaults()
