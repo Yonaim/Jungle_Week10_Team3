@@ -4,6 +4,7 @@
 #include "Scripting/LuaScriptRuntime.h"
 
 #include <memory>
+#include <functional>
 
 class AActor;
 class UScriptComponent;

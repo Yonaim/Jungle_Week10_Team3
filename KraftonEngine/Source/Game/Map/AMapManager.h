@@ -40,6 +40,7 @@ private:
 	int32 StraightRunLength = 0;
 	int32 MinStraightsBetweenTurns = 2;
 	int32 TargetChunkCount = 6;
+	float ChunkBuggedRate	 = 0.1f;
 	float ObstacleSpawnRate  = 0.2f;
 	float GimmickSpawnChance = 0.25f;
 	float GimmickTargetSearchDistance = 60.0f;

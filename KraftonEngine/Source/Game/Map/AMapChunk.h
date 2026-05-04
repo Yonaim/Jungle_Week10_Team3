@@ -12,6 +12,7 @@ public:
 	void BeginPlay() override;
 	void EndPlay()	 override;
 	void InitFromTemplate(const FMapChunkTemplate& InTemplate, float ObstacleFillRate);
+	void SetChunkBuggedRate(float InRate) { ChunkBuggedRate = InRate; }
 
 	FVector    GetExitLocation() const;
 	FRotator   GetExitRotation() const;
@@ -33,6 +34,7 @@ private:
 private:
 	FMapChunkTemplate     Template;
 	float                 ObstacleFillRate = 0.f;
+	float				  ChunkBuggedRate  = 0.1f;
 	USceneComponent*      ChunkRoot = nullptr;
 	TArray<UStaticMeshComponent*> FloorMeshes;
 	TArray<AObstacleActorBase*> SpawnedObstacles;

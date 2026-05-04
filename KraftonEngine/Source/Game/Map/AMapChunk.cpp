@@ -17,6 +17,11 @@
 
 IMPLEMENT_CLASS(AMapChunk, AActor)
 
+namespace {  
+	// idx 0 = "Bugged", idx 1 = "Normal"
+	constexpr const char* Materials[2] = { "Default.Material.BasicShape", "Sample.Material.BlueGrid" };  
+}
+
 void AMapChunk::BeginPlay() {
 	Super::BeginPlay();
 }
@@ -208,7 +213,7 @@ static void ApplyBasicShapeMaterial(UStaticMeshComponent* MeshComponent, UStatic
 		return;
 	}
 
-	const FString MaterialPath = FResourceManager::Get().ResolvePath(FName("Default.Material.BasicShape"));
+	const FString MaterialPath = FResourceManager::Get().ResolvePath(FName("Sample.Material.BlueGrid"));
 	UMaterial* Material = FMaterialManager::Get().GetOrCreateMaterial(MaterialPath);
 	if (!Material)
 	{
