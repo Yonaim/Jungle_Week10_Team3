@@ -1,6 +1,8 @@
 ﻿#include "AMapManager.h"
 #include "GameFramework/World.h"
 #include "Game/Map/MapRandom.h"
+#include "Game/GameActors/Obstacle/ObstacleActorBase.h"
+#include "Object/Object.h"
 
 IMPLEMENT_CLASS(AMapManager, AActor)
 
@@ -38,8 +40,11 @@ void AMapManager::Tick(float DeltaTime) {
 		FVector ToPlayer = Player->GetActorLocation() - Front->GetExitLocation();
 		float ExitProgress = ToPlayer.Dot(ExitQuat.GetForwardVector());
 
-		if (ExitProgress > 0.0f)
+		if (ExitProgress > 10.0f)
+		{
 			DespawnFrontChunk();
+			TrySpawnGimmickAtChunkEnd();
+		}
 	}
 }
 
@@ -64,6 +69,22 @@ void AMapManager::BuildTemplateLibrary() {
 			Template.ObstacleSlotDecisions.push_back(Slot);
 		}
 	};
+
+	auto AddNonBarrierDecisionSlots = [](FMapChunkTemplate& Template, float StartX, float EndX, float Step)
+		{
+			for (float X = StartX; X <= EndX; X += Step)
+			{
+				FDecisionSlot Slot = {};
+				Slot.X = X;
+				for (int32 DecisionIndex = 0; DecisionIndex < static_cast<int32>(EObstacleDecision::Count); ++DecisionIndex)
+				{
+					EObstacleDecision Decision = static_cast<EObstacleDecision>(DecisionIndex);
+					if (Decision == EObstacleDecision::MustJump || Decision == EObstacleDecision::MustSlide)
+						Slot.AllowedDecisions.push_back(static_cast<EObstacleDecision>(DecisionIndex));
+				}
+				Template.ObstacleSlotDecisions.push_back(Slot);
+			}
+		};
 
 	//-----------------------------------------------------------------
 	// Start
@@ -221,6 +242,9 @@ void AMapManager::BuildTemplateLibrary() {
 	StraightWithOneLaneL3.LocalRotation = FRotator(0, 0, 0);
 	StraightWithOneLaneL3.Scale			= FVector(StraightWithOneLaneL.Length / 8, ChunkWidth, 1);
 	StraightWithOneLaneL.FloorBlockInfos.push_back(StraightWithOneLaneL3);
+
+	// Obstacles
+	AddNonBarrierDecisionSlots(StraightWithOneLaneL, 2.f, StraightWithOneLaneL.Length - 2.f, 2.f);
 	Templates.push_back(StraightWithOneLaneL);
 
 	//-----------------------------------------------------------------
@@ -250,6 +274,9 @@ void AMapManager::BuildTemplateLibrary() {
 	StraightWithOneLaneM3.LocalRotation = FRotator(0, 0, 0);
 	StraightWithOneLaneM3.Scale = FVector(StraightWithOneLaneM.Length / 8, ChunkWidth, 1);
 	StraightWithOneLaneM.FloorBlockInfos.push_back(StraightWithOneLaneM3);
+
+	// Obstacles
+	AddNonBarrierDecisionSlots(StraightWithOneLaneM, 2.f, StraightWithOneLaneL.Length - 2.f, 2.f);
 	Templates.push_back(StraightWithOneLaneM);
 
 	//-----------------------------------------------------------------
@@ -279,6 +306,9 @@ void AMapManager::BuildTemplateLibrary() {
 	StraightWithOneLaneR3.LocalRotation = FRotator(0, 0, 0);
 	StraightWithOneLaneR3.Scale = FVector(StraightWithOneLaneR.Length / 8, ChunkWidth, 1);
 	StraightWithOneLaneR.FloorBlockInfos.push_back(StraightWithOneLaneR3);
+
+	//Obstacles
+	AddNonBarrierDecisionSlots(StraightWithOneLaneM, 2.f, StraightWithOneLaneL.Length - 2.f, 2.f);
 	Templates.push_back(StraightWithOneLaneR);
 }
 
@@ -308,6 +338,52 @@ void AMapManager::DespawnFrontChunk() {
 	AMapChunk* Front = ActiveChunks.front();
 	GetWorld()->DestroyActor(Front);
 	ActiveChunks.erase(ActiveChunks.begin());
+}
+
+void AMapManager::TrySpawnGimmickAtChunkEnd()
+{
+	if (!Player)
+	{
+		return;
+	}
+
+	TArray<AObstacleActorBase*> CandidateObstacles = GatherNearbyObstacleCandidates();
+	GimmickManager.TrySpawnRandomGimmick(GetWorld(), CandidateObstacles, GimmickSpawnChance);
+}
+
+TArray<AObstacleActorBase*> AMapManager::GatherNearbyObstacleCandidates() const
+{
+	TArray<AObstacleActorBase*> Candidates;
+	if (!Player)
+	{
+		return Candidates;
+	}
+
+	const FVector PlayerLocation = Player->GetActorLocation();
+	const float MaxDistanceSq = GimmickTargetSearchDistance * GimmickTargetSearchDistance;
+
+	for (AMapChunk* Chunk : ActiveChunks)
+	{
+		if (!Chunk || !IsAliveObject(Chunk))
+		{
+			continue;
+		}
+
+		if (FVector::DistSquared(PlayerLocation, Chunk->GetActorLocation()) > MaxDistanceSq)
+		{
+			continue;
+		}
+
+		for (AObstacleActorBase* Obstacle : Chunk->GetSpawnedObstacles())
+		{
+			if (Obstacle && IsAliveObject(Obstacle))
+			{
+				Candidates.push_back(Obstacle);
+			}
+		}
+	}
+
+	return Candidates;
 }
 
 void AMapManager::Initialize(AActor* InPlayer)

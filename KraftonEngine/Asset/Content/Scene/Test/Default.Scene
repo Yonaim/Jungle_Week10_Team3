@@ -16,16 +16,14 @@
               "Is Collidable" : true,
               "Location" : [0.000000, 0.000000, 0.000000],
               "Mobility" : 2,
-              "Rotation" : [-0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],
               "Texture" : {
                 "Path" : "Asset/Editor/Icons/Actors/Actor_64.png"
               },
               "Two Sided Shadow" : false,
               "Visible" : false,
-              "Width" : 1.000000,
-              "bEditorOnly" : true,
-              "bTickEnable" : true
+              "Width" : 1.000000
             },
             "bHiddenInComponentTree" : true
           }, {
@@ -33,36 +31,41 @@
             "ClassName" : "UUIScreenTextComponent",
             "ObjectName" : "UUIScreenTextComponent_0",
             "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
               "Color" : [1.000000, 0.000000, 0.000000, 1.000000],
               "Font" : "D2Coding",
               "Font Size" : 1.000000,
               "Screen Position" : [223.000000, 32.000000, 0.000000],
               "Text" : "Screen Text",
-              "Visible" : true,
-              "bEditorOnly" : false,
-              "bTickEnable" : true
+              "Use Anchored Layout" : false,
+              "Visible" : true
             }
           }, {
             "Children" : [],
             "ClassName" : "UUIScreenTextComponent",
             "ObjectName" : "UUIScreenTextComponent_1",
             "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
               "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
               "Font" : "Default",
               "Font Size" : 1.000000,
               "Screen Position" : [32.000000, 32.000000, 0.000000],
               "Text" : "Screen Text",
-              "Visible" : true,
-              "bEditorOnly" : false,
-              "bTickEnable" : true
+              "Use Anchored Layout" : false,
+              "Visible" : true
             }
           }],
         "ClassName" : "UCanvasRootComponent",
         "ObjectName" : "UCanvasRootComponent_0",
         "Properties" : {
           "Canvas Size" : [1920.000000, 1080.000000, 0.000000],
-          "bEditorOnly" : false,
-          "bTickEnable" : true
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Rotation" : [-0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000]
         }
       },
       "UUID" : 232,
@@ -77,7 +80,7 @@
     "FarClip" : 1000.000000,
     "Location" : [-5.306901, -4.416908, 5.644362],
     "NearClip" : 0.100000,
-    "Rotation" : [0.000002, 37.966747, 60.754086]
+    "Rotation" : [0.000004, 37.966747, 60.754086]
   },
   "Version" : 2,
   "WorldType" : "Editor"

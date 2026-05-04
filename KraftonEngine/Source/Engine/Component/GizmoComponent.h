@@ -86,6 +86,9 @@ public:
 	void SetTarget(USceneComponent* NewTarget);
 	void SetTarget(AActor* NewTargetActor);
 
+	// For Imposter Gizmo
+	void SetSelectedAxis(int32 InAxis) { SelectedAxis = (InAxis >= 0 && InAxis <= 3) ? InAxis : -1; }
+
 private:
 	bool IntersectRayAxis(const FRay& Ray, FVector AxisEnd, float AxisScale, float& OutRayT);
 	bool IntersectRayRotationHandle(const FRay& Ray, int32 Axis, float& OutRayT) const;

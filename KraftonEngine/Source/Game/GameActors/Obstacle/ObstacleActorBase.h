@@ -10,10 +10,10 @@ class UCapsuleComponent;
 
 enum class EObstacleType : uint8
 {
-	Barrier = 1 << 0,   // must switch lanes
-	LowBar  = 1 << 1,   // must jump
-	HighBar = 1 << 2,   // must slide
-	Misc	= 1 << 3,
+	Barrier,	// must switch lanes
+	LowBar,		// must jump
+	HighBar,	// must slide
+	Misc,
 };
 
 class AObstacleActorBase : public AStaticMeshActor {

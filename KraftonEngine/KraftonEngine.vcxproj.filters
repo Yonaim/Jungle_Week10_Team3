@@ -957,6 +957,7 @@
       <Filter>ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Items\ItemActorBase.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\VerticalWireActor.cpp" />
@@ -2116,6 +2117,7 @@
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Game\GameActors\Items\ItemActorBase.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\SimpleObstacleActor.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\VerticalWireActor.h" />

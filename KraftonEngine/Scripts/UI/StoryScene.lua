@@ -1,13 +1,13 @@
 DeclareProperties({
     ScenarioPath = { type = "string", default = "Asset/Content/Scenarios/intro.scenario.json" },
-    NextScene = { type = "string", default = "Presentation_FPS" },
+    NextScene = { type = "string", default = "playerdev.scene" },
     AutoAdvanceDelay = { type = "float", default = 3.0, min = 0.0, max = 10.0 },
 })
 
 local ScenarioLoader = require("UI.ScenarioLoader")
 
 local SCENARIO_PATH = property("ScenarioPath", "Asset/Content/Scenarios/intro.scenario.json")
-local NEXT_SCENE = property("NextScene", "Presentation_FPS")
+local NEXT_SCENE = property("NextScene", "playerdev.scene")
 local AUTO_ADVANCE_DELAY = property("AutoAdvanceDelay", 3.0)
 
 local ui = {}
@@ -423,7 +423,7 @@ function RunIntro()
     stop_bgm()
     play_bgm("Game.Sound.Background.Cutscene1", false)
 
-    scenario = ScenarioLoader.load(SCENARIO_PATH)
+    scenario = ScenarioLoader.load(SCENARIO_PATH, load_json_file)
     if not scenario then
         warn("Failed to load scenario:", SCENARIO_PATH)
         finish_intro()

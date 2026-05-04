@@ -80,8 +80,17 @@ local function wrap_text(text, max_lines, max_bytes)
     return result
 end
 
-function ScenarioLoader.load(path)
-    local data = load_json_file(path)
+function ScenarioLoader.load(path, json_loader)
+    local loader = json_loader
+    if type(loader) ~= "function" and type(load_json_file) == "function" then
+        loader = load_json_file
+    end
+
+    if type(loader) ~= "function" then
+        return nil
+    end
+
+    local data = loader(path)
     if type(data) ~= "table" then
         return nil
     end
