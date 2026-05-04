@@ -128,9 +128,9 @@ bool FEngineLoop::Init(HINSTANCE hInstance, int nShowCmd)
 	return true;
 }
 
-int FEngineLoop::RunCookOnly()
+int FEngineLoop::RunCookOnly(const FString& OutputSceneRoot)
 {
-	const int32 Cooked = FSceneSaveManager::CookAllScenes();
+	const int32 Cooked = FSceneSaveManager::CookAllScenes(OutputSceneRoot);
 	std::cerr << "[Cook] Total cooked: " << Cooked << " scenes" << std::endl;
 	return Cooked > 0 ? 0 : 1;
 }

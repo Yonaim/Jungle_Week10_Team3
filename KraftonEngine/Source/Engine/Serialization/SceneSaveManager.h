@@ -59,8 +59,8 @@ public:
 	//  성공 시 true, 입력 파일 누락이거나 파싱 실패 시 false.
 	static bool CookSceneToBinary(const FString& InSceneJsonPath, const FString& OutUmapPath);
 
-	// 모든 .Scene 파일을 일괄 쿠킹. 같은 디렉터리에 .umap 파일을 생성한다.
-	static int32 CookAllScenes();
+	// 모든 .Scene 파일을 일괄 쿠킹. 출력 루트가 비어 있으면 같은 디렉터리에 .umap 파일을 생성한다.
+	static int32 CookAllScenes(const FString& OutputSceneRoot = "");
 
 	static bool IsJsonFile(const FString& FilePath);
 
