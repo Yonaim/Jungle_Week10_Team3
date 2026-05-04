@@ -1,13 +1,13 @@
 {
   "Actors" : [{
-      "ClassName" : "AUIRootActor",
+      "ClassName" : "ADirectionalLightActor",
       "NonSceneComponents" : [],
-      "ObjectName" : "AUIRootActor_0",
+      "ObjectName" : "ADirectionalLightActor_0",
       "RootComponent" : {
         "Children" : [{
             "Children" : [],
             "ClassName" : "UBillboardComponent",
-            "ObjectName" : "UBillboardComponent_9",
+            "ObjectName" : "UBillboardComponent_0",
             "Properties" : {
               "Billboard" : true,
               "Cast Shadow" : true,
@@ -16,71 +16,47 @@
               "Is Collidable" : true,
               "Location" : [0.000000, 0.000000, 0.000000],
               "Mobility" : 2,
-              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Rotation" : [-0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],
               "Texture" : {
-                "Path" : "Asset/Editor/Icons/Actors/Actor_64.png"
+                "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
               },
               "Two Sided Shadow" : false,
-              "Visible" : false,
+              "Visible" : true,
               "Width" : 1.000000
             },
             "bHiddenInComponentTree" : true
-          }, {
-            "Children" : [],
-            "ClassName" : "UUIScreenTextComponent",
-            "ObjectName" : "UUIScreenTextComponent_0",
-            "Properties" : {
-              "Alignment" : [0.000000, 0.000000, 0.000000],
-              "Anchor" : [0.000000, 0.000000, 0.000000],
-              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
-              "Color" : [1.000000, 0.000000, 0.000000, 1.000000],
-              "Font" : "D2Coding",
-              "Font Size" : 1.000000,
-              "Screen Position" : [223.000000, 32.000000, 0.000000],
-              "Text" : "Screen Text",
-              "Use Anchored Layout" : false,
-              "Visible" : true
-            }
-          }, {
-            "Children" : [],
-            "ClassName" : "UUIScreenTextComponent",
-            "ObjectName" : "UUIScreenTextComponent_1",
-            "Properties" : {
-              "Alignment" : [0.000000, 0.000000, 0.000000],
-              "Anchor" : [0.000000, 0.000000, 0.000000],
-              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
-              "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
-              "Font" : "Default",
-              "Font Size" : 1.000000,
-              "Screen Position" : [32.000000, 32.000000, 0.000000],
-              "Text" : "Screen Text",
-              "Use Anchored Layout" : false,
-              "Visible" : true
-            }
           }],
-        "ClassName" : "UCanvasRootComponent",
-        "ObjectName" : "UCanvasRootComponent_0",
+        "ClassName" : "UDirectionalLightComponent",
+        "ObjectName" : "UDirectionalLightComponent_0",
         "Properties" : {
-          "Canvas Size" : [1920.000000, 1080.000000, 0.000000],
-          "Location" : [0.000000, 0.000000, 0.000000],
-          "Rotation" : [-0.000000, 0.000000, 0.000000],
-          "Scale" : [1.000000, 1.000000, 1.000000]
+          "Cast Shadows" : true,
+          "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+          "Intensity" : 1.000000,
+          "Location" : [1.055727, -0.000001, 1.527864],
+          "Rotation" : [45.000000, -45.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Shadow Bias" : -0.000100,
+          "Shadow Normal Bias" : -0.002000,
+          "Shadow Resolution Scale" : 1.000000,
+          "Shadow Sharpen" : 0.670000,
+          "Shadow Slope Bias" : 0.000100,
+          "Visible" : true
         }
       },
-      "UUID" : 232,
+      "UUID" : 266,
       "bVisible" : true
     }],
   "ClassName" : "UWorld",
-  "ContextHandle" : "Default",
-  "ContextName" : "Default",
+  "ContextHandle" : "NewScene",
+  "ContextName" : "New Scene",
   "Name" : "Default",
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [-5.306901, -4.416908, 5.644362],
+    "Location" : [10.000000, 0.000000, 5.000000],
     "NearClip" : 0.100000,
-    "Rotation" : [0.000004, 37.966747, 60.754086]
+    "Rotation" : [0.000000, 26.565048, -179.999985]
   },
   "Version" : 2,
   "WorldType" : "Editor"
