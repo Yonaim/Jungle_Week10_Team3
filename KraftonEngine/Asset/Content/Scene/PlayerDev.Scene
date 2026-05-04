@@ -264,7 +264,301 @@
           "Scale" : [1.000000, 1.000000, 1.000000]
         }
       },
-      "UUID" : 728,
+      "UUID": 901,
+      "bVisible": true
+    },
+    {
+      "ClassName" : "AUIRootActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "UScriptComponent",
+          "ObjectName" : "UScriptComponent_PlayerDevHUD",
+          "Properties" : {
+            "ScriptPath" : "Scripts/UI/PlayerDevHUD.lua",
+            "bEditorOnly" : false,
+            "bTickEnable" : true
+          }
+        }],
+      "ObjectName" : "AUIRootActor_PlayerDevHUD",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_PlayerDevHUD",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/Actor_64.png"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : false,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "FUDPanel",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "Border Thickness" : 0.000000,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : true,
+              "Fit Mode" : 0,
+              "Screen Position" : [34.000000, 30.000000, 0.000000],
+              "Screen Size" : [760.000000, 560.000000, 0.000000],
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.180000],
+              "Shadow Offset" : [4.000000, 4.000000, 6.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.360000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.450000],
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/UI/nineslice.png"
+              },
+              "Tint" : [0.130000, 0.240000, 0.330000, 0.980000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 10
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIScreenTextComponent",
+            "ObjectName" : "FUDTitle",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Color" : [0.720000, 0.900000, 1.000000, 1.000000],
+              "Font" : "Orbitron Bold",
+              "Font Size" : 1.180000,
+              "Screen Position" : [68.000000, 52.000000, 0.000000],
+              "Text" : "PLAYER DEV FUD",
+              "Use Anchored Layout" : false,
+              "Visible" : true
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "FUDRankBadge",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "Border Thickness" : 0.000000,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : true,
+              "Fit Mode" : 2,
+              "Screen Position" : [590.000000, 44.000000, 0.000000],
+              "Screen Size" : [136.000000, 58.000000, 0.000000],
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.180000],
+              "Shadow Offset" : [4.000000, 4.000000, 6.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.360000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.450000],
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/UI/rank_c.png"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 11
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIScreenTextComponent",
+            "ObjectName" : "FUDBody",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Color" : [0.950000, 0.960000, 0.980000, 1.000000],
+              "Font" : "D2Coding Bold",
+              "Font Size" : 0.980000,
+              "Screen Position" : [68.000000, 126.000000, 0.000000],
+              "Text" : "",
+              "Use Anchored Layout" : false,
+              "Visible" : true
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "CoachFrameBaek",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "Border Thickness" : 0.000000,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : true,
+              "Fit Mode" : 0,
+              "Screen Position" : [506.000000, 124.000000, 0.000000],
+              "Screen Size" : [220.000000, 200.000000, 0.000000],
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.140000],
+              "Shadow Offset" : [4.000000, 4.000000, 6.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.320000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.420000],
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/UI/nineslice.png"
+              },
+              "Tint" : [0.210000, 0.360000, 0.470000, 0.980000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 11
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "CoachPortraitBaek",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "Border Thickness" : 0.000000,
+              "Content Alignment" : 0,
+              "Draw Shadow" : false,
+              "Fit Mode" : 2,
+              "Screen Position" : [528.000000, 144.000000, 0.000000],
+              "Screen Size" : [176.000000, 176.000000, 0.000000],
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/UI/portrait_baek_normal_0.png"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 12
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIScreenTextComponent",
+            "ObjectName" : "CoachNameBaek",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Color" : [1.000000, 0.940000, 0.760000, 1.000000],
+              "Font" : "D2Coding Bold",
+              "Font Size" : 0.920000,
+              "Screen Position" : [532.000000, 328.000000, 0.000000],
+              "Text" : "백승현 코치",
+              "Use Anchored Layout" : false,
+              "Visible" : true
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "CoachFrameLim",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "Border Thickness" : 0.000000,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : true,
+              "Fit Mode" : 0,
+              "Screen Position" : [506.000000, 344.000000, 0.000000],
+              "Screen Size" : [220.000000, 200.000000, 0.000000],
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.140000],
+              "Shadow Offset" : [4.000000, 4.000000, 6.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.320000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.420000],
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/UI/nineslice.png"
+              },
+              "Tint" : [0.240000, 0.300000, 0.500000, 0.980000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 11
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "CoachPortraitLim",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
+              "Border Thickness" : 0.000000,
+              "Content Alignment" : 0,
+              "Draw Shadow" : false,
+              "Fit Mode" : 2,
+              "Screen Position" : [528.000000, 364.000000, 0.000000],
+              "Screen Size" : [176.000000, 176.000000, 0.000000],
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/UI/portrait_lim_normal_0.png"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 12
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIScreenTextComponent",
+            "ObjectName" : "CoachNameLim",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Color" : [0.840000, 0.920000, 1.000000, 1.000000],
+              "Font" : "D2Coding Bold",
+              "Font Size" : 0.920000,
+              "Screen Position" : [540.000000, 548.000000, 0.000000],
+              "Text" : "임창근 코치",
+              "Use Anchored Layout" : false,
+              "Visible" : true
+            }
+          }],
+        "ClassName" : "UCanvasRootComponent",
+        "ObjectName" : "UCanvasRootComponent_PlayerDevHUD",
+        "Properties" : {
+          "Canvas Size" : [1920.000000, 1080.000000, 0.000000],
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000]
+        }
+      },
+      "UUID" : 902,
       "bVisible" : true
     }],
   "ClassName" : "UWorld",

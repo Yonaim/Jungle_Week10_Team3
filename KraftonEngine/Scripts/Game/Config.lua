@@ -1,56 +1,56 @@
 local Config = {
-    -- debug는 개발 중 콘솔 로그를 켜고 끄는 묶음입니다.
-    -- HUD/비주얼 작업자가 수치 연결을 확인할 때 enable_log를 잠깐 켜면 흐름을 보기 쉽습니다.
+    -- debug??媛쒕컻 以?肄섏넄 濡쒓렇瑜?耳쒓퀬 ?꾨뒗 臾띠쓬?낅땲??
+    -- HUD/鍮꾩＜???묒뾽?먭? ?섏튂 ?곌껐???뺤씤????enable_log瑜??좉퉸 耳쒕㈃ ?먮쫫??蹂닿린 ?쎌뒿?덈떎.
     debug = {
-        -- enable_log는 Lua 시스템 로그 출력 여부입니다.
+        -- enable_log??Lua ?쒖뒪??濡쒓렇 異쒕젰 ?щ??낅땲??
         enable_log = true,
-        -- score_log_interval은 주기적으로 현재 점수/거리/시간을 찍는 간격입니다.
+        -- score_log_interval? 二쇨린?곸쑝濡??꾩옱 ?먯닔/嫄곕━/?쒓컙??李띾뒗 媛꾧꺽?낅땲??
         score_log_interval = 1.0,
     },
 
-    -- player는 Runner 조작과 생존 수치입니다.
-    -- max_hp 값은 PlayerStatus에서 포드 안정도 최대치로 읽어 GameManager HUD 스냅샷과 연결합니다.
+    -- player??Runner 議곗옉怨??앹〈 ?섏튂?낅땲??
+    -- max_hp 媛믪? PlayerStatus?먯꽌 ?щ뱶 ?덉젙??理쒕?移섎줈 ?쎌뼱 GameManager HUD ?ㅻ깄?룰낵 ?곌껐?⑸땲??
     player = {
-        -- max_hp는 PlayerStatus 내부 저장 이름이고, 게임 규칙상 "포드 안정도 최대치"입니다.
+        -- max_hp??PlayerStatus ?대? ????대쫫?닿퀬, 寃뚯엫 洹쒖튃??"?щ뱶 ?덉젙??理쒕?移??낅땲??
         max_hp = 3,
-        -- invincible_time은 피격 직후 같은 장애물에 여러 번 맞지 않도록 막는 시간입니다.
+        -- invincible_time? ?쇨꺽 吏곹썑 媛숈? ?μ븷臾쇱뿉 ?щ윭 踰?留욎? ?딅룄濡?留됰뒗 ?쒓컙?낅땲??
         invincible_time = 1.0,
 
-        -- forward_speed는 자동 전진 속도입니다.
+        -- forward_speed???먮룞 ?꾩쭊 ?띾룄?낅땲??
         forward_speed = 10.0,
-        -- max_move_step은 빠른 이동 중 overlap 누락을 줄이기 위해 한 프레임 이동을 쪼개는 최대 길이입니다.
+        -- max_move_step? 鍮좊Ⅸ ?대룞 以?overlap ?꾨씫??以꾩씠湲??꾪빐 ???꾨젅???대룞??履쇨컻??理쒕? 湲몄씠?낅땲??
         max_move_step = 0.25,
-        -- lane_width는 레인 사이 Y 간격입니다.
+        -- lane_width???덉씤 ?ъ씠 Y 媛꾧꺽?낅땲??
         lane_width = 4.0,
-        -- lane_count는 좌/중/우 3레인 같은 총 레인 수입니다.
+        -- lane_count??醫?以???3?덉씤 媛숈? 珥??덉씤 ?섏엯?덈떎.
         lane_count = 3,
-        -- lane_change_speed는 target lane까지 보간 이동하는 속도입니다.
+        -- lane_change_speed??target lane源뚯? 蹂닿컙 ?대룞?섎뒗 ?띾룄?낅땲??
         lane_change_speed = 12.0,
         barrel_roll_enabled = true,
         barrel_roll_degrees = 360.0,
         barrel_roll_duration = 0.34,
 
-        -- gravity는 공중에 있을 때 매 프레임 더해지는 수직 가속도입니다.
+        -- gravity??怨듭쨷???덉쓣 ??留??꾨젅???뷀빐吏???섏쭅 媛?띾룄?낅땲??
         gravity = -25.0,
-        -- jump_power는 점프 시작 순간 수직 속도입니다.
+        -- jump_power???먰봽 ?쒖옉 ?쒓컙 ?섏쭅 ?띾룄?낅땲??
         jump_power = 10.0,
-        -- 슬라이드는 duration 타이머가 아니라 입력을 누르고 있는 동안 유지합니다.
-        -- 유지/종료 판단은 PlayerController.slide_key_pressed()와 PlayerSlide:Begin/End가 담당합니다.
+        -- ?щ씪?대뱶??duration ??대㉧媛 ?꾨땲???낅젰???꾨Ⅴ怨??덈뒗 ?숈븞 ?좎??⑸땲??
+        -- ?좎?/醫낅즺 ?먮떒? PlayerController.slide_key_pressed()? PlayerSlide:Begin/End媛 ?대떦?⑸땲??
 
-        -- fall_dead_z 아래로 떨어지면 안정도와 무관하게 낙사 처리합니다.
+        -- fall_dead_z ?꾨옒濡??⑥뼱吏硫??덉젙?꾩? 臾닿??섍쾶 ?숈궗 泥섎━?⑸땲??
         fall_dead_z = -10.0,
 
-        -- ground_probe_distance는 발 아래로 바닥을 찾는 최대 거리입니다.
+        -- ground_probe_distance??諛??꾨옒濡?諛붾떏??李얜뒗 理쒕? 嫄곕━?낅땲??
         ground_probe_distance = 5.0,
-        -- ground_snap_distance는 바닥에 거의 붙었을 때만 보정하는 거리입니다.
+        -- ground_snap_distance??諛붾떏??嫄곗쓽 遺숈뿀???뚮쭔 蹂댁젙?섎뒗 嫄곕━?낅땲??
         ground_snap_distance = 0.25,
-        -- skin_width는 충돌/바닥 판정에 쓰는 아주 작은 여유값입니다.
+        -- skin_width??異⑸룎/諛붾떏 ?먯젙???곕뒗 ?꾩＜ ?묒? ?ъ쑀媛믪엯?덈떎.
         skin_width = 0.05,
-        -- fallback_half_height는 collision shape를 못 찾았을 때 쓰는 임시 반높이입니다.
+        -- fallback_half_height??collision shape瑜?紐?李얠븯?????곕뒗 ?꾩떆 諛섎넂?댁엯?덈떎.
         fallback_half_height = 1.0,
     },
 
-    -- camera는 따라오는 카메라 위치/시선 기본값입니다.
+    -- camera???곕씪?ㅻ뒗 移대찓???꾩튂/?쒖꽑 湲곕낯媛믪엯?덈떎.
     camera = {
         relative_x = -8.0,
         relative_y = 0.0,
@@ -59,72 +59,72 @@ local Config = {
         look_height = 1.5,
     },
 
-    -- score는 달린 거리/생존 시간으로 올라가는 기본 점수 가중치입니다.
-    -- 아이템 보너스는 GameManager.bonus_score에 따로 누적됩니다.
+    -- score???щ┛ 嫄곕━/?앹〈 ?쒓컙?쇰줈 ?щ씪媛??湲곕낯 ?먯닔 媛以묒튂?낅땲??
+    -- ?꾩씠??蹂대꼫?ㅻ뒗 GameManager.bonus_score???곕줈 ?꾩쟻?⑸땲??
     score = {
         distance_weight = 10.0,
         survival_time_weight = 5.0,
     },
 
-    -- collectible은 HUD/이펙트 작업자가 나중에 아이템 연출을 붙일 때 참고할 게임 규칙입니다.
-    -- 실제 비주얼은 만들지 않고, 수치 변화와 발동 지점만 Lua에서 먼저 연결합니다.
+    -- collectible? HUD/?댄럺???묒뾽?먭? ?섏쨷???꾩씠???곗텧??遺숈씪 ??李멸퀬??寃뚯엫 洹쒖튃?낅땲??
+    -- ?ㅼ젣 鍮꾩＜?쇱? 留뚮뱾吏 ?딄퀬, ?섏튂 蹂?붿? 諛쒕룞 吏?먮쭔 Lua?먯꽌 癒쇱? ?곌껐?⑸땲??
     collectible = {
-        -- Log Fragment 하나를 먹으면 올라가는 점수입니다.
+        -- Log Fragment ?섎굹瑜?癒뱀쑝硫??щ씪媛???먯닔?낅땲??
         log_fragment_score = 10,
-        -- Log Fragment 하나를 먹으면 trace가 이만큼 쌓입니다.
+        -- Log Fragment ?섎굹瑜?癒뱀쑝硫?trace媛 ?대쭔???볦엯?덈떎.
         log_fragment_trace = 2,
-        -- trace가 이 값 이상이면 Hotfix가 발동됩니다.
+        -- trace媛 ??媛??댁긽?대㈃ Hotfix媛 諛쒕룞?⑸땲??
         trace_max = 100,
-        -- Hotfix 발동 보너스 점수입니다.
+        -- Hotfix 諛쒕룞 蹂대꼫???먯닔?낅땲??
         hotfix_score = 1000,
-        -- Hotfix 발동 시 포드 안정도를 이만큼 회복합니다.
+        -- Hotfix 諛쒕룞 ???щ뱶 ?덉젙?꾨? ?대쭔???뚮났?⑸땲??
         hotfix_stability_recover = 15,
-        -- Crash Dump를 이 개수만큼 모으면 Critical Analysis가 발동됩니다.
+        -- Crash Dump瑜???媛쒖닔留뚰겮 紐⑥쑝硫?Critical Analysis媛 諛쒕룞?⑸땲??
         crash_dump_required = 3,
-        -- Critical Analysis 발동 보너스 점수입니다.
+        -- Critical Analysis 諛쒕룞 蹂대꼫???먯닔?낅땲??
         critical_analysis_score = 3000,
-        -- Critical Analysis 발동 시 충돌 방어막을 이만큼 지급합니다.
+        -- Critical Analysis 諛쒕룞 ??異⑸룎 諛⑹뼱留됱쓣 ?대쭔??吏湲됲빀?덈떎.
         critical_analysis_shield_reward = 1,
     },
 
-    -- coach는 코치 인정도와 랭크 계산에 쓰는 값입니다.
-    -- HUD는 GameManager getter만 읽으면 되고, 여기 숫자만 바꾸면 밸런스 조정이 됩니다.
+    -- coach??肄붿튂 ?몄젙?꾩? ??겕 怨꾩궛???곕뒗 媛믪엯?덈떎.
+    -- HUD??GameManager getter留??쎌쑝硫??섍퀬, ?ш린 ?レ옄留?諛붽씀硫?諛몃윴??議곗젙???⑸땲??
     coach = {
-        -- initial_approval은 게임 시작 시 코치 인정도입니다.
+        -- initial_approval? 寃뚯엫 ?쒖옉 ??肄붿튂 ?몄젙?꾩엯?덈떎.
         initial_approval = 50,
-        -- log_collected_delta는 Log Fragment 획득 시 소폭 상승량입니다.
+        -- log_collected_delta??Log Fragment ?띾뱷 ???뚰룺 ?곸듅?됱엯?덈떎.
         log_collected_delta = 1,
-        -- hotfix_delta는 Hotfix 성공 시 크게 올라가는 인정도입니다.
+        -- hotfix_delta??Hotfix ?깃났 ???ш쾶 ?щ씪媛???몄젙?꾩엯?덈떎.
         hotfix_delta = 8,
-        -- critical_analysis_delta는 Crash Dump 분석 성공 시 크게 올라가는 인정도입니다.
+        -- critical_analysis_delta??Crash Dump 遺꾩꽍 ?깃났 ???ш쾶 ?щ씪媛???몄젙?꾩엯?덈떎.
         critical_analysis_delta = 10,
-        -- obstacle_avoided_delta는 장애물 회피 판정이 붙으면 올릴 값입니다. 지금은 호출 지점만 준비합니다.
+        -- obstacle_avoided_delta???μ븷臾??뚰뵾 ?먯젙??遺숈쑝硫??щ┫ 媛믪엯?덈떎. 吏湲덉? ?몄텧 吏?먮쭔 以鍮꾪빀?덈떎.
         obstacle_avoided_delta = 1,
-        -- near_miss_delta는 아슬아슬 회피 판정이 붙으면 올릴 값입니다. 지금은 TODO만 둡니다.
+        -- near_miss_delta???꾩뒳?꾩뒳 ?뚰뵾 ?먯젙??遺숈쑝硫??щ┫ 媛믪엯?덈떎. 吏湲덉? TODO留??〓땲??
         near_miss_delta = 3,
-        -- command_success_delta는 추후 명령 성공 이벤트가 생기면 올릴 값입니다.
+        -- command_success_delta??異뷀썑 紐낅졊 ?깃났 ?대깽?멸? ?앷린硫??щ┫ 媛믪엯?덈떎.
         command_success_delta = 2,
-        -- command_failed_delta는 추후 명령 실패 이벤트가 생기면 내릴 값입니다.
+        -- command_failed_delta??異뷀썑 紐낅졊 ?ㅽ뙣 ?대깽?멸? ?앷린硫??대┫ 媛믪엯?덈떎.
         command_failed_delta = -3,
-        -- player_hit_delta는 장애물 충돌 시 내려가는 인정도입니다.
+        -- player_hit_delta???μ븷臾?異⑸룎 ???대젮媛???몄젙?꾩엯?덈떎.
         player_hit_delta = -5,
     },
 
-    -- obstacle은 장애물 피해량 기본값입니다.
-    -- C++ Damage 바인딩이 없는 장애물은 이 값을 fallback으로 사용합니다.
+    -- obstacle? ?μ븷臾??쇳빐??湲곕낯媛믪엯?덈떎.
+    -- C++ Damage 諛붿씤?⑹씠 ?녿뒗 ?μ븷臾쇱? ??媛믪쓣 fallback?쇰줈 ?ъ슜?⑸땲??
     obstacle = {
-        -- default_damage는 일반 장애물 기본 안정도 피해량입니다.
+        -- default_damage???쇰컲 ?μ븷臾?湲곕낯 ?덉젙???쇳빐?됱엯?덈떎.
         default_damage = 1,
-        -- high_risk_damage는 나중에 고위험 장애물 타입에 넣을 수 있는 기본값입니다.
-        -- TODO: 장애물별 Damage 테이블을 Lua Config로 완전히 옮길 수 있으면 여기서 타입별로 관리하면 됨.
+        -- high_risk_damage???섏쨷??怨좎쐞???μ븷臾???낆뿉 ?ｌ쓣 ???덈뒗 湲곕낯媛믪엯?덈떎.
+        -- TODO: ?μ븷臾쇰퀎 Damage ?뚯씠釉붿쓣 Lua Config濡??꾩쟾????만 ???덉쑝硫??ш린????낅퀎濡?愿由ы븯硫???
         high_risk_damage = 2,
     },
 
-    -- audio는 현재 사운드 설정입니다. 이번 작업에서는 SFX/Audio 파일과 로직은 건드리지 않습니다.
+    -- audio???꾩옱 ?ъ슫???ㅼ젙?낅땲?? ?대쾲 ?묒뾽?먯꽌??SFX/Audio ?뚯씪怨?濡쒖쭅? 嫄대뱶由ъ? ?딆뒿?덈떎.
     audio = {
         enabled = true,
 
-        play_bgm = "Asset/Content/Sound/Background/03. Tutorial.mp3",
+        play_bgm = "Asset/Content/Sound/Background/gameplay.mp3",
 
         hit_sfx = "",
         jump_sfx = "",
@@ -135,16 +135,16 @@ local Config = {
         stop_bgm_on_game_over = true,
     },
 
-    -- map은 길/장애물 생성 간격입니다.
+    -- map? 湲??μ븷臾??앹꽦 媛꾧꺽?낅땲??
     result_screen = {
         scene_path = "game/gameresult.scene",
         scoreboard_path = "Saves/scoreboard.json",
         scoreboard_limit = 20,
         title = "DEBUG SESSION RESULT",
-        coach_name_baek = "백승현 코치",
-        coach_name_lim = "임창근 코치",
-        coach_comment_baek = "런타임 구간에서 판단이 안정적이었다.",
-        coach_comment_lim = "좋다. 이 정도면 버그가 먼저 도망가겠다.",
+        coach_name_baek = "백승현 사령관",
+        coach_name_lim = "임창근 사령관",
+        coach_comment_baek = "판단은 정확했다. 다음엔 더 깊이 들어가라.",
+        coach_comment_lim = "나쁘지 않다. 이제 버그가 널 좀 무서워하겠군.",
     },
 
     map = {
@@ -158,7 +158,7 @@ local Config = {
     },
 }
 
--- Config는 도메인별 table(Config.player/map/camera/collectible)만 공개합니다.
--- 새 스크립트는 평면 alias 없이 필요한 묶음을 직접 읽어 값의 출처를 분명하게 유지합니다.
+-- Config???꾨찓?몃퀎 table(Config.player/map/camera/collectible)留?怨듦컻?⑸땲??
+-- ???ㅽ겕由쏀듃???됰㈃ alias ?놁씠 ?꾩슂??臾띠쓬??吏곸젒 ?쎌뼱 媛믪쓽 異쒖쿂瑜?遺꾨챸?섍쾶 ?좎??⑸땲??
 
 return Config

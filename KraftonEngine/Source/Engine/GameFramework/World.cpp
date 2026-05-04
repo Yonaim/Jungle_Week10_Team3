@@ -17,58 +17,6 @@ IMPLEMENT_CLASS(UWorld, UObject)
 
 namespace
 {
-	void RemoveActorOverlapReferences(UWorld* World, AActor* Actor)
-	{
-		if (!World || !Actor)
-		{
-			return;
-		}
-
-		TArray<UPrimitiveComponent*> DestroyedPrimitives = Actor->GetPrimitiveComponents();
-		if (DestroyedPrimitives.empty())
-		{
-			return;
-		}
-
-		TArray<UPrimitiveComponent*> LivePrimitives;
-		for (AActor* OtherActor : World->GetActors())
-		{
-			if (!OtherActor)
-			{
-				continue;
-			}
-
-			for (UPrimitiveComponent* Primitive : OtherActor->GetPrimitiveComponents())
-			{
-				if (Primitive)
-				{
-					LivePrimitives.push_back(Primitive);
-				}
-			}
-		}
-
-		for (UPrimitiveComponent* DestroyedPrimitive : DestroyedPrimitives)
-		{
-			if (!DestroyedPrimitive)
-			{
-				continue;
-			}
-
-			World->RemovePendingOverlapComponent(DestroyedPrimitive);
-
-			for (UPrimitiveComponent* LivePrimitive : LivePrimitives)
-			{
-				if (!LivePrimitive || LivePrimitive == DestroyedPrimitive)
-				{
-					continue;
-				}
-
-				LivePrimitive->EndComponentOverlap(DestroyedPrimitive);
-				DestroyedPrimitive->EndComponentOverlap(LivePrimitive);
-			}
-		}
-	}
-
 	bool RaycastPrimitivesFallback(const TArray<ULevel*>& Levels, const FRay& Ray, FRayHitResult& OutHitResult, AActor*& OutActor)
 	{
 		FRayHitResult BestHit{};
@@ -400,7 +348,6 @@ void UWorld::ClearLevels()
 void UWorld::DestroyActor(AActor* Actor)
 {
 	if (!Actor) return;
-	RemoveActorOverlapReferences(this, Actor);
 	Actor->EndPlay();
 	
 	ULevel* OwningLevel = Cast<ULevel>(Actor->GetOuter());
