@@ -33,7 +33,13 @@ void FD3DDevice::BeginFrame()
 
 void FD3DDevice::Present()
 {
-	UINT PresentFlags = bTearingSupported ? DXGI_PRESENT_ALLOW_TEARING : 0;
+	BOOL bFullscreen = FALSE;
+	if (SwapChain)
+	{
+		SwapChain->GetFullscreenState(&bFullscreen, nullptr);
+	}
+
+	UINT PresentFlags = (bTearingSupported && !bFullscreen) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 	SwapChain->Present(0, PresentFlags);
 }
 

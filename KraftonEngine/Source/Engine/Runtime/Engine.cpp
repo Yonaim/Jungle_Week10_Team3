@@ -23,6 +23,9 @@
 
 #include "Core/TickFunction.h"
 #include "Collision/CollisionDispatcher.h"
+#include "Viewport/GameViewportClient.h"
+#include "Viewport/Viewport.h"
+#include "Component/CameraComponent.h"
 
 DEFINE_CLASS(UEngine, UObject)
 
@@ -223,6 +226,24 @@ void UEngine::OnWindowResized(uint32 Width, uint32 Height)
 
 	Renderer.GetFD3DDevice().OnResizeViewport(Width, Height);
 	Renderer.ResetRenderStateCache();
+
+	// Standalone Game/Shipping 모드에서는 윈도우 크기에 맞춰 오프스크린 뷰포트도 리사이즈해야 함.
+	// 그렇지 않으면 CopyResource(백버퍼, 뷰포트RT) 단계에서 크기 불일치로 렌더링이 중단됨.
+	if (!GIsEditor)
+	{
+		if (GameViewportClient && GameViewportClient->GetViewport())
+		{
+			GameViewportClient->GetViewport()->Resize(Width, Height);
+		}
+
+		if (UWorld* World = GetWorld())
+		{
+			if (UCameraComponent* Camera = World->GetActiveCamera())
+			{
+				Camera->OnResize(Width, Height);
+			}
+		}
+	}
 }
 
 void UEngine::WorldTick(float DeltaTime)
