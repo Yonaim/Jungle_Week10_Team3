@@ -102,6 +102,7 @@ UObject* UWorld::Duplicate(UObject* NewOuter) const
 
 	if (PersistentLevel)
 	{
+		NewWorld->ClearLevels();
 		NewWorld->PersistentLevel = Cast<ULevel>(PersistentLevel->Duplicate(NewWorld));
 		if (NewWorld->PersistentLevel)
 		{
@@ -143,6 +144,7 @@ UWorld* UWorld::DuplicateAs(EWorldType InWorldType) const
 
 	if (PersistentLevel)
 	{
+		NewWorld->ClearLevels();
 		NewWorld->PersistentLevel = Cast<ULevel>(PersistentLevel->Duplicate(NewWorld));
 		if (NewWorld->PersistentLevel)
 		{
@@ -715,6 +717,9 @@ void UWorld::EndPlay()
 {
 	bHasBegunPlay = false;
 	TickManager.Reset();
+	ActiveCamera = nullptr;
+	LastLODUpdateCamera = nullptr;
+	bHasLastFullLODUpdateCameraPos = false;
 
 	for (ULevel* Level : Levels)
 	{

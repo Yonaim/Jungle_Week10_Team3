@@ -71,6 +71,78 @@ FString GetFileStem(const FString& InPath)
 	return FPaths::ToUtf8(Path.stem().wstring());
 }
 
+UCameraComponent* FindFirstCameraComponent(UWorld* World)
+{
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	for (AActor* Actor : World->GetActors())
+	{
+		if (!Actor)
+		{
+			continue;
+		}
+
+		for (UActorComponent* Comp : Actor->GetComponents())
+		{
+			if (UCameraComponent* Camera = Cast<UCameraComponent>(Comp))
+			{
+				return Camera;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+UCameraComponent* EnsurePIEActiveCamera(UWorld* World, const FPerspectiveCameraData& CameraData)
+{
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	if (UCameraComponent* ActiveCamera = World->GetActiveCamera())
+	{
+		if (IsAliveObject(ActiveCamera) && ActiveCamera->GetWorld() == World)
+		{
+			return ActiveCamera;
+		}
+		World->SetActiveCamera(nullptr);
+	}
+
+	if (UCameraComponent* SceneCamera = FindFirstCameraComponent(World))
+	{
+		World->SetActiveCamera(SceneCamera);
+		return SceneCamera;
+	}
+
+	AActor* CamActor = World->SpawnActor<AActor>();
+	if (!CamActor)
+	{
+		return nullptr;
+	}
+
+	CamActor->SetFName(FName("DefaultPIECamera"));
+	UCameraComponent* Cam = CamActor->AddComponent<UCameraComponent>();
+	CamActor->SetRootComponent(Cam);
+	if (CameraData.bValid)
+	{
+		Cam->SetRelativeLocation(CameraData.Location);
+		Cam->SetRelativeRotation(CameraData.Rotation);
+	}
+	else
+	{
+		Cam->SetRelativeLocation(FVector(0.0f, -10.0f, 5.0f));
+		Cam->SetRelativeRotation(FVector(0.0f, -25.0f, 90.0f));
+	}
+
+	World->SetActiveCamera(Cam);
+	return Cam;
+}
+
 bool ImportAssetFile(
 	const FString& SourcePath,
 	const std::wstring& RelativeDestinationDir,
@@ -320,6 +392,11 @@ bool UEditorEngine::LoadScene(const FString& InSceneReference)
 	SelectionManager.ClearSelection();
 	SelectionManager.SetWorld(nullptr);
 
+	if (UGameViewportClient* PIEViewportClient = GetGameViewportClient())
+	{
+		PIEViewportClient->UnPossess();
+	}
+
 	if (Context->World)
 	{
 		Context->World->EndPlay();
@@ -356,10 +433,12 @@ bool UEditorEngine::LoadScene(const FString& InSceneReference)
 	Context->World->SetWorldType(EWorldType::PIE);
 	SelectionManager.SetWorld(Context->World);
 	Context->World->WarmupPickingData();
+	EnsurePIEActiveCamera(Context->World, DummyCamera);
 	if (!Context->World->HasBegunPlay())
 	{
 		Context->World->BeginPlay();
 	}
+	EnsurePIEActiveCamera(Context->World, DummyCamera);
 
 	if (UGameViewportClient* PIEViewportClient = GetGameViewportClient())
 	{
@@ -369,7 +448,7 @@ bool UEditorEngine::LoadScene(const FString& InSceneReference)
 			PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
 		}
 
-		if (UCameraComponent* GameCamera = Context->World->GetActiveCamera())
+		if (UCameraComponent* GameCamera = EnsurePIEActiveCamera(Context->World, DummyCamera))
 		{
 			PIEViewportClient->Possess(GameCamera);
 		}

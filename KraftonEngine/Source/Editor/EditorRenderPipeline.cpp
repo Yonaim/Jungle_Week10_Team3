@@ -12,6 +12,7 @@
 #include "Component/Light/LightComponentBase.h"
 #include "Core/ProjectSettings.h"
 #include "Viewport/GameViewportClient.h"
+#include "Object/Object.h"
 
 FEditorRenderPipeline::FEditorRenderPipeline(UEditorEngine* InEditor, FRenderer& InRenderer)
 	: Editor(InEditor)
@@ -94,6 +95,8 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRenderer& Renderer)
 {
 	UCameraComponent* Camera = VC->GetCamera();
+	UWorld* World = Editor->GetWorld();
+	if (!World) return;
 
 	// PIE 고려한 구조.
 	if (Editor && Editor->IsPIEPossessedMode())
@@ -102,19 +105,21 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 		{
 			if (UCameraComponent* GameCamera = GameViewportClient->GetDrivingCamera())
 			{
-				Camera = GameCamera;
+				if (IsAliveObject(GameCamera) && GameCamera->GetWorld() == World)
+				{
+					Camera = GameCamera;
+				}
 			}
 		}
 
-		if (!Camera)
+		if (!Camera || !IsAliveObject(Camera) || Camera->GetWorld() != World)
 		{
-			if (UWorld* World = Editor->GetWorld())
-			{
-				Camera = World->GetActiveCamera();
-			}
+			Camera = World->GetActiveCamera();
 		}
 	}
 
+	if (!Camera || !IsAliveObject(Camera)) return;
+	if (Editor && Editor->IsPlayingInEditor() && Camera->GetWorld() != World) return;
 	if (!Camera) return;
 
 	FViewport* VP = VC->GetViewport();
@@ -122,9 +127,6 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient* VC, FRend
 
 	ID3D11DeviceContext* Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
 	if (!Ctx) return;
-
-	UWorld* World = Editor->GetWorld();
-	if (!World) return;
 
 	FGPUOcclusionCulling& GPUOcclusion = GetOcclusionForViewport(VC);
 

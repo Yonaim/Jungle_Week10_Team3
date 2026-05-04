@@ -1674,6 +1674,12 @@ void FLuaScriptInstance::BindWorldFunctions()
 	{
 		return GEngine ? GEngine->RequestSceneLoad(SceneReference) : false;
 	});
+
+	// Global에 load Scene Binding
+	FLuaScriptRuntime::Get().GetLuaState().set_function("load_scene", [](const FString& SceneReference)
+	{
+		return GEngine ? GEngine->RequestSceneLoad(SceneReference) : false;
+	});
 }
 
 void FLuaScriptInstance::BindDataFunctions()

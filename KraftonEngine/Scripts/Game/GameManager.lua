@@ -347,46 +347,6 @@ end
 
 function GameManager.GameOver(reason)
     -- GameOver는 결과 데이터를 보존하는 지점입니다.
-    -- 실제 씬 전환은 프로젝트 흐름이 확정되면 ChangeLevel이나 결과창 시스템에서 안전하게 연결하면 됩니다.
-    if GameManager.state == GameManager.State.GameOver then
-        log("[GameManager] GameOver ignored: already GameOver")
-        return
-    end
-
-    GameManager.state = GameManager.State.GameOver
-    GameManager.result_data = build_result_data(reason)
-
-    log("[GameManager] GameOver reason=" .. tostring(reason or "Unknown"))
-    AudioManager.PlayGameOver()
-
-    local should_stop_bgm = Config.audio.stop_bgm_on_game_over
-    if should_stop_bgm == nil then
-        should_stop_bgm = true
-    end
-    if should_stop_bgm then
-        AudioManager.StopBGM()
-    end
-
-    log(
-        "[GameManager] FinalScore score=" .. tostring(GameManager.score) ..
-        " distance=" .. tostring(GameManager.distance) ..
-        " elapsed_time=" .. tostring(GameManager.elapsed_time) ..
-        " logs=" .. tostring(GameManager.logs) ..
-        " trace=" .. tostring(GameManager.trace) ..
-        " dumps=" .. tostring(GameManager.dumps) ..
-        " stability=" .. tostring(GameManager.stability) ..
-        "/" .. tostring(GameManager.max_stability) ..
-        " approval=" .. tostring(GameManager.coach_approval) ..
-        " rank=" .. tostring(GameManager.coach_rank)
-    )
-    log("[GameManager] TODO ChangeLevel hook: GameOver 결과창/씬 전환은 UI 흐름 확정 후 여기서 연결하면 됨")
-end
-
-function GameManager.IsRunning()
-    return GameManager.state == GameManager.State.Running
-end
-
-function GameManager.GameOver(reason)
     if GameManager.state == GameManager.State.GameOver then
         log("[GameManager] GameOver ignored: already GameOver")
         return
@@ -421,7 +381,15 @@ function GameManager.GameOver(reason)
 
     local result_scene = Config.result_screen and Config.result_screen.scene_path or "game/gameresult.scene"
     log("[GameManager] LoadResultScene scene=" .. tostring(result_scene))
-    load_scene(result_scene)
+    if type(load_scene) == "function" then
+        load_scene(result_scene)
+    else
+        log("[GameManager] LoadResultScene skipped: load_scene is not bound")
+    end
+end
+
+function GameManager.IsRunning()
+    return GameManager.state == GameManager.State.Running
 end
 
 function GameManager.IsGameOver()

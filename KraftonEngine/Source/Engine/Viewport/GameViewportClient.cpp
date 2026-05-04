@@ -7,6 +7,7 @@
 #include "Engine/Input/InputModifier.h"
 #include "Engine/Input/InputTrigger.h"
 #include "Math/MathUtils.h"
+#include "Object/Object.h"
 #include "Viewport/Viewport.h"
 
 #include <windows.h>
@@ -59,6 +60,11 @@ bool UGameViewportClient::ProcessPIEInput(float DeltaTime)
 void UGameViewportClient::SetPIEPossessedInputEnabled(bool bEnabled)
 {
 	SetPossessed(bEnabled);
+}
+
+UCameraComponent* UGameViewportClient::GetDrivingCamera() const
+{
+	return IsAliveObject(PossessedCamera) ? PossessedCamera : nullptr;
 }
 
 void UGameViewportClient::SetCursorClipRect(const FRect& InViewportScreenRect)
@@ -199,7 +205,7 @@ bool UGameViewportClient::Tick(float DeltaTime)
 		EnhancedInputManager.ProcessInput(&FInputManager::Get(), DeltaTime);
 
 		// Apply Accumulated Input
-		UCameraComponent* TargetCamera = GetPossessedTarget();
+		UCameraComponent* TargetCamera = GetDrivingCamera();
 
 		if (TargetCamera && !bScriptDrivesCamera)
 		{

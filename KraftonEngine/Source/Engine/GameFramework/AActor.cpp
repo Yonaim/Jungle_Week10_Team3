@@ -586,7 +586,7 @@ static USceneComponent* DuplicateSceneSubtree(
 UObject* AActor::Duplicate(UObject* NewOuter) const
 {
 	// 1) 같은 타입 액터를 팩토리로 생성 (UObject::Duplicate 경유: Serialize 왕복까지 수행)
-	//    NewOuter 미지정 시 원본의 Outer(World)를 승계 → 이후 AddActor가 다시 보강.
+	//    NewOuter 미지정 시 원본의 Outer를 승계하고, 에디터 Ctrl+D 호환을 위해 아래에서 자동 등록한다.
 	UObject* DupBase = UObject::Duplicate(NewOuter);
 	AActor* Dup = static_cast<AActor*>(DupBase);
 	if (!Dup)
@@ -629,10 +629,14 @@ UObject* AActor::Duplicate(UObject* NewOuter) const
 
 	Dup->bPrimitiveCacheDirty = true;
 
-	// 4) 월드에 등록 — Dup의 Outer(=대상 World)에 등록해야 PIE 복제 시에도 올바르게 동작.
-	if (UWorld* DestWorld = Dup->GetWorld())
+	// 4) 에디터 단일 액터 복제(Duplicate(nullptr))만 기존처럼 즉시 월드에 등록한다.
+	//    Level/PIE 복제처럼 NewOuter가 명시된 경우에는 호출자가 대상 레벨에 등록해야 한다.
+	if (!NewOuter)
 	{
-		DestWorld->AddActor(Dup);
+		if (UWorld* DestWorld = Dup->GetWorld())
+		{
+			DestWorld->AddActor(Dup);
+		}
 	}
 
 	return Dup;
