@@ -22,6 +22,7 @@
 #include "Component/Shape/BoxComponent.h"
 #include "Component/Shape/CapsuleComponent.h"
 #include "Component/Shape/SphereComponent.h"
+#include "Scripting/LuaActorProxy.h"
 #include <algorithm>
 #include <cmath>
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
@@ -112,3 +112,4 @@ struct FLuaComponentProxy
 	bool SetBoxExtentXYZ(float X, float Y, float Z);
 	sol::optional<FVector> GetBoxExtent() const;
 };
+ 
