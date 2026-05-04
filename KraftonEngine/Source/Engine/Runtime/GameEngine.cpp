@@ -8,6 +8,8 @@
 #include "Component/CameraComponent.h"
 #include "Component/ActorComponent.h"
 #include "Input/InputManager.h"
+#include "Object/Object.h"
+#include <cctype>
 #include "Viewport/GameViewportClient.h"
 #include "Viewport/Viewport.h"
 #include "Engine/Runtime/WindowsWindow.h"
@@ -15,6 +17,35 @@
 #include <filesystem>
 
 IMPLEMENT_CLASS(UGameEngine, UEngine)
+
+namespace
+{
+	bool EndsWithIgnoreCase(const FString& Value, const char* Suffix)
+	{
+		if (!Suffix)
+		{
+			return false;
+		}
+
+		const FString SuffixString = Suffix;
+		if (Value.size() < SuffixString.size())
+		{
+			return false;
+		}
+
+		for (size_t Index = 0; Index < SuffixString.size(); ++Index)
+		{
+			const char Left = static_cast<char>(std::tolower(static_cast<unsigned char>(Value[Value.size() - SuffixString.size() + Index])));
+			const char Right = static_cast<char>(std::tolower(static_cast<unsigned char>(SuffixString[Index])));
+			if (Left != Right)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+}
 
 void UGameEngine::Init(FWindowsWindow* InWindow)
 {
@@ -77,6 +108,11 @@ void UGameEngine::LoadStartLevel()
 {
 	const FString& StartLevel = FProjectSettings::Get().Game.DefaultScene;
 	if (StartLevel.empty())
+	{
+		return;
+	}
+
+	if (LoadScene(StartLevel))
 	{
 		return;
 	}
@@ -190,4 +226,168 @@ void UGameEngine::LoadStartLevel()
 			}
 		}
 	}
+}
+
+bool UGameEngine::LoadScene(const FString& InSceneReference)
+{
+	if (InSceneReference.empty())
+	{
+		return false;
+	}
+
+	std::filesystem::path ChosenPath;
+	const std::filesystem::path RawPath = FPaths::ToWide(InSceneReference);
+	const std::filesystem::path SceneDir = FSceneSaveManager::GetSceneDirectory();
+
+	auto TrySetChosenPath = [&ChosenPath](const std::filesystem::path& Candidate)
+	{
+		if (!Candidate.empty() && std::filesystem::exists(Candidate))
+		{
+			ChosenPath = Candidate;
+			return true;
+		}
+		return false;
+	};
+
+	if (RawPath.is_absolute())
+	{
+		TrySetChosenPath(RawPath);
+	}
+	else
+	{
+		TrySetChosenPath(RawPath);
+		if (ChosenPath.empty())
+		{
+			TrySetChosenPath(SceneDir / RawPath);
+		}
+	}
+
+	if (ChosenPath.empty())
+	{
+		const bool bHasSceneExtension = EndsWithIgnoreCase(InSceneReference, ".scene");
+		const bool bHasUmapExtension = EndsWithIgnoreCase(InSceneReference, ".umap");
+		if (bHasSceneExtension || bHasUmapExtension)
+		{
+			const std::filesystem::path FileName = RawPath.filename();
+			if (!TrySetChosenPath(SceneDir / FileName))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			const std::wstring StemW = FPaths::ToWide(InSceneReference);
+			if (!TrySetChosenPath(SceneDir / (StemW + L".umap")))
+			{
+				if (!TrySetChosenPath(SceneDir / (StemW + FSceneSaveManager::SceneExtension)))
+				{
+					return false;
+				}
+			}
+		}
+	}
+
+	FWorldContext* Context = GetWorldContextFromHandle(GetActiveWorldHandle());
+	if (!Context)
+	{
+		return false;
+	}
+
+	if (Context->World)
+	{
+		Context->World->EndPlay();
+		UObjectManager::Get().DestroyObject(Context->World);
+		Context->World = nullptr;
+	}
+
+	FPerspectiveCameraData CameraData;
+	const FString FilePath = FPaths::ToUtf8(ChosenPath.wstring());
+	if (FSceneSaveManager::IsJsonFile(FilePath))
+	{
+		FSceneSaveManager::LoadSceneFromJSON(FilePath, *Context, CameraData);
+	}
+	else if (EndsWithIgnoreCase(FilePath, ".umap"))
+	{
+		Context->World = UObjectManager::Get().CreateObject<UWorld>();
+		FSceneSaveManager::LoadWorldFromBinary(FilePath, Context->World);
+	}
+	else
+	{
+		FSceneSaveManager::LoadSceneFromJSON(FilePath, *Context, CameraData);
+	}
+
+	Context->WorldType = EWorldType::Game;
+	Context->ContextName = RawPath.stem().empty() ? "GameWorld" : FPaths::ToUtf8(RawPath.stem().wstring());
+	Context->ContextHandle = GetActiveWorldHandle();
+	SetActiveWorld(Context->ContextHandle);
+
+	if (!Context->World)
+	{
+		return false;
+	}
+
+	Context->World->SetWorldType(EWorldType::Game);
+	Context->World->WarmupPickingData();
+
+	if (!Context->World->GetActiveCamera())
+	{
+		for (AActor* Actor : Context->World->GetActors())
+		{
+			if (!Actor)
+			{
+				continue;
+			}
+
+			for (UActorComponent* Comp : Actor->GetComponents())
+			{
+				if (UCameraComponent* Cam = Cast<UCameraComponent>(Comp))
+				{
+					Context->World->SetActiveCamera(Cam);
+					break;
+				}
+			}
+
+			if (Context->World->GetActiveCamera())
+			{
+				break;
+			}
+		}
+	}
+
+	if (!Context->World->GetActiveCamera())
+	{
+		AActor* CamActor = Context->World->SpawnActor<AActor>();
+		if (CamActor)
+		{
+			CamActor->SetFName(FName("DefaultGameCamera"));
+			UCameraComponent* Cam = CamActor->AddComponent<UCameraComponent>();
+			CamActor->SetRootComponent(Cam);
+			if (CameraData.bValid)
+			{
+				Cam->SetRelativeLocation(CameraData.Location);
+				Cam->SetRelativeRotation(CameraData.Rotation);
+			}
+			else
+			{
+				Cam->SetRelativeLocation(FVector(0.0f, -10.0f, 5.0f));
+				Cam->SetRelativeRotation(FVector(0.0f, -25.0f, 90.0f));
+			}
+			Context->World->SetActiveCamera(Cam);
+		}
+	}
+
+	if (!Context->World->HasBegunPlay())
+	{
+		Context->World->BeginPlay();
+	}
+
+	if (UGameViewportClient* ViewportClient = GetGameViewportClient())
+	{
+		if (UCameraComponent* GameCamera = Context->World->GetActiveCamera())
+		{
+			ViewportClient->Possess(GameCamera);
+		}
+	}
+
+	return true;
 }

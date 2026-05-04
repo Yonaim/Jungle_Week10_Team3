@@ -15,6 +15,7 @@ public:
 	void ContributeVisuals(FScene& Scene) const override;
 
 private:
+	bool LoadStyleFromJson();
 	void ClampSlice();
 	bool ResolveOptionalTextureSlot(FTextureSlot& Slot, class UTexture2D*& LoadedTexture);
 	ID3D11ShaderResourceView* GetOptionalTextureSRV(const FTextureSlot& Slot, class UTexture2D* LoadedTexture) const;
@@ -22,6 +23,8 @@ private:
 		float U0, float V0, float U1, float V1) const;
 
 private:
+	FString StyleJsonPath;
+	FVector4 AtlasRegion = FVector4(0.0f, 0.0f, 0.0f, 0.0f); // x, y, width, height in source texture pixels
 	FVector4 Slice = FVector4(8.0f, 8.0f, 8.0f, 8.0f);
 	bool bDrawBorder = true;
 	bool bDrawCenter = true;

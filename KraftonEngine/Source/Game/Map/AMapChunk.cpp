@@ -1,9 +1,13 @@
 ﻿#include "AMapChunk.h"
 #include "GameFramework/World.h"
+#include "Component/SceneComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Engine/Runtime/Engine.h"
 #include "Game/GameActors/Obstacle/SimpleObstacleActor.h"
 #include "Game/GameActors/Obstacle/BarrierObstacleActor.h"
+#include "Game/GameActors/Obstacle/MustJumpObstacleActor.h"
+#include "Game/GameActors/Obstacle/MustSlideObstacleActor.h"
+#include "Game/GameActors/Obstacle/WireballActor.h"
 #include "Game/Map/MapRandom.h"
 #include "Materials/MaterialManager.h"
 #include "Resource/ResourceManager.h"
@@ -28,8 +32,8 @@ void AMapChunk::EndPlay() {
 void AMapChunk::InitFromTemplate(const FMapChunkTemplate& InTemplate, float InObstacleFillRate) {
 	Template         = InTemplate;
 	ObstacleFillRate = InObstacleFillRate;
-	SpawnObstacle();
 	BuildFloor();
+	SpawnObstacle();
 }
 
 FVector AMapChunk::GetExitLocation() const
@@ -57,8 +61,8 @@ static AObstacleActorBase* SpawnObstacleOfType(UWorld* World, EObstacleType Type
 	switch (Type)
 	{
 	case EObstacleType::Barrier: return World->SpawnActor<ABarrierObstacleActor>();
-	case EObstacleType::LowBar:	 return World->SpawnActor<ASimpleObstacleActor>();
-	case EObstacleType::HighBar: return World->SpawnActor<ASimpleObstacleActor>();
+	case EObstacleType::LowBar:	 return World->SpawnActor<AMustJumpObstacleActor>();
+	case EObstacleType::HighBar: return World->SpawnActor<AMustSlideObstacleActor>();
 	case EObstacleType::Misc:    return World->SpawnActor<ASimpleObstacleActor>();
 	default:                     return nullptr;
 	}
@@ -73,6 +77,7 @@ static AObstacleActorBase* SpawnObstacleAt(UWorld* World, EObstacleType Type, co
 	}
 
 	Obstacle->InitDefaultComponents("");
+	Obstacle->SetTag("Obstacle");
 	Obstacle->SetActorLocation(Location);
 	World->InsertActorToOctree(Obstacle);
 
@@ -231,11 +236,22 @@ void AMapChunk::BuildFloor() {
 		Block->SetRelativeLocation(FVector(BlockPos.X, BlockPos.Y, BlockPos.Z));
 		Block->SetRelativeRotation(BlockInfo.LocalRotation);
 		Block->SetRelativeScale(BlockInfo.Scale);
+
+		// PlayerController의 FindGround()는 collision enabled primitive만 바닥 후보로 본다.
+		// Floor는 장애물처럼 데미지를 주는 대상은 아니지만, Player가 "딛고 설 수 있는 지형"이다.
+		// 따라서 collision을 명시적으로 켜고, overlap도 켜서 디버그 중 상태를 쉽게 확인할 수 있게 한다.
+		// Mesh/Transform/Scale을 모두 적용한 뒤 bounds를 dirty 처리해야 다음 ground query에서
+		// 최신 world AABB, 특히 바닥 상단 Z값이 정확히 계산된다.
+		Block->SetCollisionEnabled(true);
+		Block->SetGenerateOverlapEvents(true);
+		Block->MarkWorldBoundsDirty();
+
 		FloorMeshes.push_back(Block);
 	}
 
-	// AddComponent does not update the spatial partition, so re-insert the actor
-	// so the new floor mesh components become visible to frustum culling.
+	// AddComponent는 Actor의 spatial partition/octree 상태를 자동으로 완전히 갱신하지 않는다.
+	// FloorMesh를 런타임에 붙인 뒤 Actor를 다시 octree에 넣어야 렌더링/피킹/충돌 broad-phase에서
+	// 새 floor component들이 안정적으로 관찰된다.
 	if (UWorld* World = GetWorld())
 	{
 		World->InsertActorToOctree(this);

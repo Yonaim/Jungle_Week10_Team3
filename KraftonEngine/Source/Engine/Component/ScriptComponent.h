@@ -8,6 +8,10 @@
 class UShapeComponent;
 struct FComponentOverlapEvent;
 struct FComponentHitEvent;
+namespace json
+{
+	class JSON;
+}
 
 // ======================================================
 // -- Actor와 Lua Script를 연결해주는 Script 관리 Component --
@@ -42,6 +46,9 @@ public:
 	bool ReloadScript();
 	// 현재 ScriptPath 파일을 운영체제 기본 연결 프로그램으로 연다.
 	bool OpenScript();
+	bool CallScriptFunction(const FString& FunctionName);
+	const TMap<FString, FScriptPropertyValue>& GetSerializedScriptPropertyOverrides() const { return ScriptPropertyOverrides; }
+	void SetSerializedScriptPropertyOverrides(const TMap<FString, FScriptPropertyValue>& InOverrides);
 
 	// 마지막 스크립트 에러 메시지를 에디터 UI에서 표시할 때 사용한다.
 	const FString& GetLastScriptError() const { return LastScriptError; }

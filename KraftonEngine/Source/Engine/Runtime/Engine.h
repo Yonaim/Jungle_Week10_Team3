@@ -27,6 +27,8 @@ public:
 	virtual void Shutdown();
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaTime);
+	virtual bool LoadScene(const FString& InSceneReference) { (void)InSceneReference; return false; }
+	bool RequestSceneLoad(const FString& InSceneReference);
 
 	virtual void OnWindowResized(uint32 Width, uint32 Height);
 
@@ -78,6 +80,7 @@ protected:
 
 	UGameViewportClient* GameViewportClient = nullptr;
 	bool bGamePaused = false;
+	FString PendingSceneLoadReference;
 
 	FRenderer Renderer;
 

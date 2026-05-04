@@ -6,7 +6,7 @@ IMPLEMENT_CLASS(AMapManager, AActor)
 
 AMapManager::AMapManager()
 {
-	bTickInEditor = true;
+	bTickInEditor = false;
 	BuildTemplateLibrary();
 }
 
@@ -20,6 +20,7 @@ void AMapManager::EndPlay() {
 }
 
 void AMapManager::Tick(float DeltaTime) {
+	if (!bEnabled) return;
 	if (!Player) return; 
 	if (Templates.empty()) return;
 
@@ -293,7 +294,8 @@ void AMapManager::SpawnNextChunk(bool Init)
 	Chunk->SetActorLocation(SpawnLoc);
 	Chunk->SetActorRotation(SpawnRot);
 
-	// TODO: Obstacle fill rate should ramp with time logarithmically, clamped to some reasonable value
+	// TODO: 장애물 생성 확률은 생존 시간/거리 기반으로 서서히 증가시키되,
+	// 플레이 불가능한 수준으로 올라가지 않게 적당한 상한을 둔다.
 	Chunk->InitFromTemplate(T, 0.2f);
 	ActiveChunks.push_back(Chunk);
 
@@ -303,8 +305,40 @@ void AMapManager::SpawnNextChunk(bool Init)
 
 void AMapManager::DespawnFrontChunk() {
 	if (ActiveChunks.empty()) return;
-	GetWorld()->DestroyActor(ActiveChunks.front());
+	AMapChunk* Front = ActiveChunks.front();
+	GetWorld()->DestroyActor(Front);
 	ActiveChunks.erase(ActiveChunks.begin());
+}
+
+void AMapManager::Initialize(AActor* InPlayer)
+{
+	SetPlayerActor(InPlayer);
+	ResetMap();
+}
+
+void AMapManager::ResetMap()
+{
+	UWorld* World = GetWorld();
+	for (AMapChunk* Chunk : ActiveChunks)
+	{
+		if (Chunk && World)
+		{
+			World->DestroyActor(Chunk);
+		}
+	}
+
+	ActiveChunks.clear();
+	StraightRunLength = 0;
+}
+
+void AMapManager::SetEnabled(bool bInEnabled)
+{
+	bEnabled = bInEnabled;
+}
+
+void AMapManager::SetPlayerActor(AActor* InPlayer)
+{
+	Player = InPlayer;
 }
 
 int32 AMapManager::SelectNextTemplateIndex()

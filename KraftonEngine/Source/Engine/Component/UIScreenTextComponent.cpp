@@ -7,6 +7,8 @@
 #include "Render/Scene/FScene.h"
 #include "Resource/ResourceManager.h"
 #include "Serialization/Archive.h"
+#include "Viewport/GameViewportClient.h"
+#include "Viewport/Viewport.h"
 
 #include <algorithm>
 
@@ -22,6 +24,21 @@ namespace
 		FVector2 ViewportSize(1920.0f, 1080.0f);
 		if (GEngine)
 		{
+			if (UGameViewportClient* GameViewportClient = GEngine->GetGameViewportClient())
+			{
+				if (FViewport* GameViewport = GameViewportClient->GetViewport())
+				{
+					const float Width = static_cast<float>(GameViewport->GetWidth());
+					const float Height = static_cast<float>(GameViewport->GetHeight());
+					if (Width > 0.0f && Height > 0.0f)
+					{
+						ViewportSize.X = Width;
+						ViewportSize.Y = Height;
+						return ViewportSize;
+					}
+				}
+			}
+
 			if (FWindowsWindow* Window = GEngine->GetWindow())
 			{
 				ViewportSize.X = (std::max)(1.0f, Window->GetWidth());

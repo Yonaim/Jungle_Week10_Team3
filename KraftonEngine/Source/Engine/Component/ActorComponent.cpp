@@ -90,8 +90,15 @@ void UActorComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProp
 	//OutProps.push_back({ "Active", EPropertyType::Bool, &bIsActive });
 	//OutProps.push_back({ "Auto Activate", EPropertyType::Bool, &bAutoActivate });
 	//OutProps.push_back({ "Can Ever Tick", EPropertyType::Bool, &bCanEverTick });
-	OutProps.push_back({ "bTickEnable", EPropertyType::Bool, &bTickEnable });
-	OutProps.push_back({ "bEditorOnly", EPropertyType::Bool, &bEditorOnly });
+	if (ShouldExposeTickEnabledProperty())
+	{
+		OutProps.push_back({ "bTickEnable", EPropertyType::Bool, &bTickEnable });
+	}
+
+	if (ShouldExposeEditorOnlyProperty())
+	{
+		OutProps.push_back({ "bEditorOnly", EPropertyType::Bool, &bEditorOnly });
+	}
 }
 
 void UActorComponent::PostEditProperty(const char* PropertyName)

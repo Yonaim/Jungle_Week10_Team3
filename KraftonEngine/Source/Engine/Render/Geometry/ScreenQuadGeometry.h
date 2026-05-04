@@ -15,6 +15,7 @@ public:
 		uint32 IndexCount = 0;
 		ID3D11ShaderResourceView* SRV = nullptr;
 		uint16 ZOrder = 0;
+		bool bSolidColorOnly = false;
 	};
 
 	void Create(ID3D11Device* InDevice);
@@ -32,7 +33,8 @@ public:
 		const FVector2& UVMin,
 		const FVector2& UVMax,
 		ID3D11ShaderResourceView* SRV,
-		uint16 ZOrder);
+		uint16 ZOrder,
+		bool bSolidColorOnly);
 
 	bool UploadBuffers(ID3D11DeviceContext* Context);
 

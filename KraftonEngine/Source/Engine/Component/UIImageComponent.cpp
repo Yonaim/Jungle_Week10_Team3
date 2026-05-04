@@ -8,8 +8,11 @@
 #include "Render/Scene/FScene.h"
 #include "Serialization/Archive.h"
 #include "Texture/Texture2D.h"
+#include "Viewport/GameViewportClient.h"
+#include "Viewport/Viewport.h"
 
 #include <algorithm>
+#include <cstring>
 
 IMPLEMENT_CLASS(UUIImageComponent, UBillboardComponent)
 
@@ -17,12 +20,55 @@ namespace
 {
 	constexpr const char* DefaultUIImageTexture = "Asset/Content/Texture/checker.png";
 	const FVector4 SelectedUIOutlineColor(0.10f, 0.54f, 0.96f, -1.0f);
+	const char* GUIImageFitModeNames[] = { "Stretch", "Contain", "Cover" };
+	const char* GUIImageContentAlignmentNames[] = { "Center", "Top", "Bottom", "Left", "Right" };
+
+	bool IsEmptyTexturePath(const FString& InTexturePath)
+	{
+		return InTexturePath.empty() || _stricmp(InTexturePath.c_str(), "None") == 0;
+	}
+
+	FVector2 ComputeAlignmentOffset(const FVector2& ContainerSize, const FVector2& ContentSize, EUIImageContentAlignment InAlignment)
+	{
+		const float DeltaX = (std::max)(0.0f, ContainerSize.X - ContentSize.X);
+		const float DeltaY = (std::max)(0.0f, ContainerSize.Y - ContentSize.Y);
+
+		switch (InAlignment)
+		{
+		case EUIImageContentAlignment::Top:
+			return FVector2(DeltaX * 0.5f, 0.0f);
+		case EUIImageContentAlignment::Bottom:
+			return FVector2(DeltaX * 0.5f, DeltaY);
+		case EUIImageContentAlignment::Left:
+			return FVector2(0.0f, DeltaY * 0.5f);
+		case EUIImageContentAlignment::Right:
+			return FVector2(DeltaX, DeltaY * 0.5f);
+		case EUIImageContentAlignment::Center:
+		default:
+			return FVector2(DeltaX * 0.5f, DeltaY * 0.5f);
+		}
+	}
 
 	FVector2 GetViewportSize2D()
 	{
 		FVector2 ViewportSize(1920.0f, 1080.0f);
 		if (GEngine)
 		{
+			if (UGameViewportClient* GameViewportClient = GEngine->GetGameViewportClient())
+			{
+				if (FViewport* GameViewport = GameViewportClient->GetViewport())
+				{
+					const float Width = static_cast<float>(GameViewport->GetWidth());
+					const float Height = static_cast<float>(GameViewport->GetHeight());
+					if (Width > 0.0f && Height > 0.0f)
+					{
+						ViewportSize.X = Width;
+						ViewportSize.Y = Height;
+						return ViewportSize;
+					}
+				}
+			}
+
 			if (FWindowsWindow* Window = GEngine->GetWindow())
 			{
 				ViewportSize.X = (std::max)(1.0f, Window->GetWidth());
@@ -70,6 +116,94 @@ namespace
 	}
 }
 
+EUIImageFitMode UUIImageComponent::SanitizeFitModeValue(int32 InFitMode)
+{
+	const int32 MinValue = static_cast<int32>(EUIImageFitMode::Stretch);
+	const int32 MaxValue = static_cast<int32>(EUIImageFitMode::Cover);
+	return static_cast<EUIImageFitMode>((std::clamp)(InFitMode, MinValue, MaxValue));
+}
+
+EUIImageContentAlignment UUIImageComponent::SanitizeContentAlignmentValue(int32 InAlignment)
+{
+	const int32 MinValue = static_cast<int32>(EUIImageContentAlignment::Center);
+	const int32 MaxValue = static_cast<int32>(EUIImageContentAlignment::Right);
+	return static_cast<EUIImageContentAlignment>((std::clamp)(InAlignment, MinValue, MaxValue));
+}
+
+UUIImageComponent::FResolvedImageDrawParams UUIImageComponent::ResolveImageDrawParams(
+	const FVector2& ContainerPosition,
+	const FVector2& ContainerSize,
+	const UTexture2D* Texture,
+	EUIImageFitMode InFitMode,
+	EUIImageContentAlignment InAlignment)
+{
+	FResolvedImageDrawParams Result;
+	Result.Position = ContainerPosition;
+	Result.Size = ContainerSize;
+
+	if (!Texture || Texture->GetWidth() == 0 || Texture->GetHeight() == 0)
+	{
+		return Result;
+	}
+
+	const float TextureWidth = static_cast<float>(Texture->GetWidth());
+	const float TextureHeight = static_cast<float>(Texture->GetHeight());
+	if (TextureWidth <= 0.0f || TextureHeight <= 0.0f || ContainerSize.X <= 0.0f || ContainerSize.Y <= 0.0f)
+	{
+		return Result;
+	}
+
+	const float WidthScale = ContainerSize.X / TextureWidth;
+	const float HeightScale = ContainerSize.Y / TextureHeight;
+
+	switch (InFitMode)
+	{
+	case EUIImageFitMode::Contain:
+	{
+		const float Scale = (std::min)(WidthScale, HeightScale);
+		const FVector2 DrawSize(TextureWidth * Scale, TextureHeight * Scale);
+		Result.Size = DrawSize;
+		Result.Position = ContainerPosition + ComputeAlignmentOffset(ContainerSize, DrawSize, InAlignment);
+		break;
+	}
+	case EUIImageFitMode::Cover:
+	{
+		const float VisibleWidthRatio = (std::min)(1.0f, WidthScale / HeightScale);
+		const float VisibleHeightRatio = (std::min)(1.0f, HeightScale / WidthScale);
+		const FVector2 VisibleUVSize(VisibleWidthRatio, VisibleHeightRatio);
+		const FVector2 UVPadding(1.0f - VisibleUVSize.X, 1.0f - VisibleUVSize.Y);
+
+		switch (InAlignment)
+		{
+		case EUIImageContentAlignment::Top:
+			Result.UVMin = FVector2(UVPadding.X * 0.5f, 0.0f);
+			break;
+		case EUIImageContentAlignment::Bottom:
+			Result.UVMin = FVector2(UVPadding.X * 0.5f, UVPadding.Y);
+			break;
+		case EUIImageContentAlignment::Left:
+			Result.UVMin = FVector2(0.0f, UVPadding.Y * 0.5f);
+			break;
+		case EUIImageContentAlignment::Right:
+			Result.UVMin = FVector2(UVPadding.X, UVPadding.Y * 0.5f);
+			break;
+		case EUIImageContentAlignment::Center:
+		default:
+			Result.UVMin = FVector2(UVPadding.X * 0.5f, UVPadding.Y * 0.5f);
+			break;
+		}
+
+		Result.UVMax = Result.UVMin + VisibleUVSize;
+		break;
+	}
+	case EUIImageFitMode::Stretch:
+	default:
+		break;
+	}
+
+	return Result;
+}
+
 UUIImageComponent::UUIImageComponent()
 {
 	bTickEnable = false;
@@ -87,7 +221,11 @@ void UUIImageComponent::Serialize(FArchive& Ar)
 	Ar << Alignment;
 	Ar << AnchorOffset;
 	Ar << Tint;
+	Ar << BorderThickness;
+	Ar << BorderColor;
 	Ar << ZOrder;
+	Ar << FitMode;
+	Ar << ContentAlignment;
 }
 
 void UUIImageComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -100,21 +238,38 @@ void UUIImageComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPr
 	OutProps.push_back({ "Anchor", EPropertyType::Vec3, &Anchor, 0.0f, 1.0f, 0.01f });
 	OutProps.push_back({ "Alignment", EPropertyType::Vec3, &Alignment, 0.0f, 1.0f, 0.01f });
 	OutProps.push_back({ "Anchor Offset", EPropertyType::Vec3, &AnchorOffset, -4096.0f, 4096.0f, 1.0f });
+	OutProps.push_back({ "Fit Mode", EPropertyType::Enum, &FitMode, 0.0f, 0.0f, 0.1f, GUIImageFitModeNames, static_cast<uint32>(std::size(GUIImageFitModeNames)) });
+	OutProps.push_back({ "Content Alignment", EPropertyType::Enum, &ContentAlignment, 0.0f, 0.0f, 0.1f, GUIImageContentAlignmentNames, static_cast<uint32>(std::size(GUIImageContentAlignmentNames)) });
 	OutProps.push_back({ "Tint", EPropertyType::Color4, &Tint });
+	OutProps.push_back({ "Border Thickness", EPropertyType::Float, &BorderThickness, 0.0f, 128.0f, 0.1f });
+	OutProps.push_back({ "Border Color", EPropertyType::Color4, &BorderColor });
 	OutProps.push_back({ "Z Order", EPropertyType::Int, &ZOrder });
+	OutProps.push_back({ "Visible", EPropertyType::Bool, &bIsVisible });
 }
 
 void UUIImageComponent::PostEditProperty(const char* PropertyName)
 {
 	UBillboardComponent::PostEditProperty(PropertyName);
 
-	if (strcmp(PropertyName, "Texture") == 0 && (TextureSlot.Path.empty() || TextureSlot.Path == "None"))
+	if (strcmp(PropertyName, "Texture") == 0 && IsEmptyTexturePath(TextureSlot.Path))
 	{
-		SetTexturePath(DefaultUIImageTexture);
+		SetTexture(nullptr);
 	}
 	else if (strcmp(PropertyName, "Screen Size") == 0)
 	{
 		SetScreenSize(ScreenSize);
+	}
+	else if (strcmp(PropertyName, "Border Thickness") == 0)
+	{
+		SetBorderThickness(BorderThickness);
+	}
+	else if (strcmp(PropertyName, "Fit Mode") == 0)
+	{
+		FitMode = static_cast<int32>(SanitizeFitModeValue(FitMode));
+	}
+	else if (strcmp(PropertyName, "Content Alignment") == 0)
+	{
+		ContentAlignment = static_cast<int32>(SanitizeContentAlignmentValue(ContentAlignment));
 	}
 }
 
@@ -125,28 +280,46 @@ void UUIImageComponent::ContributeVisuals(FScene& Scene) const
 		return;
 	}
 
+	const FVector2 ResolvedSize = ResolveScreenSize2D();
+	const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
+
 	if (ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV())
 	{
-		const FVector2 ResolvedSize = ResolveScreenSize2D();
-		const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
-		Scene.AddScreenQuad(
-			SRV,
+		const FResolvedImageDrawParams DrawParams = ResolveImageDrawParams(
 			ResolvedPosition,
 			ResolvedSize,
+			Texture,
+			SanitizeFitModeValue(FitMode),
+			SanitizeContentAlignmentValue(ContentAlignment));
+
+		Scene.AddScreenQuad(
+			SRV,
+			DrawParams.Position,
+			DrawParams.Size,
 			Tint,
-			ZOrder);
+			ZOrder,
+			DrawParams.UVMin,
+			DrawParams.UVMax);
+	}
+
+	if (BorderThickness > 0.0f && BorderColor.W > 0.0f)
+	{
+		const float X = ResolvedPosition.X;
+		const float Y = ResolvedPosition.Y;
+		const float W = ResolvedSize.X;
+		const float H = ResolvedSize.Y;
+		const float ClampedThickness = (std::min)(BorderThickness, (std::min)(W, H) * 0.5f);
+
+		Scene.AddScreenQuad(nullptr, FVector2(X, Y), FVector2(W, ClampedThickness), BorderColor, ZOrder + 1);
+		Scene.AddScreenQuad(nullptr, FVector2(X, Y + H - ClampedThickness), FVector2(W, ClampedThickness), BorderColor, ZOrder + 1);
+		Scene.AddScreenQuad(nullptr, FVector2(X, Y), FVector2(ClampedThickness, H), BorderColor, ZOrder + 1);
+		Scene.AddScreenQuad(nullptr, FVector2(X + W - ClampedThickness, Y), FVector2(ClampedThickness, H), BorderColor, ZOrder + 1);
 	}
 }
 
 void UUIImageComponent::ContributeSelectedVisuals(FScene& Scene) const
 {
 	if (!IsVisible() || Scene.GetSelectedComponent() != this)
-	{
-		return;
-	}
-
-	ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV();
-	if (!SRV)
 	{
 		return;
 	}
@@ -193,15 +366,16 @@ void UUIImageComponent::SetScreenSize(const FVector& InScreenSize)
 
 bool UUIImageComponent::SetTexturePath(const FString& InTexturePath)
 {
-	TextureSlot.Path = InTexturePath.empty() ? FString(DefaultUIImageTexture) : InTexturePath;
+	TextureSlot.Path = InTexturePath;
 	return EnsureTextureLoaded();
 }
 
 bool UUIImageComponent::EnsureTextureLoaded()
 {
-	if (TextureSlot.Path.empty() || TextureSlot.Path == "None")
+	if (IsEmptyTexturePath(TextureSlot.Path))
 	{
-		TextureSlot.Path = DefaultUIImageTexture;
+		SetTexture(nullptr);
+		return true;
 	}
 
 	if (ResolveTextureFromPath(TextureSlot.Path))

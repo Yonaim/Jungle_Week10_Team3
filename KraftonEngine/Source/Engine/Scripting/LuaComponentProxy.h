@@ -26,6 +26,8 @@ struct FLuaComponentProxy
 
 	bool SetActive(bool bActive);
 	bool IsActive() const;
+	bool SetVisible(bool bVisible);
+	bool IsVisible() const;
 
 	sol::optional<FVector> GetWorldLocation() const;
 	bool SetWorldLocation(const FVector& InLocation);
@@ -80,18 +82,18 @@ struct FLuaComponentProxy
 	bool IsHovered() const;
 	bool IsPressed() const;
 	bool WasClicked() const;
-	bool SetSoundPath(const FString& SoundPath);
-	sol::optional<FString> GetSoundPath() const;
-	bool SetSoundCategory(const FString& CategoryName);
-	sol::optional<FString> GetSoundCategory() const;
-	bool SetSoundLooping(bool bLooping);
-	bool IsSoundLooping() const;
+	bool SetAudioPath(const FString& AudioPath);
+	sol::optional<FString> GetAudioPath() const;
+	bool SetAudioCategory(const FString& CategoryName);
+	sol::optional<FString> GetAudioCategory() const;
+	bool SetAudioLooping(bool bLooping);
+	bool IsAudioLooping() const;
 	bool PlayAudio();
-	bool PlayAudioPath(const FString& SoundPath);
-	bool StopSound();
-	bool PauseSound();
-	bool ResumeSound();
-	bool IsSoundPlaying() const;
+	bool PlayAudioPath(const FString& AudioPath);
+	bool StopAudio();
+	bool PauseAudio();
+	bool ResumeAudio();
+	bool IsAudioPlaying() const;
 
 	bool SetSpeed(float Speed);
 	sol::optional<float> GetSpeed() const;

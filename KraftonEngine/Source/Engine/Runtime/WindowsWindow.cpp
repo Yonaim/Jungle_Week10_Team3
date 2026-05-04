@@ -33,7 +33,7 @@ void FWindowsWindow::Minimize() const
 
 void FWindowsWindow::ToggleMaximize() const
 {
-	if (!HWindow || bResizeLocked)
+	if (!HWindow)
 	{
 		return;
 	}
@@ -86,13 +86,13 @@ void FWindowsWindow::SetResizeLocked(bool bLocked) const
 	if (bResizeLocked)
 	{
 		Style &= ~static_cast<LONG_PTR>(WS_THICKFRAME);
-		Style &= ~static_cast<LONG_PTR>(WS_MAXIMIZEBOX);
 	}
 	else
 	{
 		Style |= static_cast<LONG_PTR>(WS_THICKFRAME);
-		Style |= static_cast<LONG_PTR>(WS_MAXIMIZEBOX);
 	}
+
+	Style |= static_cast<LONG_PTR>(WS_MAXIMIZEBOX);
 
 	SetWindowLongPtr(HWindow, GWL_STYLE, Style);
 	SetWindowPos(HWindow, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
@@ -150,6 +150,30 @@ bool FWindowsWindow::IsInTitleBarDragRegion(POINT ClientPoint) const
 		ClientPoint.x < TitleBarDragRegion.right &&
 		ClientPoint.y >= TitleBarDragRegion.top &&
 		ClientPoint.y < TitleBarDragRegion.bottom;
+}
+
+void FWindowsWindow::SetTitleBarControlRegion(float X, float Y, float InWidth, float InHeight)
+{
+	TitleBarControlRegion.left = static_cast<LONG>(X);
+	TitleBarControlRegion.top = static_cast<LONG>(Y);
+	TitleBarControlRegion.right = static_cast<LONG>(X + InWidth);
+	TitleBarControlRegion.bottom = static_cast<LONG>(Y + InHeight);
+	bHasTitleBarControlRegion = InWidth > 0.0f && InHeight > 0.0f;
+}
+
+void FWindowsWindow::ClearTitleBarControlRegion()
+{
+	TitleBarControlRegion = RECT{ 0, 0, 0, 0 };
+	bHasTitleBarControlRegion = false;
+}
+
+bool FWindowsWindow::IsInTitleBarControlRegion(POINT ClientPoint) const
+{
+	return bHasTitleBarControlRegion &&
+		ClientPoint.x >= TitleBarControlRegion.left &&
+		ClientPoint.x < TitleBarControlRegion.right &&
+		ClientPoint.y >= TitleBarControlRegion.top &&
+		ClientPoint.y < TitleBarControlRegion.bottom;
 }
 
 POINT FWindowsWindow::ScreenToClientPoint(POINT ScreenPoint) const

@@ -15,6 +15,7 @@ struct FTextureAssetListItem
 {
 	FString DisplayName;
 	FString FullPath;
+	FString SourceFolder;
 };
 
 // UTexture2D — 텍스처 에셋 (SRV를 소유하는 UObject)

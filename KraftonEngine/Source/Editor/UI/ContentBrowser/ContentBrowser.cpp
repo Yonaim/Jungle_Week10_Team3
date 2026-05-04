@@ -2,6 +2,7 @@
 
 #include "ContentBrowserElement.h"
 #include "Editor/Settings/EditorSettings.h"
+#include "Editor/UI/EditorAccentColor.h"
 #include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Engine/Runtime/Engine.h"
 #include "Materials/MaterialManager.h"
@@ -286,6 +287,7 @@ void FEditorContentBrowserWidget::Initialize(UEditorEngine* InEditor, ID3D11Devi
 
 void FEditorContentBrowserWidget::Render(float DeltaTime)
 {
+	(void)DeltaTime;
 	FEditorSettings& Settings = FEditorSettings::Get();
 	if (!Settings.UI.bContentBrowser)
 	{
@@ -304,8 +306,27 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
 	}
 	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
-	//if (ImGui::Button("Refresh") || BrowserContext.bIsNeedRefresh)
-	//	Refresh();
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
+	ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::WithAlpha(0.85f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::WithAlpha(1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.08f, 0.42f, 0.78f, 1.0f));
+	if (ImGui::Button("Refresh##ContentBrowser"))
+	{
+		Refresh();
+		SaveToSettings();
+	}
+	ImGui::PopStyleColor(3);
+	ImGui::PopStyleVar(2);
+
+	std::filesystem::path CurrentPathLabel = std::filesystem::path(BrowserContext.CurrentPath).lexically_normal().filename();
+	if (CurrentPathLabel.empty())
+	{
+		CurrentPathLabel = L"All";
+	}
+
+	ImGui::SameLine();
+	ImGui::TextUnformatted(FPaths::ToUtf8(CurrentPathLabel.wstring()).c_str());
 
 	int size = static_cast<int>(BrowserContext.ContentSize.x);
 	//ImGui::SliderInt("##slider", &size, 20, 100);
@@ -346,6 +367,14 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
 
 void FEditorContentBrowserWidget::Refresh()
 {
+	const std::filesystem::path CurrentPath = std::filesystem::path(BrowserContext.CurrentPath).lexically_normal();
+	if (!IsContentBrowserTopLevelPath(CurrentPath)
+		&& (!std::filesystem::exists(CurrentPath) || !std::filesystem::is_directory(CurrentPath)))
+	{
+		BrowserContext.CurrentPath = GetContentBrowserVirtualRoot().wstring();
+	}
+
+	BrowserContext.PendingRevealPath = BrowserContext.CurrentPath;
 	RootNode = BuildDirectoryTree(GetContentBrowserVirtualRoot());
 	RefreshContent();
 

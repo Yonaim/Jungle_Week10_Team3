@@ -42,6 +42,24 @@ UWorld* FEditorViewportClient::GetWorld() const
 
 namespace
 {
+	void SyncPIEViewportRect(FViewport* Viewport, const FRect& ViewportScreenRect)
+	{
+		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+		{
+			if (EditorEngine->IsPlayingInEditor())
+			{
+				if (UGameViewportClient* GameViewportClient = EditorEngine->GetGameViewportClient())
+				{
+					if (GameViewportClient->GetViewport() == Viewport)
+					{
+						GameViewportClient->SetViewport(Viewport);
+						GameViewportClient->SetCursorClipRect(ViewportScreenRect);
+					}
+				}
+			}
+		}
+	}
+
 	struct FCameraBookmark
 	{
 		FVector Location;
@@ -1089,6 +1107,7 @@ void FEditorViewportClient::Tick(float DeltaTime)
 				if (UGameViewportClient* GameViewportClient = EditorEngine->GetGameViewportClient())
 				{
 					GameViewportClient->SetViewport(Viewport);
+					GameViewportClient->SetCursorClipRect(ViewportScreenRect);
 
 					if (!GameViewportClient->HasPossessedTarget())
 					{
@@ -1528,6 +1547,14 @@ bool FEditorViewportClient::HasUIScreenTranslateGizmo() const
 		return false;
 	}
 
+	if (const UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+	{
+		if (EditorEngine->IsPlayingInEditor())
+		{
+			return false;
+		}
+	}
+
 	USceneComponent* SelectedComponent = SelectionManager->GetSelectedComponent();
 	return SelectedComponent && IsUIScreenTransformableComponent(SelectedComponent);
 }
@@ -1712,6 +1739,7 @@ void FEditorViewportClient::UpdateLayoutRect()
 			ViewportScreenRect.Width = DrawW;
 			ViewportScreenRect.Height = DrawH;
 		}
+		SyncPIEViewportRect(Viewport, ViewportScreenRect);
 		return;
 	}
 
@@ -1725,6 +1753,7 @@ void FEditorViewportClient::UpdateLayoutRect()
 	{
 		Viewport->RequestResize(SlotW, SlotH);
 	}
+	SyncPIEViewportRect(Viewport, ViewportScreenRect);
 }
 
 void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)

@@ -2,9 +2,12 @@
 #include "GameFramework/AActor.h"
 #include "Game/Map/MapChunkTemplate.h"
 
+class USceneComponent;
+
 class AMapChunk : public AActor {
 public:
 	DECLARE_CLASS(AMapChunk, AActor)
+
 	void BeginPlay() override;
 	void EndPlay()	 override;
 	void InitFromTemplate(const FMapChunkTemplate& InTemplate, float ObstacleFillRate);
@@ -24,6 +27,7 @@ private:
 private:
 	FMapChunkTemplate     Template;
 	float                 ObstacleFillRate = 0.f;
+	USceneComponent*      ChunkRoot = nullptr;
 	TArray<UStaticMeshComponent*> FloorMeshes;
 	TArray<AObstacleActorBase*> SpawnedObstacles;
 };

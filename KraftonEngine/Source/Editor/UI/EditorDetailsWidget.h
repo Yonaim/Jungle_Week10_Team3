@@ -35,6 +35,7 @@ private:
 
 	static FString OpenObjFileDialog();
 	static FString GetDisplayPropertyLabel(const FString& RawName);
+	static bool DrawColoredFloat2(const char* Label, float Values[3], float Speed, bool bShowReset = false, const float* ResetValues = nullptr);
 	static bool DrawColoredFloat3(const char* Label, float Values[3], float Speed, bool bShowReset = false, const float* ResetValues = nullptr);
 	static bool DrawColoredFloat4(const char* Label, float Values[4], float Speed, bool bShowReset = false);
 	static bool DrawNamedFloat4(const char* Label, float Values[4], float Speed, const char* AxisLabels[4], bool bShowReset = false);
@@ -51,10 +52,6 @@ private:
 	char DetailSearchBuffer[128] = {};
 	FString ActiveSectionFilter = "All";
 
-	// Script Section
-	UActorComponent* ScriptPathEditComponent = nullptr;
-	bool bScriptPathEditActive = false;
-	char ScriptPathEditBuffer[256] = {};
 	UClass* SelectedAddComponentClass = nullptr;
 	float ComponentTreeHeight = 160.0f;
 };

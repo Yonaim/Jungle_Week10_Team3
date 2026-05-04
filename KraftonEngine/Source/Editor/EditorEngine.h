@@ -36,6 +36,7 @@ public:
 	void Shutdown() override;
 	void Tick(float DeltaTime) override;
 	void OnWindowResized(uint32 Width, uint32 Height) override;
+	bool LoadScene(const FString& InSceneReference) override;
 
 	// Editor-specific API
 	UGizmoComponent* GetGizmo() const { return SelectionManager.GetGizmo(); }
@@ -51,6 +52,7 @@ public:
 	bool ImportMaterialWithDialog();
 	bool ImportTextureWithDialog();
 	bool SaveScene();
+	void RequestSaveSceneAsDialog();
 	bool SaveSceneAsWithDialog();
 	bool SaveSceneAs(const FString& InScenePath);
 	bool HasCurrentLevelFilePath() const { return !CurrentLevelFilePath.empty(); }
@@ -138,6 +140,7 @@ public:
 private:
 	// Tick 내에서 호출 — 큐에 요청이 있으면 StartPlayInEditorSession 실행
 	void StartQueuedPlaySessionRequest();
+	void ProcessDeferredEditorActions();
 	void StartPlayInEditorSession(const FRequestPlaySessionParams& Params);
 	void EndPlayMap();
 	bool EnterPIEPossessedMode();
@@ -166,6 +169,7 @@ private:
 	std::optional<FPlayInEditorSessionInfo> PlayInEditorSessionInfo;
 	// 종료 요청 지연 플래그. Tick 선두에서 확인 후 EndPlayMap 호출.
 	bool bRequestEndPlayMapQueued = false;
+	bool bRequestSaveSceneAsDialogQueued = false;
 	EPIEControlMode PIEControlMode = EPIEControlMode::Possessed;
 	FString CurrentLevelFilePath;
 	TArray<FTrackedSceneChange> SceneHistory;
