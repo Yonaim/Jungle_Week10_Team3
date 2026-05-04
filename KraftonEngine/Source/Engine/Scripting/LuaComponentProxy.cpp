@@ -18,10 +18,10 @@
 #include "Object/Object.h"
 #include "Object/UClass.h"
 #include "Scripting/LuaActorProxy.h"
+#include "Component/CameraComponent.h"
 #include "Component/Shape/BoxComponent.h"
 #include "Component/Shape/CapsuleComponent.h"
 #include "Component/Shape/SphereComponent.h"
-
 #include <algorithm>
 #include <cmath>
 
@@ -1010,9 +1010,34 @@ bool FLuaComponentProxy::IsMoveDone() const
 	return false;
 }
 
+bool FLuaComponentProxy::StartCameraShake(float Intensity, float Duration)
+{
+	UActorComponent* TargetComp = this->GetComponent();
+	if (TargetComp && TargetComp->IsA<UCameraComponent>())
+	{
+		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
+		Camera->StartCameraShake(Intensity, Duration);
+		return true;
+	}
+	return false;
+}
+
+bool FLuaComponentProxy::AddHitEffect(float Intensity, float Duration)
+{
+	UActorComponent* TargetComp = this->GetComponent();
+	if (TargetComp && TargetComp->IsA<UCameraComponent>())
+	{
+		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
+		Camera->AddHitEffect(Intensity, Duration);
+		return true;
+	}
+	return false;
+}
+
 bool FLuaComponentProxy::SetBoxExtent(const FVector& Extent)
 {
-	UBoxComponent* BoxComponent = Cast<UBoxComponent>(GetComponent());
+	UActorComponent* TargetComp = this->GetComponent();
+	UBoxComponent* BoxComponent = (TargetComp && TargetComp->IsA<UBoxComponent>()) ? static_cast<UBoxComponent*>(TargetComp) : nullptr;
 	if (!BoxComponent)
 	{
 	return false;

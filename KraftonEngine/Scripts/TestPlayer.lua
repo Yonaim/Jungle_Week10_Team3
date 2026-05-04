@@ -121,6 +121,17 @@ function Tick(dt)
         obj.Location = _start
         print("[TestPlayer] reset to start")
     end
+
+    -- 카메라 쉐이크 / 히트 이펙트 테스트 
+    if GetKeyDown("0") then
+        if cam and cam:IsValid() then
+            cam:StartCameraShake(5.0, 0.5)
+            cam:AddHitEffect(1.0, 0.6)
+            print("[TestPlayer] camera shake + hit effect triggered")
+        else
+            print("[TestPlayer] PlayerCamera component not found")
+        end
+    end
 end
 
 function EndPlay()

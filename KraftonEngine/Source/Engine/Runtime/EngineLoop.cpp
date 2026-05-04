@@ -110,9 +110,19 @@ int FEngineLoop::Run()
 
 		FInputManager::Get().Tick();
 
-		if (FInputManager::Get().IsKeyDown(VK_ESCAPE))
+		if (FInputManager::Get().IsKeyPressed(VK_ESCAPE))
 		{
+#if WITH_EDITOR
+			if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+			{
+				if (EditorEngine->IsPlayingInEditor())
+				{
+					EditorEngine->RequestEndPlayMap();
+				}
+			}
+#else
 			Application.RequestExit();
+#endif
 		}
 
 		Timer.Tick();

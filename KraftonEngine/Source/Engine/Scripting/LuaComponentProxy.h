@@ -104,7 +104,9 @@ struct FLuaComponentProxy
 	bool StopMove();
 	bool IsMoveDone() const;
 
-	// Box Extent (�浹 ó��) ����
+	bool StartCameraShake(float Intensity, float Duration);
+	bool AddHitEffect(float Intensity, float Duration);
+
 	bool SetBoxExtent(const FVector& Extent);
 	bool SetBoxExtentXYZ(float X, float Y, float Z);
 	sol::optional<FVector> GetBoxExtent() const;
