@@ -1,6 +1,8 @@
 ﻿#include "Viewport/GameViewportClient.h"
 
 #include "Component/CameraComponent.h"
+#include "Component/ScriptComponent.h"
+#include "GameFramework/AActor.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Input/InputModifier.h"
 #include "Engine/Input/InputTrigger.h"
@@ -146,7 +148,26 @@ bool UGameViewportClient::Tick(float DeltaTime)
 
 		// Apply Accumulated Input
 		UCameraComponent* TargetCamera = GetPossessedTarget();
+
+		// 카메라 owner에 UScriptComponent가 붙어 있으면 스크립트가 카메라/액터를 직접 제어하므로
+		// GameViewportClient 기본 WASD/Mouse 드라이브를 yield 
+		bool bScriptDrivesCamera = false;
 		if (TargetCamera)
+		{
+			if (AActor* OwnerActor = TargetCamera->GetOwner())
+			{
+				for (UActorComponent* Comp : OwnerActor->GetComponents())
+				{
+					if (Comp && Comp->IsA<UScriptComponent>())
+					{
+						bScriptDrivesCamera = true;
+						break;
+					}
+				}
+			}
+		}
+
+		if (TargetCamera && !bScriptDrivesCamera)
 		{
 			// Movement
 			if (!MoveInputAccumulator.IsNearlyZero())

@@ -109,6 +109,13 @@ FRay UCameraComponent::DeprojectScreenToWorld(float MouseX, float MouseY, float 
 	return Ray;
 }
 
+void UCameraComponent::BeginPlay()
+{
+	USceneComponent::BeginPlay();
+	// 카메라 쉐이크/히트 이펙트는 엔진 내부 갱신 로직이라 사용자 bTickEnable과 무관하게 항상 tick
+	SetComponentTickEnabled(true);
+}
+
 void UCameraComponent::StartCameraShake(float Intensity, float duration)
 {
 	USinWaveCameraShake* NewShake = UObjectManager::Get().CreateObject<USinWaveCameraShake>(this);
