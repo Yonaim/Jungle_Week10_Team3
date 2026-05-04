@@ -3,6 +3,7 @@
 #include "Game/Map/MapChunkTemplate.h"
 
 class USceneComponent;
+class AItemActorBase;
 
 class AMapChunk : public AActor {
 public:
@@ -23,6 +24,9 @@ private:
 	// Random Obstacle generator
 	void SpawnObstacle();
 
+	// Item Spawn 관련 함수
+	void SpawnItemForSlot(const FDecisionSlot& DecisionSlot, EObstacleDecision Decision);
+
 	// Builds floor based on the FloorBlockInfos array in the template 
 	void BuildFloor();
 
@@ -32,4 +36,5 @@ private:
 	USceneComponent*      ChunkRoot = nullptr;
 	TArray<UStaticMeshComponent*> FloorMeshes;
 	TArray<AObstacleActorBase*> SpawnedObstacles;
+	TArray<AItemActorBase*> SpawnedItems;
 };

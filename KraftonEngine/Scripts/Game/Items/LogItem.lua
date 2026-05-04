@@ -16,7 +16,7 @@ local item = ItemBase.New({
     RequiredInteractorTag = property("RequiredInteractorTag", "Player"),
     Features = {
         PickupOnOverlap = true,
-        ConsumeOnPickup = true,
+        ConsumeOnPickup = false,
         ScoreReward = false,
         LogFragmentReward = true,
         SingleUse = true,
@@ -26,7 +26,7 @@ local item = ItemBase.New({
 
 function OnBeginOverlap(otherActor, otherComp, selfComp)
     -- ScriptComponent가 C++ overlap event를 이 전역 함수로 전달합니다.
-    -- 실제 판정/Log Fragment 보상/소멸 순서는 ItemBase가 처리합니다.
+    -- 실제 판정과 Log Fragment 보상은 ItemBase가 처리합니다.
     item:OnBeginOverlap(otherActor, otherComp, selfComp)
 end
 

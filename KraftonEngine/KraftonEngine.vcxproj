@@ -291,6 +291,8 @@
     <ClCompile Include="Source\Game\GameActors\Enemy\ImposterRotationGizmo.cpp" />
     <ClCompile Include="Source\Game\GameActors\Enemy\ImposterScaleGizmo.cpp" />
     <ClCompile Include="Source\Game\GameActors\Enemy\ImposterTranslateGizmo.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Items\CrashDumpItemActor.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Items\LogFragmentItemActor.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraShake.cpp" />
     <ClCompile Include="Source\Game\GameMode\ARunnerGameMode.cpp" />
     <ClCompile Include="Source\Game\Player\Runner.cpp" />
@@ -379,7 +381,6 @@
     <ClCompile Include="Source\Engine\GameFramework\CharacterActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\DecalActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\HeightFogActor.cpp" />
-    <ClCompile Include="Source\Engine\GameFramework\ItemActorBase.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\ScreenTextActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\UIRootActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\WorldTextActor.cpp" />
@@ -496,6 +497,7 @@
     <ClCompile Include="Source\Engine\Viewport\GameViewportClient.cpp" />
     <ClCompile Include="Source\Engine\Viewport\Viewport.cpp" />
     <ClCompile Include="Source\Engine\Viewport\ViewportClient.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Items\ItemActorBase.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\MustJumpObstacleActor.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\MustSlideObstacleActor.cpp" />
     <ClCompile Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.cpp" />
@@ -524,6 +526,8 @@
     <ClInclude Include="Source\Game\GameActors\Enemy\ImposterRotationGizmo.h" />
     <ClInclude Include="Source\Game\GameActors\Enemy\ImposterScaleGizmo.h" />
     <ClInclude Include="Source\Game\GameActors\Enemy\ImposterTranslateGizmo.h" />
+    <ClInclude Include="Source\Game\GameActors\Items\CrashDumpItemActor.h" />
+    <ClInclude Include="Source\Game\GameActors\Items\LogFragmentItemActor.h" />
     <ClInclude Include="Source\Engine\Camera\CameraShake.h" />
     <ClInclude Include="Source\Game\GameMode\ARunnerGameMode.h" />
     <ClInclude Include="Source\Game\Map\MapRandom.h" />
@@ -635,7 +639,6 @@
     <ClInclude Include="Source\Engine\GameFramework\GameInstance.h" />
     <ClInclude Include="Source\Engine\GameFramework\GameModeBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\HeightFogActor.h" />
-    <ClInclude Include="Source\Engine\GameFramework\ItemActorBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\ScreenTextActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\UIRootActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\WorldTextActor.h" />
@@ -781,6 +784,7 @@
     <ClInclude Include="Source\Engine\Viewport\GameViewportClient.h" />
     <ClInclude Include="Source\Engine\Viewport\Viewport.h" />
     <ClInclude Include="Source\Engine\Viewport\ViewportClient.h" />
+    <ClInlcude Include="Source\Game\GameActors\Items\ItemActorBase.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\MustJumpObstacleActor.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\MustSlideObstacleActor.h" />
     <ClInclude Include="Source\Game\GameActors\Obstacle\ObstacleActorBase.h" />

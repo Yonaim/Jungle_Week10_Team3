@@ -13,7 +13,7 @@ local item = ItemBase.New({
     RequiredInteractorTag = property("RequiredInteractorTag", "Player"),
     Features = {
         PickupOnOverlap = true,
-        ConsumeOnPickup = true,
+        ConsumeOnPickup = false,
         CrashDumpReward = true,
         SingleUse = true,
         DebugLog = true,
@@ -21,7 +21,7 @@ local item = ItemBase.New({
 })
 
 function OnBeginOverlap(otherActor, otherComp, selfComp)
-    -- Crash Dump 획득 시작점입니다. 실제 수치/소멸 처리는 ItemBase가 담당합니다.
+    -- Crash Dump 획득 시작점입니다. 실제 수치 처리는 ItemBase가 담당합니다.
     item:OnBeginOverlap(otherActor, otherComp, selfComp)
 end
 
