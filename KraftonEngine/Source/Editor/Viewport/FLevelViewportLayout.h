@@ -75,6 +75,7 @@ public:
 	{
 		Actor,
 		Pawn,
+		Runner,
 		Character,
 		StaticMeshActor,
 		WorldText,

@@ -105,6 +105,7 @@ namespace
 	const FEntry GPlaceActorEntries[] = {
 		{ "Actor", "actor empty basic", "Editor.Icon.Actor", EPlaceType::Actor, ECategory::Basic },
 		{ "Pawn", "pawn actor basic", "Editor.Icon.Pawn", EPlaceType::Pawn, ECategory::Basic },
+		{ "Runner", "runner player pawn pod basic", "Editor.Icon.Pawn", EPlaceType::Runner, ECategory::Basic },
 		{ "Character", "character actor basic", "Editor.Icon.Character", EPlaceType::Character, ECategory::Basic },
 		{ "Static Mesh", "static mesh actor mesh basic", "Editor.Icon.StaticMeshActor", EPlaceType::StaticMeshActor, ECategory::Basic },
 		{ "Ambient Light", "ambient light", "Editor.Icon.AmbientLight", EPlaceType::AmbientLight, ECategory::Lights },
