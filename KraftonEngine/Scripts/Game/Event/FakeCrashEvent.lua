@@ -72,23 +72,22 @@ function BeginPlay()
 		warn("Crash OK 버튼 컴포넌트를 찾을 수 없습니다.")
 	end
 
-	-- CrashDumpItem을 한 개 주울 때마다 FakeCrash 연출을 띄운다.
-	-- OnCrashDumpAnalyzed(3개째 Critical Analysis)는 별개 보상 이벤트이므로 건드리지 않는다.
-	if not GameManager.OnCrashDumpCollected then
-		warn("[FakeCrashEvent] GameManager.OnCrashDumpCollected hook 자체가 없음. GameManager.lua가 최신인지 확인.")
+	-- CrashDumpItem 3개째에 Critical Analysis가 발동될 때만 FakeCrash 연출을 띄운다.
+	if not GameManager.OnCrashDumpAnalyzed then
+		warn("[FakeCrashEvent] GameManager.OnCrashDumpAnalyzed hook missing. Check GameManager.lua.")
 	end
 	-- BeginPlay가 hot-reload/재진입으로 여러 번 불려도 override가 N중 누적되지 않게
 	-- 최초 1회 베이스 hook을 _G에 백업해 두고 매번 그 위에 한 겹만 얹는다.
-	if _G.__FakeCrashEvent_BaseHook == nil then
-		_G.__FakeCrashEvent_BaseHook = GameManager.OnCrashDumpCollected or function() end
+	if _G.__FakeCrashEvent_BaseAnalyzedHook == nil then
+		_G.__FakeCrashEvent_BaseAnalyzedHook = GameManager.OnCrashDumpAnalyzed or function() end
 	end
-	local base_hook = _G.__FakeCrashEvent_BaseHook
-	GameManager.OnCrashDumpCollected = function()
-		print("[FakeCrashEvent] OnCrashDumpCollected hook 발동")
+	local base_hook = _G.__FakeCrashEvent_BaseAnalyzedHook
+	GameManager.OnCrashDumpAnalyzed = function()
+		print("[FakeCrashEvent] OnCrashDumpAnalyzed hook fired")
 		base_hook()
 		TriggerFakeCrash()
 	end
-	print("[FakeCrashEvent] OnCrashDumpCollected override 설치 완료")
+	print("[FakeCrashEvent] OnCrashDumpAnalyzed override installed")
 end
 
 function TriggerFakeCrash()

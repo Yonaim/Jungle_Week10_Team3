@@ -47,24 +47,30 @@ void FTickManager::Tick(UWorld* World, float DeltaTime, ELevelTick TickType)
 	for (int GroupIndex = 0; GroupIndex < TG_MAX; ++GroupIndex)
 	{
 		const ETickingGroup CurrentGroup = static_cast<ETickingGroup>(GroupIndex);
-		for (FTickFunction* TickFunction : TickFunctions)
+		for (const FQueuedTickFunction& QueuedTickFunction : TickFunctions)
 		{
-			if (!TickFunction || TickFunction->GetTickGroup() != CurrentGroup)
+			if (QueuedTickFunction.TickGroup != CurrentGroup)
 			{
 				continue;
 			}
 
-			if (!TickFunction->CanTick(TickType))
+			FTickFunction* ResolvedTickFunction = ResolveTickFunction(QueuedTickFunction, TickType);
+			if (!ResolvedTickFunction || ResolvedTickFunction->GetTickGroup() != CurrentGroup)
 			{
 				continue;
 			}
 
-			if (!TickFunction->ConsumeInterval(DeltaTime))
+			if (!ResolvedTickFunction->CanTick(TickType))
 			{
 				continue;
 			}
 
-			TickFunction->ExecuteTick(DeltaTime, TickType);
+			if (!ResolvedTickFunction->ConsumeInterval(DeltaTime))
+			{
+				continue;
+			}
+
+			ResolvedTickFunction->ExecuteTick(DeltaTime, TickType);
 		}
 	}
 }
@@ -90,7 +96,7 @@ void FTickManager::GatherTickFunctions(UWorld* World, ELevelTick TickType)
 			continue;
 		}
 
-		QueueTickFunction(Actor->PrimaryActorTick);
+		QueueActorTickFunction(Actor);
 
 		for (UActorComponent* Component : Actor->GetComponents())
 		{
@@ -99,19 +105,77 @@ void FTickManager::GatherTickFunctions(UWorld* World, ELevelTick TickType)
 				continue;
 			}
 
-			QueueTickFunction(Component->PrimaryComponentTick);
+			QueueComponentTickFunction(Component);
 		}
 	}
 }
 
-void FTickManager::QueueTickFunction(FTickFunction& TickFunction)
+void FTickManager::QueueActorTickFunction(AActor* Actor)
 {
-	if (!TickFunction.bRegistered)
+	if (!Actor)
 	{
-		TickFunction.RegisterTickFunction();
+		return;
 	}
 
-	TickFunctions.push_back(&TickFunction);
+	if (!Actor->PrimaryActorTick.bRegistered)
+	{
+		Actor->PrimaryActorTick.RegisterTickFunction();
+	}
+
+	TickFunctions.push_back({
+		Actor,
+		Actor->GetUUID(),
+		Actor->PrimaryActorTick.GetTickGroup(),
+		EQueuedTickTarget::Actor
+	});
+}
+
+void FTickManager::QueueComponentTickFunction(UActorComponent* Component)
+{
+	if (!Component)
+	{
+		return;
+	}
+
+	if (!Component->PrimaryComponentTick.bRegistered)
+	{
+		Component->PrimaryComponentTick.RegisterTickFunction();
+	}
+
+	TickFunctions.push_back({
+		Component,
+		Component->GetUUID(),
+		Component->PrimaryComponentTick.GetTickGroup(),
+		EQueuedTickTarget::Component
+	});
+}
+
+FTickFunction* FTickManager::ResolveTickFunction(const FQueuedTickFunction& QueuedTickFunction, ELevelTick TickType) const
+{
+	if (!IsAliveObject(QueuedTickFunction.Target) || QueuedTickFunction.Target->GetUUID() != QueuedTickFunction.TargetUUID)
+	{
+		return nullptr;
+	}
+
+	if (QueuedTickFunction.TargetType == EQueuedTickTarget::Actor)
+	{
+		AActor* Actor = Cast<AActor>(QueuedTickFunction.Target);
+		if (!ShouldDispatchActorTick(Actor, TickType))
+		{
+			return nullptr;
+		}
+
+		return &Actor->PrimaryActorTick;
+	}
+
+	UActorComponent* Component = Cast<UActorComponent>(QueuedTickFunction.Target);
+	AActor* Owner = Component ? Component->GetOwner() : nullptr;
+	if (!Component || !IsAliveObject(Owner) || !ShouldDispatchActorTick(Owner, TickType))
+	{
+		return nullptr;
+	}
+
+	return &Component->PrimaryComponentTick;
 }
 
 void FActorTickFunction::ExecuteTick(float DeltaTime, ELevelTick TickType)

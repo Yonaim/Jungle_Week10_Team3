@@ -4,6 +4,7 @@
 
 class AActor;
 class UActorComponent;
+class UObject;
 class UWorld;
 
 enum ELevelTick : int
@@ -116,10 +117,26 @@ public:
 	void Reset();
 
 private:
-	void GatherTickFunctions(UWorld* World, ELevelTick TickType);
-	void QueueTickFunction(FTickFunction& TickFunction);
+	enum class EQueuedTickTarget : uint8
+	{
+		Actor,
+		Component,
+	};
 
-	TArray<FTickFunction*> TickFunctions;
+	struct FQueuedTickFunction
+	{
+		UObject* Target = nullptr;
+		uint32 TargetUUID = 0;
+		ETickingGroup TickGroup = TG_PrePhysics;
+		EQueuedTickTarget TargetType = EQueuedTickTarget::Actor;
+	};
+
+	void GatherTickFunctions(UWorld* World, ELevelTick TickType);
+	void QueueActorTickFunction(AActor* Actor);
+	void QueueComponentTickFunction(UActorComponent* Component);
+	FTickFunction* ResolveTickFunction(const FQueuedTickFunction& QueuedTickFunction, ELevelTick TickType) const;
+
+	TArray<FQueuedTickFunction> TickFunctions;
 };
 
 struct FActorTickFunction :public FTickFunction {

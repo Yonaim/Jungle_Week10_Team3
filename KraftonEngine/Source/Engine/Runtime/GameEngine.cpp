@@ -360,6 +360,12 @@ bool UGameEngine::LoadScene(const FString& InSceneReference)
 		return false;
 	}
 
+	if (UGameViewportClient* ViewportClient = GetGameViewportClient())
+	{
+		ViewportClient->UnPossess();
+		ViewportClient->SetPIEPossessedInputEnabled(false);
+	}
+
 	if (Context->World)
 	{
 		Context->World->EndPlay();

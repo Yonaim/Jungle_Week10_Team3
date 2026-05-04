@@ -8,7 +8,24 @@
 #include "Materials/MaterialManager.h"
 #include "Resource/ResourceManager.h"
 
+#include <random>
+
 DEFINE_CLASS(AObstacleActorBase, AStaticMeshActor)
+
+namespace {
+	std::mt19937& RandomEngine()
+	{
+		static std::mt19937 Engine(std::random_device{}());
+		return Engine;
+	}
+
+	uint8 GetRandomN() {
+		std::uniform_int_distribution<int> Distribution(0, 4);
+		return Distribution(RandomEngine());
+	}
+
+	constexpr const char* DefaultMeshPath[5] = { "Sample.Material.Brick", "Sample.Material.RedGrid", "Sample.Material.Wood", "Sample.Material.Checker", "Sample.Material.Metal" };
+}
 
 void AObstacleActorBase::BeginPlay() {
 	Super::BeginPlay();
@@ -63,7 +80,8 @@ void AObstacleActorBase::InitDefaultComponents(const FString& UStaticMeshFileNam
 
 		if (Asset)
 		{
-			const FString RedGridMaterialPath = FResourceManager::Get().ResolvePath(FName("Sample.Material.RedGrid"));
+			const FString MaterialPath = DefaultMeshPath[GetRandomN()];
+			const FString RedGridMaterialPath = FResourceManager::Get().ResolvePath(FName(MaterialPath));
 			if (UMaterial* RedGridMaterial = FMaterialManager::Get().GetOrCreateMaterial(RedGridMaterialPath))
 			{
 				int32 MaterialCount = static_cast<int32>(Asset->GetStaticMaterials().size());

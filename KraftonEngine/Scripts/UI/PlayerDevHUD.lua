@@ -63,7 +63,9 @@ local RANK_TEXTURE_BY_CODE = {
 local title_text = nil
 local core_metrics_text = nil
 local run_details_text = nil
+local approval_label_text = nil
 local approval_value_text = nil
+local approval_gauge_track = nil
 local approval_gauge_fill = nil
 local rank_marker = nil
 local dialogue_window = nil
@@ -202,7 +204,7 @@ end
 
 local APPROVAL_GAUGE = {
     x = 1496.0,
-    y = 236.0,
+    y = 258.0,
     width = 316.0,
     height = 18.0,
 }
@@ -212,6 +214,26 @@ local RANK_MARKER = {
     height = 48.0,
     offset_y = -42.0,
 }
+
+local HUD_LAYOUT = {
+    title = { x = 1202.0, y = 56.0 },
+    core_title = { x = 1240.0, y = 118.0 },
+    core_text = { x = 1240.0, y = 149.0 },
+    details_title = { x = 1510.0, y = 118.0 },
+    details_text = { x = 1510.0, y = 149.0 },
+    approval_label = { x = 1510.0, y = 220.0 },
+    approval_value = { x = 1768.0, y = 220.0 },
+}
+
+local function apply_hud_layout()
+    set_screen_position(title_text, HUD_LAYOUT.title.x, HUD_LAYOUT.title.y)
+    set_screen_position(core_metrics_text, HUD_LAYOUT.core_text.x, HUD_LAYOUT.core_text.y)
+    set_screen_position(run_details_text, HUD_LAYOUT.details_text.x, HUD_LAYOUT.details_text.y)
+    set_screen_position(approval_label_text, HUD_LAYOUT.approval_label.x, HUD_LAYOUT.approval_label.y)
+    set_screen_position(approval_value_text, HUD_LAYOUT.approval_value.x, HUD_LAYOUT.approval_value.y)
+    set_screen_position(approval_gauge_track, APPROVAL_GAUGE.x, APPROVAL_GAUGE.y)
+    set_screen_position(approval_gauge_fill, APPROVAL_GAUGE.x, APPROVAL_GAUGE.y)
+end
 
 local function refresh_approval_gauge(data)
     local approval = math.max(0, math.min(data.coach_approval or 0, 100))
@@ -524,7 +546,9 @@ function BeginPlay()
     title_text = get_component("FUDTitle")
     core_metrics_text = get_component("FUDCoreMetricsText")
     run_details_text = get_component("FUDRunDetailsText")
+    approval_label_text = get_component("FUDApprovalLabel")
     approval_value_text = get_component("FUDApprovalValue")
+    approval_gauge_track = get_component("FUDApprovalGaugeTrack")
     approval_gauge_fill = get_component("FUDApprovalGaugeFill")
     rank_marker = get_component("FUDRankMarker")
     dialogue_window = get_component("DialogueWindowPortrait")
@@ -537,6 +561,7 @@ function BeginPlay()
     current_window_textures = WINDOW_TEXTURES.BAEK_COMMANDER
     DialogueUtils.reset_typewriter(typing_state, TYPEWRITER_INTERVAL_SECONDS)
 
+    apply_hud_layout()
     refresh_hud()
     load_dialogue_entries()
     start_dialogue_preview(pick_initial_dialogue_entry())

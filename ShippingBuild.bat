@@ -90,13 +90,13 @@ if not exist "%PROJECT_DIR%\Asset" (
     echo ERROR: Required directory was not found: "%PROJECT_DIR%\Asset"
     goto :Failed
 )
-robocopy "%PROJECT_DIR%\Asset" "%STAGE_DIR%\Asset" /MIR /NFL /NDL /NJH /NJS /NP /XF *.Scene *.pdb *.ilk *.obj.recipe
+robocopy "%PROJECT_DIR%\Asset" "%STAGE_DIR%\Asset" /MIR /NFL /NDL /NJH /NJS /NP /XF *.Scene *.umap *.pdb *.ilk *.obj.recipe
 if errorlevel 8 (
     echo ERROR: Failed to stage Asset.
     goto :Failed
 )
 
-robocopy "%COOKED_SCENE_DIR%" "%STAGE_DIR%\Asset\Content\Scene" /E /NFL /NDL /NJH /NJS /NP
+robocopy "%COOKED_SCENE_DIR%" "%STAGE_DIR%\Asset\Content\Scene" /MIR /NFL /NDL /NJH /NJS /NP
 if errorlevel 8 (
     echo ERROR: Failed to stage cooked scenes.
     goto :Failed

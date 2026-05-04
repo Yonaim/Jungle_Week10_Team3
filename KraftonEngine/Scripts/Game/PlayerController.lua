@@ -71,6 +71,13 @@ local initial_location = nil
 local camera = nil
 -- slide는 PlayerSlide 모듈 인스턴스입니다. collision/mesh 변경은 여기로 위임합니다.
 local slide = nil
+local pod_mesh = nil
+local pod_base_local_rotation = nil
+local barrel_roll_active = false
+local barrel_roll_elapsed = 0.0
+local barrel_roll_direction = 0.0
+local barrel_roll_duration = PlayerConfig.barrel_roll_duration or 0.34
+local barrel_roll_degrees = PlayerConfig.barrel_roll_degrees or 360.0
 -- game_over_tick_logged는 GameOver 후 Tick 중단 로그를 한 번만 찍기 위한 플래그입니다.
 local game_over_tick_logged = false
 -- half_height_fallback_logged는 collision half-height fallback 로그를 한 번만 찍기 위한 플래그입니다.
@@ -101,6 +108,10 @@ local function log(message)
     if Config.debug.enable_log then
         print(message)
     end
+end
+
+local function is_valid_component(component)
+    return component and component.IsValid and component:IsValid()
 end
 
 local function clamp(value, min_value, max_value)
@@ -378,6 +389,58 @@ end
 -- 레인 이동 / 점프 입력
 -- =========================================================
 
+local function apply_pod_roll_angle(angle)
+    if not is_valid_component(pod_mesh) or not pod_base_local_rotation then
+        return
+    end
+
+    pod_mesh:SetLocalRotation(rotator(
+        pod_base_local_rotation.pitch or 0.0,
+        pod_base_local_rotation.yaw or 0.0,
+        (pod_base_local_rotation.roll or 0.0) + angle
+    ))
+end
+
+local function reset_pod_barrel_roll()
+    barrel_roll_active = false
+    barrel_roll_elapsed = 0.0
+    barrel_roll_direction = 0.0
+    apply_pod_roll_angle(0.0)
+end
+
+local function start_pod_barrel_roll(lane_delta)
+    if PlayerConfig.barrel_roll_enabled == false or barrel_roll_active then
+        return
+    end
+    if not is_valid_component(pod_mesh) or not pod_base_local_rotation then
+        return
+    end
+
+    barrel_roll_direction = lane_delta < 0 and 1.0 or -1.0
+    barrel_roll_elapsed = 0.0
+    barrel_roll_active = true
+end
+
+local function update_pod_barrel_roll(dt)
+    if not barrel_roll_active then
+        return
+    end
+
+    local duration = barrel_roll_duration
+    if duration == nil or duration <= 0.0 then
+        duration = 0.34
+    end
+
+    barrel_roll_elapsed = barrel_roll_elapsed + dt
+    local alpha = clamp(barrel_roll_elapsed / duration, 0.0, 1.0)
+    local eased = alpha * alpha * (3.0 - (2.0 * alpha))
+    apply_pod_roll_angle(barrel_roll_direction * barrel_roll_degrees * eased)
+
+    if alpha >= 1.0 then
+        reset_pod_barrel_roll()
+    end
+end
+
 local function move_lane(delta)
     if PlayerStatus.IsDead() or GameManager.IsGameOver() then
         return
@@ -392,6 +455,7 @@ local function move_lane(delta)
             " target_lane=" .. tostring(target_lane) ..
             " target_y=" .. tostring(target_lane * lane_width)
         )
+        start_pod_barrel_roll(delta)
     end
 end
 
@@ -544,6 +608,7 @@ local function handle_obstacle_collision(event_name, other_actor)
     log("[PlayerController] Obstacle collision damage=" .. tostring(damage))
     if PlayerStatus.DamageStability(damage) and camera and camera:IsValid() then
         camera:StartCameraShake(hit_camera_shake_intensity, hit_camera_shake_duration)
+        camera:AddHitEffect(2.0, 0.7)
     end
 end
 
@@ -570,6 +635,14 @@ function BeginPlay()
     previous_key_state = {}
     current_key_state = {}
     camera = obj:FindComponentByClass("CameraComponent")
+    pod_mesh = obj:GetStaticMeshComponent()
+    pod_base_local_rotation = nil
+    if is_valid_component(pod_mesh) then
+        pod_base_local_rotation = pod_mesh:GetLocalRotation()
+    end
+    barrel_roll_active = false
+    barrel_roll_elapsed = 0.0
+    barrel_roll_direction = 0.0
 
     obj.Tag = "Player"
 
@@ -598,8 +671,8 @@ function BeginPlay()
     log("[PlayerController] AudioManager.Initialize result=" .. tostring(audio_ok))
 
     math.randomseed(math.floor(time() * 1000) % 2147483647)
-    cache_coach_dialogue_components()
-    load_coach_dialogue_entries()
+    -- PlayerDevHUD owns runtime coach dialogue presentation.
+    -- A second consumer here can desync speaker names from portrait frames.
 
     GameManager.StartGame()
     log("[PlayerController] GameManager.StartGame")
@@ -608,7 +681,6 @@ function BeginPlay()
     log("[PlayerController] PlayerStatus.ResetForStart")
 
     update_ground_state(0.0, true)
-    consume_coach_dialogue_triggers()
 end
 
 function Tick(dt)
@@ -627,6 +699,7 @@ function Tick(dt)
             if slide then
                 slide:Restore()
             end
+            reset_pod_barrel_roll()
         end
         return
     end
@@ -660,6 +733,7 @@ function Tick(dt)
         begin_slide()
     end
     update_slide(dt, wants_slide)
+    update_pod_barrel_roll(dt)
 
     -- score는 "실제로 전진시킨 거리"를 GameManager에 넘겨서 계산한다.
     -- 고속 이동 시 한 프레임 이동 거리를 잘게 나눠 teleport 방식 overlap 누락을 줄인다.
@@ -714,6 +788,7 @@ function EndPlay()
     if slide then
         slide:Restore()
     end
+    reset_pod_barrel_roll()
     log("[PlayerController] EndPlay")
 end
 

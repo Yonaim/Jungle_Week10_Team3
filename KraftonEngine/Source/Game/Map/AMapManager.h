@@ -42,6 +42,6 @@ private:
 	int32 TargetChunkCount = 7;
 	float ChunkBuggedRate	 = 0.1f;
 	float ObstacleSpawnRate  = 0.55f;
-	float GimmickSpawnChance = 0.25f;
+	float GimmickSpawnChance = 0.4f;
 	float GimmickTargetSearchDistance = 60.0f;
 };

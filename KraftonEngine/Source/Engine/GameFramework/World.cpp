@@ -17,58 +17,6 @@ IMPLEMENT_CLASS(UWorld, UObject)
 
 namespace
 {
-	void RemoveActorOverlapReferences(UWorld* World, AActor* Actor)
-	{
-		if (!World || !Actor)
-		{
-			return;
-		}
-
-		TArray<UPrimitiveComponent*> DestroyedPrimitives = Actor->GetPrimitiveComponents();
-		if (DestroyedPrimitives.empty())
-		{
-			return;
-		}
-
-		TArray<UPrimitiveComponent*> LivePrimitives;
-		for (AActor* OtherActor : World->GetActors())
-		{
-			if (!OtherActor)
-			{
-				continue;
-			}
-
-			for (UPrimitiveComponent* Primitive : OtherActor->GetPrimitiveComponents())
-			{
-				if (Primitive)
-				{
-					LivePrimitives.push_back(Primitive);
-				}
-			}
-		}
-
-		for (UPrimitiveComponent* DestroyedPrimitive : DestroyedPrimitives)
-		{
-			if (!DestroyedPrimitive)
-			{
-				continue;
-			}
-
-			World->RemovePendingOverlapComponent(DestroyedPrimitive);
-
-			for (UPrimitiveComponent* LivePrimitive : LivePrimitives)
-			{
-				if (!LivePrimitive || LivePrimitive == DestroyedPrimitive)
-				{
-					continue;
-				}
-
-				LivePrimitive->EndComponentOverlap(DestroyedPrimitive);
-				DestroyedPrimitive->EndComponentOverlap(LivePrimitive);
-			}
-		}
-	}
-
 	bool RaycastPrimitivesFallback(const TArray<ULevel*>& Levels, const FRay& Ray, FRayHitResult& OutHitResult, AActor*& OutActor)
 	{
 		FRayHitResult BestHit{};
@@ -377,9 +325,19 @@ void UWorld::RemoveLevel(ULevel* InLevel)
 
 void UWorld::ClearLevels()
 {
+	TickManager.Reset();
+	AuthorGameMode = nullptr;
+	ActiveCamera = nullptr;
+	LastLODUpdateCamera = nullptr;
+	bHasLastFullLODUpdateCameraPos = false;
+
 	for (ULevel* Level : Levels)
 	{
-		if (Level) UObjectManager::Get().DestroyObject(Level);
+		if (Level)
+		{
+			Level->EndPlay();
+			UObjectManager::Get().DestroyObject(Level);
+		}
 	}
 	Levels.clear();
 	PersistentLevel = nullptr;
@@ -390,7 +348,6 @@ void UWorld::ClearLevels()
 void UWorld::DestroyActor(AActor* Actor)
 {
 	if (!Actor) return;
-	RemoveActorOverlapReferences(this, Actor);
 	Actor->EndPlay();
 	
 	ULevel* OwningLevel = Cast<ULevel>(Actor->GetOuter());
@@ -592,6 +549,10 @@ FLODUpdateContext UWorld::PrepareLODContext()
 void UWorld::InitWorld()
 {
 	Partition.Reset(FBoundingBox());
+	AuthorGameMode = nullptr;
+	ActiveCamera = nullptr;
+	LastLODUpdateCamera = nullptr;
+	bHasLastFullLODUpdateCameraPos = false;
 	ClearLevels();
 
 	PersistentLevel = UObjectManager::Get().CreateObject<ULevel>(this);
@@ -620,6 +581,10 @@ void UWorld::SpawnGameMode()
 	if (ClassName.empty())
 	{
 		ClassName = "AGameModeBase";
+	}
+	if (ClassName == "None" || ClassName == "none" || ClassName == "NoneGameMode")
+	{
+		return;
 	}
 
 	UObject* Obj = FObjectFactory::Get().Create(ClassName, CurrentLevel);
@@ -778,6 +743,7 @@ void UWorld::EndPlay()
 	{
 		if (Level) Level->EndPlay();
 	}
+	AuthorGameMode = nullptr;
 
 	Partition.Reset(FBoundingBox());
 

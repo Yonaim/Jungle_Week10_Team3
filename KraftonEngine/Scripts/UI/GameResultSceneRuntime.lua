@@ -306,7 +306,7 @@ function SaveScore()
     end
 
     local score = math.floor((result_data and result_data.score) or 0)
-    set_text(status_text, "ENTER NICKNAME")
+    set_text(status_text, "")
     return open_score_save_popup(score)
 end
 
