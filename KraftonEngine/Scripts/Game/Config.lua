@@ -26,6 +26,9 @@ local Config = {
         lane_count = 3,
         -- lane_change_speed는 target lane까지 보간 이동하는 속도입니다.
         lane_change_speed = 12.0,
+        barrel_roll_enabled = true,
+        barrel_roll_degrees = 360.0,
+        barrel_roll_duration = 0.34,
 
         -- gravity는 공중에 있을 때 매 프레임 더해지는 수직 가속도입니다.
         gravity = -25.0,
