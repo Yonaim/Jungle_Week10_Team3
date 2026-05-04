@@ -542,6 +542,92 @@ namespace
 		}
 	}
 
+	json::JSON MakeJsonFromLuaObject(const sol::object& Value)
+	{
+		switch (Value.get_type())
+		{
+		case sol::type::lua_nil:
+		case sol::type::none:
+			return json::JSON();
+		case sol::type::boolean:
+			return json::JSON(Value.as<bool>());
+		case sol::type::number:
+		{
+			const double Number = Value.as<double>();
+			const double Rounded = std::round(Number);
+			if (std::abs(Number - Rounded) <= 0.000001)
+			{
+				return json::JSON(static_cast<long>(Rounded));
+			}
+			return json::JSON(Number);
+		}
+		case sol::type::string:
+			return json::JSON(Value.as<FString>());
+		case sol::type::table:
+		{
+			sol::table Table = Value.as<sol::table>();
+			bool bIsArray = true;
+			int32 MaxIndex = 0;
+			int32 EntryCount = 0;
+
+			for (auto& Pair : Table)
+			{
+				const sol::object Key = Pair.first.as<sol::object>();
+				if (Key.get_type() != sol::type::number)
+				{
+					bIsArray = false;
+					break;
+				}
+
+				const double NumericKey = Key.as<double>();
+				const int32 ArrayIndex = static_cast<int32>(NumericKey);
+				if (NumericKey != static_cast<double>(ArrayIndex) || ArrayIndex <= 0)
+				{
+					bIsArray = false;
+					break;
+				}
+
+				MaxIndex = (std::max)(MaxIndex, ArrayIndex);
+				++EntryCount;
+			}
+
+			if (bIsArray && EntryCount == MaxIndex)
+			{
+				json::JSON Result = json::Array();
+				for (int32 Index = 1; Index <= MaxIndex; ++Index)
+				{
+					Result.append(MakeJsonFromLuaObject(Table[Index].get<sol::object>()));
+				}
+				return Result;
+			}
+
+			json::JSON Result = json::Object();
+			for (auto& Pair : Table)
+			{
+				const sol::object Key = Pair.first.as<sol::object>();
+				FString KeyString;
+				if (Key.get_type() == sol::type::string)
+				{
+					KeyString = Key.as<FString>();
+				}
+				else if (Key.get_type() == sol::type::number)
+				{
+					KeyString = std::to_string(static_cast<int32>(Key.as<double>()));
+				}
+				else
+				{
+					continue;
+				}
+
+				Result[KeyString] = MakeJsonFromLuaObject(Pair.second.as<sol::object>());
+			}
+			return Result;
+		}
+		default:
+			return json::JSON();
+		}
+	}
+
 	sol::object FindLuaObjectByPath(sol::environment& Env, const FString& Path)
 	{
 		// Env["EnemyAI.start"]는 Lua table 내부 함수를 찾지 못한다.
@@ -1592,7 +1678,7 @@ void FLuaScriptInstance::BindDataFunctions()
 		return;
 	}
 
-	Impl->Env.set_function("load_json_file", [](const FString& FilePath)
+	auto LoadJsonFile = [](const FString& FilePath)
 	{
 		sol::state_view Lua = FLuaScriptRuntime::Get().GetLuaState();
 		if (FilePath.empty())
@@ -1615,7 +1701,103 @@ void FLuaScriptInstance::BindDataFunctions()
 
 		const json::JSON Root = json::JSON::Load(Content);
 		return MakeLuaObjectFromJson(Lua, Root);
-	});
+	};
+
+	auto SaveJsonFile = [](const FString& FilePath, sol::object Data)
+	{
+		if (FilePath.empty())
+		{
+			return false;
+		}
+
+		const std::filesystem::path AbsolutePath = ResolveDataFilePath(FilePath);
+		std::error_code ErrorCode;
+		if (AbsolutePath.has_parent_path())
+		{
+			std::filesystem::create_directories(AbsolutePath.parent_path(), ErrorCode);
+		}
+
+		std::ofstream File(AbsolutePath, std::ios::trunc);
+		if (!File.is_open())
+		{
+			return false;
+		}
+
+		File << MakeJsonFromLuaObject(Data).dump();
+		return File.good();
+	};
+
+	auto OpenScoreSavePopup = [](int32 Score)
+	{
+		if (!GEngine)
+		{
+			return false;
+		}
+
+		GEngine->OpenScoreSavePopup(Score);
+		return true;
+	};
+
+	auto ConsumeScoreSavePopupResult = []()
+	{
+		sol::state_view Lua = FLuaScriptRuntime::Get().GetLuaState();
+		if (!GEngine)
+		{
+			return sol::make_object(Lua, sol::lua_nil);
+		}
+
+		FString Nickname;
+		if (!GEngine->ConsumeScoreSavePopupResult(Nickname))
+		{
+			return sol::make_object(Lua, sol::lua_nil);
+		}
+
+		return sol::make_object(Lua, Nickname);
+	};
+
+	auto OpenMessagePopup = [](const FString& Message)
+	{
+		if (!GEngine)
+		{
+			return false;
+		}
+
+		GEngine->OpenMessagePopup(Message);
+		return true;
+	};
+
+	auto ConsumeMessagePopupConfirmed = []()
+	{
+		return GEngine ? GEngine->ConsumeMessagePopupConfirmed() : false;
+	};
+
+	auto OpenScoreboardPopup = [](const FString& FilePath)
+	{
+		if (!GEngine)
+		{
+			return false;
+		}
+
+		GEngine->OpenScoreboardPopup(FilePath);
+		return true;
+	};
+
+	Impl->Env.set_function("load_json_file", LoadJsonFile);
+	Impl->Env.set_function("save_json_file", SaveJsonFile);
+	Impl->Env.set_function("open_score_save_popup", OpenScoreSavePopup);
+	Impl->Env.set_function("consume_score_save_popup_result", ConsumeScoreSavePopupResult);
+	Impl->Env.set_function("open_message_popup", OpenMessagePopup);
+	Impl->Env.set_function("consume_message_popup_ok", ConsumeMessagePopupConfirmed);
+	Impl->Env.set_function("open_scoreboard_popup", OpenScoreboardPopup);
+
+	sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
+	Lua.set_function("load_json_file", LoadJsonFile);
+	Lua.set_function("save_json_file", SaveJsonFile);
+	Lua.set_function("open_score_save_popup", OpenScoreSavePopup);
+	Lua.set_function("consume_score_save_popup_result", ConsumeScoreSavePopupResult);
+	Lua.set_function("open_message_popup", OpenMessagePopup);
+	Lua.set_function("consume_message_popup_ok", ConsumeMessagePopupConfirmed);
+	Lua.set_function("open_scoreboard_popup", OpenScoreboardPopup);
 }
 
 FLuaActorProxy FLuaScriptInstance::MakeActorProxy(AActor* Actor) const

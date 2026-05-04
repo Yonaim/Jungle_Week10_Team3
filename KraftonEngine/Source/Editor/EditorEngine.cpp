@@ -402,6 +402,52 @@ void UEditorEngine::RenderUI(float DeltaTime)
 	MainPanel.Render(DeltaTime);
 }
 
+void UEditorEngine::RenderPIEOverlayPopups()
+{
+	if (!IsPlayingInEditor())
+	{
+		return;
+	}
+
+	const FRect* AnchorRect = nullptr;
+	if (FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport())
+	{
+		AnchorRect = &ActiveVC->GetViewportScreenRect();
+	}
+
+	PIEOverlay.RenderWithinCurrentFrame(AnchorRect);
+}
+
+void UEditorEngine::OpenScoreSavePopup(int32 InScore)
+{
+	PIEOverlay.OpenScoreSavePopup(InScore);
+}
+
+bool UEditorEngine::ConsumeScoreSavePopupResult(FString& OutNickname)
+{
+	return PIEOverlay.ConsumeScoreSavePopupResult(OutNickname);
+}
+
+void UEditorEngine::OpenMessagePopup(const FString& InMessage)
+{
+	PIEOverlay.OpenMessagePopup(InMessage);
+}
+
+bool UEditorEngine::ConsumeMessagePopupConfirmed()
+{
+	return PIEOverlay.ConsumeMessagePopupConfirmed();
+}
+
+void UEditorEngine::OpenScoreboardPopup(const FString& InFilePath)
+{
+	PIEOverlay.OpenScoreboardPopup(InFilePath);
+}
+
+bool UEditorEngine::IsScoreSavePopupOpen() const
+{
+	return PIEOverlay.IsScoreSavePopupOpen();
+}
+
 void UEditorEngine::ToggleCoordSystem()
 {
 	FEditorSettings& Settings = FEditorSettings::Get();

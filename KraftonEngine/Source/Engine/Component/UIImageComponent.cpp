@@ -22,6 +22,8 @@ namespace
 	const FVector4 SelectedUIOutlineColor(0.10f, 0.54f, 0.96f, -1.0f);
 	const char* GUIImageFitModeNames[] = { "Stretch", "Contain", "Cover" };
 	const char* GUIImageContentAlignmentNames[] = { "Center", "Top", "Bottom", "Left", "Right" };
+	const char* GUIImageBackgroundFitModeNames[] = { "Stretch", "Contain", "Cover" };
+	const char* GUIImageBackgroundContentAlignmentNames[] = { "Center", "Top", "Bottom", "Left", "Right" };
 
 	bool IsEmptyTexturePath(const FString& InTexturePath)
 	{
@@ -226,6 +228,16 @@ void UUIImageComponent::Serialize(FArchive& Ar)
 	Ar << ZOrder;
 	Ar << FitMode;
 	Ar << ContentAlignment;
+	Ar << bDrawBackground;
+	Ar << BackgroundTextureSlot.Path;
+	Ar << BackgroundFitMode;
+	Ar << BackgroundContentAlignment;
+	Ar << BackgroundTint;
+	Ar << bDrawShadow;
+	Ar << ShadowOffset;
+	Ar << ShadowTint;
+	Ar << ShadowTopTint;
+	Ar << ShadowBottomTint;
 }
 
 void UUIImageComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -240,6 +252,16 @@ void UUIImageComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPr
 	OutProps.push_back({ "Anchor Offset", EPropertyType::Vec3, &AnchorOffset, -4096.0f, 4096.0f, 1.0f });
 	OutProps.push_back({ "Fit Mode", EPropertyType::Enum, &FitMode, 0.0f, 0.0f, 0.1f, GUIImageFitModeNames, static_cast<uint32>(std::size(GUIImageFitModeNames)) });
 	OutProps.push_back({ "Content Alignment", EPropertyType::Enum, &ContentAlignment, 0.0f, 0.0f, 0.1f, GUIImageContentAlignmentNames, static_cast<uint32>(std::size(GUIImageContentAlignmentNames)) });
+	OutProps.push_back({ "Draw Background", EPropertyType::Bool, &bDrawBackground });
+	OutProps.push_back({ "Background Texture", EPropertyType::TextureSlot, &BackgroundTextureSlot });
+	OutProps.push_back({ "Background Fit Mode", EPropertyType::Enum, &BackgroundFitMode, 0.0f, 0.0f, 0.1f, GUIImageBackgroundFitModeNames, static_cast<uint32>(std::size(GUIImageBackgroundFitModeNames)) });
+	OutProps.push_back({ "Background Content Alignment", EPropertyType::Enum, &BackgroundContentAlignment, 0.0f, 0.0f, 0.1f, GUIImageBackgroundContentAlignmentNames, static_cast<uint32>(std::size(GUIImageBackgroundContentAlignmentNames)) });
+	OutProps.push_back({ "Background Tint", EPropertyType::Color4, &BackgroundTint });
+	OutProps.push_back({ "Draw Shadow", EPropertyType::Bool, &bDrawShadow });
+	OutProps.push_back({ "Shadow Offset", EPropertyType::Vec3, &ShadowOffset, -64.0f, 64.0f, 1.0f });
+	OutProps.push_back({ "Shadow Tint", EPropertyType::Color4, &ShadowTint });
+	OutProps.push_back({ "Shadow Top Tint", EPropertyType::Color4, &ShadowTopTint });
+	OutProps.push_back({ "Shadow Bottom Tint", EPropertyType::Color4, &ShadowBottomTint });
 	OutProps.push_back({ "Tint", EPropertyType::Color4, &Tint });
 	OutProps.push_back({ "Border Thickness", EPropertyType::Float, &BorderThickness, 0.0f, 128.0f, 0.1f });
 	OutProps.push_back({ "Border Color", EPropertyType::Color4, &BorderColor });
@@ -263,6 +285,17 @@ void UUIImageComponent::PostEditProperty(const char* PropertyName)
 	{
 		SetBorderThickness(BorderThickness);
 	}
+	else if (strcmp(PropertyName, "Background Texture") == 0)
+	{
+		if (IsEmptyTexturePath(BackgroundTextureSlot.Path))
+		{
+			BackgroundTexture = nullptr;
+		}
+		else
+		{
+			EnsureBackgroundTextureLoaded();
+		}
+	}
 	else if (strcmp(PropertyName, "Fit Mode") == 0)
 	{
 		FitMode = static_cast<int32>(SanitizeFitModeValue(FitMode));
@@ -270,6 +303,14 @@ void UUIImageComponent::PostEditProperty(const char* PropertyName)
 	else if (strcmp(PropertyName, "Content Alignment") == 0)
 	{
 		ContentAlignment = static_cast<int32>(SanitizeContentAlignmentValue(ContentAlignment));
+	}
+	else if (strcmp(PropertyName, "Background Fit Mode") == 0)
+	{
+		BackgroundFitMode = static_cast<int32>(SanitizeFitModeValue(BackgroundFitMode));
+	}
+	else if (strcmp(PropertyName, "Background Content Alignment") == 0)
+	{
+		BackgroundContentAlignment = static_cast<int32>(SanitizeContentAlignmentValue(BackgroundContentAlignment));
 	}
 }
 
@@ -283,6 +324,34 @@ void UUIImageComponent::ContributeVisuals(FScene& Scene) const
 	const FVector2 ResolvedSize = ResolveScreenSize2D();
 	const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
 
+	if (bDrawBackground)
+	{
+		ID3D11ShaderResourceView* BackgroundSRV = GetBackgroundTextureSRV();
+		FVector4 DrawBackgroundTint = BackgroundTint;
+		const bool bSolidBackground = (BackgroundSRV == nullptr);
+		if (bSolidBackground)
+		{
+			DrawBackgroundTint.W = (DrawBackgroundTint.W > 0.0f) ? -DrawBackgroundTint.W : DrawBackgroundTint.W;
+		}
+
+		const FResolvedImageDrawParams BackgroundDrawParams = ResolveImageDrawParams(
+			ResolvedPosition,
+			ResolvedSize,
+			BackgroundTexture,
+			SanitizeFitModeValue(BackgroundFitMode),
+			SanitizeContentAlignmentValue(BackgroundContentAlignment));
+
+		Scene.AddScreenQuad(
+			BackgroundSRV,
+			BackgroundDrawParams.Position,
+			BackgroundDrawParams.Size,
+			DrawBackgroundTint,
+			ZOrder - 1,
+			BackgroundDrawParams.UVMin,
+			BackgroundDrawParams.UVMax,
+			bSolidBackground);
+	}
+
 	if (ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV())
 	{
 		const FResolvedImageDrawParams DrawParams = ResolveImageDrawParams(
@@ -291,6 +360,19 @@ void UUIImageComponent::ContributeVisuals(FScene& Scene) const
 			Texture,
 			SanitizeFitModeValue(FitMode),
 			SanitizeContentAlignmentValue(ContentAlignment));
+
+		if (ShouldDrawShadow())
+		{
+			Scene.AddScreenQuad(
+				SRV,
+				DrawParams.Position + GetShadowOffset2D(),
+				DrawParams.Size,
+				GetShadowMaskTopColor(),
+				GetShadowMaskBottomColor(),
+				ZOrder - 1,
+				DrawParams.UVMin,
+				DrawParams.UVMax);
+		}
 
 		Scene.AddScreenQuad(
 			SRV,
@@ -403,6 +485,78 @@ ID3D11ShaderResourceView* UUIImageComponent::GetResolvedTextureSRV() const
 	if (Texture && Texture->IsLoaded())
 	{
 		return Texture->GetSRV();
+	}
+
+	return nullptr;
+}
+
+bool UUIImageComponent::ShouldDrawShadow() const
+{
+	return bDrawShadow
+		&& ((ShadowTopTint.W * ShadowTint.W) > 0.0f || (ShadowBottomTint.W * ShadowTint.W) > 0.0f);
+}
+
+FVector2 UUIImageComponent::GetShadowOffset2D() const
+{
+	return FVector2(ShadowOffset.X, ShadowOffset.Y);
+}
+
+FVector4 UUIImageComponent::GetShadowMaskTopColor() const
+{
+	return FVector4(
+		ShadowTopTint.X * ShadowTint.X,
+		ShadowTopTint.Y * ShadowTint.Y,
+		ShadowTopTint.Z * ShadowTint.Z,
+		-((ShadowTopTint.W * ShadowTint.W) + 1.0f));
+}
+
+FVector4 UUIImageComponent::GetShadowMaskBottomColor() const
+{
+	return FVector4(
+		ShadowBottomTint.X * ShadowTint.X,
+		ShadowBottomTint.Y * ShadowTint.Y,
+		ShadowBottomTint.Z * ShadowTint.Z,
+		-((ShadowBottomTint.W * ShadowTint.W) + 1.0f));
+}
+
+bool UUIImageComponent::EnsureBackgroundTextureLoaded() const
+{
+	if (IsEmptyTexturePath(BackgroundTextureSlot.Path))
+	{
+		BackgroundTexture = nullptr;
+		return true;
+	}
+
+	if (BackgroundTexture && BackgroundTexture->IsLoaded())
+	{
+		return true;
+	}
+
+	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+	if (!Device)
+	{
+		return false;
+	}
+
+	if (UTexture2D* LoadedTexture = UTexture2D::LoadFromFile(BackgroundTextureSlot.Path, Device))
+	{
+		BackgroundTexture = LoadedTexture;
+		return true;
+	}
+
+	return false;
+}
+
+ID3D11ShaderResourceView* UUIImageComponent::GetBackgroundTextureSRV() const
+{
+	if (BackgroundTexture && BackgroundTexture->IsLoaded())
+	{
+		return BackgroundTexture->GetSRV();
+	}
+
+	if (EnsureBackgroundTextureLoaded() && BackgroundTexture && BackgroundTexture->IsLoaded())
+	{
+		return BackgroundTexture->GetSRV();
 	}
 
 	return nullptr;

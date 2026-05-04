@@ -50,6 +50,8 @@ private:
 
 	FVector4 GetCurrentTint() const;
 	FVector4 GetCurrentBackgroundTint() const;
+	FVector2 GetCurrentPressedOffset() const;
+	FVector2 GetCurrentShadowOffset() const;
 	FVector2 GetResolvedLabelPosition(const FVector2& ButtonPosition, const FVector2& ButtonSize, const FFontResource* Font) const;
 	void GetInteractiveBounds(FVector2& OutPosition, FVector2& OutSize) const;
 	bool IsPointInsideButton(float X, float Y) const;
@@ -77,6 +79,7 @@ private:
 	FVector4 NormalTint = FVector4(1.0f, 1.0f, 1.0f, 0.95f);
 	FVector4 HoverTint = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 	FVector4 PressedTint = FVector4(0.85f, 0.85f, 0.85f, 1.0f);
+	FVector PressedOffset = FVector(0.0f, 3.0f, 0.0f);
 	FName ClickSound = FName("None");
 	FString OnClickAction;
 	FString OnPressAction;

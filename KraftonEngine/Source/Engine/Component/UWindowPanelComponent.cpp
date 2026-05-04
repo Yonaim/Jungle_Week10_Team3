@@ -480,6 +480,19 @@ void UNineSlicePanelComponent::AddPanelQuad(FScene& Scene, ID3D11ShaderResourceV
 		return;
 	}
 
+	if (ShouldDrawShadow())
+	{
+		Scene.AddScreenQuad(
+			SRV,
+			FVector2(X, Y) + GetShadowOffset2D(),
+			FVector2(Width, Height),
+			GetShadowMaskTopColor(),
+			GetShadowMaskBottomColor(),
+			ZOrder - 1,
+			FVector2(U0, V0),
+			FVector2(U1, V1));
+	}
+
 	Scene.AddScreenQuad(
 		SRV,
 		FVector2(X, Y),

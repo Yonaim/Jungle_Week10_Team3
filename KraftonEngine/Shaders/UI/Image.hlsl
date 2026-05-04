@@ -21,6 +21,12 @@ PS_Input_UI VS(VS_Input_PNCT input)
 
 float4 PS(PS_Input_UI input) : SV_TARGET
 {
+    if (input.color.a < -1.0f)
+    {
+        float4 texColor = UIImageTex.Sample(LinearClampSampler, input.texcoord);
+        return float4(input.color.rgb, (-input.color.a - 1.0f) * texColor.a);
+    }
+
     if (input.color.a < 0.0f)
     {
         return float4(input.color.rgb, -input.color.a);

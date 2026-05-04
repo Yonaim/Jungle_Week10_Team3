@@ -51,9 +51,8 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 {
 	UEngine::Init(InWindow);
 
-	// Shipping/Game에서는 ImGui 컨텍스트가 없으므로 InputManager가 ImGui::GetIO()를 호출하지 않도록
-	// GUI capture를 명시적으로 false override 한다 (ImGui 미초기화 시 GetIO() 사용은 크래시).
-	FInputManager::Get().SetGuiCaptureOverride(false, false, false);
+	ImGuiOverlay.Initialize(InWindow, GetRenderer());
+	FInputManager::Get().ClearGuiCaptureOverride();
 
 	CreateWorldContext(EWorldType::Game, FName("GameWorld"));
 	SetActiveWorld(FName("GameWorld"));
@@ -89,6 +88,13 @@ void UGameEngine::Init(FWindowsWindow* InWindow)
 	}
 }
 
+void UGameEngine::Shutdown()
+{
+	ImGuiOverlay.Shutdown();
+	FInputManager::Get().SetGuiCaptureOverride(false, false, false);
+	UEngine::Shutdown();
+}
+
 void UGameEngine::BeginPlay()
 {
 	UEngine::BeginPlay();
@@ -96,12 +102,56 @@ void UGameEngine::BeginPlay()
 
 void UGameEngine::Tick(float DeltaTime)
 {
+	const bool bPopupOpen = IsScoreSavePopupOpen();
 	if (UGameViewportClient* GameVC = GetGameViewportClient())
 	{
-		GameVC->ProcessPIEInput(DeltaTime);
-		GameVC->Tick(DeltaTime);
+		if (bPopupOpen)
+		{
+			GameVC->SetPIEPossessedInputEnabled(false);
+		}
+
+		if (!bPopupOpen)
+		{
+			GameVC->ProcessPIEInput(DeltaTime);
+			GameVC->Tick(DeltaTime);
+		}
 	}
 	UEngine::Tick(DeltaTime);
+}
+
+void UGameEngine::RenderImGuiOverlay(FRenderer& InRenderer)
+{
+	ImGuiOverlay.Render(InRenderer);
+}
+
+void UGameEngine::OpenScoreSavePopup(int32 InScore)
+{
+	ImGuiOverlay.OpenScoreSavePopup(InScore);
+}
+
+bool UGameEngine::ConsumeScoreSavePopupResult(FString& OutNickname)
+{
+	return ImGuiOverlay.ConsumeScoreSavePopupResult(OutNickname);
+}
+
+void UGameEngine::OpenMessagePopup(const FString& InMessage)
+{
+	ImGuiOverlay.OpenMessagePopup(InMessage);
+}
+
+bool UGameEngine::ConsumeMessagePopupConfirmed()
+{
+	return ImGuiOverlay.ConsumeMessagePopupConfirmed();
+}
+
+void UGameEngine::OpenScoreboardPopup(const FString& InFilePath)
+{
+	ImGuiOverlay.OpenScoreboardPopup(InFilePath);
+}
+
+bool UGameEngine::IsScoreSavePopupOpen() const
+{
+	return ImGuiOverlay.IsScoreSavePopupOpen();
 }
 
 void UGameEngine::LoadStartLevel()

@@ -390,6 +390,10 @@ void FEditorMainPanel::Render(float DeltaTime)
 	}
 
 	RenderProjectSettingsWindow();
+	if (EditorEngine)
+	{
+		EditorEngine->RenderPIEOverlayPopups();
+	}
 
 	RenderShortcutOverlay();
 	RenderCreditsOverlay();

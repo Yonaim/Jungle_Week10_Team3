@@ -1,10 +1,13 @@
 #pragma once
 
 #include "Component/BillboardComponent.h"
+#include "Core/ResourceTypes.h"
 
 #include <algorithm>
 
 class FScene;
+class UTexture2D;
+struct ID3D11ShaderResourceView;
 
 enum class EUIImageFitMode : int32
 {
@@ -92,6 +95,12 @@ protected:
 
 	bool EnsureTextureLoaded();
 	ID3D11ShaderResourceView* GetResolvedTextureSRV() const;
+	bool EnsureBackgroundTextureLoaded() const;
+	ID3D11ShaderResourceView* GetBackgroundTextureSRV() const;
+	bool ShouldDrawShadow() const;
+	FVector2 GetShadowOffset2D() const;
+	FVector4 GetShadowMaskTopColor() const;
+	FVector4 GetShadowMaskBottomColor() const;
 	FVector2 ResolveScreenPosition(const FVector2& ElementSize) const;
 	FVector2 ResolveScreenSize2D() const;
 	static EUIImageFitMode SanitizeFitModeValue(int32 InFitMode);
@@ -116,4 +125,15 @@ protected:
 	int32 ZOrder = 0;
 	int32 FitMode = static_cast<int32>(EUIImageFitMode::Stretch);
 	int32 ContentAlignment = static_cast<int32>(EUIImageContentAlignment::Center);
+	bool bDrawBackground = false;
+	FTextureSlot BackgroundTextureSlot;
+	mutable UTexture2D* BackgroundTexture = nullptr;
+	int32 BackgroundFitMode = static_cast<int32>(EUIImageFitMode::Stretch);
+	int32 BackgroundContentAlignment = static_cast<int32>(EUIImageContentAlignment::Center);
+	FVector4 BackgroundTint = FVector4(0.18f, 0.20f, 0.24f, 0.90f);
+	bool bDrawShadow = false;
+	FVector ShadowOffset = FVector(0.0f, 4.0f, 0.0f);
+	FVector4 ShadowTint = FVector4(1.0f, 1.0f, 1.0f, 0.35f);
+	FVector4 ShadowTopTint = FVector4(1.0f, 1.0f, 1.0f, 0.50f);
+	FVector4 ShadowBottomTint = FVector4(1.0f, 1.0f, 1.0f, 0.10f);
 };

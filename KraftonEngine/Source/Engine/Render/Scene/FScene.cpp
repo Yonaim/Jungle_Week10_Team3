@@ -300,7 +300,13 @@ void FScene::AddScreenText(FString Text, const FVector2& Position, float Scale, 
 void FScene::AddScreenQuad(ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, const FVector4& Color, int32 ZOrder,
 	const FVector2& UVMin, const FVector2& UVMax, bool bSolidColorOnly)
 {
-	ScreenQuads.push_back({ TextureSRV, Position, Size, UVMin, UVMax, Color, ZOrder, bSolidColorOnly });
+	AddScreenQuad(TextureSRV, Position, Size, Color, Color, ZOrder, UVMin, UVMax, bSolidColorOnly);
+}
+
+void FScene::AddScreenQuad(ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, const FVector4& TopColor, const FVector4& BottomColor, int32 ZOrder,
+	const FVector2& UVMin, const FVector2& UVMax, bool bSolidColorOnly)
+{
+	ScreenQuads.push_back({ TextureSRV, Position, Size, UVMin, UVMax, TopColor, BottomColor, ZOrder, bSolidColorOnly });
 }
 
 void FScene::AddDebugAABB(const FVector& Min, const FVector& Max, const FColor& Color)

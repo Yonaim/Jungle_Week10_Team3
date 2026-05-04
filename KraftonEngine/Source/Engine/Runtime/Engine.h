@@ -28,6 +28,13 @@ public:
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaTime);
 	virtual bool LoadScene(const FString& InSceneReference) { (void)InSceneReference; return false; }
+	virtual void RenderImGuiOverlay(FRenderer& InRenderer) { (void)InRenderer; }
+	virtual void OpenScoreSavePopup(int32 InScore) { (void)InScore; }
+	virtual bool ConsumeScoreSavePopupResult(FString& OutNickname) { (void)OutNickname; return false; }
+	virtual void OpenMessagePopup(const FString& InMessage) { (void)InMessage; }
+	virtual bool ConsumeMessagePopupConfirmed() { return false; }
+	virtual void OpenScoreboardPopup(const FString& InFilePath) { (void)InFilePath; }
+	virtual bool IsScoreSavePopupOpen() const { return false; }
 	bool RequestSceneLoad(const FString& InSceneReference);
 
 	virtual void OnWindowResized(uint32 Width, uint32 Height);

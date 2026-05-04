@@ -591,6 +591,29 @@ function play_bgm(soundPath, looping) end
 ---@return table|nil
 function load_json_file(filePath) end
 
+---@param filePath string
+---@param data table
+---@return boolean
+function save_json_file(filePath, data) end
+
+---@param score integer
+---@return boolean
+function open_score_save_popup(score) end
+
+---@return string|nil
+function consume_score_save_popup_result() end
+
+---@param message string
+---@return boolean
+function open_message_popup(message) end
+
+---@return boolean
+function consume_message_popup_ok() end
+
+---@param filePath string
+---@return boolean
+function open_scoreboard_popup(filePath) end
+
 ---@param handle string
 ---@return boolean
 function stop_audio_by_handle(handle) end
