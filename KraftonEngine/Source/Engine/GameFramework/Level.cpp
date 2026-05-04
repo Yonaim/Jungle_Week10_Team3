@@ -230,6 +230,7 @@ UObject* ULevel::Duplicate(UObject* NewOuter) const
 	}
 
 	DupLevel->SetGameModeClassName(GetGameModeClassName());
+	DupLevel->SetOutlinerFolders(GetOutlinerFolders());
 
 	for (AActor* SrcActor : Actors)
 	{

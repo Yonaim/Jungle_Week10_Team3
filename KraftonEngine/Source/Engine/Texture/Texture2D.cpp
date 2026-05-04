@@ -1,6 +1,7 @@
 ﻿#include "Texture/Texture2D.h"
 #include "Object/ObjectFactory.h"
 #include "Core/Log.h"
+#include "Engine/Platform/DirectoryWatcher.h"
 #include "Platform/Paths.h"
 #include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
@@ -15,6 +16,10 @@ IMPLEMENT_CLASS(UTexture2D, UObject)
 
 std::map<FString, UTexture2D*> UTexture2D::TextureCache;
 TArray<FTextureAssetListItem> UTexture2D::AvailableTextureFiles;
+bool UTexture2D::bTextureAssetListDirty = true;
+FWatchID UTexture2D::TextureAssetWatchID = 0;
+FSubscriptionID UTexture2D::TextureAssetWatchSub = 0;
+bool UTexture2D::bTextureAssetWatcherInitialized = false;
 
 namespace
 {
@@ -111,6 +116,11 @@ namespace
 
 		++It;
 		return It == NormalizedPath.end() || *It != L"Font";
+	}
+
+	bool IsSupportedTexturePathString(const FString& Path)
+	{
+		return UTexture2D::IsSupportedTextureExtension(std::filesystem::path(FPaths::ToWide(Path)));
 	}
 
 	bool LoadCPUTextureRGBA(const FString& FilePath, uint32& OutWidth, uint32& OutHeight, std::vector<uint8>& OutPixels)
@@ -243,8 +253,25 @@ void UTexture2D::ReleaseAllGPU()
 	TextureCache.clear();
 }
 
+void UTexture2D::RefreshChangedTextures(ID3D11Device* Device)
+{
+	if (!Device)
+	{
+		return;
+	}
+
+	for (auto& [Path, Texture] : TextureCache)
+	{
+		if (Texture && Texture->HasSourceFileChanged())
+		{
+			Texture->LoadInternal(Path, Device);
+		}
+	}
+}
+
 void UTexture2D::ScanTextureAssets()
 {
+	EnsureTextureAssetWatcher();
 	AvailableTextureFiles.clear();
 
 	const std::filesystem::path ProjectRoot(FPaths::RootDir());
@@ -311,10 +338,17 @@ void UTexture2D::ScanTextureAssets()
 
 			return A.FullPath < B.FullPath;
 		});
+
+	bTextureAssetListDirty = false;
 }
 
 const TArray<FTextureAssetListItem>& UTexture2D::GetAvailableTextureFiles()
 {
+	EnsureTextureAssetWatcher();
+	if (bTextureAssetListDirty)
+	{
+		ScanTextureAssets();
+	}
 	return AvailableTextureFiles;
 }
 
@@ -501,6 +535,40 @@ bool UTexture2D::HasSourceFileChanged() const
 	}
 
 	return CurrentWriteTime != SourceFileWriteTime;
+}
+
+void UTexture2D::EnsureTextureAssetWatcher()
+{
+	if (bTextureAssetWatcherInitialized)
+	{
+		return;
+	}
+
+	bTextureAssetWatcherInitialized = true;
+	TextureAssetWatchID = FDirectoryWatcher::Get().Watch(FPaths::AssetDir(), "Asset/");
+	if (TextureAssetWatchID == 0)
+	{
+		return;
+	}
+
+	TextureAssetWatchSub = FDirectoryWatcher::Get().Subscribe(
+		TextureAssetWatchID,
+		[](const TSet<FString>& ChangedPaths)
+		{
+			for (const FString& Path : ChangedPaths)
+			{
+				if (IsSupportedTexturePathString(Path))
+				{
+					MarkTextureAssetListDirty();
+					return;
+				}
+			}
+		});
+}
+
+void UTexture2D::MarkTextureAssetListDirty()
+{
+	bTextureAssetListDirty = true;
 }
 
 bool UTexture2D::SampleAlpha(float U, float V, float& OutAlpha) const

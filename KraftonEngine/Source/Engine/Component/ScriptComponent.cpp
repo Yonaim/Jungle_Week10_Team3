@@ -285,7 +285,7 @@ void UScriptComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UE_LOG("[ScriptComponent] BeginPlay for actor: %s, script: %s", 
+	UE_LOG_CATEGORY(ScriptComponent, Debug, "[ScriptComponent] BeginPlay for actor: %s, script: %s", 
 		GetOwner() ? GetOwner()->GetFName().ToString().c_str() : "None", ScriptPath.c_str());
 
 	ClearScriptError();
@@ -302,7 +302,7 @@ void UScriptComponent::BeginPlay()
 
 	if (!LoadScript())
 	{
-		UE_LOG("[ScriptComponent] LoadScript failed for %s", ScriptPath.c_str());
+		UE_LOG_CATEGORY(ScriptComponent, Warning, "[ScriptComponent] LoadScript failed for %s", ScriptPath.c_str());
 		return;
 	}
 
@@ -312,7 +312,7 @@ void UScriptComponent::BeginPlay()
 	// 델리게이트 바인드가 끝난 뒤 Lua BeginPlay를 호출해 스크립트 초기화 로직을 실행한다.
 	if (!ScriptInstance.CallBeginPlay())
 	{
-		UE_LOG("[ScriptComponent] Lua BeginPlay call failed for %s", ScriptPath.c_str());
+		UE_LOG_CATEGORY(ScriptComponent, Warning, "[ScriptComponent] Lua BeginPlay call failed for %s", ScriptPath.c_str());
 		RefreshScriptErrorState();
 
 		// 실패한 경우 델리게이트 바인딩 모두 해제
@@ -323,7 +323,7 @@ void UScriptComponent::BeginPlay()
 
 		return;
 	}
-	UE_LOG("[ScriptComponent] Lua BeginPlay successful for %s", ScriptPath.c_str());
+	UE_LOG_CATEGORY(ScriptComponent, Debug, "[ScriptComponent] Lua BeginPlay successful for %s", ScriptPath.c_str());
 	RefreshScriptErrorState();
 }
 
@@ -509,7 +509,7 @@ bool UScriptComponent::CreateScript()
 	if (std::filesystem::exists(AbsoluteGeneratedPath))
 	{
 		// 이미 파일이 있으면 덮어쓰지 않고 그 경로만 현재 component에 연결한다.
-		UE_LOG("[ScriptComponent] CreateScript: existing script reused: %s", RelativePathString.c_str());
+		UE_LOG_CATEGORY(ScriptComponent, Debug, "[ScriptComponent] CreateScript: existing script reused: %s", RelativePathString.c_str());
 		SetScriptPath(RelativePathString);
 		ClearScriptError();
 		if (GetOwner() && GetOwner()->HasActorBegunPlay())

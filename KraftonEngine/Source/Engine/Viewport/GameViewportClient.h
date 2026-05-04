@@ -44,7 +44,7 @@ public:
 	void SetOwnerWindow(HWND InOwnerHWnd) { OwnerHWnd = InOwnerHWnd; }
 	void SetCursorClipRect(const FRect& InViewportScreenRect);
 	void SetDrivingCamera(UCameraComponent* InCamera) { Possess(InCamera); }
-	UCameraComponent* GetDrivingCamera() const { return GetPossessedTarget(); }
+	UCameraComponent* GetDrivingCamera() const;
 	bool TryGetCursorViewportPosition(float& OutViewportX, float& OutViewportY) const;
 
 	void SetPIEPossessedInputEnabled(bool bEnabled);
@@ -57,7 +57,7 @@ public:
 	void Possess(UCameraComponent* TargetCamera);
 	void UnPossess();
 	UCameraComponent* GetPossessedTarget() const { return PossessedCamera; }
-	bool HasPossessedTarget() const { return PossessedCamera != nullptr; }
+	bool HasPossessedTarget() const { return GetDrivingCamera() != nullptr; }
 	bool Tick(float DeltaTime);
 	bool ProcessPIEInput(float DeltaTime);
 

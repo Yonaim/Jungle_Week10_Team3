@@ -2,6 +2,8 @@
 
 #include "Component/CanvasRootComponent.h"
 #include "Component/UIImageComponent.h"
+#include "Editor/EditorEngine.h"
+#include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Render/Scene/FScene.h"
@@ -35,6 +37,27 @@ namespace
 						ViewportSize.X = Width;
 						ViewportSize.Y = Height;
 						return ViewportSize;
+					}
+				}
+			}
+
+			if (GIsEditor)
+			{
+				if (const UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+				{
+					if (const FLevelEditorViewportClient* ActiveViewport = EditorEngine->GetActiveViewport())
+					{
+						if (const FViewport* EditorViewport = ActiveViewport->GetViewport())
+						{
+							const float Width = static_cast<float>(EditorViewport->GetWidth());
+							const float Height = static_cast<float>(EditorViewport->GetHeight());
+							if (Width > 0.0f && Height > 0.0f)
+							{
+								ViewportSize.X = Width;
+								ViewportSize.Y = Height;
+								return ViewportSize;
+							}
+						}
 					}
 				}
 			}

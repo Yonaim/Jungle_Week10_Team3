@@ -2,6 +2,8 @@
 
 #include "Component/CanvasRootComponent.h"
 #include "Component/UIScreenTextComponent.h"
+#include "Editor/EditorEngine.h"
+#include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Object/ObjectFactory.h"
@@ -18,7 +20,6 @@ IMPLEMENT_CLASS(UUIImageComponent, UBillboardComponent)
 
 namespace
 {
-	constexpr const char* DefaultUIImageTexture = "Asset/Content/Texture/checker.png";
 	const FVector4 SelectedUIOutlineColor(0.10f, 0.54f, 0.96f, -1.0f);
 	const char* GUIImageFitModeNames[] = { "Stretch", "Contain", "Cover" };
 	const char* GUIImageContentAlignmentNames[] = { "Center", "Top", "Bottom", "Left", "Right" };
@@ -67,6 +68,27 @@ namespace
 						ViewportSize.X = Width;
 						ViewportSize.Y = Height;
 						return ViewportSize;
+					}
+				}
+			}
+
+			if (GIsEditor)
+			{
+				if (const UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+				{
+					if (const FLevelEditorViewportClient* ActiveViewport = EditorEngine->GetActiveViewport())
+					{
+						if (const FViewport* EditorViewport = ActiveViewport->GetViewport())
+						{
+							const float Width = static_cast<float>(EditorViewport->GetWidth());
+							const float Height = static_cast<float>(EditorViewport->GetHeight());
+							if (Width > 0.0f && Height > 0.0f)
+							{
+								ViewportSize.X = Width;
+								ViewportSize.Y = Height;
+								return ViewportSize;
+							}
+						}
 					}
 				}
 			}
@@ -209,7 +231,8 @@ UUIImageComponent::FResolvedImageDrawParams UUIImageComponent::ResolveImageDrawP
 UUIImageComponent::UUIImageComponent()
 {
 	bTickEnable = false;
-	SetTexturePath(DefaultUIImageTexture);
+	TextureSlot.Path.clear();
+	SetTexture(nullptr);
 	SetCanDeleteFromDetails(true);
 }
 
@@ -259,6 +282,7 @@ void UUIImageComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPr
 	OutProps.push_back({ "Background Tint", EPropertyType::Color4, &BackgroundTint });
 	OutProps.push_back({ "Draw Shadow", EPropertyType::Bool, &bDrawShadow });
 	OutProps.push_back({ "Shadow Offset", EPropertyType::Vec3, &ShadowOffset, -64.0f, 64.0f, 1.0f });
+	OutProps.push_back({ "Shadow Blur", EPropertyType::Float, &ShadowOffset.Z, 0.0f, 32.0f, 0.25f });
 	OutProps.push_back({ "Shadow Tint", EPropertyType::Color4, &ShadowTint });
 	OutProps.push_back({ "Shadow Top Tint", EPropertyType::Color4, &ShadowTopTint });
 	OutProps.push_back({ "Shadow Bottom Tint", EPropertyType::Color4, &ShadowBottomTint });
@@ -352,37 +376,35 @@ void UUIImageComponent::ContributeVisuals(FScene& Scene) const
 			bSolidBackground);
 	}
 
-	if (ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV())
+	ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV();
+	const bool bSolidImage = (SRV == nullptr);
+	FVector4 DrawTint = Tint;
+	if (bSolidImage)
 	{
-		const FResolvedImageDrawParams DrawParams = ResolveImageDrawParams(
-			ResolvedPosition,
-			ResolvedSize,
-			Texture,
-			SanitizeFitModeValue(FitMode),
-			SanitizeContentAlignmentValue(ContentAlignment));
-
-		if (ShouldDrawShadow())
-		{
-			Scene.AddScreenQuad(
-				SRV,
-				DrawParams.Position + GetShadowOffset2D(),
-				DrawParams.Size,
-				GetShadowMaskTopColor(),
-				GetShadowMaskBottomColor(),
-				ZOrder - 1,
-				DrawParams.UVMin,
-				DrawParams.UVMax);
-		}
-
-		Scene.AddScreenQuad(
-			SRV,
-			DrawParams.Position,
-			DrawParams.Size,
-			Tint,
-			ZOrder,
-			DrawParams.UVMin,
-			DrawParams.UVMax);
+		DrawTint.W = (DrawTint.W > 0.0f) ? -DrawTint.W : DrawTint.W;
 	}
+
+	const FResolvedImageDrawParams DrawParams = ResolveImageDrawParams(
+		ResolvedPosition,
+		ResolvedSize,
+		Texture,
+		SanitizeFitModeValue(FitMode),
+		SanitizeContentAlignmentValue(ContentAlignment));
+
+	if (!bSolidImage && ShouldDrawShadow())
+	{
+		AddShadowScreenQuad(Scene, SRV, DrawParams.Position, DrawParams.Size, ZOrder - 1, DrawParams.UVMin, DrawParams.UVMax);
+	}
+
+	Scene.AddScreenQuad(
+		SRV,
+		DrawParams.Position,
+		DrawParams.Size,
+		DrawTint,
+		ZOrder,
+		DrawParams.UVMin,
+		DrawParams.UVMax,
+		bSolidImage);
 
 	if (BorderThickness > 0.0f && BorderColor.W > 0.0f)
 	{
@@ -501,6 +523,11 @@ FVector2 UUIImageComponent::GetShadowOffset2D() const
 	return FVector2(ShadowOffset.X, ShadowOffset.Y);
 }
 
+float UUIImageComponent::GetShadowBlurRadius() const
+{
+	return (std::max)(0.0f, ShadowOffset.Z);
+}
+
 FVector4 UUIImageComponent::GetShadowMaskTopColor() const
 {
 	return FVector4(
@@ -517,6 +544,69 @@ FVector4 UUIImageComponent::GetShadowMaskBottomColor() const
 		ShadowBottomTint.Y * ShadowTint.Y,
 		ShadowBottomTint.Z * ShadowTint.Z,
 		-((ShadowBottomTint.W * ShadowTint.W) + 1.0f));
+}
+
+namespace
+{
+	FVector4 ScaleShadowMaskColor(const FVector4& Color, float Strength)
+	{
+		const float Alpha = (Color.W < -1.0f) ? (-Color.W - 1.0f) : 0.0f;
+		return FVector4(Color.X, Color.Y, Color.Z, -((Alpha * Strength) + 1.0f));
+	}
+}
+
+void UUIImageComponent::AddShadowScreenQuad(FScene& Scene, ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, int32 InZOrder,
+	const FVector2& UVMin, const FVector2& UVMax) const
+{
+	if (!ShouldDrawShadow())
+	{
+		return;
+	}
+
+	const FVector4 TopColor = GetShadowMaskTopColor();
+	const FVector4 BottomColor = GetShadowMaskBottomColor();
+	const FVector2 BasePosition = Position + GetShadowOffset2D();
+	const float BlurRadius = GetShadowBlurRadius();
+
+	if (BlurRadius <= 0.01f)
+	{
+		Scene.AddScreenQuad(TextureSRV, BasePosition, Size, TopColor, BottomColor, InZOrder, UVMin, UVMax);
+		return;
+	}
+
+	Scene.AddScreenQuad(
+		TextureSRV,
+		BasePosition,
+		Size,
+		ScaleShadowMaskColor(TopColor, 0.36f),
+		ScaleShadowMaskColor(BottomColor, 0.36f),
+		InZOrder,
+		UVMin,
+		UVMax);
+
+	const FVector2 SampleOffsets[] = {
+		FVector2(1.0f, 0.0f),
+		FVector2(-1.0f, 0.0f),
+		FVector2(0.0f, 1.0f),
+		FVector2(0.0f, -1.0f),
+		FVector2(0.70710678f, 0.70710678f),
+		FVector2(-0.70710678f, 0.70710678f),
+		FVector2(0.70710678f, -0.70710678f),
+		FVector2(-0.70710678f, -0.70710678f),
+	};
+
+	for (const FVector2& SampleOffset : SampleOffsets)
+	{
+		Scene.AddScreenQuad(
+			TextureSRV,
+			BasePosition + (SampleOffset * BlurRadius),
+			Size,
+			ScaleShadowMaskColor(TopColor, 0.08f),
+			ScaleShadowMaskColor(BottomColor, 0.08f),
+			InZOrder,
+			UVMin,
+			UVMax);
+	}
 }
 
 bool UUIImageComponent::EnsureBackgroundTextureLoaded() const

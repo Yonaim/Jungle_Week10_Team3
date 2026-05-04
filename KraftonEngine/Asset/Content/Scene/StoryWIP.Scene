@@ -1,0 +1,99 @@
+{
+  "Actors" : [{
+      "ClassName" : "AUIRootActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AUIRootActor_1",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_0",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/Actor_64.png"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : false,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [{
+                "Children" : [],
+                "ClassName" : "UUIScreenTextComponent",
+                "ObjectName" : "UUIScreenTextComponent_33",
+                "Properties" : {
+                  "Alignment" : [0.000000, 0.000000, 0.000000],
+                  "Anchor" : [0.000000, 0.000000, 0.000000],
+                  "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+                  "Color" : [0.525490, 0.984314, 1.000000, 0.913725],
+                  "Font" : "D2Coding Bold",
+                  "Font Size" : 2.000000,
+                  "Screen Position" : [506.371155, 590.329895, 0.000000],
+                  "Text" : "사령관 백",
+                  "Use Anchored Layout" : false,
+                  "Visible" : true
+                }
+              }, {
+                "Children" : [],
+                "ClassName" : "UUIScreenTextComponent",
+                "ObjectName" : "UUIScreenTextComponent_34",
+                "Properties" : {
+                  "Alignment" : [0.000000, 0.000000, 0.000000],
+                  "Anchor" : [0.000000, 0.000000, 0.000000],
+                  "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+                  "Color" : [0.525490, 0.984314, 1.000000, 0.819608],
+                  "Font" : "D2Coding",
+                  "Font Size" : 1.800000,
+                  "Screen Position" : [507.052002, 664.155029, 0.000000],
+                  "Text" : "내 말을 따르라 우하하하하 ",
+                  "Use Anchored Layout" : false,
+                  "Visible" : true
+                }
+              }],
+            "ClassName" : "UUIBackgroundComponent",
+            "ObjectName" : "UUIBackgroundComponent_0",
+            "Properties" : {
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/Story/control_room_screen_on_baek_1.png"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Visible" : true,
+              "Z Order" : -10000
+            }
+          }],
+        "ClassName" : "UCanvasRootComponent",
+        "ObjectName" : "UCanvasRootComponent_1",
+        "Properties" : {
+          "Canvas Size" : [1920.000000, 1080.000000, 0.000000],
+          "Location" : [1.055727, -0.000003, 1.527864],
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000]
+        }
+      },
+      "UUID" : 287,
+      "bVisible" : true
+    }],
+  "ClassName" : "UWorld",
+  "ContextHandle" : "Default",
+  "ContextName" : "Default",
+  "Name" : "StoryWIP",
+  "PerspectiveCamera" : {
+    "FOV" : 1.047198,
+    "FarClip" : 1000.000000,
+    "Location" : [10.000000, 0.000000, 5.000000],
+    "NearClip" : 0.100000,
+    "Rotation" : [0.000000, 26.565044, -136.848267]
+  },
+  "Version" : 2,
+  "WorldType" : "Editor"
+}

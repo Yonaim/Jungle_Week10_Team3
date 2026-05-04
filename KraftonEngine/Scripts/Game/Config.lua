@@ -134,7 +134,7 @@ local Config = {
 
     -- map은 길/장애물 생성 간격입니다.
     result_screen = {
-        scene_path = "game/gameover.scene",
+        scene_path = "game/gameresult.scene",
         scoreboard_path = "Saves/scoreboard.json",
         scoreboard_limit = 20,
         title = "DEBUG SESSION RESULT",

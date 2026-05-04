@@ -2,6 +2,8 @@
 
 #include "Component/CanvasRootComponent.h"
 #include "Component/UIScreenTextComponent.h"
+#include "Editor/EditorEngine.h"
+#include "Editor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Object/ObjectFactory.h"
@@ -53,13 +55,18 @@ void UUIBackgroundComponent::ContributeVisuals(FScene& Scene) const
 		return;
 	}
 
-	if (ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV())
+	ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV();
+	const bool bSolidBackground = (SRV == nullptr);
+	FVector4 DrawTint = Tint;
+	if (bSolidBackground)
 	{
-		FVector2 BackgroundPosition(0.0f, 0.0f);
-		FVector2 BackgroundSize = GetViewportSize2D();
-		ResolveBackgroundRect(BackgroundPosition, BackgroundSize);
-		Scene.AddScreenQuad(SRV, BackgroundPosition, BackgroundSize, Tint, ZOrder);
+		DrawTint.W = (DrawTint.W > 0.0f) ? -DrawTint.W : DrawTint.W;
 	}
+
+	FVector2 BackgroundPosition(0.0f, 0.0f);
+	FVector2 BackgroundSize = GetViewportSize2D();
+	ResolveBackgroundRect(BackgroundPosition, BackgroundSize);
+	Scene.AddScreenQuad(SRV, BackgroundPosition, BackgroundSize, DrawTint, ZOrder, FVector2(0.0f, 0.0f), FVector2(1.0f, 1.0f), bSolidBackground);
 }
 
 void UUIBackgroundComponent::ContributeSelectedVisuals(FScene& Scene) const
@@ -146,6 +153,27 @@ FVector2 UUIBackgroundComponent::GetViewportSize2D() const
 					ViewportSize.X = Width;
 					ViewportSize.Y = Height;
 					return ViewportSize;
+				}
+			}
+		}
+
+		if (GIsEditor)
+		{
+			if (const UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+			{
+				if (const FLevelEditorViewportClient* ActiveViewport = EditorEngine->GetActiveViewport())
+				{
+					if (const FViewport* EditorViewport = ActiveViewport->GetViewport())
+					{
+						const float Width = static_cast<float>(EditorViewport->GetWidth());
+						const float Height = static_cast<float>(EditorViewport->GetHeight());
+						if (Width > 0.0f && Height > 0.0f)
+						{
+							ViewportSize.X = Width;
+							ViewportSize.Y = Height;
+							return ViewportSize;
+						}
+					}
 				}
 			}
 		}

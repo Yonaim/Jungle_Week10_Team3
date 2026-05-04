@@ -189,7 +189,7 @@
               "Rotation" : [-0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],
               "Texture" : {
-                "Path" : "Asset/Editor/S_DirectionalLight_256x.PNG"
+                "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
               },
               "Two Sided Shadow" : false,
               "Visible" : true,
