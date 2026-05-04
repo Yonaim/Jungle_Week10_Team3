@@ -423,7 +423,7 @@
           "Height" : 1.000000,
           "Location" : [0.796321, 29.396147, 0.537412],
           "Material" : {
-            "Path" : "Asset/Editor/S_DirectionalLight_256x.PNG"
+            "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
           },
           "Rotation" : [89.899994, 9.399994, 45.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],

@@ -1,5 +1,0 @@
-{
-  "image": "./nineslice.png",
-  "region": { "x": 24, "y": 24, "w": 464, "h": 461 },
-  "border": { "left": 56, "right": 56, "top": 56, "bottom": 28 }
-}

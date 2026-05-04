@@ -419,7 +419,7 @@ function GameManager.GameOver(reason)
         " rank=" .. tostring(GameManager.coach_rank)
     )
 
-    local result_scene = Config.result_screen and Config.result_screen.scene_path or "game/gameover.scene"
+    local result_scene = Config.result_screen and Config.result_screen.scene_path or "game/gameresult.scene"
     log("[GameManager] LoadResultScene scene=" .. tostring(result_scene))
     load_scene(result_scene)
 end

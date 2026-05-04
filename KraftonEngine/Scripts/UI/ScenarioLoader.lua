@@ -1,22 +1,22 @@
 local ScenarioLoader = {}
 
 local CHARACTER_TEXTURES = {
-    profile_baek = "Asset/Content/Texture/Character/EngineDive/Profile/profile_baek.png",
-    profile_lim = "Asset/Content/Texture/Character/EngineDive/Profile/profile_lim.png",
+    profile_baek = "Asset/Content/Texture/Story/profile_baek.png",
+    profile_lim = "Asset/Content/Texture/Story/profile_lim.png",
 
-    portrait_baek_normal = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_baek_normal_0.png",
-    portrait_baek_calm = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_baek_normal_0.png",
-    portrait_baek_serious = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_baek_normal_1.png",
-    portrait_baek_annoyed = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_baek_normal_1.png",
-    portrait_baek_angry = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_baek_normal_1.png",
-    portrait_baek_panic = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_baek_normal_1.png",
+    portrait_baek_normal = "Asset/Content/Texture/UI/portrait_baek_normal_0.png",
+    portrait_baek_calm = "Asset/Content/Texture/UI/portrait_baek_normal_0.png",
+    portrait_baek_serious = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
+    portrait_baek_annoyed = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
+    portrait_baek_angry = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
+    portrait_baek_panic = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
 
-    portrait_lim_normal = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_lim_normal_0.png",
-    portrait_lim_joke = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_lim_normal_0.png",
-    portrait_lim_serious = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_lim_normal_1.png",
-    portrait_lim_excited = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_lim_normal_1.png",
-    portrait_lim_surprised = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_lim_normal_1.png",
-    portrait_lim_angry = "Asset/Content/Texture/Character/EngineDive/Portrait/portrait_lim_normal_1.png",
+    portrait_lim_normal = "Asset/Content/Texture/UI/portrait_lim_normal_0.png",
+    portrait_lim_joke = "Asset/Content/Texture/UI/portrait_lim_normal_0.png",
+    portrait_lim_serious = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
+    portrait_lim_excited = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
+    portrait_lim_surprised = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
+    portrait_lim_angry = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
 }
 
 local function starts_with(value, prefix)

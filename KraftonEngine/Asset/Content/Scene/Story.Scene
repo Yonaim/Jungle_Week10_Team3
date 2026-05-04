@@ -32,7 +32,7 @@
                 0.0
               ],
               "Texture": {
-                "Path": "Asset/Content/Texture/checker.png"
+                "Path": "Asset/Content/Texture/sample/checker.png"
               },
               "Tint": [
                 0.01,
@@ -60,7 +60,7 @@
                 0.0
               ],
               "Texture": {
-                "Path": "Asset/Content/Texture/UI/title_background.png"
+                "Path": "Asset/Content/Texture/background/title_background.png"
               },
               "Tint": [
                 0.05,
@@ -88,7 +88,7 @@
                 0.0
               ],
               "Texture": {
-                "Path": "Asset/Content/Texture/checker.png"
+                "Path": "Asset/Content/Texture/sample/checker.png"
               },
               "Tint": [
                 1.0,
@@ -116,7 +116,7 @@
                 0.0
               ],
               "Texture": {
-                "Path": "Asset/Content/Texture/checker.png"
+                "Path": "Asset/Content/Texture/sample/checker.png"
               },
               "Tint": [
                 1.0,
@@ -143,8 +143,32 @@
                 150.0,
                 0.0
               ],
+              "Draw Shadow": true,
+              "Shadow Offset": [
+                5.0,
+                5.0,
+                8.0
+              ],
+              "Shadow Tint": [
+                1.0,
+                1.0,
+                1.0,
+                0.3
+              ],
+              "Shadow Top Tint": [
+                1.0,
+                1.0,
+                1.0,
+                0.38
+              ],
+              "Shadow Bottom Tint": [
+                1.0,
+                1.0,
+                1.0,
+                0.14
+              ],
               "Texture": {
-                "Path": "Asset/Content/Texture/UI/logo_color.png"
+                "Path": "Asset/Content/Texture/UI/logo_techlab_color.png"
               },
               "Tint": [
                 1.0,
@@ -200,7 +224,7 @@
                 0.0
               ],
               "Texture": {
-                "Path": "Asset/Content/Texture/Character/Profile/profile_baek.png"
+                "Path": "Asset/Content/Texture/Story/profile_baek.png"
               },
               "Tint": [
                 1.0,

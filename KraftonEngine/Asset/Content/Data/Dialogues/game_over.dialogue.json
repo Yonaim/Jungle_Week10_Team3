@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "id": "game_over_dialogues",
+  "name": "Game Over Scene Dialogues",
+  "characters": {
+    "BAEK_COMMANDER": {
+      "displayName": "백승현 사령관",
+      "shortName": "백 사령관",
+      "defaultPortrait": "portrait_baek_normal",
+      "emotions": {
+        "normal": "portrait_baek_normal",
+        "calm": "portrait_baek_calm",
+        "serious": "portrait_baek_serious",
+        "annoyed": "portrait_baek_annoyed",
+        "angry": "portrait_baek_angry",
+        "panic": "portrait_baek_panic"
+      }
+    },
+    "LIM_COMMANDER": {
+      "displayName": "임창근 사령관",
+      "shortName": "임 사령관",
+      "defaultPortrait": "portrait_lim_normal",
+      "emotions": {
+        "normal": "portrait_lim_normal",
+        "joke": "portrait_lim_joke",
+        "serious": "portrait_lim_serious",
+        "excited": "portrait_lim_excited",
+        "surprised": "portrait_lim_surprised",
+        "angry": "portrait_lim_angry"
+      }
+    }
+  },
+  "dialogues": [
+    {
+      "id": "gameover_default_001",
+      "condition": "default",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "serious",
+      "message": "디버그 세션 강제 종료. Stability가 0%에 도달했다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_baek_serious",
+        "system_down"
+      ]
+    },
+    {
+      "id": "gameover_default_002",
+      "condition": "default",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "normal",
+      "message": "괜찮다. 엔진은 한 번에 고쳐지는 물건이 아니다. 보통은 여러 번 터진다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_im_normal"
+      ]
+    },
+    {
+      "id": "gameover_no_log_001",
+      "condition": "logs_zero",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "annoyed",
+      "message": "Log Fragment 수집량 0. 원인 분석을 위한 데이터가 부족하다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_baek_annoyed",
+        "system_down"
+      ]
+    },
+    {
+      "id": "gameover_no_log_002",
+      "condition": "logs_zero",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "joke",
+      "message": "로그를 하나도 안 먹고 돌아오다니. 이건 다이어트가 아니라 작전 실패다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_im_joke"
+      ]
+    },
+    {
+      "id": "gameover_high_trace_001",
+      "condition": "trace_high",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "calm",
+      "message": "세션은 종료됐지만 Trace Data는 충분히 확보했다. 다음 투입에서 Hotfix 성공률이 상승할 것이다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_baek_calm",
+        "result_good"
+      ]
+    },
+    {
+      "id": "gameover_high_trace_002",
+      "condition": "trace_high",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "normal",
+      "message": "졌지만 헛수고는 아니다. 이 정도면 코치 인정도 C는 면했다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_im_normal",
+        "result_good"
+      ]
+    },
+    {
+      "id": "gameover_hotfix_success_001",
+      "condition": "hotfix_success",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "calm",
+      "message": "Hotfix 적용 성공. 해당 런타임 구간의 오류 반응이 감소했다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_baek_calm",
+        "hotfix_apply"
+      ]
+    },
+    {
+      "id": "gameover_hotfix_success_002",
+      "condition": "hotfix_success",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "excited",
+      "message": "좋았다. 이번엔 네가 엔진을 이겼다. 물론 다음 구간은 더 성가실 거다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_im_excited",
+        "result_good"
+      ]
+    },
+    {
+      "id": "gameover_restart_hint_001",
+      "condition": "restart_hint",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "serious",
+      "message": "재투입을 원한다면 시뮬레이션을 다시 시작해라. 이전 기록은 훈련 시스템에 저장된다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_baek_serious"
+      ]
+    },
+    {
+      "id": "gameover_restart_hint_002",
+      "condition": "restart_hint",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "joke",
+      "message": "다시 들어갈 준비가 됐으면 Start를 눌러라. 안 됐어도 누르면 준비된 걸로 처리된다.",
+      "shake": {
+        "enabled": false
+      },
+      "sounds": [
+        "voice_im_joke"
+      ]
+    }
+  ]
+}

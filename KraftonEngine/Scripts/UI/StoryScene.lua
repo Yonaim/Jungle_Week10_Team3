@@ -1,12 +1,12 @@
 DeclareProperties({
-    ScenarioPath = { type = "string", default = "Asset/Content/Scenarios/intro.scenario.json" },
+    ScenarioPath = { type = "string", default = "Asset/Content/Data/Scenarios/intro.scenario.json" },
     NextScene = { type = "string", default = "playerdev.scene" },
     AutoAdvanceDelay = { type = "float", default = 3.0, min = 0.0, max = 10.0 },
 })
 
 local ScenarioLoader = require("UI.ScenarioLoader")
 
-local SCENARIO_PATH = property("ScenarioPath", "Asset/Content/Scenarios/intro.scenario.json")
+local SCENARIO_PATH = property("ScenarioPath", "Asset/Content/Data/Scenarios/intro.scenario.json")
 local NEXT_SCENE = property("NextScene", "playerdev.scene")
 local AUTO_ADVANCE_DELAY = property("AutoAdvanceDelay", 3.0)
 
@@ -133,9 +133,9 @@ local function reset_scene()
     hide_overlays()
     clear_all_text()
 
-    set_texture("BgTexture", "Asset/Content/Texture/UI/EngineDive/title_background.png")
-    set_texture("Logo", "Asset/Content/Texture/UI/EngineDive/logo_color.png")
-    set_texture("Portrait", "Asset/Content/Texture/Character/EngineDive/Profile/profile_baek.png")
+    set_texture("BgTexture", "Asset/Content/Texture/background/title_background.png")
+    set_texture("Logo", "Asset/Content/Texture/UI/logo_techlab_color.png")
+    set_texture("Portrait", "Asset/Content/Texture/Story/profile_baek.png")
 
     set_visible("BgBase", true)
     set_visible("BgTexture", true)
