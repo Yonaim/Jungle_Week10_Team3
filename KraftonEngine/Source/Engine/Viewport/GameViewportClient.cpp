@@ -144,10 +144,10 @@ void UGameViewportClient::SetPossessed(bool bPossessed)
 	}
 
 	bPIEPossessedInputEnabled = bPossessed;
-	SetCursorCaptured(bPossessed);
-	
-	FInputManager::Get().SetTrackingMouse(bPossessed);
-	
+	// 본 프로젝트는 마우스 미사용: possess 여부와 무관하게 커서/마우스 트래킹 비활성.
+	SetCursorCaptured(false);
+	FInputManager::Get().SetTrackingMouse(false);
+
 	ResetInputState();
 }
 
@@ -185,32 +185,9 @@ bool UGameViewportClient::Tick(float DeltaTime)
 
 	bool bChanged = false;
 
-	// possessed 카메라 owner에 UScriptComponent가 붙어 있으면 UI 씬(Title/Story 등)이므로 커서 노출
-	bool bScriptDrivesCamera = false;
-	if (UCameraComponent* PossessedCam = GetPossessedTarget())
-	{
-		if (AActor* OwnerActor = PossessedCam->GetOwner())
-		{
-			for (UActorComponent* Comp : OwnerActor->GetComponents())
-			{
-				if (Comp && Comp->IsA<UScriptComponent>())
-				{
-					bScriptDrivesCamera = true;
-					break;
-				}
-			}
-		}
-	}
-
-	if (bScriptDrivesCamera)
-	{
-		SetCursorCaptured(false);
-	}
-	else
-	{
-		// 일반 게임플레이: 마우스 캡처 및 중앙 고정
-		SetCursorCaptured(true);
-	}
+	// 본 프로젝트는 마우스 입력을 사용하지 않으므로 항상 커서 노출 (캡처/클립 해제)
+	const bool bScriptDrivesCamera = true;
+	SetCursorCaptured(false);
 
 	if (bPIEPossessedInputEnabled)
 	{
