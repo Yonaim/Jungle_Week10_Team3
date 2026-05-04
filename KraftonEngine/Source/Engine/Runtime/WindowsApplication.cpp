@@ -11,7 +11,11 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, unsigned int Msg, WPARA
 
 namespace
 {
+#if WITH_EDITOR || IS_OBJ_VIEWER
 	constexpr LONG WindowedStyle = WS_POPUP | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_VISIBLE;
+#else
+	constexpr LONG WindowedStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+#endif
 	constexpr UINT ResizeRedrawTimerId = 1;
 	constexpr UINT ResizeRedrawIntervalMs = 16;
 	int GetResizeBorderForWindow(HWND hWnd)
@@ -56,8 +60,10 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 
 	switch (Msg)
 	{
+#if WITH_EDITOR || IS_OBJ_VIEWER
 	case WM_NCCALCSIZE:
 		return 0;
+#endif
 	case WM_GETMINMAXINFO:
 	{
 		MONITORINFO MonitorInfo{};
@@ -75,6 +81,7 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 		}
 		return 0;
 	}
+#if WITH_EDITOR || IS_OBJ_VIEWER
 	case WM_NCHITTEST:
 	{
 		POINT Cursor = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
@@ -114,6 +121,7 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 
 		return HTCLIENT;
 	}
+#endif
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;

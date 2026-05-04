@@ -4,6 +4,7 @@
 #include <fstream>
 #include <chrono>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "SimpleJSON/json.hpp"
 #include "GameFramework/World.h"
@@ -1533,13 +1534,20 @@ TArray<FString> FSceneSaveManager::GetSceneFileList()
 		return Result;
 	}
 
+	std::unordered_set<FString> Seen;
 	for (auto& Entry : std::filesystem::directory_iterator(SceneDir))
 	{
 		if (Entry.is_regular_file())
 		{
 			auto Ext = Entry.path().extension().wstring();
-			if (Ext == SceneExtension||Ext == L".umap"||Ext == L".UMAP")
-				Result.push_back(FPaths::ToUtf8(Entry.path().stem().wstring()));
+			if (Ext == SceneExtension || Ext == L".umap" || Ext == L".UMAP")
+			{
+				FString Stem = FPaths::ToUtf8(Entry.path().stem().wstring());
+				if (Seen.insert(Stem).second)
+				{
+					Result.push_back(std::move(Stem));
+				}
+			}
 		}
 	}
 	return Result;
