@@ -459,6 +459,8 @@ function RunIntro()
 end
 
 function BeginPlay()
+    play_sfx("Sound.SFX.windows.98.startup", false)
+
     local names = {
         "BgBase",
         "BgTexture",

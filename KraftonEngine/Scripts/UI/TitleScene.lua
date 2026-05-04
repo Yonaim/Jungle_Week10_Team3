@@ -2,6 +2,9 @@ local story_scene_loading = false
 local loading_overlay = nil
 local loading_text = nil
 local start_button = nil
+local score_button = nil
+local options_button = nil
+local exit_button = nil
 local logo_image = nil
 
 local function get_component(name)
@@ -36,10 +39,18 @@ function BeginPlay()
     loading_overlay = get_component("LoadingOverlay")
     loading_text = get_component("LoadingText")
     start_button = get_component("UIButtonComponent_0")
+    score_button = get_component("ScoreButton")
+    options_button = get_component("OptionsButton")
+    exit_button = get_component("ExitButton")
     logo_image = get_component("UUIImageComponent_0")
 
     set_visible(loading_overlay, false)
     set_visible(loading_text, false)
+end
+
+function ShowScoreboard()
+    play_sfx("Sound.SFX.arwing.hit.obstacle", false)
+    return open_scoreboard_popup("Saves/scoreboard.json")
 end
 
 function DelayedStartStoryScene()
@@ -53,8 +64,11 @@ function DelayedStartStoryScene()
     set_visible(loading_overlay, true)
     set_visible(loading_text, true)
     set_visible(start_button, false)
+    set_visible(score_button, false)
+    set_visible(options_button, false)
+    set_visible(exit_button, false)
 
-    play_sfx("Sound.SFX.go", false)
+    play_sfx("Sound.SFX.arwing.hit.obstacle", false)
 
     local elapsed = 0.0
     local step = 1
