@@ -386,6 +386,44 @@ function GameManager.IsRunning()
     return GameManager.state == GameManager.State.Running
 end
 
+function GameManager.GameOver(reason)
+    if GameManager.state == GameManager.State.GameOver then
+        log("[GameManager] GameOver ignored: already GameOver")
+        return
+    end
+
+    GameManager.state = GameManager.State.GameOver
+    GameManager.result_data = build_result_data(reason)
+
+    log("[GameManager] GameOver reason=" .. tostring(reason or "Unknown"))
+    AudioManager.PlayGameOver()
+
+    local should_stop_bgm = Config.audio.stop_bgm_on_game_over
+    if should_stop_bgm == nil then
+        should_stop_bgm = true
+    end
+    if should_stop_bgm then
+        AudioManager.StopBGM()
+    end
+
+    log(
+        "[GameManager] FinalScore score=" .. tostring(GameManager.score) ..
+        " distance=" .. tostring(GameManager.distance) ..
+        " elapsed_time=" .. tostring(GameManager.elapsed_time) ..
+        " logs=" .. tostring(GameManager.logs) ..
+        " trace=" .. tostring(GameManager.trace) ..
+        " dumps=" .. tostring(GameManager.dumps) ..
+        " stability=" .. tostring(GameManager.stability) ..
+        "/" .. tostring(GameManager.max_stability) ..
+        " approval=" .. tostring(GameManager.coach_approval) ..
+        " rank=" .. tostring(GameManager.coach_rank)
+    )
+
+    local result_scene = Config.result_screen and Config.result_screen.scene_path or "game/gameover.scene"
+    log("[GameManager] LoadResultScene scene=" .. tostring(result_scene))
+    load_scene(result_scene)
+end
+
 function GameManager.IsGameOver()
     return GameManager.state == GameManager.State.GameOver
 end

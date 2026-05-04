@@ -133,6 +133,17 @@ local Config = {
     },
 
     -- map은 길/장애물 생성 간격입니다.
+    result_screen = {
+        scene_path = "game/gameover.scene",
+        scoreboard_path = "Saves/scoreboard.json",
+        scoreboard_limit = 20,
+        title = "DEBUG SESSION RESULT",
+        coach_name_baek = "백승현 코치",
+        coach_name_lim = "임창근 코치",
+        coach_comment_baek = "런타임 구간에서 판단이 안정적이었다.",
+        coach_comment_lim = "좋다. 이 정도면 버그가 먼저 도망가겠다.",
+    },
+
     map = {
         road_tile_length = 20.0,
         road_tile_count = 5,
