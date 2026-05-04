@@ -15,6 +15,9 @@ local intro_finished = false
 local scenario = nil
 local IMMEDIATE_SCENE = "PlayerDev.Scene"
 
+local elapsed_time = 0.0
+local space_pressed = false
+
 local SPEAKER_COLORS = {
     BAEK_COMMANDER = { 0.62, 0.86, 1.0 },
     LIM_COMMANDER = { 1.0, 0.77, 0.35 },
@@ -168,9 +171,23 @@ local function speaker_color(speaker)
     return 1.0, 1.0, 1.0
 end
 
+local original_wait = wait
+
+local function wait(seconds)
+    local start_time = elapsed_time
+    while (elapsed_time - start_time) < seconds and not intro_finished do
+        if space_pressed then
+            space_pressed = false
+            return
+        end
+        wait_frames(1)
+    end
+end
+
 local function wait_for_input()
     while not intro_finished do
-        if GetKeyDown("SPACE") then
+        if space_pressed then
+            space_pressed = false
             return
         end
         wait_frames(1)
@@ -375,9 +392,6 @@ function finish_intro(target_scene)
     load_scene(target_scene or NEXT_SCENE)
 end
 
-local function load_playerdev_immediately()
-    finish_intro(IMMEDIATE_SCENE)
-end
 
 local function run_step(step)
     if intro_finished or type(step) ~= "table" then
@@ -517,11 +531,21 @@ function BeginPlay()
         cache_component(name)
     end
 
-    load_playerdev_immediately()
+    StartCoroutine("RunIntro")
 end
 
 function Tick(dt)
     if intro_finished then
         return
+    end
+
+    elapsed_time = elapsed_time + dt
+
+    if GetKeyDown("ESC") then
+        finish_intro()
+    end
+
+    if GetKeyDown("SPACE") then
+        space_pressed = true
     end
 end
