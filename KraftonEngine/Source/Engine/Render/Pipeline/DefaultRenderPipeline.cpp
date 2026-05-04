@@ -35,11 +35,29 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 		VP = GVC->GetViewport();
 	}
 
+	if (VP)
+	{
+		const uint32 BackbufferWidth = Renderer.GetFD3DDevice().GetBackbufferWidth();
+		const uint32 BackbufferHeight = Renderer.GetFD3DDevice().GetBackbufferHeight();
+		if (BackbufferWidth > 0 && BackbufferHeight > 0
+			&& (VP->GetWidth() != BackbufferWidth || VP->GetHeight() != BackbufferHeight))
+		{
+			VP->RequestResize(BackbufferWidth, BackbufferHeight);
+		}
+
+		if (VP->ApplyPendingResize())
+		{
+			Renderer.ResetRenderStateCache();
+		}
+	}
+
 	FScene* Scene = nullptr;
 	ID3D11DeviceContext* Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
 
 	if (Camera && VP)
 	{
+		Camera->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
+
 		// 1) 오프스크린 RT 클리어 + 바인딩
 		const float ClearColor[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
 		VP->BeginRender(Ctx, ClearColor);
