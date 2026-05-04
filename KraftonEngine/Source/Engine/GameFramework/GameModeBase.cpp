@@ -5,7 +5,7 @@
 #include "GameFramework/World.h"
 #include "Object/ObjectFactory.h"
 #include "Engine/Runtime/Engine.h"
-
+#include "Core/Log.h"
 IMPLEMENT_CLASS(AGameModeBase, AActor)
 
 void AGameModeBase::StartPlay()

@@ -153,6 +153,13 @@ function ActorProxy:SetMoveSpeed(speed) end
 ---@return number
 function ActorProxy:GetMoveSpeed() end
 
+---@return integer
+function ActorProxy:GetDamage() end
+
+---@param damage integer
+---@return boolean
+function ActorProxy:SetDamage(damage) end
+
 function ActorProxy:PrintLocation() end
 
 function ActorProxy:Destroy() end
@@ -465,18 +472,6 @@ function GetKeyDown(keyName) end
 ---@return boolean
 function GetKeyUp(keyName) end
 
----@param keyName string
----@return boolean
-function get_key(keyName) end
-
----@param keyName string
----@return boolean
-function get_key_down(keyName) end
-
----@param keyName string
----@return boolean
-function get_key_up(keyName) end
-
 ---@class InputAPI
 Input = {}
 
@@ -491,18 +486,6 @@ function Input.GetKeyDown(keyName) end
 ---@param keyName string
 ---@return boolean
 function Input.GetKeyUp(keyName) end
-
----@param keyName string
----@return boolean
-function Input.get_key(keyName) end
-
----@param keyName string
----@return boolean
-function Input.get_key_down(keyName) end
-
----@param keyName string
----@return boolean
-function Input.get_key_up(keyName) end
 
 ---@return number
 function GetMouseDeltaX() end

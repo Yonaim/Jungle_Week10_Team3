@@ -16,7 +16,7 @@ struct FCameraState
 	float OrthoWidth = 10.0f;
 	bool bIsOrthogonal = false;
 };
-
+class UCameraShakeBase;
 class UCameraComponent : public USceneComponent
 {
 public:
@@ -24,8 +24,9 @@ public:
 
 	UCameraComponent() = default;
 
+	void BeginPlay() override;
+	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
-
 	void LookAt(const FVector& Target);
 	void SetCameraState(const FCameraState& NewState);
 	const FCameraState& GetCameraState() const { return CameraState; }
@@ -49,6 +50,21 @@ public:
 
 	FRay DeprojectScreenToWorld(float MouseX, float MouseY, float ScreenWidth, float ScreenHeight);
 
+public://expose in lua 
+	void StartCameraShake(float Intensity, float duration);
+	void AddHitEffect(float Intensity, float Duration);
+
+	float GetHitEffectIntensity() const { return HitEffectIntensity; }
+
 private:
 	FCameraState CameraState;
+
+
+	TArray<UCameraShakeBase*> ActiveShakes;
+	FVector AdditiveLocationOffset = FVector::ZeroVector;
+	FRotator AdditiveRotationOffset = FRotator::ZeroRotator;
+
+	// Hit Effect
+	float HitEffectIntensity = 0.0f;
+	float HitEffectDuration = 1.0f;
 };

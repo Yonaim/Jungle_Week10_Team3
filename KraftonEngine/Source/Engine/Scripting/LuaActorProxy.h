@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
+#include "Math/Rotator.h"
 #include "Scripting/LuaComponentProxy.h"
 
 #include <memory>
@@ -46,9 +47,9 @@ struct FLuaActorProxy
 	void SetWorldLocation(const FVector& InLocation);
 	void SetWorldLocationXYZ(float X, float Y, float Z);
 
-	FVector GetWorldRotation() const;
-	void SetWorldRotation(const FVector& InRotation);
-	void SetWorldRotationXYZ(float X, float Y, float Z);
+	FRotator GetWorldRotation() const;
+	void SetWorldRotation(const FRotator& InRotation);
+	void SetWorldRotationXYZ(float Pitch, float Yaw, float Roll);
 
 	FVector GetWorldScale() const;
 	void SetWorldScale(const FVector& InScale);
@@ -85,6 +86,7 @@ struct FLuaActorProxy
 	// Actor가 가진 Component를 Lua에 직접 포인터로 넘기지 않고, 항상 ComponentProxy로 감싸서 반환한다.
 	FLuaComponentProxy GetComponent(const FString& ComponentName);
 	FLuaComponentProxy GetComponentByType(const FString& TypeName);
+	FLuaComponentProxy FindComponentByClass(const FString& TypeName) { return GetComponentByType(TypeName); }
 	FLuaComponentProxy GetScriptComponent();
 	FLuaComponentProxy GetStaticMeshComponent();
 
@@ -94,6 +96,11 @@ struct FLuaActorProxy
 
 	void PrintLocation() const;
 	void Destroy();
+
+	// 장애물별 피해량을 Lua에서 읽기 위한 얇은 연결점입니다.
+	// 실제 Damage 값은 AObstacleActorBase가 들고 있고, 장애물이 아니면 안전한 기본값을 돌려줍니다.
+	int GetDamage() const;
+	bool SetDamage(int InDamage);
 };
 
 struct FLuaGroundHit

@@ -285,6 +285,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Engine\Camera\CameraShake.cpp" />
     <ClCompile Include="Source\Game\GameMode\ARunnerGameMode.cpp" />
     <ClCompile Include="Source\Game\Player\Runner.cpp" />
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
@@ -372,6 +373,7 @@
     <ClCompile Include="Source\Engine\GameFramework\CharacterActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\DecalActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\HeightFogActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\ItemActorBase.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\ScreenTextActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\UIRootActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\WorldTextActor.cpp" />
@@ -510,7 +512,9 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Engine\Camera\CameraShake.h" />
     <ClInclude Include="Source\Game\GameMode\ARunnerGameMode.h" />
+    <ClInclude Include="Source\Game\Map\MapRandom.h" />
     <ClInclude Include="Source\Game\Player\Runner.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
     <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h" />
@@ -619,6 +623,7 @@
     <ClInclude Include="Source\Engine\GameFramework\GameInstance.h" />
     <ClInclude Include="Source\Engine\GameFramework\GameModeBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\HeightFogActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\ItemActorBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\ScreenTextActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\UIRootActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\WorldTextActor.h" />

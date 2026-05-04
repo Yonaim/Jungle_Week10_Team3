@@ -15,41 +15,53 @@ DeclareProperties({
 })
 
 local _start = vec3(0, 0, 0)
+local cam = nil -- 카메라 캐싱
 
 function BeginPlay()
     -- 시작 위치 기억 — F 키로 복귀
     _start = obj.Location
     print("[TestPlayer] BeginPlay at " .. tostring(_start.x) .. ", " .. tostring(_start.y) .. ", " .. tostring(_start.z))
+    
+    cam = obj:FindComponentByClass("CameraComponent")
+    if cam and cam:IsValid() then
+        print("[TestPlayer] Camera cached successfully!")
+    else
+        print("[TestPlayer] FAILED to find CameraComponent. Mouse pitch rotation will not work.")
+    end
 end
 
-function Tick(dt)
-    local speed = property("MoveSpeed", 5.0)
-    local turn  = property("TurnSpeed", 90.0)
+local _tick_count = 0
 
-    -- 1. 회전 처리 (Mouse + Q/E)
+function Tick(dt)
+    _tick_count = _tick_count + 1
+    if _tick_count % 300 == 0 then
+        print("[TestPlayer] Heartbeat - Tick " .. tostring(_tick_count))
+    end
+
+    local speed = property("MoveSpeed", 5.0)
+    local turnSpeed = property("TurnSpeed", 90.0)
+
+    -- 회전 처리 (Mouse + Q/E)
     local r = obj.Rotation
-    
+
     -- 마우스 Yaw (Actor 회전)
     local mouse_dx = GetMouseDeltaX()
-    if math.abs(mouse_dx) > 0 then
-        r.z = r.z + mouse_dx * 0.15
+    if math.abs(mouse_dx) > 0.001 then
+        r.yaw = r.yaw + mouse_dx * 0.15
     end
     
-    if GetKey("E") then r.z = r.z + turn * dt end
-    if GetKey("Q") then r.z = r.z - turn * dt end
+    if GetKey("E") then r.yaw = r.yaw + turnSpeed * dt end
+    if GetKey("Q") then r.yaw = r.yaw - turnSpeed * dt end
     obj.Rotation = r
 
     -- 마우스 Pitch (Camera 회전)
-    local cam = obj:GetComponent("PlayerCamera")
     if cam and cam:IsValid() then
         local mouse_dy = GetMouseDeltaY()
-        if math.abs(mouse_dy) > 0 then
+        if math.abs(mouse_dy) > 0.001 then
             local cr = cam:GetLocalRotation()
-            -- Vector.y is Pitch (euler convention in this engine)
-            cr.y = cr.y + mouse_dy * 0.15
-            -- Pitch Clamp (-80 ~ 80)
-            if cr.y > 80 then cr.y = 80 end
-            if cr.y < -80 then cr.y = -80 end
+            cr.pitch = cr.pitch + mouse_dy * 0.15
+            if cr.pitch > 80 then cr.pitch = 80 end
+            if cr.pitch < -80 then cr.pitch = -80 end
             cam:SetLocalRotation(cr)
         end
     end
@@ -71,7 +83,6 @@ function Tick(dt)
         if f_len > 0.001 then 
             forward.x, forward.y = forward.x/f_len, forward.y/f_len 
         else
-            -- 카메라가 수직으로 보고 있을 경우 Actor 방향 사용
             forward = obj:GetForwardVector()
             forward.z = 0
         end
@@ -120,6 +131,14 @@ function Tick(dt)
     if GetKeyDown("F") then
         obj.Location = _start
         print("[TestPlayer] reset to start")
+    end
+
+    if GetKeyDown("0") then
+        print("[TestPlayer] '0' Key Down - Triggering Effects")
+        if cam and cam:IsValid() then
+            cam:StartCameraShake(2.0, 0.7)
+            cam:AddHitEffect(5.0, 1.0)
+        end
     end
 end
 

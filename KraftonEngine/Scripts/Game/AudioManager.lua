@@ -84,12 +84,12 @@ function AudioManager.PlayBGM()
         return false
     end
 
-    AudioManager.bgm_component:SetSoundCategory("background")
-    AudioManager.bgm_component:SetSoundLooping(Config.audio.bgm_loop == true)
-    AudioManager.bgm_component:SetSoundPath(path_or_name)
+    AudioManager.bgm_component:SetAudioCategory("background")
+    AudioManager.bgm_component:SetAudioLooping(Config.audio.bgm_loop == true)
+    AudioManager.bgm_component:SetAudioPath(path_or_name)
 
     log("[AudioManager] PlayBGM attempt sound=" .. tostring(path_or_name))
-    local ok = AudioManager.bgm_component:PlaySound(path_or_name)
+    local ok = AudioManager.bgm_component:PlayAudio(path_or_name)
     AudioManager.bgm_started = ok == true
     log("[AudioManager] PlayBGM result=" .. tostring(ok))
     return ok == true
@@ -102,7 +102,7 @@ function AudioManager.StopBGM()
         return false
     end
 
-    local ok = AudioManager.bgm_component:StopSound()
+    local ok = AudioManager.bgm_component:StopAudio()
     AudioManager.bgm_started = false
     log("[AudioManager] StopBGM result=" .. tostring(ok))
     return ok == true
@@ -125,12 +125,12 @@ function AudioManager.PlaySFX(sound_key)
         return false
     end
 
-    AudioManager.sfx_component:SetSoundCategory("sfx")
-    AudioManager.sfx_component:SetSoundLooping(false)
-    AudioManager.sfx_component:SetSoundPath(path_or_name)
+    AudioManager.sfx_component:SetAudioCategory("sfx")
+    AudioManager.sfx_component:SetAudioLooping(false)
+    AudioManager.sfx_component:SetAudioPath(path_or_name)
 
     log("[AudioManager] PlaySFX attempt key=" .. tostring(sound_key) .. " sound=" .. tostring(path_or_name))
-    local ok = AudioManager.sfx_component:PlaySound(path_or_name)
+    local ok = AudioManager.sfx_component:PlayAudio(path_or_name)
     log("[AudioManager] PlaySFX result key=" .. tostring(sound_key) .. " ok=" .. tostring(ok))
     return ok == true
 end

@@ -78,6 +78,10 @@ static AObstacleActorBase* SpawnObstacleAt(UWorld* World, EObstacleType Type, co
 
 	Obstacle->InitDefaultComponents("");
 	Obstacle->SetTag("Obstacle");
+	// Lua PlayerController가 obstacle:GetDamage()로 읽을 기본 피해량입니다.
+	// 기본 장애물은 1, 고위험으로 취급할 수 있는 Wireball/Misc는 2를 줄 수 있게 연결점만 둡니다.
+	// TODO: 마감 이후 장애물별 Damage 테이블을 Lua Config로 옮기면 여기 하드코딩은 제거하면 됨.
+	Obstacle->SetDamage(Type == EObstacleType::Misc ? 2 : 1);
 	Obstacle->SetActorLocation(Location);
 	World->InsertActorToOctree(Obstacle);
 

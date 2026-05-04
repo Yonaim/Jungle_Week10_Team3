@@ -193,9 +193,33 @@ void FLuaScriptRuntime::RegisterBindings()
 {
 	// 런타임 레벨에서 공통으로 노출할 타입은 모두 여기서 한 번만 등록한다.
 	BindVectorType();
+	BindRotatorType();
 	BindActorProxyType();
 	BindComponentProxyType();
 	// Color 바인딩은 유지 보수용 함수만 남기고 공개하지 않는다.
+}
+
+// ... (other functions)
+
+void FLuaScriptRuntime::BindRotatorType()
+{
+	sol::state& Lua = GetLuaState();
+
+	Lua.new_usertype<FRotator>(
+		"Rotator",
+		sol::constructors<FRotator(), FRotator(float, float, float)>(),
+		"pitch", sol::property([](const FRotator& Value) { return Value.Pitch; }, [](FRotator& Value, float InPitch) { Value.Pitch = InPitch; }),
+		"yaw", sol::property([](const FRotator& Value) { return Value.Yaw; }, [](FRotator& Value, float InYaw) { Value.Yaw = InYaw; }),
+		"roll", sol::property([](const FRotator& Value) { return Value.Roll; }, [](FRotator& Value, float InRoll) { Value.Roll = InRoll; }),
+		sol::meta_function::addition, [](const FRotator& A, const FRotator& B) { return A + B; },
+		sol::meta_function::subtraction, [](const FRotator& A, const FRotator& B) { return A - B; },
+		sol::meta_function::multiplication, [](const FRotator& A, float Scalar) { return A * Scalar; }
+	);
+
+	Lua.set_function("rotator", [](float Pitch, float Yaw, float Roll)
+	{
+		return FRotator(Pitch, Yaw, Roll);
+	});
 }
 
 void FLuaScriptRuntime::InitializeHotReload()

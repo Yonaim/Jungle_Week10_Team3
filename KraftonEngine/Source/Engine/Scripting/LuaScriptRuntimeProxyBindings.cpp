@@ -1,4 +1,5 @@
 #include "Scripting/LuaScriptRuntime.h"
+#include "Math/Rotator.h"
 
 #ifdef check
 #pragma push_macro("check")
@@ -59,12 +60,12 @@ void FLuaScriptRuntime::BindComponentProxyType()
 		"AddLocalOffsetXYZ", &FLuaComponentProxy::AddLocalOffsetXYZ,
 		"GetWorldRotation", &FLuaComponentProxy::GetWorldRotation,
 		"SetWorldRotation", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetWorldRotation),
+			static_cast<bool(FLuaComponentProxy::*)(const FRotator&)>(&FLuaComponentProxy::SetWorldRotation),
 			&FLuaComponentProxy::SetWorldRotationXYZ),
 		"SetWorldRotationXYZ", &FLuaComponentProxy::SetWorldRotationXYZ,
 		"GetLocalRotation", &FLuaComponentProxy::GetLocalRotation,
 		"SetLocalRotation", sol::overload(
-			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetLocalRotation),
+			static_cast<bool(FLuaComponentProxy::*)(const FRotator&)>(&FLuaComponentProxy::SetLocalRotation),
 			&FLuaComponentProxy::SetLocalRotationXYZ),
 		"SetLocalRotationXYZ", &FLuaComponentProxy::SetLocalRotationXYZ,
 		"GetWorldScale", &FLuaComponentProxy::GetWorldScale,
@@ -103,19 +104,19 @@ void FLuaScriptRuntime::BindComponentProxyType()
 		"IsHovered", &FLuaComponentProxy::IsHovered,
 		"IsPressed", &FLuaComponentProxy::IsPressed,
 		"WasClicked", &FLuaComponentProxy::WasClicked,
-		"SetAudioPath", &FLuaComponentProxy::SetSoundPath,
-		"GetAudioPath", &FLuaComponentProxy::GetSoundPath,
-		"SetAudioCategory", &FLuaComponentProxy::SetSoundCategory,
-		"GetAudioCategory", &FLuaComponentProxy::GetSoundCategory,
-		"SetAudioLooping", &FLuaComponentProxy::SetSoundLooping,
-		"IsAudioLooping", &FLuaComponentProxy::IsSoundLooping,
+		"SetAudioPath", &FLuaComponentProxy::SetAudioPath,
+		"GetAudioPath", &FLuaComponentProxy::GetAudioPath,
+		"SetAudioCategory", &FLuaComponentProxy::SetAudioCategory,
+		"GetAudioCategory", &FLuaComponentProxy::GetAudioCategory,
+		"SetAudioLooping", &FLuaComponentProxy::SetAudioLooping,
+		"IsAudioLooping", &FLuaComponentProxy::IsAudioLooping,
 		"PlayAudio", sol::overload(
 			static_cast<bool(FLuaComponentProxy::*)()>(&FLuaComponentProxy::PlayAudio),
 			&FLuaComponentProxy::PlayAudioPath),
-		"StopAudio", &FLuaComponentProxy::StopSound,
-		"PauseAudio", &FLuaComponentProxy::PauseSound,
-		"ResumeAudio", &FLuaComponentProxy::ResumeSound,
-		"IsAudioPlaying", &FLuaComponentProxy::IsSoundPlaying,
+		"StopAudio", &FLuaComponentProxy::StopAudio,
+		"PauseAudio", &FLuaComponentProxy::PauseAudio,
+		"ResumeAudio", &FLuaComponentProxy::ResumeAudio,
+		"IsAudioPlaying", &FLuaComponentProxy::IsAudioPlaying,
 		"SetSpeed", &FLuaComponentProxy::SetSpeed,
 		"GetSpeed", &FLuaComponentProxy::GetSpeed,
 		"MoveTo", sol::overload(
@@ -126,6 +127,8 @@ void FLuaScriptRuntime::BindComponentProxyType()
 			&FLuaComponentProxy::MoveByXYZ),
 		"StopMove", &FLuaComponentProxy::StopMove,
 		"IsMoveDone", &FLuaComponentProxy::IsMoveDone,
+		"StartCameraShake", &FLuaComponentProxy::StartCameraShake,
+		"AddHitEffect", &FLuaComponentProxy::AddHitEffect,
 		"SetBoxExtent", sol::overload(
 			&FLuaComponentProxy::SetBoxExtent,
 			&FLuaComponentProxy::SetBoxExtentXYZ),
@@ -154,7 +157,7 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"SetWorldLocationXYZ", &FLuaActorProxy::SetWorldLocationXYZ,
 		"GetWorldRotation", &FLuaActorProxy::GetWorldRotation,
 		"SetWorldRotation", sol::overload(
-			static_cast<void(FLuaActorProxy::*)(const FVector&)>(&FLuaActorProxy::SetWorldRotation),
+			static_cast<void(FLuaActorProxy::*)(const FRotator&)>(&FLuaActorProxy::SetWorldRotation),
 			&FLuaActorProxy::SetWorldRotationXYZ),
 		"SetWorldRotationXYZ", &FLuaActorProxy::SetWorldRotationXYZ,
 		"GetWorldScale", &FLuaActorProxy::GetWorldScale,
@@ -164,6 +167,7 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"SetWorldScaleXYZ", &FLuaActorProxy::SetWorldScaleXYZ,
 		"GetComponent", &FLuaActorProxy::GetComponent,
 		"GetComponentByType", &FLuaActorProxy::GetComponentByType,
+		"FindComponentByClass", &FLuaActorProxy::FindComponentByClass,
 		"GetScriptComponent", &FLuaActorProxy::GetScriptComponent,
 		"GetStaticMeshComponent", &FLuaActorProxy::GetStaticMeshComponent,
 		"AddWorldOffset", sol::overload(
@@ -198,6 +202,8 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"IsMoveDone", &FLuaActorProxy::IsMoveDone,
 		"SetMoveSpeed", &FLuaActorProxy::SetMoveSpeed,
 		"GetMoveSpeed", &FLuaActorProxy::GetMoveSpeed,
+		"GetDamage", &FLuaActorProxy::GetDamage,
+		"SetDamage", &FLuaActorProxy::SetDamage,
 		"PrintLocation", &FLuaActorProxy::PrintLocation,
 		"Destroy", &FLuaActorProxy::Destroy);
 }

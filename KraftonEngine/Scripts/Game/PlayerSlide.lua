@@ -33,24 +33,39 @@ local function find_collision_shape(actor)
 end
 
 function PlayerSlide.new(actor)
+    -- PlayerSlide 객체는 한 Runner actor의 슬라이드 중 collision/mesh 변경값을 기억합니다.
+    -- PlayerController가 입력을 판단하고, 실제 모양 변경은 여기 Begin/End만 호출하면 됩니다.
     return setmetatable({
+        -- actor는 슬라이드를 적용할 Runner ActorProxy입니다.
         actor = actor,
+        -- is_sliding은 현재 슬라이드 중인지 나타냅니다.
         is_sliding = false,
 
+        -- collision_shape는 슬라이드 때 줄일 박스/캡슐/구 shape component입니다.
         collision_shape = nil,
+        -- normal_shape_extent는 평상시 collision 크기입니다.
         normal_shape_extent = nil,
+        -- slide_shape_extent는 슬라이드 중 collision 크기입니다.
         slide_shape_extent = nil,
+        -- slide_shape_z_delta는 collision을 줄인 만큼 바닥에 붙여두기 위한 Z 보정값입니다.
         slide_shape_z_delta = 0.0,
 
+        -- mesh는 슬라이드 중 시각 높이를 줄일 StaticMeshComponent입니다.
         mesh = nil,
+        -- normal_mesh_local_scale은 평상시 mesh scale입니다.
         normal_mesh_local_scale = nil,
+        -- slide_mesh_local_scale은 슬라이드 중 mesh scale입니다.
         slide_mesh_local_scale = nil,
+        -- normal_mesh_local_location은 평상시 mesh local 위치입니다.
         normal_mesh_local_location = nil,
+        -- slide_mesh_local_location은 슬라이드 중 mesh local 위치입니다.
         slide_mesh_local_location = nil
     }, PlayerSlide)
 end
 
 function PlayerSlide:Configure()
+    -- Configure는 BeginPlay에서 한 번 호출해 평상시/슬라이드 중 크기 값을 준비합니다.
+    -- 나중에 슬라이드 VFX나 애니메이션을 붙일 때도 이 초기화 뒤에 연결하면 됩니다.
     self.collision_shape = find_collision_shape(self.actor)
     if is_valid_component(self.collision_shape) then
         self.collision_shape:SetCollisionEnabled(true)
@@ -113,6 +128,7 @@ function PlayerSlide:Configure()
 end
 
 function PlayerSlide:GetCollisionShape()
+    -- PlayerController의 바닥 높이 계산이 현재 collision half-height를 읽을 때 쓰는 getter입니다.
     if is_valid_component(self.collision_shape) then
         return self.collision_shape
     end
@@ -121,10 +137,13 @@ function PlayerSlide:GetCollisionShape()
 end
 
 function PlayerSlide:IsSliding()
+    -- 슬라이드 중 Begin이 반복 호출되지 않게 PlayerController가 이 함수로 상태를 확인합니다.
     return self.is_sliding
 end
 
 function PlayerSlide:Begin()
+    -- 슬라이드는 duration 기반 타이머가 아니라 누르고 있는 동안 유지하는 방식입니다.
+    -- 이 함수는 슬라이드 시작 1회만 호출되어야 하며, 반복 호출은 바로 무시합니다.
     if self.is_sliding then
         return
     end
@@ -163,6 +182,8 @@ function PlayerSlide:Begin()
 end
 
 function PlayerSlide:End()
+    -- End는 키를 떼거나 공중으로 뜬 순간 호출됩니다.
+    -- 실제 복구는 Restore가 담당해서 EndPlay에서도 같은 복구 로직을 재사용합니다.
     if not self.is_sliding then
         return
     end
@@ -172,6 +193,8 @@ function PlayerSlide:End()
 end
 
 function PlayerSlide:Restore()
+    -- Restore는 collision/mesh를 평상시 값으로 되돌립니다.
+    -- GameOver/EndPlay에서도 호출되므로 nil 체크를 충분히 유지합니다.
     local was_sliding = self.is_sliding
 
     if is_valid_component(self.collision_shape) and self.normal_shape_extent then

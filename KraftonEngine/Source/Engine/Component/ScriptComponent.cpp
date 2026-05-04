@@ -285,7 +285,9 @@ void UScriptComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 이전 플레이 세션에서 남았을 수 있는 component 수준 에러 상태를 먼저 비운다.
+	UE_LOG("[ScriptComponent] BeginPlay for actor: %s, script: %s", 
+		GetOwner() ? GetOwner()->GetFName().ToString().c_str() : "None", ScriptPath.c_str());
+
 	ClearScriptError();
 
 	if (ScriptPath.empty())
@@ -300,6 +302,7 @@ void UScriptComponent::BeginPlay()
 
 	if (!LoadScript())
 	{
+		UE_LOG("[ScriptComponent] LoadScript failed for %s", ScriptPath.c_str());
 		return;
 	}
 
@@ -307,9 +310,9 @@ void UScriptComponent::BeginPlay()
 	BindOwnerShapeCollisionEvents();
 
 	// 델리게이트 바인드가 끝난 뒤 Lua BeginPlay를 호출해 스크립트 초기화 로직을 실행한다.
-	// BeginPlay Call 실패 시 Error 출력 후 다시 load를 수행한다
 	if (!ScriptInstance.CallBeginPlay())
 	{
+		UE_LOG("[ScriptComponent] Lua BeginPlay call failed for %s", ScriptPath.c_str());
 		RefreshScriptErrorState();
 
 		// 실패한 경우 델리게이트 바인딩 모두 해제
@@ -320,6 +323,7 @@ void UScriptComponent::BeginPlay()
 
 		return;
 	}
+	UE_LOG("[ScriptComponent] Lua BeginPlay successful for %s", ScriptPath.c_str());
 	RefreshScriptErrorState();
 }
 

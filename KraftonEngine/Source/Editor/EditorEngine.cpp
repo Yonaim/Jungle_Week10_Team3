@@ -533,12 +533,16 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams& Pa
 		Pipeline->OnSceneCleared();
 	}
 
-	// 5) 활성 뷰포트 카메라를 PIE 월드의 ActiveCamera로 설정 —
-	//    LOD 갱신 등에서 ActiveCamera를 참조하므로 설정 필요.
+	// 활성 뷰포트 카메라를 PIE 월드의 ActiveCamera로  설정 —
+	//    LOD 갱신 등에서 ActiveCamera를 참조하므로 BeginPlay 전 placeholder가 필요.
+	//    BeginPlay 이후에는 GameMode/PlayerController가 possess한 카메라가 있으면
+	//    그 쪽으로 교체되고, 없으면 씬 안의 첫 CameraComponent로 교체된다 
+	UCameraComponent* PlaceholderCamera = nullptr;
 	if (FLevelEditorViewportClient* ActiveVC = ViewportLayout.GetActiveViewport())
 	{
 		if (UCameraComponent* VCCamera = ActiveVC->GetCamera())
 		{
+			PlaceholderCamera = VCCamera;
 			PIEWorld->SetActiveCamera(VCCamera);
 		}
 	}
@@ -581,7 +585,32 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams& Pa
 	//    SpawnActor로 만든 신규 액터도 자동으로 BeginPlay된다.
 	PIEWorld->BeginPlay();
 
-	// 임시 코드
+	// GameMode/PlayerController가 ActiveCamera를 갱신하지 않은 경우
+	//    (레벨에 GameMode가 지정되지 않은 Playground) 씬 안에 미리 배치된
+	//    첫 CameraComponent를 찾아 ActiveCamera로 사용한다. GameEngine::LoadLevel과
+	//    동일한 폴백 — Editor VC 카메라가 PIE에서 그대로 보이는 버그를 막기 위한 것
+	if (PIEWorld->GetActiveCamera() == PlaceholderCamera)
+	{
+		UCameraComponent* SceneCamera = nullptr;
+		for (AActor* Actor : PIEWorld->GetActors())
+		{
+			if (!Actor) continue;
+			for (UActorComponent* Comp : Actor->GetComponents())
+			{
+				if (UCameraComponent* Cam = Cast<UCameraComponent>(Comp))
+				{
+					SceneCamera = Cam;
+					break;
+				}
+			}
+			if (SceneCamera) break;
+		}
+		if (SceneCamera)
+		{
+			PIEWorld->SetActiveCamera(SceneCamera);
+		}
+	}
+
 	if (UGameViewportClient* PIEViewportClient = GetGameViewportClient())
 	{
 		if (UCameraComponent* GameCamera = PIEWorld->GetActiveCamera())

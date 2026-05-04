@@ -164,11 +164,13 @@ void FDrawCommandList::SubmitCommand(const FDrawCommand& Cmd,
 		Cache.Shader = Cmd.Shader;
 	}
 
-	// PreDepth: PS 언바인딩 — 깊이만 기록, 셰이딩 스킵
-	if (Cmd.Pass == ERenderPass::PreDepth)
+	// 색을 쓰지 않는 패스는 PS를 언바인딩합니다.
+	// PreDepth/SelectionMask는 깊이·스텐실만 필요하므로 MRT 출력 셰이더가 남아 있으면
+	// 바인딩되지 않은 SV_Target1/2 경고만 반복됩니다.
+	if (Cmd.RenderState.Blend == EBlendState::NoColor)
 	{
 		Ctx->PSSetShader(nullptr, nullptr, 0);
-		Cache.Shader = nullptr;  // 다음 커맨드에서 PS 재바인딩 보장
+		Cache.Shader = nullptr;  // 다음 색 출력 커맨드에서 PS 재바인딩 보장
 	}
 
 	// --- Geometry (VB + IB) ---

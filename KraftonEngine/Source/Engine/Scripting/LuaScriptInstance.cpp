@@ -342,8 +342,12 @@ namespace
 
 		if (UpperKey.size() == 1)
 		{
-			OutVirtualKey = static_cast<unsigned char>(UpperKey[0]);
-			return true;
+			unsigned char KeyChar = static_cast<unsigned char>(UpperKey[0]);
+			if ((KeyChar >= 'A' && KeyChar <= 'Z') || (KeyChar >= '0' && KeyChar <= '9'))
+			{
+				OutVirtualKey = KeyChar;
+				return true;
+			}
 		}
 
 		if (UpperKey == "SPACE")
@@ -1201,7 +1205,10 @@ void FLuaScriptInstance::BindInputFunctions()
 	auto GetKey = [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		if (!TryParseVirtualKey(KeyName, VirtualKey)) return false;
+		if (!TryParseVirtualKey(KeyName, VirtualKey))
+		{
+			return false;
+		}
 		FInputManager& Input = FInputManager::Get();
 		if (Input.IsGuiUsingKeyboard()) return false;
 		return Input.IsKeyDown(VirtualKey);
@@ -1210,7 +1217,10 @@ void FLuaScriptInstance::BindInputFunctions()
 	auto GetKeyDown = [](const FString& KeyName)
 	{
 		int VirtualKey = 0;
-		if (!TryParseVirtualKey(KeyName, VirtualKey)) return false;
+		if (!TryParseVirtualKey(KeyName, VirtualKey))
+		{
+			return false;
+		}
 		FInputManager& Input = FInputManager::Get();
 		if (Input.IsGuiUsingKeyboard()) return false;
 		return Input.IsKeyPressed(VirtualKey);
@@ -1228,17 +1238,11 @@ void FLuaScriptInstance::BindInputFunctions()
 	Impl->Env.set_function("GetKey", GetKey);
 	Impl->Env.set_function("GetKeyDown", GetKeyDown);
 	Impl->Env.set_function("GetKeyUp", GetKeyUp);
-	Impl->Env.set_function("get_key", GetKey);
-	Impl->Env.set_function("get_key_down", GetKeyDown);
-	Impl->Env.set_function("get_key_up", GetKeyUp);
 
 	sol::table InputTable = FLuaScriptRuntime::Get().GetLuaState().create_table();
 	InputTable.set_function("GetKey", GetKey);
 	InputTable.set_function("GetKeyDown", GetKeyDown);
 	InputTable.set_function("GetKeyUp", GetKeyUp);
-	InputTable.set_function("get_key", GetKey);
-	InputTable.set_function("get_key_down", GetKeyDown);
-	InputTable.set_function("get_key_up", GetKeyUp);
 	Impl->Env["Input"] = InputTable;
 
 	// Mouse Delta & Wheel

@@ -46,6 +46,7 @@ private:
 	void RegisterBindings();
 
 	void BindVectorType();
+	void BindRotatorType();
 	void BindComponentProxyType();
 	void BindActorProxyType();
 	void BindColorType();

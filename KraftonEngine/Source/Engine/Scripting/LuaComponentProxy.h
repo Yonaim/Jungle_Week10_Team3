@@ -2,6 +2,7 @@
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
+#include "Math/Rotator.h"
 #include "Collision/OverlapInfo.h"
 
 class UActorComponent;
@@ -39,12 +40,12 @@ struct FLuaComponentProxy
 	bool AddWorldOffsetXYZ(float X, float Y, float Z);
 	bool AddLocalOffset(const FVector& Delta);
 	bool AddLocalOffsetXYZ(float X, float Y, float Z);
-	sol::optional<FVector> GetWorldRotation() const;
-	bool SetWorldRotation(const FVector& InRotation);
-	bool SetWorldRotationXYZ(float X, float Y, float Z);
-	sol::optional<FVector> GetLocalRotation() const;
-	bool SetLocalRotation(const FVector& InRotation);
-	bool SetLocalRotationXYZ(float X, float Y, float Z);
+	sol::optional<FRotator> GetWorldRotation() const;
+	bool SetWorldRotation(const FRotator& InRotation);
+	bool SetWorldRotationXYZ(float Pitch, float Yaw, float Roll);
+	sol::optional<FRotator> GetLocalRotation() const;
+	bool SetLocalRotation(const FRotator& InRotation);
+	bool SetLocalRotationXYZ(float Pitch, float Yaw, float Roll);
 	sol::optional<FVector> GetWorldScale() const;
 	bool SetWorldScale(const FVector& InScale);
 	bool SetWorldScaleXYZ(float X, float Y, float Z);
@@ -82,18 +83,18 @@ struct FLuaComponentProxy
 	bool IsHovered() const;
 	bool IsPressed() const;
 	bool WasClicked() const;
-	bool SetSoundPath(const FString& SoundPath);
-	sol::optional<FString> GetSoundPath() const;
-	bool SetSoundCategory(const FString& CategoryName);
-	sol::optional<FString> GetSoundCategory() const;
-	bool SetSoundLooping(bool bLooping);
-	bool IsSoundLooping() const;
+	bool SetAudioPath(const FString& AudioPath);
+	sol::optional<FString> GetAudioPath() const;
+	bool SetAudioCategory(const FString& CategoryName);
+	sol::optional<FString> GetAudioCategory() const;
+	bool SetAudioLooping(bool bLooping);
+	bool IsAudioLooping() const;
 	bool PlayAudio();
-	bool PlayAudioPath(const FString& SoundPath);
-	bool StopSound();
-	bool PauseSound();
-	bool ResumeSound();
-	bool IsSoundPlaying() const;
+	bool PlayAudioPath(const FString& AudioPath);
+	bool StopAudio();
+	bool PauseAudio();
+	bool ResumeAudio();
+	bool IsAudioPlaying() const;
 
 	bool SetSpeed(float Speed);
 	sol::optional<float> GetSpeed() const;
@@ -104,8 +105,11 @@ struct FLuaComponentProxy
 	bool StopMove();
 	bool IsMoveDone() const;
 
-	// Box Extent (�浹 ó��) ����
+	bool StartCameraShake(float Intensity, float Duration);
+	bool AddHitEffect(float Intensity, float Duration);
+
 	bool SetBoxExtent(const FVector& Extent);
 	bool SetBoxExtentXYZ(float X, float Y, float Z);
 	sol::optional<FVector> GetBoxExtent() const;
 };
+ 

@@ -1,5 +1,5 @@
 -- PlayerController.lua
--- Runner Pawn의 입력, 자동 전진, 레인 이동, 중력, 바닥 판정, HP/GameOver 연결을 담당한다.
+-- Runner Pawn의 입력, 자동 전진, 레인 이동, 중력, 바닥 판정, Stability/GameOver 연결을 담당한다.
 -- C++ Runner는 최소한의 Actor/Component 구성만 만들고, 실제 플레이 수치와 상태 전이는 Lua에서 조정한다.
 -- Map과 Player 충돌 문제를 추적하기 쉽도록 Ground Query 관련 값과 상태 변화는 이벤트 단위로 로그를 남긴다.
 
@@ -23,44 +23,70 @@ DeclareProperties({
 -- 런타임 상태
 -- =========================================================
 
+-- forward_speed는 Runner가 매 프레임 자동으로 앞으로 가는 속도입니다.
 local forward_speed = property("ForwardSpeed", PlayerConfig.forward_speed)
+-- lane_width는 레인 사이 간격입니다.
 local lane_width = property("LaneWidth", PlayerConfig.lane_width)
+-- lane_change_speed는 목표 레인으로 부드럽게 이동하는 속도입니다.
 local lane_change_speed = property("LaneChangeSpeed", PlayerConfig.lane_change_speed)
+-- gravity는 공중에 있을 때 적용되는 수직 가속도입니다.
 local gravity = property("Gravity", PlayerConfig.gravity)
+-- jump_power는 점프 시작 순간 위로 주는 속도입니다.
 local jump_power = property("JumpPower", PlayerConfig.jump_power)
+-- max_move_step은 빠른 전진 중 overlap 누락을 줄이기 위해 이동을 쪼개는 최대 거리입니다.
 local max_move_step = PlayerConfig.max_move_step or 0.25
 
+-- current_lane은 현재 도착한 레인 번호입니다.
 local current_lane = 0
+-- target_lane은 입력으로 지정된 목표 레인 번호입니다.
 local target_lane = 0
 
+-- vertical_velocity는 점프/낙하에 쓰는 현재 Z 속도입니다.
 local vertical_velocity = 0.0
+-- is_grounded는 이번 프레임 기준 바닥에 붙어 있는지 나타냅니다.
 local is_grounded = false
+-- current_ground_z는 마지막으로 찾은 바닥 상단 Z입니다.
 local current_ground_z = nil
+-- last_ground_hit는 바닥 발견/상실 로그를 한 번만 찍기 위한 이전 상태입니다.
 local last_ground_hit = false
 
+-- ground_probe_distance는 발 아래로 바닥을 얼마나 멀리까지 찾을지입니다.
 local ground_probe_distance = PlayerConfig.ground_probe_distance
+-- ground_snap_distance는 거의 닿았을 때만 바닥에 붙이는 허용 거리입니다.
 local ground_snap_distance = PlayerConfig.ground_snap_distance
+-- skin_width는 바닥/충돌 판정 여유값입니다.
 local skin_width = PlayerConfig.skin_width
+-- fallback_half_height는 collision shape를 못 찾았을 때 쓰는 반높이입니다.
 local fallback_half_height = PlayerConfig.fallback_half_height
+-- fall_dead_z는 이 높이 아래로 떨어지면 낙사 처리하는 기준입니다.
 local fall_dead_z = PlayerConfig.fall_dead_z
 
+-- initial_location은 시작 위치 기록용입니다. 나중에 리스폰/디버그에서 쓰기 좋게 남깁니다.
 local initial_location = nil
+-- slide는 PlayerSlide 모듈 인스턴스입니다. collision/mesh 변경은 여기로 위임합니다.
 local slide = nil
-local slide_timer = 0.0
+-- game_over_tick_logged는 GameOver 후 Tick 중단 로그를 한 번만 찍기 위한 플래그입니다.
 local game_over_tick_logged = false
+-- half_height_fallback_logged는 collision half-height fallback 로그를 한 번만 찍기 위한 플래그입니다.
 local half_height_fallback_logged = false
+-- previous_key_state는 A/D/Space가 꾹 눌린 동안 매 프레임 반복 발동하지 않게 이전 프레임 상태를 저장합니다.
+local previous_key_state = {}
+-- current_key_state는 이번 프레임에 확인한 키 상태를 임시로 모아두는 테이블입니다.
+local current_key_state = {}
 
 -- =========================================================
 -- 공통 유틸리티
 -- =========================================================
 
 local function log(message)
+    -- log는 PlayerController 흐름 확인용 디버그 출력입니다.
     if Config.debug.enable_log then
         print(message)
     end
 end
 
 local function clamp(value, min_value, max_value)
+    -- clamp는 레인 번호처럼 범위가 정해진 값을 안전하게 자릅니다.
     if value < min_value then
         return min_value
     end
@@ -71,6 +97,7 @@ local function clamp(value, min_value, max_value)
 end
 
 local function abs(value)
+    -- abs는 Lua math.abs 대신 짧게 쓰는 절댓값 helper입니다.
     if value < 0.0 then
         return -value
     end
@@ -78,6 +105,7 @@ local function abs(value)
 end
 
 local function sign(value)
+    -- sign은 레인 보간 방향을 -1/0/1로 바꿉니다.
     if value < 0.0 then
         return -1.0
     end
@@ -88,6 +116,7 @@ local function sign(value)
 end
 
 local function round(value)
+    -- round는 시작 위치 Y를 가장 가까운 레인 번호로 바꿀 때 씁니다.
     if value >= 0.0 then
         return math.floor(value + 0.5)
     end
@@ -95,25 +124,49 @@ local function round(value)
 end
 
 local function copy_vec(v)
+    -- copy_vec는 엔진 vec3 값을 새 vec3로 복사해 시작 위치를 저장합니다.
     return vec3(v.x, v.y, v.z)
 end
 
 local function lane_min()
+    -- lane_min은 가장 왼쪽 레인 번호입니다.
     return -math.floor(PlayerConfig.lane_count / 2)
 end
 
 local function lane_max()
+    -- lane_max는 가장 오른쪽 레인 번호입니다.
     return math.floor(PlayerConfig.lane_count / 2)
 end
 
-local function key_down(name)
-    if GetKeyDown then
-        return GetKeyDown(name)
-    end
-    if get_key_down then
-        return get_key_down(name)
+local function key_held(name)
+    -- key_held는 "지금 키를 누르고 있는가"만 확인합니다.
+    -- 슬라이드는 조작감 때문에 누르고 있는 동안 유지해야 하므로 edge trigger가 아니라 held 상태를 씁니다.
+    if GetKey then
+        return GetKey(name)
     end
     return false
+end
+
+local function key_pressed_once(name)
+    -- InputSystem의 GetKeyDown이 환경에 따라 held처럼 들어와도 안전하게 막기 위해 Lua에서 edge trigger를 직접 만듭니다.
+    -- A/D 레인 이동과 Space 점프는 "방금 누른 순간"에만 처리하면 됨.
+    local is_down = key_held(name)
+    local was_down = previous_key_state[name] == true
+    current_key_state[name] = is_down
+    return is_down and not was_down
+end
+
+local function finish_input_frame()
+    -- 이번 프레임에 확인한 키 상태를 다음 프레임 previous로 넘깁니다.
+    -- 확인하지 않은 키는 false로 내려서 다음 입력이 다시 edge로 잡히게 합니다.
+    for key, _ in pairs(previous_key_state) do
+        if current_key_state[key] == nil then
+            current_key_state[key] = false
+        end
+    end
+
+    previous_key_state = current_key_state
+    current_key_state = {}
 end
 
 -- =========================================================
@@ -165,7 +218,11 @@ local function update_ground_state(dt, allow_snap)
         -- snap은 떨어지는 중이거나 정지 상태일 때만 수행한다.
         -- 점프 상승 중에 위쪽 floor나 obstacle 상단으로 강제로 붙으면 조작감이 깨지므로
         -- vertical_velocity <= 0 조건을 유지한다.
-        if allow_snap and vertical_velocity <= 0.0 and distance_to_ground <= ground_snap_distance then
+        -- Ground snap은 바닥보다 아주 살짝 아래로 파고든 정도까지만 허용합니다.
+        -- distance_to_ground가 너무 큰 음수면 플레이어가 지면 아래/이상한 위치에 있는 것이므로 잘못 끌어올리지 않습니다.
+        if allow_snap and vertical_velocity <= 0.0
+            and distance_to_ground >= -skin_width
+            and distance_to_ground <= ground_snap_distance then
             loc.z = desired_center_z
             obj:SetWorldLocation(loc)
             vertical_velocity = 0.0
@@ -260,7 +317,9 @@ end
 -- =========================================================
 
 local function slide_key_pressed()
-    return key_down("S") or key_down("DOWN") or key_down("CTRL")
+    -- 슬라이드는 duration 기반 타이머가 아니라 누르고 있는 동안 유지하는 방식입니다.
+    -- S/아래/CTRL 중 하나를 잡고 있으면 slide 유지, 모두 떼면 종료합니다.
+    return key_held("S") or key_held("DOWN") or key_held("Down") or key_held("CTRL") or key_held("Control")
 end
 
 local function begin_slide()
@@ -268,24 +327,33 @@ local function begin_slide()
         return
     end
 
-    slide_timer = PlayerConfig.slide_duration
-    if slide and not slide:IsSliding() then
+    if not is_grounded then
+        -- 공중에서 slide Begin을 걸면 점프/낙하 상태와 충돌할 수 있으므로 지상에서만 시작합니다.
+        return
+    end
+
+    if slide and slide:IsSliding() then
+        -- 슬라이드 중 Begin이 반복 호출되면 timer/shape가 계속 초기화되던 문제를 막습니다.
+        return
+    end
+
+    if slide then
         slide:Begin()
         AudioManager.PlaySlide()
-        log("[PlayerController] Slide start duration=" .. tostring(PlayerConfig.slide_duration))
+        log("[PlayerController] Slide start hold")
     end
 end
 
-local function update_slide(dt)
+local function update_slide(dt, wants_slide)
     if not slide or not slide:IsSliding() then
         return
     end
 
-    slide_timer = slide_timer - (dt or 0.0)
-    if slide_timer <= 0.0 then
-        slide_timer = 0.0
+    -- 슬라이드는 Config.player에 남은 타이머 값이 아니라 현재 입력 상태와 지상 여부로 끝냅니다.
+    -- 키를 떼거나 공중으로 뜨면 안전하게 slide를 끝냅니다.
+    if not wants_slide or not is_grounded then
         slide:End()
-        log("[PlayerController] Slide finished by duration")
+        log("[PlayerController] Slide finished by key release or air")
     end
 end
 
@@ -330,10 +398,17 @@ local function handle_obstacle_collision(event_name, other_actor)
         return
     end
 
-    -- TODO: Use obstacle:GetDamage() when damage is exposed to Lua.
     local damage = Config.obstacle.default_damage
+    -- 장애물별 피해량을 다르게 줄 수 있게 C++ Damage 값을 Lua에서 읽는다.
+    -- 바인딩 안 된 장애물은 Config.obstacle.default_damage를 사용합니다.
+    if other_actor and other_actor.GetDamage then
+        local obstacle_damage = other_actor:GetDamage()
+        if obstacle_damage and obstacle_damage > 0 then
+            damage = obstacle_damage
+        end
+    end
     log("[PlayerController] Obstacle collision damage=" .. tostring(damage))
-    PlayerStatus.TakeDamage(damage)
+    PlayerStatus.DamageStability(damage)
 end
 
 -- =========================================================
@@ -354,9 +429,10 @@ function BeginPlay()
     is_grounded = false
     current_ground_z = nil
     last_ground_hit = false
-    slide_timer = 0.0
     game_over_tick_logged = false
     half_height_fallback_logged = false
+    previous_key_state = {}
+    current_key_state = {}
 
     obj.Tag = "Player"
 
@@ -371,7 +447,7 @@ function BeginPlay()
         " lane_count=" .. tostring(PlayerConfig.lane_count) ..
         " gravity=" .. tostring(gravity) ..
         " jump_power=" .. tostring(jump_power) ..
-        " slide_duration=" .. tostring(PlayerConfig.slide_duration) ..
+        " slide_mode=hold" ..
         " fall_dead_z=" .. tostring(fall_dead_z)
     )
     log(
@@ -416,20 +492,26 @@ function Tick(dt)
         return
     end
 
-    if key_down("A") or key_down("LEFT") then
+    local move_left_pressed = key_pressed_once("A") or key_pressed_once("LEFT") or key_pressed_once("Left")
+    local move_right_pressed = key_pressed_once("D") or key_pressed_once("RIGHT") or key_pressed_once("Right")
+    local jump_pressed = key_pressed_once("SPACE") or key_pressed_once("Space")
+    local wants_slide = slide_key_pressed()
+    finish_input_frame()
+
+    if move_left_pressed then
         move_lane(-1)
-    elseif key_down("D") or key_down("RIGHT") then
+    elseif move_right_pressed then
         move_lane(1)
     end
 
-    if key_down("SPACE") then
+    if jump_pressed then
         try_jump()
     end
 
-    if slide_key_pressed() then
+    if wants_slide then
         begin_slide()
     end
-    update_slide(dt)
+    update_slide(dt, wants_slide)
 
     -- score는 "실제로 전진시킨 거리"를 GameManager에 넘겨서 계산한다.
     -- 고속 이동 시 한 프레임 이동 거리를 잘게 나눠 teleport 방식 overlap 누락을 줄인다.
