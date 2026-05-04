@@ -94,6 +94,16 @@ void FLuaScriptRuntime::BindComponentProxyType()
 		"SetStaticMesh", &FLuaComponentProxy::SetStaticMesh,
 		"SetText", &FLuaComponentProxy::SetText,
 		"GetText", &FLuaComponentProxy::GetText,
+		"GetScreenPosition", &FLuaComponentProxy::GetScreenPosition,
+		"SetScreenPosition", sol::overload(
+			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetScreenPosition),
+			&FLuaComponentProxy::SetScreenPositionXYZ),
+		"SetScreenPositionXYZ", &FLuaComponentProxy::SetScreenPositionXYZ,
+		"GetScreenSize", &FLuaComponentProxy::GetScreenSize,
+		"SetScreenSize", sol::overload(
+			static_cast<bool(FLuaComponentProxy::*)(const FVector&)>(&FLuaComponentProxy::SetScreenSize),
+			&FLuaComponentProxy::SetScreenSizeXYZ),
+		"SetScreenSizeXYZ", &FLuaComponentProxy::SetScreenSizeXYZ,
 		"SetTexture", &FLuaComponentProxy::SetTexture,
 		"GetTexturePath", &FLuaComponentProxy::GetTexturePath,
 		"SetTint", sol::overload(

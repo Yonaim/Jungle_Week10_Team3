@@ -58,9 +58,11 @@ public:
 		float Scale;
 		FVector4 Color = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 		const FFontResource* Font = nullptr;
+		float LineSpacing = 1.14f;
+		float LetterSpacing = 0.0f;
 	};
 	void AddScreenText(FString Text, const FVector2& Position, float Scale, const FVector4& Color = FVector4(1.0f, 1.0f, 1.0f, 1.0f),
-		const FFontResource* Font = nullptr);
+		const FFontResource* Font = nullptr, float LineSpacing = 1.14f, float LetterSpacing = 0.0f);
 	const TArray<FScreenTextEntry>& GetScreenTexts() const { return ScreenTexts; }
 	struct FScreenQuadEntry
 	{

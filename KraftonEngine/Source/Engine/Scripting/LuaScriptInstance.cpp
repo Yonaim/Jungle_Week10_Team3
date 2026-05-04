@@ -6,6 +6,7 @@
 #include "Core/AsciiUtils.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Runtime/GameEngine.h"
+#include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/StaticMeshActor.h"
 #include "GameFramework/World.h"
@@ -1817,6 +1818,28 @@ void FLuaScriptInstance::BindDataFunctions()
 		return true;
 	};
 
+	auto OpenTitleOptionsPopup = []()
+	{
+		if (!GEngine)
+		{
+			return false;
+		}
+
+		GEngine->OpenTitleOptionsPopup();
+		return true;
+	};
+
+	auto RequestExitGame = []()
+	{
+		if (!GEngine || !GEngine->GetWindow())
+		{
+			return false;
+		}
+
+		GEngine->GetWindow()->Close();
+		return true;
+	};
+
 	Impl->Env.set_function("load_json_file", LoadJsonFile);
 	Impl->Env.set_function("save_json_file", SaveJsonFile);
 	Impl->Env.set_function("open_score_save_popup", OpenScoreSavePopup);
@@ -1824,6 +1847,8 @@ void FLuaScriptInstance::BindDataFunctions()
 	Impl->Env.set_function("open_message_popup", OpenMessagePopup);
 	Impl->Env.set_function("consume_message_popup_ok", ConsumeMessagePopupConfirmed);
 	Impl->Env.set_function("open_scoreboard_popup", OpenScoreboardPopup);
+	Impl->Env.set_function("open_title_options_popup", OpenTitleOptionsPopup);
+	Impl->Env.set_function("request_exit_game", RequestExitGame);
 
 	sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
 	Lua.set_function("load_json_file", LoadJsonFile);
@@ -1833,6 +1858,8 @@ void FLuaScriptInstance::BindDataFunctions()
 	Lua.set_function("open_message_popup", OpenMessagePopup);
 	Lua.set_function("consume_message_popup_ok", ConsumeMessagePopupConfirmed);
 	Lua.set_function("open_scoreboard_popup", OpenScoreboardPopup);
+	Lua.set_function("open_title_options_popup", OpenTitleOptionsPopup);
+	Lua.set_function("request_exit_game", RequestExitGame);
 }
 
 FLuaActorProxy FLuaScriptInstance::MakeActorProxy(AActor* Actor) const

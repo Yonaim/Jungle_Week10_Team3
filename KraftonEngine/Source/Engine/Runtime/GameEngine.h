@@ -23,6 +23,7 @@ public:
 	void OpenMessagePopup(const FString& InMessage) override;
 	bool ConsumeMessagePopupConfirmed() override;
 	void OpenScoreboardPopup(const FString& InFilePath) override;
+	void OpenTitleOptionsPopup() override;
 	bool IsScoreSavePopupOpen() const override;
 
 protected:

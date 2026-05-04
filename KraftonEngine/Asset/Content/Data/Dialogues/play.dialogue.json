@@ -4,7 +4,7 @@
   "name": "Play Scene Dialogues",
   "characters": {
     "BAEK_COMMANDER": {
-      "displayName": "백승현 사령관",
+      "displayName": "백 사령관",
       "shortName": "백 사령관",
       "defaultPortrait": "portrait_baek_normal",
       "emotions": {
@@ -17,8 +17,8 @@
       }
     },
     "LIM_COMMANDER": {
-      "displayName": "임창근 사령관",
-      "shortName": "임 사령관",
+      "displayName": "임 오퍼레이터",
+      "shortName": "임 오퍼레이터",
       "defaultPortrait": "portrait_lim_normal",
       "emotions": {
         "normal": "portrait_lim_normal",

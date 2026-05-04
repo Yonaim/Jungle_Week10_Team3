@@ -4,6 +4,7 @@ DeclareProperties({
 })
 
 local ScenarioLoader = require("UI.ScenarioLoader")
+local DialogueUtils = require("UI.DialogueUtils")
 
 local SCENARIO_PATH = property("ScenarioPath", "Asset/Content/Data/Scenarios/story.json")
 local NEXT_SCENE = property("NextScene", "PlayerDev.Scene")
@@ -84,214 +85,6 @@ local HOLD_SKIP_SECONDS = 2.0
 local HOLD_SKIP_HINT_TEXT = "Hold Space to Skip..."
 local apply_page = nil
 local resolve_neutral_background = nil
-
-local function split_utf8_chars(value)
-    local chars = {}
-    if type(value) ~= "string" or value == "" then
-        return chars
-    end
-
-    local index = 1
-    local length = #value
-
-    while index <= length do
-        local byte = string.byte(value, index)
-        local char_length = 1
-
-        if byte >= 0xF0 then
-            char_length = 4
-        elseif byte >= 0xE0 then
-            char_length = 3
-        elseif byte >= 0xC0 then
-            char_length = 2
-        end
-
-        chars[#chars + 1] = value:sub(index, index + char_length - 1)
-        index = index + char_length
-    end
-
-    return chars
-end
-
-local function is_typing_sound_character(char)
-    return char ~= nil and char ~= "" and char ~= " " and char ~= "\n" and char ~= "\t"
-end
-
-local function format_terminal_message(text)
-    local source = type(text) == "string" and text or ""
-    if source == "" then
-        return ""
-    end
-
-    local function normalize_newlines(value)
-        local result = {}
-        local index = 1
-        local length = #value
-
-        while index <= length do
-            local char = value:sub(index, index)
-            if char == "\r" then
-                result[#result + 1] = "\n"
-                if index < length and value:sub(index + 1, index + 1) == "\n" then
-                    index = index + 1
-                end
-            else
-                result[#result + 1] = char
-            end
-            index = index + 1
-        end
-
-        return table.concat(result)
-    end
-
-    local function is_ascii_space(char)
-        return char == " " or char == "\t"
-    end
-
-    local function char_width_units(char)
-        local byte = string.byte(char, 1)
-        if not byte then
-            return 0
-        end
-
-        if byte < 0x80 then
-            if is_ascii_space(char) then
-                return 0.45
-            end
-            return 0.6
-        end
-
-        return 1.0
-    end
-
-    local function trim_spaces(value)
-        local chars = split_utf8_chars(value)
-        local start_index = 1
-        local end_index = #chars
-
-        while start_index <= end_index and is_ascii_space(chars[start_index]) do
-            start_index = start_index + 1
-        end
-
-        while end_index >= start_index and is_ascii_space(chars[end_index]) do
-            end_index = end_index - 1
-        end
-
-        if start_index > end_index then
-            return ""
-        end
-
-        return table.concat(chars, "", start_index, end_index)
-    end
-
-    local function wrap_line(line)
-        local source = trim_spaces(line)
-        if source == "" then
-            return { "" }
-        end
-
-        local chars = split_utf8_chars(source)
-        local lines = {}
-        local current = {}
-        local last_space_index = nil
-        local current_width = 0.0
-
-        local function current_text(count)
-            return table.concat(current, "", 1, count or #current)
-        end
-
-        local function push_current(text)
-            lines[#lines + 1] = trim_spaces(text)
-            current = {}
-            last_space_index = nil
-            current_width = 0.0
-        end
-
-        for _, char in ipairs(chars) do
-            current[#current + 1] = char
-            current_width = current_width + char_width_units(char)
-            if char == " " then
-                last_space_index = #current
-            end
-
-            if current_width >= MAX_LINE_WIDTH_UNITS then
-                if last_space_index and last_space_index > 1 then
-                    local split_index = last_space_index
-                    local snapshot = current
-                    push_current(table.concat(snapshot, "", 1, split_index - 1))
-
-                    local remaining = {}
-                    for index = split_index + 1, #snapshot do
-                        remaining[#remaining + 1] = snapshot[index]
-                    end
-                    current = remaining
-                    current_width = 0.0
-                    last_space_index = nil
-
-                    for index, remaining_char in ipairs(current) do
-                        current_width = current_width + char_width_units(remaining_char)
-                        if remaining_char == " " then
-                            last_space_index = index
-                        end
-                    end
-                else
-                    push_current(current_text())
-                end
-            end
-        end
-
-        if #current > 0 then
-            push_current(current_text())
-        end
-
-        return lines
-    end
-
-    local normalized = normalize_newlines(source)
-    local wrapped_lines = {}
-    local current_line = {}
-
-    local function flush_line()
-        local raw_line = table.concat(current_line)
-        current_line = {}
-
-        if raw_line == "" and #wrapped_lines > 0 then
-            wrapped_lines[#wrapped_lines + 1] = ""
-        elseif raw_line ~= "" then
-            local line_parts = wrap_line(raw_line)
-            for _, line in ipairs(line_parts) do
-                wrapped_lines[#wrapped_lines + 1] = line
-            end
-        end
-    end
-
-    local index = 1
-    while index <= #normalized do
-        local char = normalized:sub(index, index)
-        if char == "\n" then
-            flush_line()
-        else
-            current_line[#current_line + 1] = char
-        end
-        index = index + 1
-    end
-
-    if #current_line > 0 then
-        flush_line()
-    end
-
-    if #wrapped_lines == 0 then
-        return ""
-    end
-
-    local message = table.concat(wrapped_lines, "\n")
-    if message == "" then
-        return ""
-    end
-
-    local continuation_indent = "   "
-    return message:gsub("\n", "\n" .. continuation_indent)
-end
 
 local function get_component(name)
     local component = obj:GetComponent(name)
@@ -562,7 +355,7 @@ end
 local function start_typewriter(text)
     reset_typewriter()
     typing_state.full_text = type(text) == "string" and text or ""
-    typing_state.chars = split_utf8_chars(typing_state.full_text)
+    typing_state.chars = DialogueUtils.split_utf8_chars(typing_state.full_text)
 
     if #typing_state.chars == 0 then
         set_text("DialogueText", TERMINAL_PROMPT)
@@ -576,7 +369,10 @@ end
 
 local function show_dialogue_ui(page)
     local speaker_name = ScenarioLoader.resolve_speaker_name(scenario, page.speaker)
-    local message = format_terminal_message(tostring(page.message or ""))
+    local message = DialogueUtils.format_terminal_message(tostring(page.message or ""), {
+        max_line_width_units = MAX_LINE_WIDTH_UNITS,
+        continuation_indent = "   ",
+    })
 
     set_visible("SpeakerName", true)
     set_visible("DialogueText", true)
@@ -1134,7 +930,7 @@ function Tick(dt)
             typing_state.visible_count = typing_state.visible_count + 1
 
             local revealed_char = typing_state.chars[typing_state.visible_count]
-            if (typing_state.visible_count % 3) == 0 and is_typing_sound_character(revealed_char) then
+            if (typing_state.visible_count % 3) == 0 and DialogueUtils.is_typing_sound_character(revealed_char) then
                 play_story_sfx(TYPEWRITER_SOUND_PATH)
             end
         end

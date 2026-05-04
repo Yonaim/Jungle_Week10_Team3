@@ -22,7 +22,6 @@ namespace
 	constexpr uint32 FallbackQuestionCodepoint = static_cast<uint32>('?');
 	constexpr uint32 NewLineCodepoint = static_cast<uint32>('\n');
 	constexpr uint32 CarriageReturnCodepoint = static_cast<uint32>('\r');
-	constexpr float MultiLineSpacingScale = 1.14f;
 
 	FVector2 GetViewportSize2D()
 	{
@@ -169,6 +168,11 @@ void UUIScreenTextComponent::Serialize(FArchive& Ar)
 	Ar << AnchorOffset;
 	Ar << Color;
 	Ar << FontSize;
+	Ar << LineSpacing;
+	Ar << LetterSpacing;
+	Ar << BottomBorderThickness;
+	Ar << BottomBorderOffset;
+	Ar << BottomBorderColor;
 }
 
 void UUIScreenTextComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
@@ -183,6 +187,11 @@ void UUIScreenTextComponent::GetEditableProperties(TArray<FPropertyDescriptor>& 
 	OutProps.push_back({ "Anchor Offset", EPropertyType::Vec3, &AnchorOffset, -4096.0f, 4096.0f, 1.0f });
 	OutProps.push_back({ "Color", EPropertyType::Color4, &Color });
 	OutProps.push_back({ "Font Size", EPropertyType::Float, &FontSize, 0.1f, 100.0f, 0.1f });
+	OutProps.push_back({ "Line Spacing", EPropertyType::Float, &LineSpacing, 0.0f, 4.0f, 0.01f });
+	OutProps.push_back({ "Letter Spacing", EPropertyType::Float, &LetterSpacing, -32.0f, 64.0f, 0.1f });
+	OutProps.push_back({ "Bottom Border Thickness", EPropertyType::Float, &BottomBorderThickness, 0.0f, 64.0f, 0.1f });
+	OutProps.push_back({ "Bottom Border Offset", EPropertyType::Float, &BottomBorderOffset, -64.0f, 64.0f, 0.1f });
+	OutProps.push_back({ "Bottom Border Color", EPropertyType::Color4, &BottomBorderColor });
 	OutProps.push_back({ "Visible", EPropertyType::Bool, &bIsVisible });
 }
 
@@ -213,7 +222,25 @@ void UUIScreenTextComponent::ContributeVisuals(FScene& Scene) const
 		return;
 	}
 
-	Scene.AddScreenText(Text, FVector2(X, Y), FontSize, Color, ResolvedFont ? ResolvedFont : CachedFont);
+	float TextWidth = 0.0f;
+	float TextHeight = 0.0f;
+	if (!ComputeTextContentSize(TextWidth, TextHeight))
+	{
+		return;
+	}
+
+	Scene.AddScreenText(Text, FVector2(X, Y), FontSize, Color, ResolvedFont ? ResolvedFont : CachedFont, LineSpacing, LetterSpacing);
+	if (BottomBorderThickness > 0.0f)
+	{
+		Scene.AddScreenQuad(nullptr,
+			FVector2(X, Y + TextHeight + BottomBorderOffset),
+			FVector2(TextWidth, BottomBorderThickness),
+			BottomBorderColor,
+			1,
+			FVector2(0.0f, 0.0f),
+			FVector2(1.0f, 1.0f),
+			true);
+	}
 }
 
 void UUIScreenTextComponent::ContributeSelectedVisuals(FScene& Scene) const
@@ -255,7 +282,7 @@ bool UUIScreenTextComponent::HitTestUIScreenPoint(float X, float Y) const
 	return X >= RectX && X <= RectX + RectW && Y >= RectY && Y <= RectY + RectH;
 }
 
-bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float& OutWidth, float& OutHeight) const
+bool UUIScreenTextComponent::ComputeTextContentSize(float& OutWidth, float& OutHeight) const
 {
 	if (!IsVisible() || Text.empty())
 	{
@@ -268,6 +295,7 @@ bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float
 	float CurrentLineWidth = 0.0f;
 	float LineHeight = 23.0f * Scale;
 	int32 LineCount = 1;
+	const float EffectiveLineSpacing = (std::max)(0.0f, LineSpacing);
 
 	if (Font && Font->IsLoaded() && Font->bHasGlyphMetrics && Font->LineHeight > 0.0f)
 	{
@@ -305,6 +333,7 @@ bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float
 			if (bHasPrevCodepoint)
 			{
 				CurrentLineWidth += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
+				CurrentLineWidth += LetterSpacing;
 			}
 
 			CurrentLineWidth += GetResolvedGlyphAdvance(Font, CP) * PixelScale;
@@ -342,6 +371,10 @@ bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float
 				continue;
 			}
 
+			if (CurrentLineWidth > 0.0f)
+			{
+				CurrentLineWidth += LetterSpacing;
+			}
 			CurrentLineWidth += FallbackAdvance;
 		}
 
@@ -349,8 +382,26 @@ bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float
 	}
 
 	OutWidth = (std::max)(1.0f, MaxWidth);
-	const float TotalHeight = LineHeight + (std::max)(0, LineCount - 1) * (LineHeight * MultiLineSpacingScale);
+	const float TotalHeight = LineHeight + (std::max)(0, LineCount - 1) * (LineHeight * EffectiveLineSpacing);
 	OutHeight = (std::max)(1.0f, TotalHeight);
+	return true;
+}
+
+bool UUIScreenTextComponent::ComputeScreenBounds(float& OutX, float& OutY, float& OutWidth, float& OutHeight) const
+{
+	float TextWidth = 0.0f;
+	float TextHeight = 0.0f;
+	if (!ComputeTextContentSize(TextWidth, TextHeight))
+	{
+		return false;
+	}
+
+	OutWidth = TextWidth;
+	OutHeight = TextHeight;
+	if (BottomBorderThickness > 0.0f)
+	{
+		OutHeight += (std::max)(0.0f, BottomBorderOffset) + BottomBorderThickness;
+	}
 	const FVector2 ResolvedPosition = ResolveScreenPosition(FVector2(OutWidth, OutHeight));
 	OutX = ResolvedPosition.X;
 	OutY = ResolvedPosition.Y;

@@ -53,6 +53,16 @@ function ShowScoreboard()
     return open_scoreboard_popup("Saves/scoreboard.json")
 end
 
+function ShowOptions()
+    play_sfx("Sound.SFX.arwing.hit.obstacle", false)
+    return open_title_options_popup()
+end
+
+function ExitGame()
+    play_sfx("Sound.SFX.arwing.hit.obstacle", false)
+    return request_exit_game()
+end
+
 function StartStoryScene()
     if story_scene_loading then
         return false
@@ -62,4 +72,30 @@ function StartStoryScene()
     stop_bgm()
     play_sfx("Sound.SFX.arwing.hit.obstacle", false)
     return load_scene("game/story.scene")
+end
+
+function Tick(dt)
+    if story_scene_loading then
+        return
+    end
+
+    if start_button and start_button:WasClicked() then
+        StartStoryScene()
+        return
+    end
+
+    if score_button and score_button:WasClicked() then
+        ShowScoreboard()
+        return
+    end
+
+    if options_button and options_button:WasClicked() then
+        ShowOptions()
+        return
+    end
+
+    if exit_button and exit_button:WasClicked() then
+        ExitGame()
+        return
+    end
 end

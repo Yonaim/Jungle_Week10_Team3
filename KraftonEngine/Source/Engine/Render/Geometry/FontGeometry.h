@@ -46,7 +46,9 @@ public:
 		float ViewportWidth, float ViewportHeight,
 		const FVector4& Color,
 		const FFontResource* Font,
-		float Scale = 1.0f);
+		float Scale = 1.0f,
+		float LineSpacing = 1.14f,
+		float LetterSpacing = 0.0f);
 
 	void Clear();
 	void ClearScreen();

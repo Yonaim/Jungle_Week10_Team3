@@ -1,5 +1,6 @@
 #include "Engine/Runtime/GameImGuiOverlay.h"
 
+#include "Audio/AudioManager.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Core/AsciiUtils.h"
 #include "UI/SWindow.h"
@@ -95,6 +96,7 @@ void FGameImGuiOverlay::Shutdown()
 	ScoreSavePopup = FScoreSavePopupState();
 	MessagePopup = FMessagePopupState();
 	ScoreboardPopup = FScoreboardPopupState();
+	OptionsPopup = FOptionsPopupState();
 	bInitialized = false;
 }
 
@@ -113,6 +115,7 @@ void FGameImGuiOverlay::Render(FRenderer& InRenderer)
 	RenderScoreSavePopup();
 	RenderMessagePopup();
 	RenderScoreboardPopup();
+	RenderOptionsPopup();
 
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -123,6 +126,7 @@ void FGameImGuiOverlay::RenderWithinCurrentFrame(const FRect* AnchorRect)
 	RenderScoreSavePopup(AnchorRect);
 	RenderMessagePopup(AnchorRect);
 	RenderScoreboardPopup(AnchorRect);
+	RenderOptionsPopup(AnchorRect);
 }
 
 void FGameImGuiOverlay::OpenScoreSavePopup(int32 InScore)
@@ -177,6 +181,12 @@ void FGameImGuiOverlay::OpenScoreboardPopup(const FString& InFilePath)
 	ScoreboardPopup.bPopupOpen = true;
 }
 
+void FGameImGuiOverlay::OpenTitleOptionsPopup()
+{
+	OptionsPopup.bRequestOpen = true;
+	OptionsPopup.bPopupOpen = true;
+}
+
 bool FGameImGuiOverlay::IsScoreSavePopupOpen() const
 {
 	return
@@ -185,7 +195,9 @@ bool FGameImGuiOverlay::IsScoreSavePopupOpen() const
 		MessagePopup.bPopupOpen ||
 		MessagePopup.bRequestOpen ||
 		ScoreboardPopup.bPopupOpen ||
-		ScoreboardPopup.bRequestOpen;
+		ScoreboardPopup.bRequestOpen ||
+		OptionsPopup.bPopupOpen ||
+		OptionsPopup.bRequestOpen;
 }
 
 void FGameImGuiOverlay::ResetNicknameBuffer()
@@ -253,7 +265,6 @@ void FGameImGuiOverlay::RenderScoreSavePopup(const FRect* AnchorRect)
 	{
 		ImGui::Text("Final Score: %d", ScoreSavePopup.Score);
 		ImGui::Spacing();
-		ImGui::TextUnformatted("Nickname");
 		if (ScoreSavePopup.bFocusInput)
 		{
 			ImGui::SetKeyboardFocusHere();
@@ -573,5 +584,75 @@ void FGameImGuiOverlay::RenderScoreboardPopup(const FRect* AnchorRect)
 	if (ScoreboardPopup.bPopupOpen && !ImGui::IsPopupOpen("Scoreboard"))
 	{
 		ScoreboardPopup.bPopupOpen = false;
+	}
+}
+
+void FGameImGuiOverlay::RenderOptionsPopup(const FRect* AnchorRect)
+{
+	if (OptionsPopup.bRequestOpen)
+	{
+		ImGui::OpenPopup("Options");
+		OptionsPopup.bRequestOpen = false;
+		OptionsPopup.bPopupOpen = true;
+	}
+
+	ImVec2 PopupCenter;
+	if (AnchorRect && AnchorRect->Width > 0.0f && AnchorRect->Height > 0.0f)
+	{
+		PopupCenter = ImVec2(
+			AnchorRect->X + AnchorRect->Width * 0.5f,
+			AnchorRect->Y + AnchorRect->Height * 0.5f);
+	}
+	else
+	{
+		ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+		PopupCenter = MainViewport->GetCenter();
+	}
+
+	float SoundVolume = FAudioManager::Get().GetCategoryVolume(ESoundCategory::SFX);
+	float BGMVolume = FAudioManager::Get().GetCategoryVolume(ESoundCategory::Background);
+
+	ImGui::SetNextWindowPos(PopupCenter, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSize(ImVec2(400.0f, 0.0f), ImGuiCond_Appearing);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, ScorePopupSurface);
+	ImGui::PushStyleColor(ImGuiCol_TitleBg, ScorePopupTitle);
+	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ScorePopupTitle);
+	ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ScorePopupTitle);
+	ImGui::PushStyleColor(ImGuiCol_Border, ScorePopupBorder);
+	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ScorePopupDim);
+
+	if (ImGui::BeginPopupModal("Options", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextUnformatted("Audio");
+		ImGui::Spacing();
+
+		if (ImGui::SliderFloat("Sound", &SoundVolume, 0.0f, 1.0f, "%.2f"))
+		{
+			FAudioManager::Get().SetCategoryVolume(ESoundCategory::SFX, SoundVolume);
+		}
+
+		if (ImGui::SliderFloat("BGM", &BGMVolume, 0.0f, 1.0f, "%.2f"))
+		{
+			FAudioManager::Get().SetCategoryVolume(ESoundCategory::Background, BGMVolume);
+		}
+
+		ImGui::Spacing();
+		if (ImGui::Button("Close", ImVec2(140.0f, 0.0f)))
+		{
+			OptionsPopup.bPopupOpen = false;
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+
+	ImGui::PopStyleColor(6);
+	ImGui::PopStyleVar(2);
+
+	if (OptionsPopup.bPopupOpen && !ImGui::IsPopupOpen("Options"))
+	{
+		OptionsPopup.bPopupOpen = false;
 	}
 }

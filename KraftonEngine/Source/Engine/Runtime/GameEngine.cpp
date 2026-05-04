@@ -149,6 +149,11 @@ void UGameEngine::OpenScoreboardPopup(const FString& InFilePath)
 	ImGuiOverlay.OpenScoreboardPopup(InFilePath);
 }
 
+void UGameEngine::OpenTitleOptionsPopup()
+{
+	ImGuiOverlay.OpenTitleOptionsPopup();
+}
+
 bool UGameEngine::IsScoreSavePopupOpen() const
 {
 	return ImGuiOverlay.IsScoreSavePopupOpen();

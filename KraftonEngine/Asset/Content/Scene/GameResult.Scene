@@ -38,7 +38,7 @@
             "ObjectName" : "Background",
             "Properties" : {
               "Texture" : {
-                "Path" : "Asset/Content/Texture/background/result_background_1.png"
+                "Path" : "Asset/Content/Texture/background/result_background.png"
               },
               "Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
               "Visible" : true,
@@ -60,12 +60,14 @@
               "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
               "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
               "Border Thickness" : 0.000000,
+              "Bottom Border Only" : false,
               "Content Alignment" : 0,
               "Draw Background" : false,
               "Draw Shadow" : true,
               "Fit Mode" : 0,
               "Screen Position" : [350.000000, 50.000000, 0.000000],
               "Screen Size" : [1220.000000, 980.000000, 0.000000],
+              "Shadow Blur" : 6.000000,
               "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.180000],
               "Shadow Offset" : [4.000000, 4.000000, 6.000000],
               "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.360000],
@@ -86,10 +88,15 @@
               "Alignment" : [0.000000, 0.000000, 0.000000],
               "Anchor" : [0.000000, 0.000000, 0.000000],
               "Anchor Offset" : [0.000000, 0.000000, 0.000000],
-              "Color" : [0.720000, 0.900000, 1.000000, 1.000000],
+              "Bottom Border Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Bottom Border Offset" : 10.000000,
+              "Bottom Border Thickness" : 3.000000,
+              "Color" : [0.430000, 1.000000, 0.766531, 1.000000],
               "Font" : "Orbitron Bold",
-              "Font Size" : 1.520000,
-              "Screen Position" : [430.000000, 96.000000, 0.000000],
+              "Font Size" : 2.720000,
+              "Letter Spacing" : -0.800000,
+              "Line Spacing" : 1.140000,
+              "Screen Position" : [430.000000, 120.000000, 0.000000],
               "Text" : "DEBUG SESSION RESULT",
               "Use Anchored Layout" : false,
               "Visible" : true
@@ -97,16 +104,315 @@
           }, {
             "Children" : [],
             "ClassName" : "UUIScreenTextComponent",
-            "ObjectName" : "UUIScreenTextComponent_1",
+            "ObjectName" : "ResultKeys",
             "Properties" : {
               "Alignment" : [0.000000, 0.000000, 0.000000],
               "Anchor" : [0.000000, 0.000000, 0.000000],
               "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Bottom Border Color" : [0.430000, 0.760000, 1.000000, 1.000000],
+              "Bottom Border Offset" : 4.000000,
+              "Bottom Border Thickness" : 0.000000,
+              "Color" : [0.430000, 0.905351, 1.000000, 1.000000],
+              "Font" : "Orbitron Bold",
+              "Font Size" : 1.520000,
+              "Letter Spacing" : 0.000000,
+              "Line Spacing" : 1.340000,
+              "Screen Position" : [439.262451, 248.000000, 0.000000],
+              "Text" : "SCORE\nCOLLECTED LOGS\nTRACE DATA\nCRASH DUMPS\nHOTFIX APPLIED\nCRITICAL ANALYSIS\nDISTANCE",
+              "Use Anchored Layout" : false,
+              "Visible" : true
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIScreenTextComponent",
+            "ObjectName" : "ResultValues",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Bottom Border Color" : [0.950000, 0.960000, 0.980000, 1.000000],
+              "Bottom Border Offset" : 4.000000,
+              "Bottom Border Thickness" : 0.000000,
               "Color" : [0.950000, 0.960000, 0.980000, 1.000000],
-              "Font" : "D2Coding Bold",
-              "Font Size" : 1.180000,
-              "Screen Position" : [430.000000, 206.000000, 0.000000],
-              "Text" : "",
+              "Font" : "D2Coding",
+              "Font Size" : 1.480000,
+              "Letter Spacing" : 0.000000,
+              "Line Spacing" : 1.340000,
+              "Screen Position" : [842.724854, 252.000000, 0.000000],
+              "Text" : "128,450\n24\n88%\n2/3\n3\n1\n1,842m",
+              "Use Anchored Layout" : false,
+              "Visible" : true
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "ResultRowLine_0",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.340000, 0.390000, 0.480000, 1.000000],
+              "Border Thickness" : 2.000000,
+              "Bottom Border Only" : true,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [430.000000, 272.000000, 0.000000],
+              "Screen Size" : [560.000000, 28.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "None"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 1
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "ResultRowLine_1",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.340000, 0.390000, 0.480000, 1.000000],
+              "Border Thickness" : 2.000000,
+              "Bottom Border Only" : true,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [430.000000, 317.000000, 0.000000],
+              "Screen Size" : [560.000000, 28.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "None"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 1
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "ResultRowLine_2",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.340000, 0.390000, 0.480000, 1.000000],
+              "Border Thickness" : 2.000000,
+              "Bottom Border Only" : true,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [430.000000, 362.000000, 0.000000],
+              "Screen Size" : [560.000000, 28.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "None"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 1
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "ResultRowLine_3",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.340000, 0.390000, 0.480000, 1.000000],
+              "Border Thickness" : 2.000000,
+              "Bottom Border Only" : true,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [430.000000, 407.000000, 0.000000],
+              "Screen Size" : [560.000000, 28.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "None"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 1
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "ResultRowLine_4",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.340000, 0.390000, 0.480000, 1.000000],
+              "Border Thickness" : 2.000000,
+              "Bottom Border Only" : true,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [430.000000, 452.000000, 0.000000],
+              "Screen Size" : [560.000000, 28.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "None"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 1
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "ResultRowLine_5",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.340000, 0.390000, 0.480000, 1.000000],
+              "Border Thickness" : 2.000000,
+              "Bottom Border Only" : true,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [430.000000, 497.000000, 0.000000],
+              "Screen Size" : [560.000000, 28.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "None"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 1
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "ResultRowLine_6",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [0.340000, 0.390000, 0.480000, 1.000000],
+              "Border Thickness" : 2.000000,
+              "Bottom Border Only" : true,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [430.000000, 542.000000, 0.000000],
+              "Screen Size" : [560.000000, 28.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "None"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : true,
+              "Z Order" : 1
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UUIScreenTextComponent",
+            "ObjectName" : "CoachComments",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Bottom Border Color" : [0.000000, 0.000000, 0.000000, 0.850000],
+              "Bottom Border Offset" : 12.000000,
+              "Bottom Border Thickness" : 0.000000,
+              "Color" : [0.950000, 0.960000, 0.980000, 1.000000],
+              "Font" : "D2Coding",
+              "Font Size" : 1.420000,
+              "Letter Spacing" : 0.000000,
+              "Line Spacing" : 1.420000,
+              "Screen Position" : [444.079346, 627.703674, 0.000000],
+              "Text" : "BAEK COMMANDER\n\"Runtime is stable. Push deeper.\"\n\nLIM COMMANDER\n\"Keep going. We can break the bug wall.\"",
               "Use Anchored Layout" : false,
               "Visible" : true
             }
@@ -119,25 +425,27 @@
               "Anchor" : [0.000000, 0.000000, 0.000000],
               "Anchor Offset" : [0.000000, 0.000000, 0.000000],
               "Background Content Alignment" : 0,
-              "Background Fit Mode" : 0,
+              "Background Fit Mode" : 2,
               "Background Texture" : {
                 "Path" : ""
               },
               "Background Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
               "Border Color" : [0.000000, 0.000000, 0.000000, 0.000000],
               "Border Thickness" : 0.000000,
+              "Bottom Border Only" : false,
               "Content Alignment" : 0,
               "Draw Background" : false,
               "Draw Shadow" : true,
-              "Fit Mode" : 2,
-              "Screen Position" : [875.000000, 475.000000, 0.000000],
-              "Screen Size" : [290.000000, 118.000000, 0.000000],
-              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.180000],
+              "Fit Mode" : 1,
+              "Screen Position" : [1043.915527, 245.747467, 0.000000],
+              "Screen Size" : [486.000000, 371.000000, 0.000000],
+              "Shadow Blur" : 6.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.694118],
               "Shadow Offset" : [4.000000, 4.000000, 6.000000],
-              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.360000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.984314],
               "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.450000],
               "Texture" : {
-                "Path" : "Asset/Content/Texture/UI/rank_c.png"
+                "Path" : "Asset/Content/Texture/UI/rank_s.png"
               },
               "Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
               "Use Anchored Layout" : false,
@@ -147,15 +455,20 @@
           }, {
             "Children" : [],
             "ClassName" : "UUIScreenTextComponent",
-            "ObjectName" : "UUIScreenTextComponent_2",
+            "ObjectName" : "SaveStatusText",
             "Properties" : {
               "Alignment" : [0.000000, 0.000000, 0.000000],
               "Anchor" : [0.000000, 0.000000, 0.000000],
               "Anchor Offset" : [0.000000, 0.000000, 0.000000],
-              "Color" : [0.640000, 0.900000, 1.000000, 1.000000],
+              "Bottom Border Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Bottom Border Offset" : 4.000000,
+              "Bottom Border Thickness" : 0.000000,
+              "Color" : [0.000000, 0.063961, 0.088561, 1.000000],
               "Font" : "D2Coding Bold",
               "Font Size" : 1.050000,
-              "Screen Position" : [700.000000, 850.000000, 0.000000],
+              "Letter Spacing" : 0.000000,
+              "Line Spacing" : 1.600000,
+              "Screen Position" : [700.000000, 894.000000, 0.000000],
               "Text" : "",
               "Use Anchored Layout" : false,
               "Visible" : true
@@ -175,6 +488,7 @@
               },
               "Border Color" : [0.720000, 0.900000, 1.000000, 1.000000],
               "Border Thickness" : 4.000000,
+              "Bottom Border Only" : false,
               "Click Sound" : "Sound.SFX.arwing.hit.obstacle",
               "Content Alignment" : 1,
               "Draw Background" : true,
@@ -200,6 +514,7 @@
               "Pressed Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
               "Screen Position" : [470.000000, 900.000000, 0.000000],
               "Screen Size" : [440.000000, 100.000000, 0.000000],
+              "Shadow Blur" : 6.000000,
               "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.180000],
               "Shadow Offset" : [4.000000, 4.000000, 6.000000],
               "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.360000],
@@ -226,6 +541,7 @@
               },
               "Border Color" : [1.000000, 0.860000, 0.500000, 1.000000],
               "Border Thickness" : 4.000000,
+              "Bottom Border Only" : false,
               "Click Sound" : "Sound.SFX.arwing.hit.obstacle",
               "Content Alignment" : 1,
               "Draw Background" : true,
@@ -251,6 +567,7 @@
               "Pressed Tint" : [1.000000, 1.000000, 1.000000, 0.000000],
               "Screen Position" : [1010.000000, 900.000000, 0.000000],
               "Screen Size" : [440.000000, 100.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
               "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
               "Shadow Offset" : [0.000000, 4.000000, 0.000000],
               "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
@@ -282,9 +599,9 @@
   "PerspectiveCamera" : {
     "FOV" : 1.047198,
     "FarClip" : 1000.000000,
-    "Location" : [-7.909971, -7.308331, 7.905687],
+    "Location" : [-10.513047, -10.199760, 10.167018],
     "NearClip" : 0.100000,
-    "Rotation" : [-0.000008, 30.166739, 48.004143]
+    "Rotation" : [0.000000, 30.166739, 47.704147]
   },
   "Version" : 2,
   "WorldType" : "Editor"

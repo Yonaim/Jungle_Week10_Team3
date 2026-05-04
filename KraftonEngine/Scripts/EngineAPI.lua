@@ -335,6 +335,32 @@ function ComponentProxy:SetText(text) end
 ---@return string|nil
 function ComponentProxy:GetText() end
 
+---@return Vector|nil
+function ComponentProxy:GetScreenPosition() end
+
+---@param position Vector
+---@return boolean
+function ComponentProxy:SetScreenPosition(position) end
+
+---@param x number
+---@param y number
+---@param z number
+---@return boolean
+function ComponentProxy:SetScreenPositionXYZ(x, y, z) end
+
+---@return Vector|nil
+function ComponentProxy:GetScreenSize() end
+
+---@param size Vector
+---@return boolean
+function ComponentProxy:SetScreenSize(size) end
+
+---@param x number
+---@param y number
+---@param z number
+---@return boolean
+function ComponentProxy:SetScreenSizeXYZ(x, y, z) end
+
 ---@param texturePath string
 ---@return boolean
 function ComponentProxy:SetTexture(texturePath) end
@@ -613,6 +639,12 @@ function consume_message_popup_ok() end
 ---@param filePath string
 ---@return boolean
 function open_scoreboard_popup(filePath) end
+
+---@return boolean
+function open_title_options_popup() end
+
+---@return boolean
+function request_exit_game() end
 
 ---@param handle string
 ---@return boolean

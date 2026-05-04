@@ -15,6 +15,8 @@ public:
 	FString PlayAudio(const FString& SoundPath, ESoundCategory Category, bool bLoop);
 	FString PlaySFX(const FString& SoundPath, bool bLoop = false);
 	FString PlayBackground(const FString& SoundPath, bool bLoop = true);
+	void SetCategoryVolume(ESoundCategory Category, float Volume);
+	float GetCategoryVolume(ESoundCategory Category) const;
 
 	bool StopSound(const FString& Handle);
 	bool PauseSound(const FString& Handle);
@@ -45,10 +47,13 @@ private:
 	FPlayingSound* FindActiveSound(const FString& Alias);
 	const FPlayingSound* FindActiveSound(const FString& Alias) const;
 	void CleanupFinishedSounds();
+	float GetClampedVolume(float Volume) const;
 
 private:
 	std::unordered_map<FString, std::unique_ptr<FPlayingSound>> ActiveSounds;
 	std::unique_ptr<FAudioBackend> Backend;
 	FString CurrentBackgroundAlias;
 	uint64 NextAliasId = 1;
+	float SFXVolume = 1.0f;
+	float BackgroundVolume = 1.0f;
 };

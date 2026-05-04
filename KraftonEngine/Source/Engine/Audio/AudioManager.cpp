@@ -6,6 +6,7 @@
 
 #include "miniaudio/miniaudio.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 
@@ -91,6 +92,7 @@ FString FAudioManager::PlayAudio(const FString& SoundPath, ESoundCategory Catego
 	}
 
 	ma_sound_set_looping(&PlayingSound->Sound, bLoop ? MA_TRUE : MA_FALSE);
+	ma_sound_set_volume(&PlayingSound->Sound, GetCategoryVolume(Category));
 
 	Result = ma_sound_start(&PlayingSound->Sound);
 	if (Result != MA_SUCCESS)
@@ -123,6 +125,35 @@ FString FAudioManager::PlaySFX(const FString& SoundPath, bool bLoop)
 FString FAudioManager::PlayBackground(const FString& SoundPath, bool bLoop)
 {
 	return PlayAudio(SoundPath, ESoundCategory::Background, bLoop);
+}
+
+void FAudioManager::SetCategoryVolume(ESoundCategory Category, float Volume)
+{
+	const float ClampedVolume = GetClampedVolume(Volume);
+	if (Category == ESoundCategory::Background)
+	{
+		BackgroundVolume = ClampedVolume;
+	}
+	else
+	{
+		SFXVolume = ClampedVolume;
+	}
+
+	for (auto& Pair : ActiveSounds)
+	{
+		FPlayingSound& PlayingSound = *Pair.second;
+		if (PlayingSound.Category != Category)
+		{
+			continue;
+		}
+
+		ma_sound_set_volume(&PlayingSound.Sound, ClampedVolume);
+	}
+}
+
+float FAudioManager::GetCategoryVolume(ESoundCategory Category) const
+{
+	return Category == ESoundCategory::Background ? BackgroundVolume : SFXVolume;
 }
 
 bool FAudioManager::StopSound(const FString& Handle)
@@ -394,4 +425,9 @@ void FAudioManager::CleanupFinishedSounds()
 	{
 		CloseSoundInternal(Alias, true);
 	}
+}
+
+float FAudioManager::GetClampedVolume(float Volume) const
+{
+	return (std::clamp)(Volume, 0.0f, 1.0f);
 }

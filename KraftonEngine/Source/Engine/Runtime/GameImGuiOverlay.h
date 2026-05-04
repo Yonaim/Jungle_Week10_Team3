@@ -19,6 +19,7 @@ public:
 	void OpenMessagePopup(const FString& InMessage);
 	bool ConsumeMessagePopupConfirmed();
 	void OpenScoreboardPopup(const FString& InFilePath);
+	void OpenTitleOptionsPopup();
 	bool IsScoreSavePopupOpen() const;
 
 private:
@@ -61,6 +62,12 @@ private:
 		TArray<FScoreboardEntry> Entries;
 	};
 
+	struct FOptionsPopupState
+	{
+		bool bPopupOpen = false;
+		bool bRequestOpen = false;
+	};
+
 	static bool IsAlphabetCharacter(char Character);
 	void ResetNicknameBuffer();
 	void SanitizeNicknameBuffer();
@@ -68,10 +75,12 @@ private:
 	void RenderMessagePopup(const FRect* AnchorRect = nullptr);
 	void LoadScoreboardEntries();
 	void RenderScoreboardPopup(const FRect* AnchorRect = nullptr);
+	void RenderOptionsPopup(const FRect* AnchorRect = nullptr);
 
 private:
 	bool bInitialized = false;
 	FScoreSavePopupState ScoreSavePopup;
 	FMessagePopupState MessagePopup;
 	FScoreboardPopupState ScoreboardPopup;
+	FOptionsPopupState OptionsPopup;
 };

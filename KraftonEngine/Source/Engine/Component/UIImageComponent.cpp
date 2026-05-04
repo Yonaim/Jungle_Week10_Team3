@@ -247,6 +247,7 @@ void UUIImageComponent::Serialize(FArchive& Ar)
 	Ar << AnchorOffset;
 	Ar << Tint;
 	Ar << BorderThickness;
+	Ar << bBottomBorderOnly;
 	Ar << BorderColor;
 	Ar << ZOrder;
 	Ar << FitMode;
@@ -288,6 +289,7 @@ void UUIImageComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPr
 	OutProps.push_back({ "Shadow Bottom Tint", EPropertyType::Color4, &ShadowBottomTint });
 	OutProps.push_back({ "Tint", EPropertyType::Color4, &Tint });
 	OutProps.push_back({ "Border Thickness", EPropertyType::Float, &BorderThickness, 0.0f, 128.0f, 0.1f });
+	OutProps.push_back({ "Bottom Border Only", EPropertyType::Bool, &bBottomBorderOnly });
 	OutProps.push_back({ "Border Color", EPropertyType::Color4, &BorderColor });
 	OutProps.push_back({ "Z Order", EPropertyType::Int, &ZOrder });
 	OutProps.push_back({ "Visible", EPropertyType::Bool, &bIsVisible });
@@ -414,10 +416,17 @@ void UUIImageComponent::ContributeVisuals(FScene& Scene) const
 		const float H = ResolvedSize.Y;
 		const float ClampedThickness = (std::min)(BorderThickness, (std::min)(W, H) * 0.5f);
 
-		Scene.AddScreenQuad(nullptr, FVector2(X, Y), FVector2(W, ClampedThickness), BorderColor, ZOrder + 1);
-		Scene.AddScreenQuad(nullptr, FVector2(X, Y + H - ClampedThickness), FVector2(W, ClampedThickness), BorderColor, ZOrder + 1);
-		Scene.AddScreenQuad(nullptr, FVector2(X, Y), FVector2(ClampedThickness, H), BorderColor, ZOrder + 1);
-		Scene.AddScreenQuad(nullptr, FVector2(X + W - ClampedThickness, Y), FVector2(ClampedThickness, H), BorderColor, ZOrder + 1);
+		Scene.AddScreenQuad(nullptr, FVector2(X, Y + H - ClampedThickness), FVector2(W, ClampedThickness), BorderColor, ZOrder + 1,
+			FVector2(0.0f, 0.0f), FVector2(1.0f, 1.0f), true);
+		if (!bBottomBorderOnly)
+		{
+			Scene.AddScreenQuad(nullptr, FVector2(X, Y), FVector2(W, ClampedThickness), BorderColor, ZOrder + 1,
+				FVector2(0.0f, 0.0f), FVector2(1.0f, 1.0f), true);
+			Scene.AddScreenQuad(nullptr, FVector2(X, Y), FVector2(ClampedThickness, H), BorderColor, ZOrder + 1,
+				FVector2(0.0f, 0.0f), FVector2(1.0f, 1.0f), true);
+			Scene.AddScreenQuad(nullptr, FVector2(X + W - ClampedThickness, Y), FVector2(ClampedThickness, H), BorderColor, ZOrder + 1,
+				FVector2(0.0f, 0.0f), FVector2(1.0f, 1.0f), true);
+		}
 	}
 }
 

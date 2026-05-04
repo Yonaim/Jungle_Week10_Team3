@@ -34,6 +34,7 @@ public:
 	virtual void OpenMessagePopup(const FString& InMessage) { (void)InMessage; }
 	virtual bool ConsumeMessagePopupConfirmed() { return false; }
 	virtual void OpenScoreboardPopup(const FString& InFilePath) { (void)InFilePath; }
+	virtual void OpenTitleOptionsPopup() {}
 	virtual bool IsScoreSavePopupOpen() const { return false; }
 	bool RequestSceneLoad(const FString& InSceneReference);
 

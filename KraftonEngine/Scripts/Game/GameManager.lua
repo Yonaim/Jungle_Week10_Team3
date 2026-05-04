@@ -51,6 +51,8 @@ local GameManager = {
 
     -- result_data는 GameOver 순간 결과창/다른 씬이 읽을 수 있게 보존하는 스냅샷입니다.
     result_data = nil,
+    dialogue_trigger_queue = {},
+    stability_low_triggered = false,
 }
 
 -- log는 디버그 로그 출력 공통 함수입니다. Config.debug.enable_log로 전체 on/off 합니다.
@@ -158,6 +160,16 @@ local function refresh_result_data(reason)
     return GameManager.result_data
 end
 
+local function queue_dialogue_trigger(trigger_name)
+    if type(trigger_name) ~= "string" or trigger_name == "" then
+        return false
+    end
+
+    GameManager.dialogue_trigger_queue[#GameManager.dialogue_trigger_queue + 1] = trigger_name
+    log("[GameManager] QueueDialogue trigger=" .. tostring(trigger_name))
+    return true
+end
+
 function GameManager.StartGame()
     -- StartGame은 한 런의 모든 HUD용 수치를 초기화하는 지점입니다.
     -- 비주얼/HUD 담당자가 "게임 시작 시 초기값"을 확인해야 하면 여기 값을 보면 됩니다.
@@ -179,10 +191,13 @@ function GameManager.StartGame()
     GameManager.coach_approval = Config.coach.initial_approval or 50
     refresh_coach_rank()
     GameManager.shield_count = 0
+    GameManager.dialogue_trigger_queue = {}
+    GameManager.stability_low_triggered = false
     refresh_result_data("Running")
 
     log("[GameManager] StartGame state=Running score=0 distance=0 elapsed_time=0")
     AudioManager.PlayBGM()
+    queue_dialogue_trigger("onRunStart")
 end
 
 function GameManager.Tick(dt, moved_distance)
@@ -240,6 +255,15 @@ function GameManager.SetStabilitySnapshot(stability, max_stability)
     -- PlayerStatus가 실제 값을 바꾼 직후 이 함수로 GameManager/HUD 수치를 동기화합니다.
     GameManager.max_stability = max_stability or GameManager.max_stability or Config.player.max_hp
     GameManager.stability = clamp(stability or GameManager.stability or GameManager.max_stability, 0, GameManager.max_stability)
+
+    local low_threshold = math.max(1, math.ceil((GameManager.max_stability or 1) * 0.34))
+    local is_low_stability = GameManager.stability > 0 and GameManager.stability <= low_threshold
+    if is_low_stability and not GameManager.stability_low_triggered then
+        GameManager.stability_low_triggered = true
+        queue_dialogue_trigger("onStabilityLow")
+    elseif not is_low_stability then
+        GameManager.stability_low_triggered = false
+    end
 end
 
 function GameManager.AddCoachApproval(amount, reason)
@@ -259,6 +283,7 @@ end
 function GameManager.OnLogCollected()
     -- Log Fragment를 먹었을 때 코치 인정도가 소폭 올라가는 이벤트입니다.
     GameManager.AddCoachApproval(Config.coach.log_collected_delta or 1, "LogCollected")
+    queue_dialogue_trigger("onCollectLog")
 end
 
 function GameManager.OnObstacleAvoided()
@@ -271,6 +296,11 @@ function GameManager.OnNearMiss()
     -- TODO: 장애물과 플레이어 사이의 최소 거리/시간을 계산할 수 있게 되면 여기서 호출하면 됨.
     -- 지금 마감 전에는 판정 로직까지 넣지 않음. 나중에 이 값으로 아슬아슬 회피 연출 붙이면 됨.
     GameManager.AddCoachApproval(Config.coach.near_miss_delta or 3, "NearMiss")
+    queue_dialogue_trigger("onNearMiss")
+end
+
+function GameManager.OnSpeedUp()
+    queue_dialogue_trigger("onSpeedUp")
 end
 
 function GameManager.OnCommandSuccess()
@@ -294,6 +324,7 @@ function GameManager.OnCrashDumpAnalyzed()
 end
 
 function GameManager.OnCrashDumpCollected()
+    queue_dialogue_trigger("onCollectCrashDump")
     -- Crash Dump를 한 개 주울 때마다 호출되는 훅입니다.
     -- FakeCrashEvent 등 외부 스크립트가 여기 hook을 덮어써서 매 픽업 연출을 붙입니다.
 end
@@ -301,6 +332,7 @@ end
 function GameManager.OnPlayerHit()
     -- 장애물 충돌 이벤트입니다. 여기서 화면 흔들림/위험 HUD 연출을 나중에 붙이면 됨.
     GameManager.AddCoachApproval(Config.coach.player_hit_delta or -5, "PlayerHit")
+    queue_dialogue_trigger("onHitObstacle")
 end
 
 function GameManager.ApplyHotfix()
@@ -310,6 +342,7 @@ function GameManager.ApplyHotfix()
     GameManager.hotfix_count = GameManager.hotfix_count + 1
     GameManager.AddScore(Config.collectible.hotfix_score or 1000, "Hotfix")
     GameManager.OnHotfixApplied()
+    queue_dialogue_trigger("onApplyHotfix")
     log("[GameManager] Hotfix applied count=" .. tostring(GameManager.hotfix_count))
 
     return {
@@ -326,6 +359,7 @@ function GameManager.ApplyCriticalAnalysis()
     GameManager.shield_count = GameManager.shield_count + (Config.collectible.critical_analysis_shield_reward or 1)
     GameManager.AddScore(Config.collectible.critical_analysis_score or 3000, "CriticalAnalysis")
     GameManager.OnCrashDumpAnalyzed()
+    queue_dialogue_trigger("onCriticalAnalysis")
     log(
         "[GameManager] CriticalAnalysis count=" .. tostring(GameManager.critical_analysis_count) ..
         " shield_count=" .. tostring(GameManager.shield_count)
@@ -351,6 +385,7 @@ function GameManager.CollectLogFragment()
     )
 
     if GameManager.trace >= (Config.collectible.trace_max or 100) then
+        queue_dialogue_trigger("onHotfixReady")
         return GameManager.ApplyHotfix()
     end
 
@@ -389,6 +424,7 @@ function GameManager.ConsumeShield()
     end
 
     GameManager.shield_count = GameManager.shield_count - 1
+    queue_dialogue_trigger("onShieldBlocked")
     log("[GameManager] Shield consumed remain=" .. tostring(GameManager.shield_count))
     return true
 end
@@ -401,6 +437,7 @@ function GameManager.GameOver(reason)
 
     GameManager.state = GameManager.State.GameOver
     refresh_result_data(reason)
+    queue_dialogue_trigger("onGameOver")
 
     log("[GameManager] GameOver reason=" .. tostring(reason or "Unknown"))
     AudioManager.PlayGameOver()
@@ -560,6 +597,23 @@ end
 function GameManager.ChangeLevel(level_name)
     -- TODO: 실제 결과창/씬 전환 흐름이 정해지면 여기서 안전하게 연결하면 됨.
     log("[GameManager] TODO ChangeLevel: " .. tostring(level_name))
+end
+
+function GameManager.QueueDialogueTrigger(trigger_name)
+    return queue_dialogue_trigger(trigger_name)
+end
+
+function GameManager.ConsumeDialogueTrigger()
+    if #GameManager.dialogue_trigger_queue <= 0 then
+        return nil
+    end
+
+    local trigger_name = table.remove(GameManager.dialogue_trigger_queue, 1)
+    if type(trigger_name) ~= "string" or trigger_name == "" then
+        return nil
+    end
+
+    return trigger_name
 end
 
 return GameManager

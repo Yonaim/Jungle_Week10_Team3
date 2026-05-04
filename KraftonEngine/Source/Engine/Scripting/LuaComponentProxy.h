@@ -74,6 +74,13 @@ struct FLuaComponentProxy
 	bool SetText(const FString& Text);
 	sol::optional<FString> GetText() const;
 
+	sol::optional<FVector> GetScreenPosition() const;
+	bool SetScreenPosition(const FVector& InScreenPosition);
+	bool SetScreenPositionXYZ(float X, float Y, float Z);
+	sol::optional<FVector> GetScreenSize() const;
+	bool SetScreenSize(const FVector& InScreenSize);
+	bool SetScreenSizeXYZ(float X, float Y, float Z);
+
 	bool SetTexture(const FString& TexturePath);
 	sol::optional<FString> GetTexturePath() const;
 	bool SetTint(const FVector& TintRGB);

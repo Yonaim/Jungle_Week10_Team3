@@ -292,9 +292,9 @@ void FScene::ClearFrameData()
 	LightVisualizationSettings = {};
 }
 
-void FScene::AddScreenText(FString Text, const FVector2& Position, float Scale, const FVector4& Color, const FFontResource* Font)
+void FScene::AddScreenText(FString Text, const FVector2& Position, float Scale, const FVector4& Color, const FFontResource* Font, float LineSpacing, float LetterSpacing)
 {
-	ScreenTexts.push_back({ std::move(Text), Position, Scale, Color, Font });
+	ScreenTexts.push_back({ std::move(Text), Position, Scale, Color, Font, LineSpacing, LetterSpacing });
 }
 
 void FScene::AddScreenQuad(ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, const FVector4& Color, int32 ZOrder,
@@ -306,7 +306,15 @@ void FScene::AddScreenQuad(ID3D11ShaderResourceView* TextureSRV, const FVector2&
 void FScene::AddScreenQuad(ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, const FVector4& TopColor, const FVector4& BottomColor, int32 ZOrder,
 	const FVector2& UVMin, const FVector2& UVMax, bool bSolidColorOnly)
 {
-	ScreenQuads.push_back({ TextureSRV, Position, Size, UVMin, UVMax, TopColor, BottomColor, ZOrder, bSolidColorOnly });
+	FVector4 ResolvedTopColor = TopColor;
+	FVector4 ResolvedBottomColor = BottomColor;
+	if (bSolidColorOnly)
+	{
+		ResolvedTopColor.W = (ResolvedTopColor.W > 0.0f) ? -ResolvedTopColor.W : ResolvedTopColor.W;
+		ResolvedBottomColor.W = (ResolvedBottomColor.W > 0.0f) ? -ResolvedBottomColor.W : ResolvedBottomColor.W;
+	}
+
+	ScreenQuads.push_back({ TextureSRV, Position, Size, UVMin, UVMax, ResolvedTopColor, ResolvedBottomColor, ZOrder, bSolidColorOnly });
 }
 
 void FScene::AddDebugAABB(const FVector& Min, const FVector& Max, const FColor& Color)

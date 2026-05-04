@@ -8,6 +8,8 @@ local GameManager = require("Game.GameManager")
 local PlayerStatus = require("Game.PlayerStatus")
 local AudioManager = require("Game.AudioManager")
 local PlayerSlide = require("Game.PlayerSlide")
+local ScenarioLoader = require("UI.ScenarioLoader")
+local DialogueUtils = require("UI.DialogueUtils")
 
 local PlayerConfig = Config.player
 local is_input_locked = false;
@@ -62,6 +64,7 @@ local fallback_half_height = PlayerConfig.fallback_half_height
 local fall_dead_z = PlayerConfig.fall_dead_z
 local hit_camera_shake_intensity = 2.0
 local hit_camera_shake_duration = 0.35
+local DIALOGUE_DATA_PATH = "Asset/Content/Data/Dialogues/play.dialogue.json"
 
 -- initial_location은 시작 위치 기록용입니다. 나중에 리스폰/디버그에서 쓰기 좋게 남깁니다.
 local initial_location = nil
@@ -76,6 +79,18 @@ local half_height_fallback_logged = false
 local previous_key_state = {}
 -- current_key_state는 이번 프레임에 확인한 키 상태를 임시로 모아두는 테이블입니다.
 local current_key_state = {}
+local coach_dialogue_actor = nil
+local coach_dialogue_speaker = nil
+local coach_dialogue_message = nil
+local coach_dialogue_window = nil
+local coach_dialogue_data = nil
+local coach_dialogue_entries_by_trigger = {}
+local coach_last_dialogue_id = nil
+
+local COACH_WINDOW_TEXTURES = {
+    BAEK_COMMANDER = "Asset/Content/Texture/UI/window_portrait_baek_0.png",
+    LIM_COMMANDER = "Asset/Content/Texture/UI/window_portrait_lim_0.png",
+}
 
 -- =========================================================
 -- 공통 유틸리티
@@ -170,6 +185,122 @@ local function finish_input_frame()
 
     previous_key_state = current_key_state
     current_key_state = {}
+end
+
+local function set_text(component, text)
+    if component and component.IsValid and component:IsValid() then
+        component:SetText(text or "")
+    end
+end
+
+local function set_texture(component, texture_path)
+    if component and component.IsValid and component:IsValid() and texture_path and texture_path ~= "" then
+        component:SetTexture(texture_path)
+    end
+end
+
+local function cache_coach_dialogue_components()
+    coach_dialogue_actor = find_actor("AUIRootActor_PlayerDevHUD")
+    if not (coach_dialogue_actor and coach_dialogue_actor.IsValid and coach_dialogue_actor:IsValid()) then
+        log("[PlayerController] Coach dialogue actor not found")
+        return false
+    end
+
+    coach_dialogue_speaker = coach_dialogue_actor:GetComponent("DialogueSpeakerName")
+    coach_dialogue_message = coach_dialogue_actor:GetComponent("DialogueMessage")
+    coach_dialogue_window = coach_dialogue_actor:GetComponent("DialogueWindowPortrait")
+    log("[PlayerController] Coach dialogue components cached")
+    return true
+end
+
+local function load_coach_dialogue_entries()
+    coach_dialogue_entries_by_trigger = {}
+    coach_dialogue_data = ScenarioLoader.load(DIALOGUE_DATA_PATH, load_json_file)
+
+    if type(coach_dialogue_data) ~= "table" or type(coach_dialogue_data.dialogues) ~= "table" then
+        log("[PlayerController] Coach dialogue data load failed path=" .. tostring(DIALOGUE_DATA_PATH))
+        return
+    end
+
+    for index = 1, #coach_dialogue_data.dialogues do
+        local entry = coach_dialogue_data.dialogues[index]
+        if type(entry) == "table"
+            and type(entry.trigger) == "string" and entry.trigger ~= ""
+            and type(entry.message) == "string" and entry.message ~= "" then
+            if type(coach_dialogue_entries_by_trigger[entry.trigger]) ~= "table" then
+                coach_dialogue_entries_by_trigger[entry.trigger] = {}
+            end
+            coach_dialogue_entries_by_trigger[entry.trigger][#coach_dialogue_entries_by_trigger[entry.trigger] + 1] = entry
+        end
+    end
+
+    log("[PlayerController] Coach dialogue entries loaded")
+end
+
+local function pick_coach_dialogue_entry(trigger_name)
+    local entries = coach_dialogue_entries_by_trigger[trigger_name]
+    if type(entries) ~= "table" or #entries <= 0 then
+        return nil
+    end
+
+    if #entries == 1 then
+        return entries[1]
+    end
+
+    local selected = nil
+    local guard = 0
+    repeat
+        selected = entries[math.random(1, #entries)]
+        guard = guard + 1
+    until not selected or selected.id ~= coach_last_dialogue_id or guard >= 8
+
+    return selected
+end
+
+local function apply_coach_dialogue(trigger_name)
+    if type(trigger_name) ~= "string" or trigger_name == "" then
+        return false
+    end
+
+    if not (coach_dialogue_actor and coach_dialogue_actor.IsValid and coach_dialogue_actor:IsValid()) then
+        if not cache_coach_dialogue_components() then
+            return false
+        end
+    end
+
+    local entry = pick_coach_dialogue_entry(trigger_name)
+    if not entry then
+        log("[PlayerController] No coach dialogue entry for trigger=" .. tostring(trigger_name))
+        return false
+    end
+
+    coach_last_dialogue_id = entry.id
+    set_text(coach_dialogue_speaker, ScenarioLoader.resolve_speaker_name(coach_dialogue_data, entry.speaker))
+    set_text(
+        coach_dialogue_message,
+        DialogueUtils.format_terminal_message(tostring(entry.message or ""), {
+            max_line_width_units = 27,
+            continuation_indent = "  ",
+        })
+    )
+    set_texture(coach_dialogue_window, COACH_WINDOW_TEXTURES[entry.speaker] or COACH_WINDOW_TEXTURES.BAEK_COMMANDER)
+    log("[PlayerController] Coach dialogue updated trigger=" .. tostring(trigger_name) .. " id=" .. tostring(entry.id))
+    return true
+end
+
+local function consume_coach_dialogue_triggers()
+    if not GameManager.ConsumeDialogueTrigger then
+        return
+    end
+
+    while true do
+        local trigger_name = GameManager.ConsumeDialogueTrigger()
+        if not trigger_name then
+            break
+        end
+
+        apply_coach_dialogue(trigger_name)
+    end
 end
 
 -- =========================================================
@@ -466,6 +597,10 @@ function BeginPlay()
     local audio_ok = AudioManager.Initialize(obj)
     log("[PlayerController] AudioManager.Initialize result=" .. tostring(audio_ok))
 
+    math.randomseed(math.floor(time() * 1000) % 2147483647)
+    cache_coach_dialogue_components()
+    load_coach_dialogue_entries()
+
     GameManager.StartGame()
     log("[PlayerController] GameManager.StartGame")
 
@@ -473,12 +608,15 @@ function BeginPlay()
     log("[PlayerController] PlayerStatus.ResetForStart")
 
     update_ground_state(0.0, true)
+    consume_coach_dialogue_triggers()
 end
 
 function Tick(dt)
     if GameManager.IsPaused and GameManager.IsPaused() then
         return
     end
+
+    consume_coach_dialogue_triggers()
 
     -- GameOver 이후에는 이동, 입력, 중력, score 갱신을 모두 멈춘다.
     -- 로그는 최초 1회만 남겨 Tick마다 콘솔이 도배되지 않게 한다.

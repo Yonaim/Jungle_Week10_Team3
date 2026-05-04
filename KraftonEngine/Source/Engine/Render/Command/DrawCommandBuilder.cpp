@@ -439,7 +439,9 @@ void FDrawCommandBuilder::PrepareDynamicGeometry(const FFrameContext& Frame, con
 				Frame.ViewportHeight,
 				Text.Color,
 				Text.Font,
-				Text.Scale
+				Text.Scale,
+				Text.LineSpacing,
+				Text.LetterSpacing
 			);
 		}
 	}

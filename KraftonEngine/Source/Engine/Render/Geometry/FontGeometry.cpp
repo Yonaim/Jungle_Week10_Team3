@@ -6,7 +6,6 @@ namespace
 	constexpr uint32 FallbackQuestionCodepoint = static_cast<uint32>('?');
 	constexpr uint32 NewLineCodepoint = static_cast<uint32>('\n');
 	constexpr uint32 CarriageReturnCodepoint = static_cast<uint32>('\r');
-	constexpr float MultiLineSpacingScale = 1.14f;
 	const FVector4 SolidMagentaColor(1.0f, 0.0f, 1.0f, 1.0f);
 
 	bool DecodeNextUtf8Codepoint(const uint8*& Ptr, const uint8* End, uint32& OutCodepoint)
@@ -133,11 +132,28 @@ bool FFontGeometry::HasGlyphForText(const FFontResource* Font, const FString& Te
 
 const FFontResource* FFontGeometry::ResolveFontForText(const FFontResource* PreferredFont, const FString& Text) const
 {
-	(void)Text;
+	if (PreferredFont && PreferredFont->IsLoaded() && HasGlyphForText(PreferredFont, Text))
+	{
+		return PreferredFont;
+	}
+
+	if (const FFontResource* UIFont = FResourceManager::Get().FindFont(FName("Default.Font.UI")))
+	{
+		if (UIFont->IsLoaded() && HasGlyphForText(UIFont, Text))
+		{
+			return UIFont;
+		}
+	}
+
 	const FFontResource* DefaultFont = FResourceManager::Get().FindFont(FName("Default"));
 	if (!PreferredFont || !PreferredFont->IsLoaded())
 	{
 		return (DefaultFont && DefaultFont->IsLoaded()) ? DefaultFont : PreferredFont;
+	}
+
+	if (DefaultFont && DefaultFont->IsLoaded() && HasGlyphForText(DefaultFont, Text))
+	{
+		return DefaultFont;
 	}
 
 	return PreferredFont;
@@ -307,7 +323,9 @@ void FFontGeometry::AddScreenText(const FString& Text,
 	float ViewportWidth, float ViewportHeight,
 	const FVector4& Color,
 	const FFontResource* Font,
-	float Scale)
+	float Scale,
+	float LineSpacing,
+	float LetterSpacing)
 {
 	if (Text.empty()) return;
 	if (ViewportWidth <= 0.0f || ViewportHeight <= 0.0f) return;
@@ -322,10 +340,11 @@ void FFontGeometry::AddScreenText(const FString& Text,
 	{
 		const float CharW = 23.0f * Scale;
 		const float CharH = 23.0f * Scale;
-		const float LetterSpacing = -0.5f * CharW;
+		const float EffectiveLineSpacing = (std::max)(0.0f, LineSpacing);
 		const uint32 IdxBase = static_cast<uint32>(ScreenIndices.size());
 		float CursorX = ScreenX;
 		float CursorY = ScreenY;
+		bool bHasGlyphInLine = false;
 
 		auto PixelToClipX = [ViewportWidth](float X) -> float
 			{
@@ -355,7 +374,8 @@ void FFontGeometry::AddScreenText(const FString& Text,
 			if (CP == NewLineCodepoint)
 			{
 				CursorX = ScreenX;
-				CursorY += CharH * MultiLineSpacingScale;
+				CursorY += CharH * EffectiveLineSpacing;
+				bHasGlyphInLine = false;
 				continue;
 			}
 
@@ -367,6 +387,11 @@ void FFontGeometry::AddScreenText(const FString& Text,
 
 			const FFontGlyph& Glyph = ResolvedGlyph.Glyph;
 			const FVector4 GlyphColor = ResolvedGlyph.bDrawSolidMagenta ? SolidMagentaColor : VertexColor;
+
+			if (bHasGlyphInLine)
+			{
+				CursorX += LetterSpacing;
+			}
 
 			const float Left = PixelToClipX(CursorX);
 			const float Right = PixelToClipX(CursorX + CharW);
@@ -386,7 +411,8 @@ void FFontGeometry::AddScreenText(const FString& Text,
 			ScreenIndices.push_back(Vi + 1);
 			ScreenIndices.push_back(Vi + 3);
 			ScreenIndices.push_back(Vi + 2);
-			CursorX += CharW + LetterSpacing;
+			CursorX += CharW;
+			bHasGlyphInLine = true;
 		}
 
 		const uint32 AddedIndexCount = static_cast<uint32>(ScreenIndices.size()) - IdxBase;
@@ -399,6 +425,7 @@ void FFontGeometry::AddScreenText(const FString& Text,
 
 	const float SourceLineHeight = (Font->bHasGlyphMetrics && Font->LineHeight > 0.0f) ? Font->LineHeight : 1.0f;
 	const float PixelScale = (23.0f * Scale) / SourceLineHeight;
+	const float EffectiveLineSpacing = (std::max)(0.0f, LineSpacing);
 	const uint32 IdxBase = static_cast<uint32>(ScreenIndices.size());
 
 	const uint8* Ptr = reinterpret_cast<const uint8*>(Text.c_str());
@@ -435,7 +462,7 @@ void FFontGeometry::AddScreenText(const FString& Text,
 		if (CP == NewLineCodepoint)
 		{
 			CursorX = ScreenX;
-			CursorY += SourceLineHeight * PixelScale * MultiLineSpacingScale;
+			CursorY += SourceLineHeight * PixelScale * EffectiveLineSpacing;
 			PrevCodepoint = 0;
 			bHasPrevCodepoint = false;
 			continue;
@@ -444,6 +471,7 @@ void FFontGeometry::AddScreenText(const FString& Text,
 		if (bHasPrevCodepoint)
 		{
 			CursorX += Font->GetKerning(PrevCodepoint, CP) * PixelScale;
+			CursorX += LetterSpacing;
 		}
 
 		FResolvedGlyph ResolvedGlyph;

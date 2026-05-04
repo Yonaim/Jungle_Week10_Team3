@@ -52,6 +52,8 @@ public:
 
 	float GetBorderThickness() const { return BorderThickness; }
 	void SetBorderThickness(float InBorderThickness) { BorderThickness = (std::max)(0.0f, InBorderThickness); }
+	bool IsBottomBorderOnly() const { return bBottomBorderOnly; }
+	void SetBottomBorderOnly(bool bInBottomBorderOnly) { bBottomBorderOnly = bInBottomBorderOnly; }
 
 	const FVector4& GetBorderColor() const { return BorderColor; }
 	void SetBorderColor(const FVector4& InBorderColor) { BorderColor = InBorderColor; }
@@ -125,6 +127,7 @@ protected:
 	FVector AnchorOffset = FVector(0.0f, 0.0f, 0.0f);
 	FVector4 Tint = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 	float BorderThickness = 0.0f;
+	bool bBottomBorderOnly = false;
 	FVector4 BorderColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 	int32 ZOrder = 0;
 	int32 FitMode = static_cast<int32>(EUIImageFitMode::Stretch);

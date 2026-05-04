@@ -682,6 +682,70 @@ sol::optional<FString> FLuaComponentProxy::GetText() const
 	return ScreenTextComponent->GetText();
 }
 
+sol::optional<FVector> FLuaComponentProxy::GetScreenPosition() const
+{
+	if (UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent()))
+	{
+		return ImageComponent->GetScreenPosition();
+	}
+
+	if (UUIScreenTextComponent* ScreenTextComponent = Cast<UUIScreenTextComponent>(GetComponent()))
+	{
+		return ScreenTextComponent->GetScreenPosition();
+	}
+
+	return sol::nullopt;
+}
+
+bool FLuaComponentProxy::SetScreenPosition(const FVector& InScreenPosition)
+{
+	if (UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent()))
+	{
+		ImageComponent->SetScreenPosition(InScreenPosition);
+		return true;
+	}
+
+	if (UUIScreenTextComponent* ScreenTextComponent = Cast<UUIScreenTextComponent>(GetComponent()))
+	{
+		ScreenTextComponent->SetScreenPosition(InScreenPosition);
+		return true;
+	}
+
+	return false;
+}
+
+bool FLuaComponentProxy::SetScreenPositionXYZ(float X, float Y, float Z)
+{
+	return SetScreenPosition(FVector(X, Y, Z));
+}
+
+sol::optional<FVector> FLuaComponentProxy::GetScreenSize() const
+{
+	if (UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent()))
+	{
+		return ImageComponent->GetScreenSize();
+	}
+
+	return sol::nullopt;
+}
+
+bool FLuaComponentProxy::SetScreenSize(const FVector& InScreenSize)
+{
+	UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent());
+	if (!ImageComponent)
+	{
+		return false;
+	}
+
+	ImageComponent->SetScreenSize(InScreenSize);
+	return true;
+}
+
+bool FLuaComponentProxy::SetScreenSizeXYZ(float X, float Y, float Z)
+{
+	return SetScreenSize(FVector(X, Y, Z));
+}
+
 bool FLuaComponentProxy::SetTexture(const FString& TexturePath)
 {
 	UUIImageComponent* ImageComponent = Cast<UUIImageComponent>(GetComponent());

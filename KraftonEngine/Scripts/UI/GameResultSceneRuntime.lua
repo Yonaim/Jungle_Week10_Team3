@@ -31,7 +31,9 @@ local PREVIEW_RESULT_DATA = {
 
 local result_data = nil
 local title_text = nil
-local body_text = nil
+local result_keys_text = nil
+local result_values_text = nil
+local coach_comments_text = nil
 local status_text = nil
 local save_button = nil
 local rank_badge = nil
@@ -143,13 +145,19 @@ local function resolve_result_data()
     return build_fallback_result_data()
 end
 
-local function format_metric_line(label, value)
-    local target_width = 19
-    local padding = target_width - #label
-    if padding < 2 then
-        padding = 2
-    end
-    return label .. string.rep(" ", padding) .. value
+local function build_metric_rows(data)
+    local trace_max = (Config.collectible and Config.collectible.trace_max) or 100
+    local dumps_required = (Config.collectible and Config.collectible.crash_dump_required) or 3
+
+    return {
+        { key = "SCORE", value = format_number(data.score or 0) },
+        { key = "COLLECTED LOGS", value = format_number(data.logs or 0) },
+        { key = "TRACE DATA", value = format_percent(data.trace or 0, trace_max) },
+        { key = "CRASH DUMPS", value = format_number(data.dumps or 0) .. "/" .. format_number(dumps_required) },
+        { key = "HOTFIX APPLIED", value = tostring(math.floor(data.hotfix_count or 0)) },
+        { key = "CRITICAL ANALYSIS", value = tostring(math.floor(data.critical_analysis_count or 0)) },
+        { key = "DISTANCE", value = format_number(data.distance or 0) .. "m" },
+    }
 end
 
 local function normalize_rank(rank_code)
@@ -164,8 +172,8 @@ end
 local function load_coach_dialogues(data)
     local screen_config = Config.result_screen or {}
     local result = {
-        baek_name = screen_config.coach_name_baek or "백승현 사령관",
-        lim_name = screen_config.coach_name_lim or "임창근 사령관",
+        baek_name = screen_config.coach_name_baek or "백 사령관",
+        lim_name = screen_config.coach_name_lim or "임 오퍼레이터",
         baek_message = screen_config.coach_comment_baek or "",
         lim_message = screen_config.coach_comment_lim or "",
     }
@@ -191,29 +199,34 @@ local function load_coach_dialogues(data)
     return result
 end
 
-local function build_result_body(data)
+local function build_result_keys_text(data)
+    local rows = build_metric_rows(data)
+    local lines = {}
+    for index = 1, #rows do
+        lines[index] = rows[index].key
+    end
+
+    return table.concat(lines, "\n")
+end
+
+local function build_result_values_text(data)
+    local rows = build_metric_rows(data)
+    local lines = {}
+    for index = 1, #rows do
+        lines[index] = rows[index].value
+    end
+
+    return table.concat(lines, "\n")
+end
+
+local function build_coach_comments_text(data)
     local coach_dialogues = load_coach_dialogues(data)
-    local coach_rank = tostring(data.coach_rank or "C")
-    local trace_max = (Config.collectible and Config.collectible.trace_max) or 100
-    local dumps_required = (Config.collectible and Config.collectible.crash_dump_required) or 3
 
     return table.concat({
-        "",
-        format_metric_line("SCORE", format_number(data.score or 0)),
-        format_metric_line("COLLECTED LOGS", format_number(data.logs or 0)),
-        format_metric_line("TRACE DATA", format_percent(data.trace or 0, trace_max)),
-        format_metric_line("CRASH DUMPS", format_number(data.dumps or 0) .. "/" .. format_number(dumps_required)),
-        format_metric_line("POD STABILITY", format_percent(data.stability or 0, data.max_stability or 0)),
-        format_metric_line("HOTFIX APPLIED", tostring(math.floor(data.hotfix_count or 0))),
-        format_metric_line("CRITICAL ANALYSIS", tostring(math.floor(data.critical_analysis_count or 0))),
-        format_metric_line("DISTANCE", format_number(data.distance or 0) .. "m"),
-        "",
-        format_metric_line("COACH RANK", coach_rank),
-        "",
-        tostring(coach_dialogues.baek_name) .. ":",
+        tostring(coach_dialogues.baek_name),
         "\"" .. tostring(coach_dialogues.baek_message or "") .. "\"",
         "",
-        tostring(coach_dialogues.lim_name) .. ":",
+        tostring(coach_dialogues.lim_name),
         "\"" .. tostring(coach_dialogues.lim_message or "") .. "\"",
     }, "\n")
 end
@@ -227,7 +240,9 @@ function BeginPlay()
     play_sfx("Sound.SFX.canceled.sound.effect", false)
 
     title_text = get_component("ResultTitle", "UUIScreenTextComponent_0")
-    body_text = get_component("ResultBody", "UUIScreenTextComponent_1")
+    result_keys_text = get_component("ResultKeys", "UUIScreenTextComponent_1")
+    result_values_text = get_component("ResultValues", "UUIScreenTextComponent_3")
+    coach_comments_text = get_component("CoachComments", "UUIScreenTextComponent_4")
     rank_badge = get_component("RankBadge", "UUIImageComponent_1")
     status_text = get_component("SaveStatusText", "UUIScreenTextComponent_2")
     save_button = get_component("SaveScoreButton", "UIButtonComponent_0")
@@ -235,8 +250,14 @@ function BeginPlay()
     if not title_text then
         warn("GameResultScene missing ResultTitle component")
     end
-    if not body_text then
-        warn("GameResultScene missing ResultBody component")
+    if not result_keys_text then
+        warn("GameResultScene missing ResultKeys component")
+    end
+    if not result_values_text then
+        warn("GameResultScene missing ResultValues component")
+    end
+    if not coach_comments_text then
+        warn("GameResultScene missing CoachComments component")
     end
     if not rank_badge then
         warn("GameResultScene missing RankBadge component")
@@ -244,7 +265,9 @@ function BeginPlay()
 
     result_data = resolve_result_data()
     set_text(title_text, (Config.result_screen and Config.result_screen.title) or "DEBUG SESSION RESULT")
-    set_text(body_text, build_result_body(result_data))
+    set_text(result_keys_text, build_result_keys_text(result_data))
+    set_text(result_values_text, build_result_values_text(result_data))
+    set_text(coach_comments_text, build_coach_comments_text(result_data))
     set_texture(rank_badge, resolve_rank_texture(result_data and result_data.coach_rank))
     set_text(status_text, preview_mode and "PREVIEW SAMPLE DATA" or "")
     set_label(save_button, "SAVE SCORE")
