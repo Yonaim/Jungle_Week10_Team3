@@ -80,7 +80,7 @@ void AMapManager::BuildTemplateLibrary() {
 				for (int32 DecisionIndex = 0; DecisionIndex < static_cast<int32>(EObstacleDecision::Count); ++DecisionIndex)
 				{
 					EObstacleDecision Decision = static_cast<EObstacleDecision>(DecisionIndex);
-					if (/*Decision == EObstacleDecision::MustJump || */Decision == EObstacleDecision::MustSlide)
+					if (Decision == EObstacleDecision::Pendulum || Decision == EObstacleDecision::MustSlide)
 						Slot.AllowedDecisions.push_back(static_cast<EObstacleDecision>(DecisionIndex));
 				}
 				Template.ObstacleSlotDecisions.push_back(Slot);

@@ -19,5 +19,4 @@ void APendulumObstacleActor::InitDefaultComponents(const FString& UStaticMeshFil
 	if (!Pendulum) return;
 
 	Pendulum->SetUpdatedComponent(RootComponent);
-	Pendulum->
 }
