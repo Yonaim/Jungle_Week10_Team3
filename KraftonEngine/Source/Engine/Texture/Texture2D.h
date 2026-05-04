@@ -2,6 +2,7 @@
 
 #include "Object/Object.h"
 #include "Core/CoreTypes.h"
+#include "Engine/Platform/DirectoryWatcher.h"
 
 #include <filesystem>
 #include <map>
@@ -34,6 +35,7 @@ public:
 
 	// 캐시된 모든 텍스처의 GPU 리소스 해제 (Shutdown 시 Device 해제 전 호출)
 	static void ReleaseAllGPU();
+	static void RefreshChangedTextures(ID3D11Device* Device);
 	static void ScanTextureAssets();
 	static const TArray<FTextureAssetListItem>& GetAvailableTextureFiles();
 	static bool IsSupportedTextureExtension(const std::filesystem::path& Path);
@@ -61,4 +63,11 @@ private:
 	// path → UTexture2D* 캐시 (소유권은 UObjectManager)
 	static std::map<FString, UTexture2D*> TextureCache;
 	static TArray<FTextureAssetListItem> AvailableTextureFiles;
+	static bool bTextureAssetListDirty;
+	static FWatchID TextureAssetWatchID;
+	static FSubscriptionID TextureAssetWatchSub;
+	static bool bTextureAssetWatcherInitialized;
+
+	static void EnsureTextureAssetWatcher();
+	static void MarkTextureAssetListDirty();
 };

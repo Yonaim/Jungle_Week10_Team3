@@ -645,6 +645,125 @@ namespace
         }
     }
 
+    FString MakeUniqueComponentName(AActor* Actor, const FString& DesiredName)
+    {
+        FString BaseName = DesiredName;
+        if (BaseName.empty())
+        {
+            BaseName = "Component";
+        }
+
+        if (!Actor)
+        {
+            return BaseName;
+        }
+
+        std::set<FString> ExistingNames;
+        for (UActorComponent* ExistingComponent : Actor->GetComponents())
+        {
+            if (!ExistingComponent)
+            {
+                continue;
+            }
+
+            FString ExistingName = ExistingComponent->GetFName().ToString();
+            if (!ExistingName.empty())
+            {
+                ExistingNames.insert(ExistingName);
+            }
+        }
+
+        if (!ExistingNames.count(BaseName))
+        {
+            return BaseName;
+        }
+
+        int32 Suffix = 1;
+        while (true)
+        {
+            const FString CandidateName = BaseName + "_" + std::to_string(Suffix++);
+            if (!ExistingNames.count(CandidateName))
+            {
+                return CandidateName;
+            }
+        }
+    }
+
+    FString BuildDuplicatedComponentName(AActor* Actor, UActorComponent* SourceComponent)
+    {
+        if (!SourceComponent)
+        {
+            return MakeUniqueComponentName(Actor, "Component_Copy");
+        }
+
+        FString SourceName = SourceComponent->GetFName().ToString();
+        if (SourceName.empty())
+        {
+            SourceName = SourceComponent->GetClass() ? SourceComponent->GetClass()->GetName() : "Component";
+        }
+
+        return MakeUniqueComponentName(Actor, SourceName + "_Copy");
+    }
+
+    USceneComponent* DuplicateSceneComponentSubtree(AActor* Actor, USceneComponent* SourceComponent, USceneComponent* DuplicateParent)
+    {
+        if (!Actor || !SourceComponent)
+        {
+            return nullptr;
+        }
+
+        USceneComponent* DuplicatedComponent = Cast<USceneComponent>(SourceComponent->Duplicate(Actor));
+        if (!DuplicatedComponent)
+        {
+            return nullptr;
+        }
+
+        DuplicatedComponent->SetOwner(Actor);
+        DuplicatedComponent->SetFName(FName(BuildDuplicatedComponentName(Actor, SourceComponent)));
+        if (DuplicateParent)
+        {
+            DuplicatedComponent->AttachToComponent(DuplicateParent);
+        }
+
+        Actor->RegisterComponent(DuplicatedComponent);
+
+        for (USceneComponent* ChildComponent : SourceComponent->GetChildren())
+        {
+            DuplicateSceneComponentSubtree(Actor, ChildComponent, DuplicatedComponent);
+        }
+
+        return DuplicatedComponent;
+    }
+
+    UActorComponent* DuplicateComponentForActor(AActor* Actor, UActorComponent* SourceComponent)
+    {
+        if (!Actor || !SourceComponent)
+        {
+            return nullptr;
+        }
+
+        if (USceneComponent* SceneComponent = Cast<USceneComponent>(SourceComponent))
+        {
+            USceneComponent* DuplicateParent = SceneComponent->GetParent();
+            if (!DuplicateParent)
+            {
+                DuplicateParent = Actor->GetRootComponent();
+            }
+            return DuplicateSceneComponentSubtree(Actor, SceneComponent, DuplicateParent);
+        }
+
+        UActorComponent* DuplicatedComponent = Cast<UActorComponent>(SourceComponent->Duplicate(Actor));
+        if (!DuplicatedComponent)
+        {
+            return nullptr;
+        }
+
+        DuplicatedComponent->SetOwner(Actor);
+        DuplicatedComponent->SetFName(FName(BuildDuplicatedComponentName(Actor, SourceComponent)));
+        Actor->RegisterComponent(DuplicatedComponent);
+        return DuplicatedComponent;
+    }
+
     struct FComponentClassGroup
     {
         const char      *Label = nullptr;
@@ -779,6 +898,18 @@ namespace
             return IsAnchoredLayoutEnabledForDetails(Component);
         }
 
+        if (const UUIImageComponent* ImageComponent = dynamic_cast<const UUIImageComponent*>(Component))
+        {
+            if (Prop.Name == "Shadow Offset"
+                || Prop.Name == "Shadow Blur"
+                || Prop.Name == "Shadow Tint"
+                || Prop.Name == "Shadow Top Tint"
+                || Prop.Name == "Shadow Bottom Tint")
+            {
+                return ImageComponent->IsShadowEnabled();
+            }
+        }
+
         return true;
     }
 
@@ -808,25 +939,29 @@ namespace
         {
             return 4;
         }
-        if (strcmp(SectionName, "Content") == 0)
+        if (strcmp(SectionName, "Shadow") == 0)
         {
             return 5;
         }
-        if (strcmp(SectionName, "Behavior") == 0)
+        if (strcmp(SectionName, "Content") == 0)
         {
             return 6;
         }
-        if (strcmp(SectionName, "Layout") == 0)
+        if (strcmp(SectionName, "Behavior") == 0)
         {
             return 7;
         }
-        if (strcmp(SectionName, "Materials") == 0)
+        if (strcmp(SectionName, "Layout") == 0)
         {
             return 8;
         }
-        if (strcmp(SectionName, "Static Mesh") == 0)
+        if (strcmp(SectionName, "Materials") == 0)
         {
             return 9;
+        }
+        if (strcmp(SectionName, "Static Mesh") == 0)
+        {
+            return 10;
         }
         return 50;
     }
@@ -1240,6 +1375,7 @@ FString FEditorDetailsWidget::GetPropertySectionName(const FPropertyDescriptor &
 
         if (Prop.Name == "Draw Shadow"
             || Prop.Name == "Shadow Offset"
+            || Prop.Name == "Shadow Blur"
             || Prop.Name == "Shadow Tint"
             || Prop.Name == "Shadow Top Tint"
             || Prop.Name == "Shadow Bottom Tint")
@@ -2385,10 +2521,13 @@ void FEditorPropertyWidget::RenderComponentContextMenu(AActor *Actor, UActorComp
     {
         SelectedComponent = Component;
         bActorSelected = false;
-        if (USceneComponent *SceneComponent = Cast<USceneComponent>(Component))
-        {
-            EditorEngine->GetSelectionManager().SelectComponent(SceneComponent);
-        }
+        SyncDetailsComponentSelection(EditorEngine, Component);
+    }
+
+    if (DrawIconLabelButton("##DuplicateComponentContext", "Editor.Icon.Component", "Duplicate", "Duplicate Component", ImVec2(120.0f, 0.0f)))
+    {
+        DuplicateSelectedComponent(Actor);
+        ImGui::CloseCurrentPopup();
     }
 
     const bool bCanDelete = Component->CanDeleteFromDetails();
@@ -2426,6 +2565,28 @@ void FEditorPropertyWidget::DeleteSelectedComponent(AActor *Actor)
     EditorEngine->CommitTrackedSceneChange();
 }
 
+void FEditorPropertyWidget::DuplicateSelectedComponent(AActor* Actor)
+{
+    if (!Actor || !SelectedComponent)
+    {
+        return;
+    }
+
+    EditorEngine->BeginTrackedSceneChange();
+    UActorComponent* DuplicatedComponent = DuplicateComponentForActor(Actor, SelectedComponent);
+    if (DuplicatedComponent)
+    {
+        SelectedComponent = DuplicatedComponent;
+        bActorSelected = false;
+        SyncDetailsComponentSelection(EditorEngine, DuplicatedComponent);
+        if (EditorEngine->GetGizmo())
+        {
+            EditorEngine->GetGizmo()->UpdateGizmoTransform();
+        }
+    }
+    EditorEngine->CommitTrackedSceneChange();
+}
+
 void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArray<AActor *> &SelectedActors)
 {
     // PropertyDescriptor 기반 자동 위젯 렌더링
@@ -2443,6 +2604,7 @@ void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArra
     TArray<int32>     ContentIndices;
     TArray<int32>     AppearanceIndices;
     TArray<int32>     BackgroundIndices;
+    TArray<int32>     ShadowIndices;
     TArray<int32>     VisibilityIndices;
     TArray<int32>     BehaviorIndices;
     TArray<int32>     DefaultIndices;
@@ -2478,6 +2640,10 @@ void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArra
         {
             BackgroundIndices.push_back(i);
         }
+        else if (SectionName == "Shadow")
+        {
+            ShadowIndices.push_back(i);
+        }
         else if (SectionName == "Visibility")
         {
             VisibilityIndices.push_back(i);
@@ -2507,6 +2673,8 @@ void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArra
         AvailableSections.push_back("Appearance");
     if (!BackgroundIndices.empty())
         AvailableSections.push_back("Background");
+    if (!ShadowIndices.empty())
+        AvailableSections.push_back("Shadow");
     if (!VisibilityIndices.empty())
         AvailableSections.push_back("Visibility");
     if (!BehaviorIndices.empty())
@@ -2615,6 +2783,14 @@ void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArra
             {
                 bRenderedAnySection = true;
                 RenderPropertySection("Background", Props, BackgroundIndices, SelectedActors, bAnyChanged);
+            }
+        }
+        else if (strcmp(SectionName, "Shadow") == 0)
+        {
+            if (ShouldDisplaySection("Shadow", Props, ShadowIndices))
+            {
+                bRenderedAnySection = true;
+                RenderPropertySection("Shadow", Props, ShadowIndices, SelectedActors, bAnyChanged);
             }
         }
         else if (strcmp(SectionName, "Visibility") == 0)
@@ -2875,6 +3051,7 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Pr
     {
         float *Val = static_cast<float *>(Prop.ValuePtr);
         const bool bIsScreenSizeProperty = Prop.Name == "ScreenSize" || Prop.Name == "Screen Size";
+        const bool bIsShadowOffsetProperty = Prop.Name == "Shadow Offset";
         const bool bIsCanvasSizeProperty = SelectedComponent
             && SelectedComponent->IsA<UCanvasRootComponent>()
             && (Prop.Name == "CanvasSize" || Prop.Name == "Canvas Size");
@@ -2890,7 +3067,7 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Pr
         {
             ResetValues = DefaultCanvasSizeReset;
         }
-        bChanged = bIsScreenSizeProperty
+        bChanged = (bIsScreenSizeProperty || bIsShadowOffsetProperty)
             ? DrawColoredFloat2(Label, Val, Prop.Speed, true, ResetValues)
             : DrawColoredFloat3(Label, Val, Prop.Speed, true, ResetValues);
         if (bIsCanvasSizeProperty)
@@ -2949,7 +3126,7 @@ bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Pr
     {
         float *Val = static_cast<float *>(Prop.ValuePtr);
         bChanged = DrawLabeledField(Label, [&]()
-                                    { return ImGui::ColorEdit4("##Value", Val, ImGuiColorEditFlags_DisplayRGB); });
+                                    { return ImGui::ColorEdit4("##Value", Val, ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf); });
         break;
     }
     case EPropertyType::String:

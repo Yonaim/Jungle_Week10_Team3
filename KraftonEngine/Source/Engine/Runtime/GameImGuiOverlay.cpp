@@ -21,6 +21,38 @@ namespace
 	constexpr ImVec4 ScorePopupTitle = ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
 	constexpr ImVec4 ScorePopupBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
 	constexpr ImVec4 ScorePopupDim = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+	constexpr ImVec4 ScoreboardWindowBg = ImVec4(10.0f / 255.0f, 16.0f / 255.0f, 14.0f / 255.0f, 0.98f);
+	constexpr ImVec4 ScoreboardTitleBg = ImVec4(16.0f / 255.0f, 27.0f / 255.0f, 24.0f / 255.0f, 1.0f);
+	constexpr ImVec4 ScoreboardBorder = ImVec4(42.0f / 255.0f, 98.0f / 255.0f, 78.0f / 255.0f, 0.85f);
+	constexpr ImVec4 ScoreboardPanel = ImVec4(12.0f / 255.0f, 21.0f / 255.0f, 18.0f / 255.0f, 0.96f);
+	constexpr ImVec4 ScoreboardPanelAlt = ImVec4(15.0f / 255.0f, 29.0f / 255.0f, 25.0f / 255.0f, 0.96f);
+	constexpr ImVec4 ScoreboardAccent = ImVec4(112.0f / 255.0f, 241.0f / 255.0f, 170.0f / 255.0f, 1.0f);
+	constexpr ImVec4 ScoreboardAccentSoft = ImVec4(112.0f / 255.0f, 241.0f / 255.0f, 170.0f / 255.0f, 0.25f);
+	constexpr ImVec4 ScoreboardText = ImVec4(214.0f / 255.0f, 239.0f / 255.0f, 226.0f / 255.0f, 1.0f);
+	constexpr ImVec4 ScoreboardTextDim = ImVec4(129.0f / 255.0f, 171.0f / 255.0f, 153.0f / 255.0f, 1.0f);
+	constexpr ImVec4 ScoreboardWarning = ImVec4(255.0f / 255.0f, 145.0f / 255.0f, 102.0f / 255.0f, 1.0f);
+	constexpr ImVec4 ScoreboardDanger = ImVec4(255.0f / 255.0f, 97.0f / 255.0f, 97.0f / 255.0f, 1.0f);
+
+	ImVec4 GetScoreboardRankColor(size_t Index)
+	{
+		if (Index == 0)
+		{
+			return ImVec4(255.0f / 255.0f, 209.0f / 255.0f, 102.0f / 255.0f, 1.0f);
+		}
+
+		if (Index == 1)
+		{
+			return ImVec4(186.0f / 255.0f, 204.0f / 255.0f, 214.0f / 255.0f, 1.0f);
+		}
+
+		if (Index == 2)
+		{
+			return ImVec4(218.0f / 255.0f, 158.0f / 255.0f, 107.0f / 255.0f, 1.0f);
+		}
+
+		return ScoreboardText;
+	}
 }
 
 bool FGameImGuiOverlay::IsAlphabetCharacter(char Character)
@@ -402,64 +434,131 @@ void FGameImGuiOverlay::RenderScoreboardPopup(const FRect* AnchorRect)
 
 	ImGui::SetNextWindowPos(PopupCenter, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 	ImGui::SetNextWindowSize(ImVec2(960.0f, 560.0f), ImGuiCond_Appearing);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-	ImGui::PushStyleColor(ImGuiCol_PopupBg, ScorePopupSurface);
-	ImGui::PushStyleColor(ImGuiCol_TitleBg, ScorePopupTitle);
-	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ScorePopupTitle);
-	ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ScorePopupTitle);
-	ImGui::PushStyleColor(ImGuiCol_Border, ScorePopupBorder);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 16.0f));
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, ScoreboardWindowBg);
+	ImGui::PushStyleColor(ImGuiCol_TitleBg, ScoreboardTitleBg);
+	ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ScoreboardTitleBg);
+	ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, ScoreboardTitleBg);
+	ImGui::PushStyleColor(ImGuiCol_Border, ScoreboardBorder);
 	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ScorePopupDim);
+	ImGui::PushStyleColor(ImGuiCol_Text, ScoreboardText);
+	ImGui::PushStyleColor(ImGuiCol_TextDisabled, ScoreboardTextDim);
+	ImGui::PushStyleColor(ImGuiCol_Button, ScoreboardPanelAlt);
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(24.0f / 255.0f, 51.0f / 255.0f, 42.0f / 255.0f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(32.0f / 255.0f, 68.0f / 255.0f, 56.0f / 255.0f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, ScoreboardPanel);
+	ImGui::PushStyleColor(ImGuiCol_Header, ScoreboardAccentSoft);
+	ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(112.0f / 255.0f, 241.0f / 255.0f, 170.0f / 255.0f, 0.35f));
+	ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(112.0f / 255.0f, 241.0f / 255.0f, 170.0f / 255.0f, 0.45f));
+	ImGui::PushStyleColor(ImGuiCol_TableBorderStrong, ScoreboardBorder);
+	ImGui::PushStyleColor(ImGuiCol_TableBorderLight, ScoreboardAccentSoft);
+	ImGui::PushStyleColor(ImGuiCol_TableRowBg, ScoreboardPanel);
+	ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ScoreboardPanelAlt);
 
-	if (ImGui::BeginPopupModal("Scoreboard", nullptr, ImGuiWindowFlags_NoResize))
+	bool bKeepOpen = true;
+	if (ImGui::BeginPopupModal("Scoreboard", &bKeepOpen, ImGuiWindowFlags_NoResize))
 	{
-		ImGui::TextUnformatted("SCOREBOARD");
-		ImGui::Separator();
+		bool bShouldClose = !bKeepOpen;
+
+		ImGui::PushStyleColor(ImGuiCol_ChildBg, ScoreboardTitleBg);
+		if (ImGui::BeginChild("##ScoreboardHeader", ImVec2(0.0f, 82.0f), true, ImGuiWindowFlags_NoScrollbar))
+		{
+			ImGui::TextColored(ScoreboardAccent, "> scoreboard.exe");
+			ImGui::TextColored(ScoreboardTextDim, "[runtime] displaying top dive operators");
+
+			const float CloseButtonWidth = 38.0f;
+			ImGui::SameLine(ImGui::GetWindowWidth() - CloseButtonWidth - 12.0f);
+			ImGui::PushStyleColor(ImGuiCol_Text, ScoreboardDanger);
+			if (ImGui::Button("X", ImVec2(CloseButtonWidth, 28.0f)))
+			{
+				bShouldClose = true;
+			}
+			ImGui::PopStyleColor();
+
+			ImGui::Spacing();
+			ImGui::TextColored(ScoreboardTextDim, "root@enginedive:~$ cat /saves/scoreboard.json | sort --numeric --reverse");
+		}
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+
+		ImGui::Spacing();
 
 		if (!ScoreboardPopup.ErrorMessage.empty())
 		{
-			ImGui::TextWrapped("%s", ScoreboardPopup.ErrorMessage.c_str());
+			ImGui::PushStyleColor(ImGuiCol_Text, ScoreboardWarning);
+			ImGui::TextWrapped("[error] %s", ScoreboardPopup.ErrorMessage.c_str());
+			ImGui::PopStyleColor();
 		}
 		else if (ScoreboardPopup.Entries.empty())
 		{
-			ImGui::TextUnformatted("No saved scores yet.");
+			ImGui::TextColored(ScoreboardTextDim, "[log] no saved scores found.");
 		}
-		else if (ImGui::BeginTable("##ScoreboardTable", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
+		else
 		{
-			ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 60.0f);
-			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-			ImGui::TableSetupColumn("Score", ImGuiTableColumnFlags_WidthFixed, 110.0f);
-			ImGui::TableSetupColumn("Logs", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-			ImGui::TableSetupColumn("Hotfix", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-			ImGui::TableSetupColumn("Crash", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-			ImGui::TableSetupColumn("Depth / Rank");
-			ImGui::TableHeadersRow();
-
-			for (size_t Index = 0; Index < ScoreboardPopup.Entries.size(); ++Index)
+			if (ImGui::BeginChild("##ScoreboardBody", ImVec2(0.0f, -52.0f), true))
 			{
-				const FScoreboardEntry& Entry = ScoreboardPopup.Entries[Index];
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("%d", static_cast<int>(Index + 1));
-				ImGui::TableSetColumnIndex(1);
-				ImGui::TextUnformatted(Entry.Nickname.c_str());
-				ImGui::TableSetColumnIndex(2);
-				ImGui::Text("%d", Entry.Score);
-				ImGui::TableSetColumnIndex(3);
-				ImGui::Text("%d", Entry.Logs);
-				ImGui::TableSetColumnIndex(4);
-				ImGui::Text("%d", Entry.HotfixCount);
-				ImGui::TableSetColumnIndex(5);
-				ImGui::Text("%d", Entry.CrashDumpAnalysisCount);
-				ImGui::TableSetColumnIndex(6);
-				ImGui::Text("%dm / %s", Entry.MaxDepthM, Entry.CoachRank.c_str());
+				ImGui::TextColored(ScoreboardAccent, "TOTAL_ENTRIES=%d", static_cast<int32>(ScoreboardPopup.Entries.size()));
+				ImGui::Separator();
+
+				if (ImGui::BeginTable("##ScoreboardTable", 7, ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp))
+				{
+					ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 54.0f);
+					ImGui::TableSetupColumn("HANDLE", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+					ImGui::TableSetupColumn("SCORE", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+					ImGui::TableSetupColumn("LOG", ImGuiTableColumnFlags_WidthFixed, 72.0f);
+					ImGui::TableSetupColumn("PATCH", ImGuiTableColumnFlags_WidthFixed, 84.0f);
+					ImGui::TableSetupColumn("CRASH", ImGuiTableColumnFlags_WidthFixed, 84.0f);
+					ImGui::TableSetupColumn("DEPTH / RANK");
+					ImGui::TableHeadersRow();
+
+					for (size_t Index = 0; Index < ScoreboardPopup.Entries.size(); ++Index)
+					{
+						const FScoreboardEntry& Entry = ScoreboardPopup.Entries[Index];
+						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextColored(GetScoreboardRankColor(Index), "#%02d", static_cast<int>(Index + 1));
+
+						ImGui::TableSetColumnIndex(1);
+						ImGui::Text("> %s", Entry.Nickname.c_str());
+
+						ImGui::TableSetColumnIndex(2);
+						ImGui::TextColored(ScoreboardAccent, "%d", Entry.Score);
+
+						ImGui::TableSetColumnIndex(3);
+						ImGui::Text("%d", Entry.Logs);
+
+						ImGui::TableSetColumnIndex(4);
+						ImGui::Text("%d", Entry.HotfixCount);
+
+						ImGui::TableSetColumnIndex(5);
+						ImGui::Text("%d", Entry.CrashDumpAnalysisCount);
+
+						ImGui::TableSetColumnIndex(6);
+						ImGui::Text("%dm  |  %s", Entry.MaxDepthM, Entry.CoachRank.c_str());
+					}
+
+					ImGui::EndTable();
+				}
 			}
 
-			ImGui::EndTable();
+			ImGui::EndChild();
 		}
 
 		ImGui::Spacing();
-		if (ImGui::Button("Close", ImVec2(140.0f, 0.0f)))
+		ImGui::TextColored(ScoreboardTextDim, "press X or CLOSE_SESSION to dismiss");
+		ImGui::SameLine();
+		if (ImGui::Button("CLOSE_SESSION", ImVec2(180.0f, 0.0f)))
+		{
+			bShouldClose = true;
+		}
+
+		if (bShouldClose)
 		{
 			ScoreboardPopup.bPopupOpen = false;
 			ImGui::CloseCurrentPopup();
@@ -468,8 +567,8 @@ void FGameImGuiOverlay::RenderScoreboardPopup(const FRect* AnchorRect)
 		ImGui::EndPopup();
 	}
 
-	ImGui::PopStyleColor(6);
-	ImGui::PopStyleVar(2);
+	ImGui::PopStyleColor(19);
+	ImGui::PopStyleVar(6);
 
 	if (ScoreboardPopup.bPopupOpen && !ImGui::IsPopupOpen("Scoreboard"))
 	{

@@ -57,6 +57,12 @@ void FD3DDevice::CopyToBackbuffer(ID3D11Texture2D* Source)
 	}
 
 	DeviceContext->CopyResource(FrameBuffer, Source);
+
+	// Offscreen viewport RT를 백버퍼로 복사한 뒤에는 현재 OM target이 여전히
+	// viewport RT를 가리키고 있다. Shipping 게임 오버레이(ImGui)는 호출 시점의
+	// RTV/DSV에 바로 그리므로, 여기서 백버퍼를 다시 바인딩해 줘야 popup이 보인다.
+	DeviceContext->RSSetViewports(1, &ViewportInfo);
+	DeviceContext->OMSetRenderTargets(1, &FrameBufferRTV, DepthStencilView);
 }
 
 void FD3DDevice::OnResizeViewport(int Width, int Height)

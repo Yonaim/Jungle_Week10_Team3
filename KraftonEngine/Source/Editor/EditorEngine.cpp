@@ -220,6 +220,7 @@ void UEditorEngine::Tick(float DeltaTime)
 
 	ApplyTransformSettingsToGizmo();
 	FDirectoryWatcher::Get().ProcessChanges();
+	UTexture2D::RefreshChangedTextures(Renderer.GetFD3DDevice().GetDevice());
 	FNotificationManager::Get().Tick(DeltaTime);
 	FAudioManager::Get().Update();
 	MainPanel.Update();

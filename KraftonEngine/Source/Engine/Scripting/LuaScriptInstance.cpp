@@ -1399,6 +1399,11 @@ void FLuaScriptInstance::BindDebugTimeFunctions()
 		LogLuaMessage(ELogLevel::Info, "[Lua]", Args);
 	});
 
+	Impl->Env.set_function("debug_log", [LogLuaMessage](sol::variadic_args Args)
+	{
+		LogLuaMessage(ELogLevel::Debug, "[Lua][Debug]", Args);
+	});
+
 	Impl->Env.set_function("warn", [LogLuaMessage](sol::variadic_args Args)
 	{
 		LogLuaMessage(ELogLevel::Warning, "[Lua][Warn]", Args);

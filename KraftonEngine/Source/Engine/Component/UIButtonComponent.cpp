@@ -331,37 +331,42 @@ void UIButtonComponent::ContributeVisuals(FScene& Scene) const
 			bSolidBackground);
 	}
 
-	if (ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV())
+	ID3D11ShaderResourceView* SRV = GetResolvedTextureSRV();
+	const bool bSolidImage = (SRV == nullptr);
+	FVector4 DrawTint = GetCurrentTint();
+	if (bSolidImage)
 	{
-		const FResolvedImageDrawParams DrawParams = ResolveImageDrawParams(
-			ResolvedPosition,
-			ResolvedSize,
-			GetTexture(),
-			SanitizeFitModeValue(FitMode),
-			SanitizeContentAlignmentValue(ContentAlignment));
+		DrawTint.W = (DrawTint.W > 0.0f) ? -DrawTint.W : DrawTint.W;
+	}
 
-		if (ShouldDrawShadow())
-		{
-			Scene.AddScreenQuad(
-				SRV,
-				DrawParams.Position + GetCurrentShadowOffset(),
-				DrawParams.Size,
-				GetShadowMaskTopColor(),
-				GetShadowMaskBottomColor(),
-				ZOrder - 1,
-				DrawParams.UVMin,
-				DrawParams.UVMax);
-		}
+	const FResolvedImageDrawParams DrawParams = ResolveImageDrawParams(
+		ResolvedPosition,
+		ResolvedSize,
+		GetTexture(),
+		SanitizeFitModeValue(FitMode),
+		SanitizeContentAlignmentValue(ContentAlignment));
 
-		Scene.AddScreenQuad(
+	if (!bSolidImage && ShouldDrawShadow())
+	{
+		AddShadowScreenQuad(
+			Scene,
 			SRV,
-			DrawParams.Position,
+			DrawParams.Position + GetCurrentPressedOffset(),
 			DrawParams.Size,
-			GetCurrentTint(),
-			ZOrder,
+			ZOrder - 1,
 			DrawParams.UVMin,
 			DrawParams.UVMax);
 	}
+
+	Scene.AddScreenQuad(
+		SRV,
+		DrawParams.Position,
+		DrawParams.Size,
+		DrawTint,
+		ZOrder,
+		DrawParams.UVMin,
+		DrawParams.UVMax,
+		bSolidImage);
 
 	if (!Label.empty())
 	{

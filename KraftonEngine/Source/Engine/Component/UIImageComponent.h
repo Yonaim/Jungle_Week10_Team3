@@ -83,6 +83,7 @@ public:
 	void SetFitMode(EUIImageFitMode InFitMode) { FitMode = static_cast<int32>(InFitMode); }
 	EUIImageContentAlignment GetContentAlignment() const { return static_cast<EUIImageContentAlignment>(ContentAlignment); }
 	void SetContentAlignment(EUIImageContentAlignment InAlignment) { ContentAlignment = static_cast<int32>(InAlignment); }
+	bool IsShadowEnabled() const { return bDrawShadow; }
 
 protected:
 	struct FResolvedImageDrawParams
@@ -99,8 +100,11 @@ protected:
 	ID3D11ShaderResourceView* GetBackgroundTextureSRV() const;
 	bool ShouldDrawShadow() const;
 	FVector2 GetShadowOffset2D() const;
+	float GetShadowBlurRadius() const;
 	FVector4 GetShadowMaskTopColor() const;
 	FVector4 GetShadowMaskBottomColor() const;
+	void AddShadowScreenQuad(FScene& Scene, ID3D11ShaderResourceView* TextureSRV, const FVector2& Position, const FVector2& Size, int32 InZOrder,
+		const FVector2& UVMin = FVector2(0.0f, 0.0f), const FVector2& UVMax = FVector2(1.0f, 1.0f)) const;
 	FVector2 ResolveScreenPosition(const FVector2& ElementSize) const;
 	FVector2 ResolveScreenSize2D() const;
 	static EUIImageFitMode SanitizeFitModeValue(int32 InFitMode);

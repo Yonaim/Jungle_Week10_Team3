@@ -159,6 +159,7 @@ namespace
 			Vector = { new = vec3 }
 			
 			function log(...) end
+			function debug_log(...) end
 			function warn(...) end
 			function error_log(...) end
 			function print(...) end
