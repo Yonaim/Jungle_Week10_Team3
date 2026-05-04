@@ -268,10 +268,22 @@ bool UGameEngine::LoadScene(const FString& InSceneReference)
 		const bool bHasUmapExtension = EndsWithIgnoreCase(InSceneReference, ".umap");
 		if (bHasSceneExtension || bHasUmapExtension)
 		{
-			const std::filesystem::path FileName = RawPath.filename();
-			if (!TrySetChosenPath(SceneDir / FileName))
+			// 같은 상대경로에서 반대 확장자(.scene ↔ .umap) 시도 (Shipping은 .umap만 존재)
+			std::filesystem::path Swapped = RawPath;
+			Swapped.replace_extension(bHasSceneExtension ? L".umap" : FSceneSaveManager::SceneExtension);
+			if (!TrySetChosenPath(SceneDir / Swapped))
 			{
-				return false;
+				// 파일명만으로 fallback (양 확장자 모두 시도)
+				const std::filesystem::path FileName = RawPath.filename();
+				if (!TrySetChosenPath(SceneDir / FileName))
+				{
+					std::filesystem::path FileNameSwapped = FileName;
+					FileNameSwapped.replace_extension(bHasSceneExtension ? L".umap" : FSceneSaveManager::SceneExtension);
+					if (!TrySetChosenPath(SceneDir / FileNameSwapped))
+					{
+						return false;
+					}
+				}
 			}
 		}
 		else

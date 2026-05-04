@@ -1,4 +1,4 @@
-#include "Scripting/LuaScriptRuntime.h"
+﻿#include "Scripting/LuaScriptRuntime.h"
 
 #include "Component/ScriptComponent.h"
 #include "Core/EngineTypes.h"

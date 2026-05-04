@@ -185,8 +185,32 @@ bool UGameViewportClient::Tick(float DeltaTime)
 
 	bool bChanged = false;
 
-	// possessed 상태면 마우스 캡처 및 중앙 고정 수행 (스크립트 제어 카메라여도 뷰포트 포커스 유지 목적)
-	SetCursorCaptured(true);
+	// possessed 카메라 owner에 UScriptComponent가 붙어 있으면 UI 씬(Title/Story 등)이므로 커서 노출
+	bool bScriptDrivesCamera = false;
+	if (UCameraComponent* PossessedCam = GetPossessedTarget())
+	{
+		if (AActor* OwnerActor = PossessedCam->GetOwner())
+		{
+			for (UActorComponent* Comp : OwnerActor->GetComponents())
+			{
+				if (Comp && Comp->IsA<UScriptComponent>())
+				{
+					bScriptDrivesCamera = true;
+					break;
+				}
+			}
+		}
+	}
+
+	if (bScriptDrivesCamera)
+	{
+		SetCursorCaptured(false);
+	}
+	else
+	{
+		// 일반 게임플레이: 마우스 캡처 및 중앙 고정
+		SetCursorCaptured(true);
+	}
 
 	if (bPIEPossessedInputEnabled)
 	{
@@ -199,24 +223,6 @@ bool UGameViewportClient::Tick(float DeltaTime)
 
 		// Apply Accumulated Input
 		UCameraComponent* TargetCamera = GetPossessedTarget();
-
-		// 카메라 owner에 UScriptComponent가 붙어 있으면 스크립트가 카메라/액터를 직접 제어하므로
-		// GameViewportClient 기본 WASD/Mouse 드라이브를 yield 
-		bool bScriptDrivesCamera = false;
-		if (TargetCamera)
-		{
-			if (AActor* OwnerActor = TargetCamera->GetOwner())
-			{
-				for (UActorComponent* Comp : OwnerActor->GetComponents())
-				{
-					if (Comp && Comp->IsA<UScriptComponent>())
-					{
-						bScriptDrivesCamera = true;
-						break;
-					}
-				}
-			}
-		}
 
 		if (TargetCamera && !bScriptDrivesCamera)
 		{

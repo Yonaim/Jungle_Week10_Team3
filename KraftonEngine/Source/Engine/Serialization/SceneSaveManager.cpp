@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -1239,7 +1240,7 @@ int32 FSceneSaveManager::CookAllScenes()
 		return 0;
 	}
 
-	for (auto& Entry : std::filesystem::directory_iterator(SceneDir))
+	for (auto& Entry : std::filesystem::recursive_directory_iterator(SceneDir))
 	{
 		if (!Entry.is_regular_file()) continue;
 		const std::wstring Ext = Entry.path().extension().wstring();
@@ -1534,21 +1535,24 @@ TArray<FString> FSceneSaveManager::GetSceneFileList()
 		return Result;
 	}
 
+	const std::filesystem::path SceneRoot(SceneDir);
 	std::unordered_set<FString> Seen;
-	for (auto& Entry : std::filesystem::directory_iterator(SceneDir))
+	for (auto& Entry : std::filesystem::recursive_directory_iterator(SceneRoot))
 	{
-		if (Entry.is_regular_file())
+		if (!Entry.is_regular_file()) continue;
+
+		auto Ext = Entry.path().extension().wstring();
+		if (Ext != SceneExtension && Ext != L".umap" && Ext != L".UMAP") continue;
+
+		std::filesystem::path Rel = std::filesystem::relative(Entry.path(), SceneRoot);
+		Rel.replace_extension();
+		std::wstring RelW = Rel.generic_wstring();
+		FString RelUtf8 = FPaths::ToUtf8(RelW);
+		if (Seen.insert(RelUtf8).second)
 		{
-			auto Ext = Entry.path().extension().wstring();
-			if (Ext == SceneExtension || Ext == L".umap" || Ext == L".UMAP")
-			{
-				FString Stem = FPaths::ToUtf8(Entry.path().stem().wstring());
-				if (Seen.insert(Stem).second)
-				{
-					Result.push_back(std::move(Stem));
-				}
-			}
+			Result.push_back(std::move(RelUtf8));
 		}
 	}
+	std::sort(Result.begin(), Result.end());
 	return Result;
 }
