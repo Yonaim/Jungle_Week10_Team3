@@ -30,7 +30,7 @@ ARunner::ARunner()
 	BoxComponent = AddComponent<UBoxComponent>();
 	BoxComponent->SetCanDeleteFromDetails(false);
 	// TODO: Runner 충돌 크기는 추후 Lua Config 또는 캐릭터 리소스 데이터로 이동한다.
-	BoxComponent->SetBoxExtent(FVector(1.5f, 1.f, 0.6f));
+	BoxComponent->SetBoxExtent(FVector(1.f, 0.7f, 0.75f));
 	BoxComponent->SetCollisionEnabled(true);
 	BoxComponent->SetGenerateOverlapEvents(true);
 	

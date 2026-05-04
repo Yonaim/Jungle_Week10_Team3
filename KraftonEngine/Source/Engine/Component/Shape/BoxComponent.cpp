@@ -1,6 +1,8 @@
-﻿#include "BoxComponent.h"
+#include "BoxComponent.h"
 #include "Render/Scene/FScene.h"
 #include "Serialization/Archive.h"
+
+#include <cstring>
 
 IMPLEMENT_CLASS(UBoxComponent, UShapeComponent)
 
@@ -9,11 +11,33 @@ void UBoxComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 	OutProps.push_back({ "Box Extent", EPropertyType::Vec3, &BoxExtent, 0.0f, 0.0f, 0.1f });
 }
 
+void UBoxComponent::PostEditProperty(const char* PropertyName) {
+	UShapeComponent::PostEditProperty(PropertyName);
+	if (strcmp(PropertyName, "Box Extent") == 0)
+	{
+		MarkWorldBoundsDirty();
+	}
+}
+
+void UBoxComponent::SetBoxExtent(FVector InExtent) {
+	BoxExtent = InExtent;
+	MarkWorldBoundsDirty();
+}
+
+FVector UBoxComponent::GetScaledBoxExtent() const {
+	const FVector WorldScale = GetWorldScale();
+	return FVector(
+		BoxExtent.X * WorldScale.X,
+		BoxExtent.Y * WorldScale.Y,
+		BoxExtent.Z * WorldScale.Z);
+}
+
 void UBoxComponent::DrawDebugShape(FScene& Scene) const {
 	FVector Center = GetWorldLocation();
-	FVector X      = GetForwardVector().Normalized() * BoxExtent.X;
-	FVector Y      = GetRightVector().Normalized()   * BoxExtent.Y;
-	FVector Z      = GetUpVector().Normalized()      * BoxExtent.Z;
+	const FVector Extent = GetScaledBoxExtent();
+	FVector X      = GetForwardVector().Normalized() * Extent.X;
+	FVector Y      = GetRightVector().Normalized()   * Extent.Y;
+	FVector Z      = GetUpVector().Normalized()      * Extent.Z;
 
 	FVector P[8] = {
 		Center - X - Y - Z,
@@ -40,11 +64,6 @@ void UBoxComponent::DrawDebugShape(FScene& Scene) const {
 	Scene.AddDebugLine(P[3], P[7], ShapeColor);
 }
 
-void UBoxComponent::SetRelativeScale(const FVector& NewScale) {
-	USceneComponent::SetRelativeScale(NewScale);
-	BoxExtent = NewScale;
-}
-
 void UBoxComponent::UpdateWorldAABB() const {
 	FVector LExt = BoxExtent;
 
@@ -60,7 +79,7 @@ void UBoxComponent::UpdateWorldAABB() const {
 	bWorldAABBDirty = false;
 	bHasValidWorldAABB = true;
 }
-void UBoxComponent::Serialize(FArchive& Ar) {  
-   UShapeComponent::Serialize(Ar);  
-   Ar << BoxExtent;  
+void UBoxComponent::Serialize(FArchive& Ar) {
+	UShapeComponent::Serialize(Ar);
+	Ar << BoxExtent;
 }

@@ -253,7 +253,7 @@ void FRenderCollector::FilterVisibleProxies(const FFrameContext& Frame, FScene& 
 	}
 
 #ifndef SHIPPING
-	const bool bAllowComponentDebugVisuals = World && World->GetWorldType() != EWorldType::PIE;
+	const bool bAllowComponentDebugVisuals = World /*&& World->GetWorldType() != EWorldType::PIE*/;
 	if (bAllowComponentDebugVisuals)
 	{
 		// 선택된 Actor의 컴포넌트 디버그 시각화 (빛 등 프록시 없는 Comp 포함)

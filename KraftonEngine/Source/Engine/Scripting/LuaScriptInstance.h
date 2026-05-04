@@ -4,6 +4,7 @@
 #include "Scripting/LuaScriptRuntime.h"
 
 #include <memory>
+#include <functional>
 
 class AActor;
 class UScriptComponent;
@@ -70,6 +71,8 @@ public:
 	// 현재 연결된 owner를 안전하게 조회한다.
 	UScriptComponent* GetOwnerComponent() const;
 	AActor* GetOwnerActor() const;
+
+	void RegisterEnvFunction(const FString& Name, std::function<void(FLuaActorProxy)> Func);
 
 private:
 	// Lua 스크립트에 노출할 바인딩을 environment에 심는다.

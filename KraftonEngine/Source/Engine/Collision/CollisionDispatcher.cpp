@@ -36,6 +36,10 @@ static void GetCapsuleSegment(const UCapsuleComponent* C, FVector& OutP0, FVecto
 	OutP1 = Center + Up * SegHH;
 }
 
+static FVector GetBoxCollisionExtent(const UBoxComponent* Box) {
+	return Box ? Box->GetScaledBoxExtent() : FVector();
+}
+
 // Segment-to-segment closest points (Ericson, Real-Time Collision Detection).
 // Returns squared distance; OutPA / OutPB are the closest points on each segment.
 static float SegmentSegmentClosestPoints(
@@ -106,12 +110,12 @@ static bool BoxBoxCollision(const UShapeComponent* A, const UShapeComponent* B, 
 	FVector a0 = BoxA->GetForwardVector().Normalized();
 	FVector a1 = BoxA->GetRightVector().Normalized();
 	FVector a2 = BoxA->GetUpVector().Normalized();
-	FVector eA = BoxA->GetBoxExtent();
+	FVector eA = GetBoxCollisionExtent(BoxA);
 
 	FVector b0 = BoxB->GetForwardVector().Normalized();
 	FVector b1 = BoxB->GetRightVector().Normalized();
 	FVector b2 = BoxB->GetUpVector().Normalized();
-	FVector eB = BoxB->GetBoxExtent();
+	FVector eB = GetBoxCollisionExtent(BoxB);
 
 	// 15 SAT axes: 3 face normals each + 9 edge cross products
 	FVector axes[15] = {
@@ -177,7 +181,7 @@ static bool BoxSphereCollision(const UShapeComponent* A, const UShapeComponent* 
 	FVector Ax0 = Box->GetForwardVector().Normalized();
 	FVector Ax1 = Box->GetRightVector().Normalized();
 	FVector Ax2 = Box->GetUpVector().Normalized();
-	FVector Ext = Box->GetBoxExtent();
+	FVector Ext = GetBoxCollisionExtent(Box);
 	FVector BC  = Box->GetWorldLocation();
 	FVector SC  = Sphere->GetWorldLocation();
 	float   SR  = Sphere->GetSphereRadius();
@@ -222,7 +226,7 @@ static bool BoxCapsuleCollision(const UShapeComponent* A, const UShapeComponent*
 	FVector Ax0 = Box->GetForwardVector().Normalized();
 	FVector Ax1 = Box->GetRightVector().Normalized();
 	FVector Ax2 = Box->GetUpVector().Normalized();
-	FVector Ext = Box->GetBoxExtent();
+	FVector Ext = GetBoxCollisionExtent(Box);
 	FVector BC  = Box->GetWorldLocation();
 	float   CR  = Capsule->GetCapsuleRadius();
 
