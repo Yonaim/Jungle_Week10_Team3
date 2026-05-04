@@ -22,6 +22,7 @@
 #include "GameFramework/Light/SpotLightActor.h"
 #include "Game/GameActors/Obstacle/SimpleObstacleActor.h"
 #include "Game/Map/AMapManager.h"
+#include "Game/Player/Runner.h"
 #include "GameFramework/World.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Viewport/Viewport.h"
@@ -3005,6 +3006,7 @@ void FLevelViewportLayout::RenderViewportPlaceActorPopup()
 		PlaceActorMenuItem("Cube", EViewportPlaceActorType::Cube);
 		PlaceActorMenuItem("Actor", EViewportPlaceActorType::Actor);
 		PlaceActorMenuItem("Pawn", EViewportPlaceActorType::Pawn);
+		PlaceActorMenuItem("Runner", EViewportPlaceActorType::Runner);
 		PlaceActorMenuItem("Character", EViewportPlaceActorType::Character);
 		PlaceActorMenuItem("Static Mesh", EViewportPlaceActorType::StaticMeshActor);
 		PlaceActorMenuItem("World Text", EViewportPlaceActorType::WorldText);
@@ -3166,6 +3168,15 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 		if (Actor)
 		{
 			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::Runner:
+	{
+		ARunner* Actor = World->SpawnActor<ARunner>();
+		if (Actor)
+		{
 			SpawnedActor = Actor;
 		}
 		break;

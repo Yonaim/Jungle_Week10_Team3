@@ -79,5 +79,10 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 		Renderer.GetFD3DDevice().CopyToBackbuffer(VP->GetRTTexture());
 	}
 
+	if (Engine)
+	{
+		Engine->RenderImGuiOverlay(Renderer);
+	}
+
 	Renderer.EndFrame();
 }

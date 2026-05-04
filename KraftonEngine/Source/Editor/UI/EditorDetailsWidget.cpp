@@ -624,6 +624,27 @@ namespace
         return Component != nullptr;
     }
 
+    void SyncDetailsComponentSelection(UEditorEngine* EditorEngine, UActorComponent* Component)
+    {
+        if (!EditorEngine || !Component)
+        {
+            return;
+        }
+
+        if (USceneComponent* SceneComponent = Cast<USceneComponent>(Component))
+        {
+            EditorEngine->GetSelectionManager().SelectComponent(SceneComponent);
+            return;
+        }
+
+        // 비-씬 컴포넌트는 별도 전역 component selection이 없으므로
+        // owning actor selection을 root로 맞춰 두고, details 패널이 로컬 선택을 유지하게 만든다.
+        if (AActor* Owner = Component->GetOwner())
+        {
+            EditorEngine->GetSelectionManager().Select(Owner);
+        }
+    }
+
     struct FComponentClassGroup
     {
         const char      *Label = nullptr;
@@ -1215,6 +1236,15 @@ FString FEditorDetailsWidget::GetPropertySectionName(const FPropertyDescriptor &
         if (IsButtonBackgroundProperty(SelectedComponent, Prop.Name))
         {
             return "Background";
+        }
+
+        if (Prop.Name == "Draw Shadow"
+            || Prop.Name == "Shadow Offset"
+            || Prop.Name == "Shadow Tint"
+            || Prop.Name == "Shadow Top Tint"
+            || Prop.Name == "Shadow Bottom Tint")
+        {
+            return "Shadow";
         }
 
         if (Prop.Type == EPropertyType::TextureSlot
@@ -1929,11 +1959,7 @@ void FEditorDetailsWidget::RenderAddComponentButton(AActor *Actor)
 
             SelectedComponent = Comp;
             bActorSelected = false;
-
-            if (USceneComponent* SceneComponent = Cast<USceneComponent>(Comp))
-            {
-                EditorEngine->GetSelectionManager().SelectComponent(SceneComponent);
-            }
+            SyncDetailsComponentSelection(EditorEngine, Comp);
 
             EditorEngine->CommitTrackedSceneChange();
             ImGui::CloseCurrentPopup();
@@ -2224,6 +2250,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor *Actor, float Height)
             {
                 SelectedComponent = Comp;
                 bActorSelected = false;
+                SyncDetailsComponentSelection(EditorEngine, Comp);
             }
             RenderComponentContextMenu(Actor, Comp);
         }

@@ -55,6 +55,20 @@ namespace
 		return Path.lexically_normal().wstring();
 	}
 
+	bool TryGetTextureWriteTime(const FString& FilePath, std::filesystem::file_time_type& OutWriteTime)
+	{
+		std::error_code ErrorCode;
+		const std::filesystem::path DiskPath(ResolveTexturePathOnDisk(FilePath));
+		const std::filesystem::file_time_type WriteTime = std::filesystem::last_write_time(DiskPath, ErrorCode);
+		if (ErrorCode)
+		{
+			return false;
+		}
+
+		OutWriteTime = WriteTime;
+		return true;
+	}
+
 	bool ShouldSkipTextureScanDirectory(const std::filesystem::path& Path)
 	{
 		const std::wstring Name = Path.filename().wstring();
@@ -327,6 +341,10 @@ UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Devi
 	auto It = TextureCache.find(NormalizedPath);
 	if (It != TextureCache.end())
 	{
+		if (It->second && It->second->HasSourceFileChanged())
+		{
+			It->second->LoadInternal(NormalizedPath, Device);
+		}
 		return It->second;
 	}
 
@@ -368,6 +386,7 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 		});
 
 	ID3D11Resource* Resource = nullptr;
+	ID3D11ShaderResourceView* NewSRV = nullptr;
 	HRESULT hr = S_OK;
 	if (Extension == ".dds")
 	{
@@ -379,7 +398,7 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 			0,                           // cpuAccessFlags
 			0,                           // miscFlags
 			DirectX::DDS_LOADER_DEFAULT,
-			&Resource, &SRV);
+			&Resource, &NewSRV);
 	}
 	else
 	{
@@ -391,40 +410,97 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 			0,                                    // cpuAccessFlags
 			0,                                    // miscFlags
 			DirectX::WIC_LOADER_IGNORE_SRGB,      // sRGB 메타데이터 무시 → UNORM 포맷 강제
-			&Resource, &SRV);
+			&Resource, &NewSRV);
 	}
 
-	if (FAILED(hr))
+	if (FAILED(hr) || !NewSRV)
 	{
 		UE_LOG_CATEGORY(Texture, Error, "Failed to load texture: %s", FilePath.c_str());
+		if (Resource)
+		{
+			Resource->Release();
+		}
+		if (NewSRV)
+		{
+			NewSRV->Release();
+		}
 		return false;
 	}
+
+	uint32 NewWidth = 0;
+	uint32 NewHeight = 0;
+	uint64 NewTrackedTextureMemory = 0;
 
 	// 텍스처 크기 추출
 	if (Resource)
 	{
-		TrackedTextureMemory = MemoryStats::CalculateTextureMemory(Resource);
+		NewTrackedTextureMemory = MemoryStats::CalculateTextureMemory(Resource);
 
 		ID3D11Texture2D* Tex2D = nullptr;
 		if (SUCCEEDED(Resource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)&Tex2D)))
 		{
 			D3D11_TEXTURE2D_DESC Desc;
 			Tex2D->GetDesc(&Desc);
-			Width = Desc.Width;
-			Height = Desc.Height;
+			NewWidth = Desc.Width;
+			NewHeight = Desc.Height;
 			Tex2D->Release();
-		}
-
-		if (TrackedTextureMemory > 0)
-		{
-			MemoryStats::AddTextureMemory(TrackedTextureMemory);
 		}
 		Resource->Release();
 	}
 
+	std::vector<uint8> NewCPUTextureRGBA;
+	LoadCPUTextureRGBA(NormalizedPath, NewWidth, NewHeight, NewCPUTextureRGBA);
+
+	std::filesystem::file_time_type NewWriteTime{};
+	const bool bHasNewWriteTime = TryGetTextureWriteTime(NormalizedPath, NewWriteTime);
+
+	if (SRV)
+	{
+		if (TrackedTextureMemory > 0)
+		{
+			MemoryStats::SubTextureMemory(TrackedTextureMemory);
+			TrackedTextureMemory = 0;
+		}
+		SRV->Release();
+		SRV = nullptr;
+	}
+
+	SRV = NewSRV;
+	Width = NewWidth;
+	Height = NewHeight;
+	TrackedTextureMemory = NewTrackedTextureMemory;
+	CPUTextureRGBA = std::move(NewCPUTextureRGBA);
 	SourceFilePath = NormalizedPath;
-	LoadCPUTextureRGBA(NormalizedPath, Width, Height, CPUTextureRGBA);
+	SourceFileWriteTime = NewWriteTime;
+	bHasSourceFileWriteTime = bHasNewWriteTime;
+
+	if (TrackedTextureMemory > 0)
+	{
+		MemoryStats::AddTextureMemory(TrackedTextureMemory);
+	}
+
 	return true;
+}
+
+bool UTexture2D::HasSourceFileChanged() const
+{
+	if (SourceFilePath.empty())
+	{
+		return false;
+	}
+
+	std::filesystem::file_time_type CurrentWriteTime{};
+	if (!TryGetTextureWriteTime(SourceFilePath, CurrentWriteTime))
+	{
+		return false;
+	}
+
+	if (!bHasSourceFileWriteTime)
+	{
+		return true;
+	}
+
+	return CurrentWriteTime != SourceFileWriteTime;
 }
 
 bool UTexture2D::SampleAlpha(float U, float V, float& OutAlpha) const

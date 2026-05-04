@@ -47,6 +47,7 @@ public:
 
 private:
 	bool LoadInternal(const FString& FilePath, ID3D11Device* Device);
+	bool HasSourceFileChanged() const;
 
 	FString SourceFilePath;
 	ID3D11ShaderResourceView* SRV = nullptr;
@@ -54,6 +55,8 @@ private:
 	uint32 Height = 0;
 	uint64 TrackedTextureMemory = 0;
 	std::vector<uint8> CPUTextureRGBA;
+	std::filesystem::file_time_type SourceFileWriteTime{};
+	bool bHasSourceFileWriteTime = false;
 
 	// path → UTexture2D* 캐시 (소유권은 UObjectManager)
 	static std::map<FString, UTexture2D*> TextureCache;

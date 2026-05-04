@@ -42,7 +42,8 @@ void FScreenQuadGeometry::AddScreenQuad(
 	float Height,
 	float ViewportWidth,
 	float ViewportHeight,
-	const FVector4& Color,
+	const FVector4& TopColor,
+	const FVector4& BottomColor,
 	const FVector2& UVMin,
 	const FVector2& UVMax,
 	ID3D11ShaderResourceView* SRV,
@@ -72,10 +73,10 @@ void FScreenQuadGeometry::AddScreenQuad(
 	const uint32 BaseVertex = static_cast<uint32>(Vertices.size());
 	const uint32 FirstIndex = static_cast<uint32>(Indices.size());
 
-	Vertices.push_back({ FVector(Left, Top, 0.0f), FVector(0.0f, 0.0f, 1.0f), Color, FVector2(UVMin.X, UVMin.Y) });
-	Vertices.push_back({ FVector(Right, Top, 0.0f), FVector(0.0f, 0.0f, 1.0f), Color, FVector2(UVMax.X, UVMin.Y) });
-	Vertices.push_back({ FVector(Left, Bottom, 0.0f), FVector(0.0f, 0.0f, 1.0f), Color, FVector2(UVMin.X, UVMax.Y) });
-	Vertices.push_back({ FVector(Right, Bottom, 0.0f), FVector(0.0f, 0.0f, 1.0f), Color, FVector2(UVMax.X, UVMax.Y) });
+	Vertices.push_back({ FVector(Left, Top, 0.0f), FVector(0.0f, 0.0f, 1.0f), TopColor, FVector2(UVMin.X, UVMin.Y) });
+	Vertices.push_back({ FVector(Right, Top, 0.0f), FVector(0.0f, 0.0f, 1.0f), TopColor, FVector2(UVMax.X, UVMin.Y) });
+	Vertices.push_back({ FVector(Left, Bottom, 0.0f), FVector(0.0f, 0.0f, 1.0f), BottomColor, FVector2(UVMin.X, UVMax.Y) });
+	Vertices.push_back({ FVector(Right, Bottom, 0.0f), FVector(0.0f, 0.0f, 1.0f), BottomColor, FVector2(UVMax.X, UVMax.Y) });
 
 	Indices.push_back(BaseVertex + 0);
 	Indices.push_back(BaseVertex + 1);

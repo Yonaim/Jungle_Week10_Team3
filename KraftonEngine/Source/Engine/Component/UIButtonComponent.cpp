@@ -140,6 +140,7 @@ void UIButtonComponent::Serialize(FArchive& Ar)
 	Ar << NormalTint;
 	Ar << HoverTint;
 	Ar << PressedTint;
+	Ar << PressedOffset;
 	Ar << ClickSound;
 	Ar << OnClickAction;
 	Ar << OnPressAction;
@@ -157,7 +158,12 @@ void UIButtonComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPr
 			OutProps.end(),
 			[](const FPropertyDescriptor& Prop)
 			{
-				return Prop.Name == "Tint";
+				return Prop.Name == "Tint"
+					|| Prop.Name == "Draw Background"
+					|| Prop.Name == "Background Texture"
+					|| Prop.Name == "Background Fit Mode"
+					|| Prop.Name == "Background Content Alignment"
+					|| Prop.Name == "Background Tint";
 			}),
 		OutProps.end());
 	OutProps.push_back({ "Label", EPropertyType::String, &Label });
@@ -176,6 +182,7 @@ void UIButtonComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPr
 	OutProps.push_back({ "Normal Tint", EPropertyType::Color4, &NormalTint });
 	OutProps.push_back({ "Hover Tint", EPropertyType::Color4, &HoverTint });
 	OutProps.push_back({ "Pressed Tint", EPropertyType::Color4, &PressedTint });
+	OutProps.push_back({ "Pressed Offset", EPropertyType::Vec3, &PressedOffset, -64.0f, 64.0f, 1.0f });
 	OutProps.push_back({ "Click Sound", EPropertyType::Name, &ClickSound });
 	OutProps.push_back({ "On Click Action", EPropertyType::String, &OnClickAction });
 	OutProps.push_back({ "On Press Action", EPropertyType::String, &OnPressAction });
@@ -293,7 +300,8 @@ void UIButtonComponent::ContributeVisuals(FScene& Scene) const
 	}
 
 	const FVector2 ResolvedSize = ResolveScreenSize2D();
-	const FVector2 ResolvedPosition = ResolveScreenPosition(ResolvedSize);
+	const FVector2 BaseResolvedPosition = ResolveScreenPosition(ResolvedSize);
+	const FVector2 ResolvedPosition = BaseResolvedPosition + GetCurrentPressedOffset();
 
 	if (bDrawBackground)
 	{
@@ -331,6 +339,19 @@ void UIButtonComponent::ContributeVisuals(FScene& Scene) const
 			GetTexture(),
 			SanitizeFitModeValue(FitMode),
 			SanitizeContentAlignmentValue(ContentAlignment));
+
+		if (ShouldDrawShadow())
+		{
+			Scene.AddScreenQuad(
+				SRV,
+				DrawParams.Position + GetCurrentShadowOffset(),
+				DrawParams.Size,
+				GetShadowMaskTopColor(),
+				GetShadowMaskBottomColor(),
+				ZOrder - 1,
+				DrawParams.UVMin,
+				DrawParams.UVMax);
+		}
 
 		Scene.AddScreenQuad(
 			SRV,
@@ -412,6 +433,21 @@ FVector4 UIButtonComponent::GetCurrentBackgroundTint() const
 	}
 
 	return BackgroundNormalTint;
+}
+
+FVector2 UIButtonComponent::GetCurrentPressedOffset() const
+{
+	if (!bPressed)
+	{
+		return FVector2(0.0f, 0.0f);
+	}
+
+	return FVector2(PressedOffset.X, PressedOffset.Y);
+}
+
+FVector2 UIButtonComponent::GetCurrentShadowOffset() const
+{
+	return FVector2(ShadowOffset.X, ShadowOffset.Y) + GetCurrentPressedOffset();
 }
 
 FVector2 UIButtonComponent::GetResolvedLabelPosition(const FVector2& ButtonPosition, const FVector2& ButtonSize, const FFontResource* Font) const

@@ -2,6 +2,7 @@
 
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Serialization/SceneSaveManager.h"
+#include "Engine/Runtime/GameImGuiOverlay.h"
 
 #include "Editor/Viewport/FLevelViewportLayout.h"
 #include "Editor/History/SceneHistoryTypes.h"
@@ -37,6 +38,12 @@ public:
 	void Tick(float DeltaTime) override;
 	void OnWindowResized(uint32 Width, uint32 Height) override;
 	bool LoadScene(const FString& InSceneReference) override;
+	void OpenScoreSavePopup(int32 InScore) override;
+	bool ConsumeScoreSavePopupResult(FString& OutNickname) override;
+	void OpenMessagePopup(const FString& InMessage) override;
+	bool ConsumeMessagePopupConfirmed() override;
+	void OpenScoreboardPopup(const FString& InFilePath) override;
+	bool IsScoreSavePopupOpen() const override;
 
 	// Editor-specific API
 	UGizmoComponent* GetGizmo() const { return SelectionManager.GetGizmo(); }
@@ -110,6 +117,7 @@ public:
 	bool IsMouseOverViewport() const { return ViewportLayout.IsMouseOverViewport(); }
 
 	void RenderUI(float DeltaTime);
+	void RenderPIEOverlayPopups();
 
 	FOverlayStatSystem& GetOverlayStatSystem() { return OverlayStatSystem; }
 	const FOverlayStatSystem& GetOverlayStatSystem() const { return OverlayStatSystem; }
@@ -177,5 +185,6 @@ private:
 	std::optional<FTrackedSceneSnapshot> PendingTrackedSceneBefore;
 	std::optional<FTrackedSceneSnapshot> CachedTrackedSceneSnapshot;
 	bool bTrackingSceneChange = false;
+	FGameImGuiOverlay PIEOverlay;
 
 };
