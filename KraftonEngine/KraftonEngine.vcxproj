@@ -372,6 +372,7 @@
     <ClCompile Include="Source\Engine\GameFramework\CharacterActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\DecalActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\HeightFogActor.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\ItemActorBase.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\ScreenTextActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\UIRootActor.cpp" />
     <ClCompile Include="Source\Engine\GameFramework\WorldTextActor.cpp" />
@@ -619,6 +620,7 @@
     <ClInclude Include="Source\Engine\GameFramework\GameInstance.h" />
     <ClInclude Include="Source\Engine\GameFramework\GameModeBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\HeightFogActor.h" />
+    <ClInclude Include="Source\Engine\GameFramework\ItemActorBase.h" />
     <ClInclude Include="Source\Engine\GameFramework\ScreenTextActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\UIRootActor.h" />
     <ClInclude Include="Source\Engine\GameFramework\WorldTextActor.h" />
