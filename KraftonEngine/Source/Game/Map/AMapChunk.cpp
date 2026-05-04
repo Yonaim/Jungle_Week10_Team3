@@ -7,7 +7,7 @@
 #include "Game/GameActors/Obstacle/BarrierObstacleActor.h"
 #include "Game/GameActors/Obstacle/MustJumpObstacleActor.h"
 #include "Game/GameActors/Obstacle/MustSlideObstacleActor.h"
-#include "Game/GameActors/Obstacle/WireballActor.h"
+#include "Game/GameActors/Obstacle/PendulumObstacleActor.h"
 #include "Game/GameActors/Items/CrashDumpItemActor.h"
 #include "Game/GameActors/Items/ItemActorBase.h"
 #include "Game/GameActors/Items/LogFragmentItemActor.h"
@@ -16,6 +16,20 @@
 #include "Resource/ResourceManager.h"
 
 IMPLEMENT_CLASS(AMapChunk, AActor)
+
+namespace {  
+	constexpr const char* BuggedMaterialKey = "Default.Material.BasicShape";
+	constexpr const char* NormalMaterialKey = "Sample.Material.BlueGrid";
+
+	static FString SelectChunkMaterialPath(float ChunkBuggedRate)
+	{
+		const char* MaterialKey = MapRandom::Chance(ChunkBuggedRate)
+			? BuggedMaterialKey
+			: NormalMaterialKey;
+
+		return FResourceManager::Get().ResolvePath(FName(MaterialKey));
+	}
+}
 
 void AMapChunk::BeginPlay() {
 	Super::BeginPlay();
@@ -45,9 +59,10 @@ void AMapChunk::EndPlay() {
 	AActor::EndPlay();
 }
 
-void AMapChunk::InitFromTemplate(const FMapChunkTemplate& InTemplate, float InObstacleFillRate) {
+void AMapChunk::InitFromTemplate(const FMapChunkTemplate& InTemplate, float InChunkBuggedRate) {
 	Template         = InTemplate;
-	ObstacleFillRate = InObstacleFillRate;
+	ObstacleFillRate = InTemplate.ObstacleSpawnRate;
+	ChunkBuggedRate = InChunkBuggedRate;
 	BuildFloor();
 	SpawnObstacle();
 }
@@ -79,6 +94,7 @@ static AObstacleActorBase* SpawnObstacleOfType(UWorld* World, EObstacleType Type
 	case EObstacleType::Barrier: return World->SpawnActor<ABarrierObstacleActor>();
 	case EObstacleType::LowBar:	 return World->SpawnActor<AMustJumpObstacleActor>();
 	case EObstacleType::HighBar: return World->SpawnActor<AMustSlideObstacleActor>();
+	case EObstacleType::Pendulum: return World->SpawnActor<APendulumObstacleActor>();
 	case EObstacleType::Misc:    return World->SpawnActor<ASimpleObstacleActor>();
 	default:                     return nullptr;
 	}
@@ -162,7 +178,7 @@ static bool IsLaneBlockedByObstacle(EObstacleDecision Decision, int32 LaneIndex)
 	case DoubleBarrierRight:
 		return LaneIndex == 1 || LaneIndex == 2;
 
-	case MustJump:
+	//case MustJump:
 	case MustSlide:
 		return LaneIndex == 1;
 
@@ -201,14 +217,13 @@ static FString GetMeshPath(const char* MeshKey)
 	return "";
 }
 
-static void ApplyBasicShapeMaterial(UStaticMeshComponent* MeshComponent, UStaticMesh* Mesh)
+static void ApplyBasicShapeMaterial(UStaticMeshComponent* MeshComponent, UStaticMesh* Mesh, const FString& MaterialPath)
 {
 	if (!MeshComponent || !Mesh)
 	{
 		return;
 	}
 
-	const FString MaterialPath = FResourceManager::Get().ResolvePath(FName("Default.Material.BasicShape"));
 	UMaterial* Material = FMaterialManager::Get().GetOrCreateMaterial(MaterialPath);
 	if (!Material)
 	{
@@ -228,7 +243,7 @@ static void ApplyBasicShapeMaterial(UStaticMeshComponent* MeshComponent, UStatic
 	}
 }
 
-static void ApplyCubeMesh(UStaticMeshComponent* MeshComponent)
+static void ApplyCubeMesh(UStaticMeshComponent* MeshComponent, const FString& MaterialPath)
 {
 	if (!MeshComponent || !GEngine)
 	{
@@ -244,7 +259,7 @@ static void ApplyCubeMesh(UStaticMeshComponent* MeshComponent)
 	ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 	UStaticMesh* Mesh = FObjManager::LoadObjStaticMesh(MeshPath, Device);
 	MeshComponent->SetStaticMesh(Mesh);
-	ApplyBasicShapeMaterial(MeshComponent, Mesh);
+	ApplyBasicShapeMaterial(MeshComponent, Mesh, MaterialPath);
 }
 
 void AMapChunk::SpawnObstacle()
@@ -256,13 +271,15 @@ void AMapChunk::SpawnObstacle()
 	for (const FDecisionSlot& DecisionSlot : Template.ObstacleSlotDecisions) {
 		if (!MapRandom::Chance(ObstacleFillRate)) continue;
 		if (DecisionSlot.AllowedDecisions.empty()) continue;
+		if (bWasObstacleSpawned) continue;
+		bWasObstacleSpawned = true;
 
 		const int32 DecisionIndex = MapRandom::Index(static_cast<int32>(DecisionSlot.AllowedDecisions.size()));
 		EObstacleDecision Decision = DecisionSlot.AllowedDecisions[DecisionIndex];
 
 		auto WorldPositionForLane = [&](int32 LaneIndex)
 		{
-			return GetActorLocation() + WorldQuat.RotateVector(FVector(DecisionSlot.X, LaneY[LaneIndex], ObstacleZ));
+			return GetActorLocation() + WorldQuat.RotateVector(FVector(DecisionSlot.X, LaneY[LaneIndex], ObstacleZ + 1.f));
 		};
 
 		switch (Decision) {
@@ -300,16 +317,29 @@ void AMapChunk::SpawnObstacle()
 				SpawnedObstacles.push_back(Obs1);
 			break;
 		}
-		case (MustJump):
-		{
-			if (AObstacleActorBase* Obs = SpawnObstacleAt(GetWorld(), EObstacleType::LowBar, WorldPositionForLane(1)))
-				SpawnedObstacles.push_back(Obs);
-			break;
-		}
+		//case (MustJump):
+		//{
+		//	if (AObstacleActorBase* Obs = SpawnObstacleAt(GetWorld(), EObstacleType::LowBar, WorldPositionForLane(1))) {
+		//		SpawnedObstacles.push_back(Obs);
+		//	}
+		//	break;
+		//}
 		case (MustSlide):
 		{
-			if (AObstacleActorBase* Obs = SpawnObstacleAt(GetWorld(), EObstacleType::HighBar, WorldPositionForLane(1)))
+			FVector SpawnLoc = WorldPositionForLane(1);
+			SpawnLoc.Z = SpawnLoc.Z + 0.35f;
+			if (AObstacleActorBase* Obs = SpawnObstacleAt(GetWorld(), EObstacleType::HighBar, SpawnLoc)) {
 				SpawnedObstacles.push_back(Obs);
+			}
+			break;
+		}
+		case (Pendulum):
+		{
+			FVector SpawnLoc = WorldPositionForLane(1);
+			SpawnLoc.Z = SpawnLoc.Z + 0.35f;
+			if (AObstacleActorBase* Obs = SpawnObstacleAt(GetWorld(), EObstacleType::Pendulum, SpawnLoc)) {
+				SpawnedObstacles.push_back(Obs);
+			}
 			break;
 		}
 		default: {
@@ -375,6 +405,8 @@ void AMapChunk::BuildFloor() {
 	}
 	FloorMeshes.clear();
 
+	const FString ChunkMaterialPath = SelectChunkMaterialPath(ChunkBuggedRate);
+
 	for (const FFloorBlock& BlockInfo : Template.FloorBlockInfos) {
 		UStaticMeshComponent* Block = AddComponent<UStaticMeshComponent>();
 		if (GetRootComponent())
@@ -382,7 +414,7 @@ void AMapChunk::BuildFloor() {
 			Block->AttachToComponent(GetRootComponent());
 		}
 
-		ApplyCubeMesh(Block);
+		ApplyCubeMesh(Block, ChunkMaterialPath);
 		FVector BlockPos = BlockInfo.LocalPosition;
 		Block->SetRelativeLocation(FVector(BlockPos.X, BlockPos.Y, BlockPos.Z));
 		Block->SetRelativeRotation(BlockInfo.LocalRotation);

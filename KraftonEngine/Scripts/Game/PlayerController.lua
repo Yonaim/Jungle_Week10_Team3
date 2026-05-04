@@ -10,7 +10,7 @@ local AudioManager = require("Game.AudioManager")
 local PlayerSlide = require("Game.PlayerSlide")
 
 local PlayerConfig = Config.player
-
+local is_input_locked = false;
 DeclareProperties({
     { name = "ForwardSpeed", type = "float", default = PlayerConfig.forward_speed },
     { name = "LaneWidth", type = "float", default = PlayerConfig.lane_width },
@@ -476,6 +476,10 @@ function BeginPlay()
 end
 
 function Tick(dt)
+    if GameManager.IsPaused and GameManager.IsPaused() then
+        return
+    end
+
     -- GameOver 이후에는 이동, 입력, 중력, score 갱신을 모두 멈춘다.
     -- 로그는 최초 1회만 남겨 Tick마다 콘솔이 도배되지 않게 한다.
     if GameManager.IsGameOver() then

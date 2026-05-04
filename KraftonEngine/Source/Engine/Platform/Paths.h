@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <Windows.h>
@@ -32,13 +32,22 @@ public:
 	static std::wstring ProjectResourcePathsFilePath();  // Settings/Resource/ProjectResourcePaths.ini
 	static std::wstring ProjectSettingsFilePath();  // Settings/ProjectSettings.ini
 
-	// 寃쎈줈 寃고빀: FPaths::Combine(L"Asset/Content/Scene", L"Default.Scene")
+	static std::wstring ProjectDir();
+	static std::wstring ProjectContentDir();
+	static std::wstring ProjectConfigDir();
+	static std::wstring ProjectSavedDir();
+
+	// Path Utilities
+	static std::string ConvertRelativePathToFull(const std::string& RelativePath);
+	static std::string NormalizePath(const std::string& Path);
+
+	//  FPaths::Combine(L"Asset/Content/Scene", L"Default.Scene")
 	static std::wstring Combine(const std::wstring& Base, const std::wstring& Child);
 
-	// ?붾젆?곕━媛 ?놁쑝硫??ш??곸쑝濡??앹꽦
+
 	static void CreateDir(const std::wstring& Path);
 
-	// 蹂???좏떥由ы떚 (?쒓? 寃쎈줈 吏??
+
 	static std::wstring ToWide(const std::string& Utf8Str);
 	static std::string ToUtf8(const std::wstring& WideStr);
 

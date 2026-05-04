@@ -1,0 +1,254 @@
+{
+  "Actors" : [{
+      "ClassName" : "ADirectionalLightActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "ADirectionalLightActor_1",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_9",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : true,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_21",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : false,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_2",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : false,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }],
+        "ClassName" : "UDirectionalLightComponent",
+        "ObjectName" : "UDirectionalLightComponent_1",
+        "Properties" : {
+          "Cast Shadows" : true,
+          "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+          "Intensity" : 1.000000,
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Rotation" : [45.000000, -45.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Shadow Bias" : -0.000100,
+          "Shadow Normal Bias" : -0.002000,
+          "Shadow Resolution Scale" : 1.000000,
+          "Shadow Sharpen" : 0.670000,
+          "Shadow Slope Bias" : 0.000100,
+          "Visible" : true
+        }
+      },
+      "UUID" : 500,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AUIRootActor",
+      "NonSceneComponents" : [{
+          "ClassName" : "UScriptComponent",
+          "ObjectName" : "UScriptComponent_0",
+          "Properties" : {
+            "ScriptPath" : "Scripts/Game/Event/FakeCrashEvent.lua"
+          }
+        }],
+      "ObjectName" : "AUIRootActor_7",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_22",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/Actor_64.png"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : false,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }, {
+            "Children" : [{
+                "Children" : [],
+                "ClassName" : "UIButtonComponent",
+                "ObjectName" : "CrashOKButton",
+                "Properties" : {
+                  "Alignment" : [0.000000, 0.000000, 0.000000],
+                  "Anchor" : [0.000000, 0.000000, 0.000000],
+                  "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+                  "Background Content Alignment" : 0,
+                  "Background Fit Mode" : 0,
+                  "Background Texture" : {
+                    "Path" : ""
+                  },
+                  "Border Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+                  "Border Thickness" : 0.000000,
+                  "Click Sound" : "None",
+                  "Content Alignment" : 0,
+                  "Draw Background" : false,
+                  "Draw Shadow" : false,
+                  "Fit Mode" : 0,
+                  "Font" : "Default",
+                  "Hover Fill" : [0.250000, 0.280000, 0.330000, 0.960000],
+                  "Hover Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
+                  "Label" : "",
+                  "Label Alignment" : 0,
+                  "Label Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+                  "Label Offset" : [24.000000, 18.000000, 0.000000],
+                  "Label Scale" : 1.000000,
+                  "Normal Fill" : [0.180000, 0.200000, 0.240000, 0.900000],
+                  "Normal Tint" : [1.000000, 1.000000, 1.000000, 0.950000],
+                  "On Click Action" : "OnCrashOKClicked",
+                  "On Hover Enter Action" : "",
+                  "On Hover Exit Action" : "",
+                  "On Press Action" : "",
+                  "On Release Action" : "",
+                  "Pressed Fill" : [0.120000, 0.140000, 0.180000, 1.000000],
+                  "Pressed Offset" : [0.000000, 3.000000, 0.000000],
+                  "Pressed Tint" : [0.850000, 0.850000, 0.850000, 1.000000],
+                  "Screen Position" : [1074.599854, 576.000000, 0.000000],
+                  "Screen Size" : [80.000000, 20.000000, 0.000000],
+                  "Shadow Blur" : 0.000000,
+                  "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+                  "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+                  "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+                  "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+                  "Texture" : {
+                    "Path" : "Asset/Content/Texture/OK.png"
+                  },
+                  "Use Anchored Layout" : false,
+                  "Visible" : false,
+                  "Z Order" : 0
+                }
+              }],
+            "ClassName" : "UUIImageComponent",
+            "ObjectName" : "CrashAlertBox",
+            "Properties" : {
+              "Alignment" : [0.000000, 0.000000, 0.000000],
+              "Anchor" : [0.000000, 0.000000, 0.000000],
+              "Anchor Offset" : [0.000000, 0.000000, 0.000000],
+              "Background Content Alignment" : 0,
+              "Background Fit Mode" : 0,
+              "Background Texture" : {
+                "Path" : ""
+              },
+              "Background Tint" : [0.180000, 0.200000, 0.240000, 0.900000],
+              "Border Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Border Thickness" : 0.000000,
+              "Content Alignment" : 0,
+              "Draw Background" : false,
+              "Draw Shadow" : false,
+              "Fit Mode" : 0,
+              "Screen Position" : [705.599854, 437.399933, 0.000000],
+              "Screen Size" : [470.000000, 174.000000, 0.000000],
+              "Shadow Blur" : 0.000000,
+              "Shadow Bottom Tint" : [1.000000, 1.000000, 1.000000, 0.100000],
+              "Shadow Offset" : [0.000000, 4.000000, 0.000000],
+              "Shadow Tint" : [1.000000, 1.000000, 1.000000, 0.350000],
+              "Shadow Top Tint" : [1.000000, 1.000000, 1.000000, 0.500000],
+              "Texture" : {
+                "Path" : "Asset/Content/Texture/CrashImage.png"
+              },
+              "Tint" : [1.000000, 1.000000, 1.000000, 1.000000],
+              "Use Anchored Layout" : false,
+              "Visible" : false,
+              "Z Order" : 0
+            }
+          }, {
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_4",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/Actor_64.png"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : true,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }],
+        "ClassName" : "UCanvasRootComponent",
+        "ObjectName" : "UCanvasRootComponent_7",
+        "Properties" : {
+          "Canvas Size" : [1920.000000, 1080.000000, 0.000000],
+          "Location" : [660.327820, -804.516418, 386.841675],
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000]
+        }
+      },
+      "UUID" : 728,
+      "bVisible" : true
+    }],
+  "ClassName" : "UWorld",
+  "ContextHandle" : "NewScene",
+  "ContextName" : "New Scene",
+  "GameModeClass" : "ARunnerGameMode",
+  "Version" : 2,
+  "WorldType" : "Game"
+}

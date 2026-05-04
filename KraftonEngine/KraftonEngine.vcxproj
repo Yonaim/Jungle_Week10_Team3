@@ -294,6 +294,7 @@
     <ClCompile Include="Source\Game\GameActors\Items\CrashDumpItemActor.cpp" />
     <ClCompile Include="Source\Game\GameActors\Items\LogFragmentItemActor.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraShake.cpp" />
+    <ClCompile Include="Source\Game\GameActors\Obstacle\PendulumObstacleActor.cpp" />
     <ClCompile Include="Source\Game\GameMode\ARunnerGameMode.cpp" />
     <ClCompile Include="Source\Game\Player\Runner.cpp" />
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
@@ -530,6 +531,7 @@
     <ClInclude Include="Source\Game\GameActors\Items\CrashDumpItemActor.h" />
     <ClInclude Include="Source\Game\GameActors\Items\LogFragmentItemActor.h" />
     <ClInclude Include="Source\Engine\Camera\CameraShake.h" />
+    <ClInclude Include="Source\Game\GameActors\Obstacle\PendulumObstacleActor.h" />
     <ClInclude Include="Source\Game\GameMode\ARunnerGameMode.h" />
     <ClInclude Include="Source\Game\Map\MapRandom.h" />
     <ClInclude Include="Source\Game\Player\Runner.h" />

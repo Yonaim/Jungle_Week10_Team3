@@ -15,6 +15,7 @@
 #include "Platform/ScriptPaths.h"
 #include "SimpleJSON/json.hpp"
 #include "Scripting/ScriptProperty.h"
+#include "Engine/Viewport/GameViewportClient.h"
 
 // Sol.hpp에 있는 Check 매크로 겹침 방지 목적 제거
 #pragma region SolInclude
@@ -492,7 +493,28 @@ namespace
 			return InputPath.lexically_normal();
 		}
 
-		return (std::filesystem::path(FPaths::RootDir()) / InputPath).lexically_normal();
+		// Root relative (ProjectDir/Asset/Content/...)
+		std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / InputPath;
+		if (std::filesystem::exists(FullPath))
+		{
+			return FullPath.lexically_normal();
+		}
+
+		// Content relative fallback
+		std::filesystem::path ContentPath = std::filesystem::path(FPaths::ProjectContentDir()) / InputPath;
+		if (std::filesystem::exists(ContentPath))
+		{
+			return ContentPath.lexically_normal();
+		}
+
+		// Asset relative fallback
+		std::filesystem::path AssetPath = std::filesystem::path(FPaths::AssetDir()) / InputPath;
+		if (std::filesystem::exists(AssetPath))
+		{
+			return AssetPath.lexically_normal();
+		}
+
+		return FullPath.lexically_normal();
 	}
 
 	sol::object MakeLuaObjectFromJson(sol::state_view Lua, const json::JSON& Value)
@@ -1179,6 +1201,10 @@ AActor* FLuaScriptInstance::GetOwnerActor() const
 }
 
 // Bind 관련 함수 (추가할 일 없으면 열지 말 것, bind 짬통)
+void FLuaScriptInstance::RegisterEnvFunction(const FString& Name, std::function<void(FLuaActorProxy)> Func) {
+	Impl->Env.set_function(Name, Func);
+}
+
 void FLuaScriptInstance::BindOwnerObject()
 {
 	if (!Impl)
@@ -1522,6 +1548,11 @@ void FLuaScriptInstance::BindSoundFunctions()
 	Impl->Env.set_function("is_bgm_playing", []()
 	{
 		return FAudioManager::Get().IsBackgroundPlaying();
+	});
+
+	Impl->Env.set_function("stop_all_audio", []()
+	{
+		FAudioManager::Get().StopAll();
 	});
 }
 

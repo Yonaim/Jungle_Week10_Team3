@@ -2,12 +2,12 @@
   "Actors" : [{
       "ClassName" : "ADirectionalLightActor",
       "NonSceneComponents" : [],
-      "ObjectName" : "ADirectionalLightActor_0",
+      "ObjectName" : "ADirectionalLightActor_1",
       "RootComponent" : {
         "Children" : [{
             "Children" : [],
             "ClassName" : "UBillboardComponent",
-            "ObjectName" : "UBillboardComponent_0",
+            "ObjectName" : "UBillboardComponent_9",
             "Properties" : {
               "Billboard" : true,
               "Cast Shadow" : true,
@@ -16,7 +16,7 @@
               "Is Collidable" : true,
               "Location" : [0.000000, 0.000000, 0.000000],
               "Mobility" : 2,
-              "Rotation" : [-0.000000, 0.000000, 0.000000],
+              "Rotation" : [0.000000, 0.000000, 0.000000],
               "Scale" : [1.000000, 1.000000, 1.000000],
               "Texture" : {
                 "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
@@ -28,12 +28,12 @@
             "bHiddenInComponentTree" : true
           }],
         "ClassName" : "UDirectionalLightComponent",
-        "ObjectName" : "UDirectionalLightComponent_0",
+        "ObjectName" : "UDirectionalLightComponent_1",
         "Properties" : {
           "Cast Shadows" : true,
           "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
           "Intensity" : 1.000000,
-          "Location" : [1.055727, -0.000001, 1.527864],
+          "Location" : [0.000000, 0.000000, 0.000000],
           "Rotation" : [45.000000, -45.000000, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
           "Shadow Bias" : -0.000100,
@@ -44,20 +44,13 @@
           "Visible" : true
         }
       },
-      "UUID" : 266,
+      "UUID" : 500,
       "bVisible" : true
     }],
   "ClassName" : "UWorld",
   "ContextHandle" : "NewScene",
   "ContextName" : "New Scene",
-  "Name" : "Default",
-  "PerspectiveCamera" : {
-    "FOV" : 1.047198,
-    "FarClip" : 1000.000000,
-    "Location" : [10.000000, 0.000000, 5.000000],
-    "NearClip" : 0.100000,
-    "Rotation" : [0.000000, 26.565048, -179.999985]
-  },
+  "GameModeClass" : "ARunnerGameMode",
   "Version" : 2,
-  "WorldType" : "Editor"
+  "WorldType" : "Game"
 }

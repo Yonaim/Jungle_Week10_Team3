@@ -34,31 +34,50 @@ namespace
 		std::filesystem::path Path(FPaths::ToWide(FilePath));
 		const std::filesystem::path Root(FPaths::RootDir());
 
-		if (!Path.is_absolute())
+		if (Path.is_absolute())
 		{
-			Path = Root / Path;
+			auto Relative = Path.lexically_relative(Root);
+			if (!Relative.empty() && Relative.native() != L".")
+			{
+				return FPaths::ToUtf8(Relative.generic_wstring());
+			}
 		}
 
-		Path = Path.lexically_normal();
-
-		const std::filesystem::path RelativePath = Path.lexically_relative(Root);
-		if (!RelativePath.empty() && RelativePath.native() != L".")
-		{
-			return FPaths::ToUtf8(RelativePath.generic_wstring());
-		}
-
-		return FPaths::ToUtf8(Path.generic_wstring());
+		return FPaths::ToUtf8(Path.lexically_normal().generic_wstring());
 	}
 
 	std::wstring ResolveTexturePathOnDisk(const FString& FilePath)
 	{
+		if (FilePath.empty()) return {};
+
 		std::filesystem::path Path(FPaths::ToWide(FilePath));
-		if (!Path.is_absolute())
+		if (Path.is_absolute())
 		{
-			Path = std::filesystem::path(FPaths::RootDir()) / Path;
+			return Path.lexically_normal().wstring();
 		}
 
-		return Path.lexically_normal().wstring();
+		// 1. Root relative (Asset/Content/...)
+		std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / Path;
+		if (std::filesystem::exists(FullPath))
+		{
+			return FullPath.lexically_normal().wstring();
+		}
+
+		// 2. Content relative fallback
+		std::filesystem::path ContentPath = std::filesystem::path(FPaths::ProjectContentDir()) / Path;
+		if (std::filesystem::exists(ContentPath))
+		{
+			return ContentPath.lexically_normal().wstring();
+		}
+
+		// 3. Asset relative fallback
+		std::filesystem::path AssetPath = std::filesystem::path(FPaths::AssetDir()) / Path;
+		if (std::filesystem::exists(AssetPath))
+		{
+			return AssetPath.lexically_normal().wstring();
+		}
+
+		return FullPath.lexically_normal().wstring();
 	}
 
 	bool TryGetTextureWriteTime(const FString& FilePath, std::filesystem::file_time_type& OutWriteTime)

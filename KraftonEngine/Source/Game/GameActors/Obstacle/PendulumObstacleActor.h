@@ -1,10 +1,9 @@
 ﻿#pragma once
 #include "ObstacleActorBase.h"
 
-// Not used for now
-class AMustJumpObstacleActor : public AObstacleActorBase {
+class APendulumObstacleActor : public AObstacleActorBase {
 public:
-	DECLARE_CLASS(AMustJumpObstacleActor, AObstacleActorBase)
+	DECLARE_CLASS(APendulumObstacleActor, AObstacleActorBase)
 	void InitDefaultComponents(const FString& UStaticMeshFileName) override;
 	void OnPlayerCollision() override {}
 

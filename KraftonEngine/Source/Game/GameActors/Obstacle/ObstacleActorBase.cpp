@@ -36,22 +36,24 @@ void AObstacleActorBase::OnOverlap(const FComponentOverlapEvent& Other) {
 }
 
 void AObstacleActorBase::InitDefaultComponents(const FString& UStaticMeshFileName) {
-	StaticMeshComponent = AddComponent<UStaticMeshComponent>();
-	StaticMeshComponent->SetCanDeleteFromDetails(false);
-	StaticMeshComponent->SetCollisionEnabled(false);
-	SetRootComponent(StaticMeshComponent);
 	UBoxComponent* CollisionBox = AddComponent<UBoxComponent>();
 	CollisionBox->SetCanDeleteFromDetails(false);
 	CollisionBox->AttachToComponent(StaticMeshComponent);
-	CollisionBox->SetBoxExtent(FVector(0.75f, 0.75f, 1.0f));
+	CollisionBox->SetBoxExtent(CollisionBoxExtent);
+	CollisionBox->SetRelativeLocation(CollisionBoxOffset);
 	CollisionBox->SetCollisionEnabled(true);
 	CollisionBox->SetGenerateOverlapEvents(true);
+	SetRootComponent(CollisionBox);
 	if (HasActorBegunPlay())
 	{
 		CollisionBox->OnComponentBeginOverlap.AddDynamic(this, &AObstacleActorBase::OnOverlap);
 		CollisionBox->OnComponentHit.AddDynamic(this, &AObstacleActorBase::OnHit);
 	}
-	//CollisionBox->SetWorldLocation(StaticMeshComponent->GetWorldLocation());
+	
+	StaticMeshComponent = AddComponent<UStaticMeshComponent>();
+	StaticMeshComponent->SetCanDeleteFromDetails(false);
+	StaticMeshComponent->SetCollisionEnabled(false);
+	StaticMeshComponent->AttachToComponent(CollisionBox);
 
 	if (!UStaticMeshFileName.empty() && UStaticMeshFileName != "None")
 	{
@@ -59,10 +61,10 @@ void AObstacleActorBase::InitDefaultComponents(const FString& UStaticMeshFileNam
 		UStaticMesh* Asset = FObjManager::LoadObjStaticMesh(UStaticMeshFileName, Device);
 		StaticMeshComponent->SetStaticMesh(Asset);
 
-		if (Asset && IsBasicShapeAssetPath(UStaticMeshFileName))
+		if (Asset)
 		{
-			const FString DefaultShapeMaterialPath = FResourceManager::Get().ResolvePath(FName("Default.Material.BasicShape"));
-			if (UMaterial* DefaultShapeMaterial = FMaterialManager::Get().GetOrCreateMaterial(DefaultShapeMaterialPath))
+			const FString RedGridMaterialPath = FResourceManager::Get().ResolvePath(FName("Sample.Material.RedGrid"));
+			if (UMaterial* RedGridMaterial = FMaterialManager::Get().GetOrCreateMaterial(RedGridMaterialPath))
 			{
 				int32 MaterialCount = static_cast<int32>(Asset->GetStaticMaterials().size());
 				if (MaterialCount == 0 && Asset->GetStaticMeshAsset() &&
@@ -72,7 +74,7 @@ void AObstacleActorBase::InitDefaultComponents(const FString& UStaticMeshFileNam
 				}
 				for (int32 MaterialIndex = 0; MaterialIndex < MaterialCount; ++MaterialIndex)
 				{
-					StaticMeshComponent->SetMaterial(MaterialIndex, DefaultShapeMaterial);
+					StaticMeshComponent->SetMaterial(MaterialIndex, RedGridMaterial);
 				}
 			}
 		}

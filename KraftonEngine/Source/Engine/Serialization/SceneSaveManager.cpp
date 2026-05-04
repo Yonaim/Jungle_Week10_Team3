@@ -1231,7 +1231,7 @@ bool FSceneSaveManager::CookSceneToBinary(const FString& InSceneJsonPath, const 
 	return bOk;
 }
 
-int32 FSceneSaveManager::CookAllScenes()
+int32 FSceneSaveManager::CookAllScenes(const FString& OutputSceneRoot)
 {
 	int32 Cooked = 0;
 	const std::wstring SceneDir = GetSceneDirectory();
@@ -1240,6 +1240,10 @@ int32 FSceneSaveManager::CookAllScenes()
 		return 0;
 	}
 
+	const std::filesystem::path OutputRoot = OutputSceneRoot.empty()
+		? std::filesystem::path()
+		: std::filesystem::path(FPaths::ToWide(OutputSceneRoot));
+
 	for (auto& Entry : std::filesystem::recursive_directory_iterator(SceneDir))
 	{
 		if (!Entry.is_regular_file()) continue;
@@ -1247,8 +1251,17 @@ int32 FSceneSaveManager::CookAllScenes()
 		if (Ext != SceneExtension) continue;
 
 		const std::filesystem::path InPath = Entry.path();
-		std::filesystem::path OutPath = InPath;
-		OutPath.replace_extension(L".umap");
+		std::filesystem::path OutPath;
+		if (OutputRoot.empty())
+		{
+			OutPath = InPath;
+			OutPath.replace_extension(L".umap");
+		}
+		else
+		{
+			OutPath = OutputRoot / std::filesystem::relative(InPath, SceneDir);
+			OutPath.replace_extension(L".umap");
+		}
 
 		const FString InUtf8 = FPaths::ToUtf8(InPath.wstring());
 		const FString OutUtf8 = FPaths::ToUtf8(OutPath.wstring());

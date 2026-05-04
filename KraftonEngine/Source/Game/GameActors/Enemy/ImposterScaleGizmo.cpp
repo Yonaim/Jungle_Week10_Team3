@@ -1,5 +1,5 @@
 ﻿#include "ImposterScaleGizmo.h"
-#include "Game/GameActors/Obstacle/ObstacleActorBase.h"
+#include "Game/GameActors/Obstacle/MustSlideObstacleActor.h"
 
 #include <algorithm>
 #include <random>
@@ -17,7 +17,7 @@ namespace {
 
 	float RandomScaleFactor()
 	{
-		std::uniform_real_distribution<float> Distribution(3.f, 5.0f);
+		std::uniform_real_distribution<float> Distribution(2.f, 4.0f);
 		return Distribution(RandomEngine());
 	}
 }
@@ -79,7 +79,10 @@ FVector AImposterScaleGizmo::GetScaleOffset() {
 		return FVector(1, RandomScaleFactor(), 1);
 		break;
 	default:
-		return FVector(1, 1, RandomScaleFactor());
+		float ScaleFactor = RandomScaleFactor();
+		if (Target && Target->IsA<AMustSlideObstacleActor>())
+				ScaleFactor = ScaleFactor > 1.2 ? 1.2 : ScaleFactor;
+		return FVector(1, 1, ScaleFactor);
 		break;
 	}
 

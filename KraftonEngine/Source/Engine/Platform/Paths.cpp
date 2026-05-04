@@ -89,6 +89,28 @@ std::wstring FPaths::DefaultContentResourceFilePath() { return ResourceSettingsD
 std::wstring FPaths::ProjectResourcePathsFilePath() { return ResourceSettingsDir() + L"ProjectResourcePaths.ini"; }
 std::wstring FPaths::ProjectSettingsFilePath() { return RootDir() + L"Settings\\ProjectSettings.ini"; }
 
+std::wstring FPaths::ProjectDir() { return RootDir(); }
+std::wstring FPaths::ProjectContentDir() { return ContentDir(); }
+std::wstring FPaths::ProjectConfigDir() { return SettingsDir(); }
+std::wstring FPaths::ProjectSavedDir() { return SaveDir(); }
+
+std::string FPaths::ConvertRelativePathToFull(const std::string& RelativePath)
+{
+	std::filesystem::path Path(ToWide(RelativePath));
+	if (Path.is_absolute())
+	{
+		return NormalizePath(RelativePath);
+	}
+
+	return ToUtf8((std::filesystem::path(RootDir()) / Path).lexically_normal().wstring());
+}
+
+std::string FPaths::NormalizePath(const std::string& Path)
+{
+	std::filesystem::path FsPath(ToWide(Path));
+	return ToUtf8(FsPath.lexically_normal().generic_wstring());
+}
+
 std::wstring FPaths::Combine(const std::wstring& Base, const std::wstring& Child)
 {
 	std::filesystem::path Result(Base);

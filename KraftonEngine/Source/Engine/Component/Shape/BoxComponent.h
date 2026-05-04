@@ -7,11 +7,12 @@ public:
 	UBoxComponent() = default;
 	UBoxComponent(FVector InExtent) : BoxExtent(InExtent) {}
 	FVector GetBoxExtent() const { return BoxExtent; }
-	void	SetBoxExtent(FVector InExtent) { BoxExtent = InExtent; }
+	FVector GetScaledBoxExtent() const;
+	void	SetBoxExtent(FVector InExtent);
 	void	UpdateWorldAABB() const override;
 	void	DrawDebugShape(FScene& Scene) const override;
-	void	SetRelativeScale(const FVector& NewScale) override;
 	void	GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
+	void	PostEditProperty(const char* PropertyName) override;
 	void	Serialize(FArchive& Ar) override;
 
 private:

@@ -20,10 +20,14 @@ public:
 	void Serialize(FArchive& Ar) override;
 
 private:
-	// 회전 축 (로컬 기준, 정규화됨). 기본값 Y축 = 좌우 흔들림
-	FVector Axis = FVector(0.0f, 1.0f, 0.0f);
+	// 회전 축 (초기 로컬 기준, 정규화됨). 기본값 X축 = 좌우 흔들림(Y/Z 평면)
+	FVector Axis = FVector(1.0f, 0.0f, 0.0f);
+	FVector PivotOffset = FVector(0.0f, 0.0f, 8.0f);
 
 	FQuat InitialRelativeRotation;
+	FQuat InitialWorldRotation;
+	FVector InitialWorldPivotLocation;
+	FVector InitialWorldOrbitOffset;
 
 	float Amplitude    = 30.0f;	// 최대 회전 각도 (도)
 	float Frequency    = 0.5f;	// 초당 왕복 횟수 (Hz)
@@ -31,4 +35,5 @@ private:
 	float AngleOffset  = 0.0f;	// 기본 회전 오프셋 (도) — 진동 중심을 기울임
 
 	float ElapsedTime = 0.0f;	// 누적 시간 (직렬화 제외)
+	bool bInitialized = false;	// true after first tick captures world-space anchor
 };
