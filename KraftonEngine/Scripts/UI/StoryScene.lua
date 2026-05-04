@@ -1,12 +1,12 @@
 DeclareProperties({
     ScenarioPath = { type = "string", default = "Asset/Content/Data/Scenarios/story.json" },
-    NextScene = { type = "string", default = "playerdev.scene" },
+    NextScene = { type = "string", default = "PlayerDev.Scene" },
 })
 
 local ScenarioLoader = require("UI.ScenarioLoader")
 
 local SCENARIO_PATH = property("ScenarioPath", "Asset/Content/Data/Scenarios/story.json")
-local NEXT_SCENE = property("NextScene", "playerdev.scene")
+local NEXT_SCENE = property("NextScene", "PlayerDev.Scene")
 
 local ui = {}
 local scenario = nil

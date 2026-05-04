@@ -122,6 +122,41 @@ local function build_result_data(reason)
     }
 end
 
+local function build_sample_result_data()
+    return {
+        reason = "EditorPreview",
+        score = 128450,
+        distance = 1842.0,
+        elapsed_time = 153.4,
+        logs = 24,
+        trace = 88,
+        dumps = 2,
+        hotfix_count = 3,
+        critical_analysis_count = 1,
+        stability = 72,
+        max_stability = Config.player.max_hp,
+        coach_approval = 84,
+        coach_rank = "A",
+        shield_count = 1,
+    }
+end
+
+local function refresh_result_data(reason)
+    local resolved_reason = reason
+    if resolved_reason == nil then
+        if GameManager.state == GameManager.State.GameOver then
+            resolved_reason = "GameOver"
+        elseif GameManager.state == GameManager.State.Running then
+            resolved_reason = "Running"
+        else
+            resolved_reason = "Ready"
+        end
+    end
+
+    GameManager.result_data = build_result_data(resolved_reason)
+    return GameManager.result_data
+end
+
 function GameManager.StartGame()
     -- StartGame은 한 런의 모든 HUD용 수치를 초기화하는 지점입니다.
     -- 비주얼/HUD 담당자가 "게임 시작 시 초기값"을 확인해야 하면 여기 값을 보면 됩니다.
@@ -143,7 +178,7 @@ function GameManager.StartGame()
     GameManager.coach_approval = Config.coach.initial_approval or 50
     refresh_coach_rank()
     GameManager.shield_count = 0
-    GameManager.result_data = nil
+    refresh_result_data("Running")
 
     log("[GameManager] StartGame state=Running score=0 distance=0 elapsed_time=0")
     AudioManager.PlayBGM()
@@ -182,6 +217,8 @@ function GameManager.Tick(dt, moved_distance)
             " rank=" .. tostring(GameManager.coach_rank)
         )
     end
+
+    refresh_result_data("Running")
 end
 
 function GameManager.AddScore(amount, reason)
@@ -353,7 +390,7 @@ function GameManager.GameOver(reason)
     end
 
     GameManager.state = GameManager.State.GameOver
-    GameManager.result_data = build_result_data(reason)
+    refresh_result_data(reason)
 
     log("[GameManager] GameOver reason=" .. tostring(reason or "Unknown"))
     AudioManager.PlayGameOver()
@@ -477,7 +514,19 @@ end
 function GameManager.GetResultData()
     -- 결과창/다른 씬이 GameOver 이후 최종 데이터를 읽는 함수입니다.
     -- UI는 만들지 않고, 데이터가 사라지지 않도록 여기만 준비해 둡니다.
-    return GameManager.result_data
+    if GameManager.result_data then
+        return GameManager.result_data
+    end
+
+    if GameManager.state == GameManager.State.Ready then
+        return build_sample_result_data()
+    end
+
+    return refresh_result_data()
+end
+
+function GameManager.GetSampleResultData()
+    return build_sample_result_data()
 end
 
 function GameManager.ChangeLevel(level_name)

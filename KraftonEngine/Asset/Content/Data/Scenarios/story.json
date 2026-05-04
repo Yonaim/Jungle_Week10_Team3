@@ -4,13 +4,13 @@
   "name": "Story Scene",
   "characters": {
     "BAEK_COMMANDER": {
-      "displayName": "백 사령관",
-      "shortName": "백",
+      "displayName": "백승현 사령관",
+      "shortName": "백승현",
       "defaultProfile": "profile_baek"
     },
     "LIM_COMMANDER": {
-      "displayName": "임 오퍼레이터",
-      "shortName": "임",
+      "displayName": "임창근 사령관",
+      "shortName": "임창근",
       "defaultProfile": "profile_lim"
     }
   },

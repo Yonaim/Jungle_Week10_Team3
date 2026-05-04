@@ -2,7 +2,7 @@ local Config = require("Game.Config")
 local GameManager = require("Game.GameManager")
 local Scoreboard = require("Game.Scoreboard")
 
-local DIALOGUE_PATH = "Asset/Content/Data/Dialogues/game_over.dialogue.json"
+local DIALOGUE_PATH = "Asset/Content/Data/Dialogues/game_result.dialogue.json"
 local DEFAULT_RANK_TEXTURE = "Asset/Content/Texture/UI/rank_c.png"
 local RANK_TEXTURE_BY_CODE = {
     s = "Asset/Content/Texture/UI/rank_s.png",
@@ -11,6 +11,22 @@ local RANK_TEXTURE_BY_CODE = {
     c = "Asset/Content/Texture/UI/rank_c.png",
     d = "Asset/Content/Texture/UI/rank_c.png",
     f = "Asset/Content/Texture/UI/rank_f.png",
+}
+local PREVIEW_RESULT_DATA = {
+    reason = "EditorPreview",
+    score = 128450,
+    logs = 24,
+    trace = 88,
+    dumps = 2,
+    hotfix_count = 3,
+    critical_analysis_count = 1,
+    distance = 1842.0,
+    elapsed_time = 153.4,
+    stability = 2,
+    max_stability = 3,
+    coach_approval = 84,
+    coach_rank = "A",
+    shield_count = 1,
 }
 
 local result_data = nil
@@ -22,6 +38,7 @@ local rank_badge = nil
 local score_saved = false
 local title_loading = false
 local waiting_title_confirm = false
+local preview_mode = false
 
 local function get_component(...)
     local names = { ... }
@@ -72,20 +89,62 @@ local function format_number(value)
     return sign .. table.concat(parts, ",")
 end
 
+local function format_percent(current, max_value)
+    local safe_max = max_value or 0
+    if safe_max <= 0 then
+        return "0%"
+    end
+
+    local ratio = math.max(0, math.min((current or 0) / safe_max, 1))
+    return tostring(math.floor(ratio * 100 + 0.5)) .. "%"
+end
+
+local function copy_table(source)
+    local copied = {}
+    if type(source) ~= "table" then
+        return copied
+    end
+
+    for key, value in pairs(source) do
+        copied[key] = value
+    end
+
+    return copied
+end
+
 local function build_fallback_result_data()
     return {
         score = GameManager.GetScore and GameManager.GetScore() or 0,
         logs = GameManager.GetLogs and GameManager.GetLogs() or 0,
         trace = GameManager.GetTrace and GameManager.GetTrace() or 0,
+        dumps = GameManager.GetDumps and GameManager.GetDumps() or 0,
         hotfix_count = GameManager.GetHotfixCount and GameManager.GetHotfixCount() or 0,
         critical_analysis_count = GameManager.GetCriticalAnalysisCount and GameManager.GetCriticalAnalysisCount() or 0,
         distance = GameManager.GetDistance and GameManager.GetDistance() or 0,
+        stability = GameManager.GetStability and GameManager.GetStability() or 0,
+        max_stability = GameManager.GetMaxStability and GameManager.GetMaxStability() or 0,
         coach_rank = GameManager.GetCoachRank and GameManager.GetCoachRank() or "C",
     }
 end
 
+local function resolve_result_data()
+    if not (GameManager.IsGameOver and GameManager.IsGameOver()) then
+        preview_mode = true
+        return copy_table(PREVIEW_RESULT_DATA)
+    end
+
+    local data = GameManager.GetResultData and GameManager.GetResultData() or nil
+    if type(data) == "table" then
+        preview_mode = false
+        return data
+    end
+
+    preview_mode = false
+    return build_fallback_result_data()
+end
+
 local function format_metric_line(label, value)
-    local target_width = 17
+    local target_width = 19
     local padding = target_width - #label
     if padding < 2 then
         padding = 2
@@ -93,24 +152,20 @@ local function format_metric_line(label, value)
     return label .. string.rep(" ", padding) .. value
 end
 
-local function pick_dialogue_condition(data)
-    if (data.logs or 0) <= 0 then
-        return "logs_zero"
+local function normalize_rank(rank_code)
+    local normalized = string.upper(tostring(rank_code or "C"))
+    if normalized == "" then
+        return "C"
     end
-    if (data.hotfix_count or 0) > 0 then
-        return "hotfix_success"
-    end
-    if (data.trace or 0) >= ((Config.collectible and Config.collectible.trace_max) or 100) * 0.5 then
-        return "trace_high"
-    end
-    return "default"
+
+    return normalized
 end
 
 local function load_coach_dialogues(data)
     local screen_config = Config.result_screen or {}
     local result = {
-        baek_name = screen_config.coach_name_baek or "백승현 코치",
-        lim_name = screen_config.coach_name_lim or "임창근 코치",
+        baek_name = screen_config.coach_name_baek or "백승현 사령관",
+        lim_name = screen_config.coach_name_lim or "임창근 사령관",
         baek_message = screen_config.coach_comment_baek or "",
         lim_message = screen_config.coach_comment_lim or "",
     }
@@ -120,11 +175,11 @@ local function load_coach_dialogues(data)
         return result
     end
 
-    local condition = pick_dialogue_condition(data)
+    local rank = normalize_rank(data.coach_rank)
     local dialogues = dialogue_root.dialogues
     for index = 1, #dialogues do
         local entry = dialogues[index]
-        if type(entry) == "table" and entry.condition == condition then
+        if type(entry) == "table" and normalize_rank(entry.rank) == rank then
             if entry.speaker == "BAEK_COMMANDER" and entry.message and entry.message ~= "" then
                 result.baek_message = tostring(entry.message)
             elseif entry.speaker == "LIM_COMMANDER" and entry.message and entry.message ~= "" then
@@ -139,16 +194,21 @@ end
 local function build_result_body(data)
     local coach_dialogues = load_coach_dialogues(data)
     local coach_rank = tostring(data.coach_rank or "C")
+    local trace_max = (Config.collectible and Config.collectible.trace_max) or 100
+    local dumps_required = (Config.collectible and Config.collectible.crash_dump_required) or 3
 
     return table.concat({
         "",
-        format_metric_line("훈련 점수", format_number(data.score or 0)),
-        format_metric_line("수집 로그", format_number(data.logs or 0)),
-        format_metric_line("Hotfix 성공", tostring(math.floor(data.hotfix_count or 0)) .. "회"),
-        format_metric_line("Crash Dump 분석", tostring(math.floor(data.critical_analysis_count or 0)) .. "회"),
-        format_metric_line("최대 진입 깊이", format_number(data.distance or 0) .. "m"),
+        format_metric_line("SCORE", format_number(data.score or 0)),
+        format_metric_line("COLLECTED LOGS", format_number(data.logs or 0)),
+        format_metric_line("TRACE DATA", format_percent(data.trace or 0, trace_max)),
+        format_metric_line("CRASH DUMPS", format_number(data.dumps or 0) .. "/" .. format_number(dumps_required)),
+        format_metric_line("POD STABILITY", format_percent(data.stability or 0, data.max_stability or 0)),
+        format_metric_line("HOTFIX APPLIED", tostring(math.floor(data.hotfix_count or 0))),
+        format_metric_line("CRITICAL ANALYSIS", tostring(math.floor(data.critical_analysis_count or 0))),
+        format_metric_line("DISTANCE", format_number(data.distance or 0) .. "m"),
         "",
-        format_metric_line("코치 인정도", coach_rank),
+        format_metric_line("COACH RANK", coach_rank),
         "",
         tostring(coach_dialogues.baek_name) .. ":",
         "\"" .. tostring(coach_dialogues.baek_message or "") .. "\"",
@@ -159,7 +219,7 @@ local function build_result_body(data)
 end
 
 local function resolve_rank_texture(rank_code)
-    local normalized = string.lower(tostring(rank_code or "c"))
+    local normalized = string.lower(normalize_rank(rank_code))
     return RANK_TEXTURE_BY_CODE[normalized] or DEFAULT_RANK_TEXTURE
 end
 
@@ -182,11 +242,11 @@ function BeginPlay()
         warn("GameResultScene missing RankBadge component")
     end
 
-    result_data = GameManager.GetResultData() or build_fallback_result_data()
+    result_data = resolve_result_data()
     set_text(title_text, (Config.result_screen and Config.result_screen.title) or "DEBUG SESSION RESULT")
     set_text(body_text, build_result_body(result_data))
     set_texture(rank_badge, resolve_rank_texture(result_data and result_data.coach_rank))
-    set_text(status_text, "")
+    set_text(status_text, preview_mode and "PREVIEW SAMPLE DATA" or "")
     set_label(save_button, "SAVE SCORE")
     score_saved = false
     title_loading = false
@@ -203,7 +263,7 @@ function Tick(dt)
             set_text(status_text, "SAVED: " .. tostring(safe_nickname))
             set_label(save_button, "SAVED")
             print("[Scoreboard] Saved to " .. tostring(save_path) .. " nickname=" .. tostring(safe_nickname) .. " score=" .. tostring(math.floor((result_data and result_data.score) or 0)))
-            open_message_popup("타이틀로 돌아갑니다.")
+            open_message_popup("Returning to title.")
         else
             set_text(status_text, "SAVE FAILED")
         end
