@@ -10,6 +10,7 @@
 #include <d3d11.h>
 #include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
+#include "Core/AsciiUtils.h"
 #include "Core/Log.h"
 #include "Profiling/MemoryStats.h"
 #include "Engine/Texture/Texture2D.h"
@@ -108,10 +109,7 @@ namespace
 
 	FString ToLowerCopy(FString Value)
 	{
-		for (char& C : Value)
-		{
-			C = static_cast<char>(::tolower(static_cast<unsigned char>(C)));
-		}
+		AsciiUtils::ToLowerInPlace(Value);
 		return Value;
 	}
 
@@ -135,8 +133,7 @@ namespace
 		bool bLastWasDot = false;
 		for (const char C : Value)
 		{
-			const unsigned char U = static_cast<unsigned char>(C);
-			if (std::isalnum(U))
+			if (AsciiUtils::IsAlnum(C))
 			{
 				Result.push_back(C);
 				bLastWasDot = false;
@@ -412,10 +409,7 @@ void FResourceManager::DiscoverBitmapFonts(const FString& DirectoryPath)
 		}
 
 		FString Extension = Entry.path().extension().string();
-		for (char& C : Extension)
-		{
-			C = static_cast<char>(::tolower(static_cast<unsigned char>(C)));
-		}
+		AsciiUtils::ToLowerInPlace(Extension);
 		if (Extension != ".json")
 		{
 			continue;
@@ -550,10 +544,7 @@ void FResourceManager::LoadFromDirectory(const FString& Path, ID3D11Device* InDe
 	for (const auto& Entry : std::filesystem::recursive_directory_iterator(FPaths::ToWide(Path)))
 	{
 		FString Extension = Entry.path().extension().string();
-		for (char& C : Extension)
-		{
-			C = static_cast<char>(::tolower(static_cast<unsigned char>(C)));
-		}
+		AsciiUtils::ToLowerInPlace(Extension);
 		if (Extension != ".png")
 			continue;
 
@@ -890,7 +881,7 @@ bool FResourceManager::LoadGPUResources(ID3D11Device* Device)
 		// 확장자에 따라 DDS / WIC 로더 분기
 		std::filesystem::path Ext = std::filesystem::path(Resource.Path).extension();
 		FString ExtStr = Ext.string();
-		for (char& c : ExtStr) c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+		AsciiUtils::ToLowerInPlace(ExtStr);
 
 		HRESULT hr;
 		if (ExtStr == ".dds")

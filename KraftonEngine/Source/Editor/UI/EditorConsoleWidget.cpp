@@ -3,6 +3,7 @@
 #include "Editor/Settings/EditorSettings.h"
 #include "Editor/Subsystem/OverlayStatSystem.h"
 #include "Editor/UI/EditorPanelTitleUtils.h"
+#include "Core/AsciiUtils.h"
 #include "Object/Object.h"
 #include "Render/Types/ShadowSettings.h"
 #include "Render/Types/LightFrustumUtils.h"
@@ -12,7 +13,6 @@
 #include "Render/Scene/FScene.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <set>
@@ -79,8 +79,7 @@ namespace
 
 	FString ToLower(FString Value)
 	{
-		std::transform(Value.begin(), Value.end(), Value.begin(),
-			[](unsigned char Ch) { return static_cast<char>(std::tolower(Ch)); });
+		AsciiUtils::ToLowerInPlace(Value);
 		return Value;
 	}
 
@@ -112,7 +111,7 @@ namespace
 
 	FString TrimLeft(FString Value)
 	{
-		while (!Value.empty() && std::isspace(static_cast<unsigned char>(Value.front())))
+		while (!Value.empty() && AsciiUtils::IsSpace(Value.front()))
 		{
 			Value.erase(Value.begin());
 		}
@@ -142,7 +141,7 @@ namespace
 	FString Trim(FString Value)
 	{
 		Value = TrimLeft(Value);
-		while (!Value.empty() && std::isspace(static_cast<unsigned char>(Value.back())))
+		while (!Value.empty() && AsciiUtils::IsSpace(Value.back()))
 		{
 			Value.pop_back();
 		}
@@ -1377,7 +1376,7 @@ int32 FEditorConsoleWidget::TextEditCallback(ImGuiInputTextCallbackData* Data)
 		}
 
 		FString LowerInput = ToLower(Data->Buf);
-		while (!LowerInput.empty() && std::isspace(static_cast<unsigned char>(LowerInput.front())))
+		while (!LowerInput.empty() && AsciiUtils::IsSpace(LowerInput.front()))
 		{
 			LowerInput.erase(LowerInput.begin());
 		}

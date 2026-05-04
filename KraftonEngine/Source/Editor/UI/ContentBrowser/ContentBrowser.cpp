@@ -5,13 +5,13 @@
 #include "Editor/UI/EditorAccentColor.h"
 #include "Editor/UI/EditorPanelTitleUtils.h"
 #include "Engine/Runtime/Engine.h"
+#include "Core/AsciiUtils.h"
 #include "Materials/MaterialManager.h"
 #include "Texture/Texture2D.h"
 #include "WICTextureLoader.h"
 #include "Resource/ResourceManager.h"
 
 #include <algorithm>
-#include <cctype>
 #include <fstream>
 #include <string>
 
@@ -114,11 +114,10 @@ namespace
 
 	std::string ToLowerUtf8(std::string Value)
 	{
-		std::transform(Value.begin(), Value.end(), Value.begin(),
-			[](unsigned char Character)
-			{
-				return static_cast<char>(std::tolower(Character));
-			});
+		for (char& Character : Value)
+		{
+			Character = AsciiUtils::ToLower(Character);
+		}
 		return Value;
 	}
 

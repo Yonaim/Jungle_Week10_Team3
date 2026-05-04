@@ -53,48 +53,6 @@ function ShowScoreboard()
     return open_scoreboard_popup("Saves/scoreboard.json")
 end
 
-function DelayedStartStoryScene()
-    local dots = {
-        "LOADING.",
-        "LOADING..",
-        "LOADING...",
-        "LOADING....",
-    }
-
-    set_visible(loading_overlay, true)
-    set_visible(loading_text, true)
-    set_visible(start_button, false)
-    set_visible(score_button, false)
-    set_visible(options_button, false)
-    set_visible(exit_button, false)
-
-    play_sfx("Sound.SFX.arwing.hit.obstacle", false)
-
-    local elapsed = 0.0
-    local step = 1
-    while elapsed < 3.0 do
-        local alpha = 0.20 + (elapsed / 3.0) * 0.70
-        set_tint(loading_overlay, 0.0, 0.0, 0.0, alpha)
-        set_tint(loading_text, 0.60, 0.88, 1.0, 0.75 + ((step % 2) * 0.25))
-        set_text(loading_text, dots[step])
-
-        if logo_image then
-            logo_image:SetTint(1.0, 1.0, 1.0, 1.0 - elapsed / 3.0)
-        end
-
-        wait(0.3)
-        elapsed = elapsed + 0.3
-        step = step + 1
-        if step > #dots then
-            step = 1
-        end
-    end
-
-    set_tint(loading_overlay, 0.0, 0.0, 0.0, 0.95)
-    set_text(loading_text, "LOADING...")
-    return load_scene("game/story.scene")
-end
-
 function StartStoryScene()
     if story_scene_loading then
         return false
@@ -102,5 +60,6 @@ function StartStoryScene()
 
     story_scene_loading = true
     stop_bgm()
-    return StartCoroutine("DelayedStartStoryScene")
+    play_sfx("Sound.SFX.arwing.hit.obstacle", false)
+    return load_scene("game/story.scene")
 end

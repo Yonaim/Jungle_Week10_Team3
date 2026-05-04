@@ -21,9 +21,9 @@
 #include "GameFramework/AActor.h"
 #include "Materials/MaterialManager.h"
 #include "Engine/Platform/Paths.h"
+#include "Core/AsciiUtils.h"
 #include "Texture/Texture2D.h"
 #include "Object/Object.h"
-#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -47,8 +47,8 @@ bool EndsWithIgnoreCase(const FString& Value, const char* Suffix)
 
 	for (size_t Index = 0; Index < SuffixString.size(); ++Index)
 	{
-		const char Left = static_cast<char>(std::tolower(static_cast<unsigned char>(Value[Value.size() - SuffixString.size() + Index])));
-		const char Right = static_cast<char>(std::tolower(static_cast<unsigned char>(SuffixString[Index])));
+		const char Left = AsciiUtils::ToLower(Value[Value.size() - SuffixString.size() + Index]);
+		const char Right = AsciiUtils::ToLower(SuffixString[Index]);
 		if (Left != Right)
 		{
 			return false;

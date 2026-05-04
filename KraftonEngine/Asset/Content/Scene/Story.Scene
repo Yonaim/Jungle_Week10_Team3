@@ -5,7 +5,7 @@
       "NonSceneComponents": [
         {
           "ClassName": "UScriptComponent",
-          "ObjectName": "UScriptComponent_StoryScene",
+          "ObjectName": "UScriptComponent_Story",
           "Properties": {
             "ScriptPath": "Scripts/UI/StoryScene.lua",
             "bEditorOnly": false,
@@ -13,669 +13,357 @@
           }
         }
       ],
-      "ObjectName": "AUIRootActor_StoryScene",
+      "ObjectName": "AUIRootActor_Story",
       "RootComponent": {
         "Children": [
           {
             "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "BgBase",
+            "ClassName": "UBillboardComponent",
+            "ObjectName": "UBillboardComponent_0",
             "Properties": {
-              "Screen Position": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "Screen Size": [
-                1920.0,
-                1080.0,
-                0.0
-              ],
+              "Billboard": true,
+              "Cast Shadow": true,
+              "Generates Overlap Event": 2,
+              "Height": 1.0,
+              "Is Collidable": true,
+              "Location": [0.0, 0.0, 0.0],
+              "Mobility": 2,
+              "Rotation": [0.0, 0.0, 0.0],
+              "Scale": [1.0, 1.0, 1.0],
               "Texture": {
-                "Path": "Asset/Content/Texture/sample/checker.png"
+                "Path": "Asset/Editor/Icons/Actors/Actor_64.png"
               },
-              "Tint": [
-                0.01,
-                0.02,
-                0.04,
-                1.0
-              ],
+              "Two Sided Shadow": false,
+              "Visible": false,
+              "Width": 1.0
+            },
+            "bHiddenInComponentTree": true
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "StoryBackground",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_on.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 1.0],
+              "Use Anchored Layout": false,
               "Visible": true,
-              "Z Order": -1000
+              "Z Order": 0
             }
           },
           {
             "Children": [],
             "ClassName": "UUIImageComponent",
-            "ObjectName": "BgTexture",
+            "ObjectName": "StoryBackgroundBaek0",
             "Properties": {
-              "Screen Position": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "Screen Size": [
-                1920.0,
-                1080.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Content/Texture/background/title_background.png"
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
               },
-              "Tint": [
-                0.05,
-                0.09,
-                0.16,
-                0.32
-              ],
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_on_baek_0.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Use Anchored Layout": false,
+              "Visible": false,
+              "Z Order": 1
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "StoryBackgroundBaek1",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_on_baek_1.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Use Anchored Layout": false,
+              "Visible": false,
+              "Z Order": 2
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "StoryBackgroundLim0",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_on_lim_0.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Use Anchored Layout": false,
+              "Visible": false,
+              "Z Order": 1
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "StoryBackgroundLim1",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_on_lim_1.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Use Anchored Layout": false,
+              "Visible": false,
+              "Z Order": 2
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "StoryBackgroundPod",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_pod.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Use Anchored Layout": false,
+              "Visible": false,
+              "Z Order": 1
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "StoryBackgroundBaekLim0",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_on_baek_lim_0.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Use Anchored Layout": false,
+              "Visible": false,
+              "Z Order": 1
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "StoryBackgroundBaekLim1",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 1.0],
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 1.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/Story/control_room_screen_on_baek_lim_1.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Use Anchored Layout": false,
+              "Visible": false,
+              "Z Order": 2
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UIButtonComponent",
+            "ObjectName": "NextPageButton",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Background Content Alignment": 0,
+              "Background Fit Mode": 0,
+              "Background Texture": {
+                "Path": ""
+              },
+              "Border Color": [1.0, 1.0, 1.0, 1.0],
+              "Border Thickness": 0.0,
+              "Click Sound": "None",
+              "Content Alignment": 1,
+              "Draw Background": false,
+              "Fit Mode": 1,
+              "Font": "Default",
+              "Hover Fill": [0.0, 0.0, 0.0, 0.0],
+              "Hover Tint": [1.0, 1.0, 1.0, 0.0],
+              "Label": "",
+              "Label Alignment": 0,
+              "Label Color": [1.0, 1.0, 1.0, 0.0],
+              "Label Offset": [0.0, 0.0, 0.0],
+              "Label Scale": 1.0,
+              "Normal Fill": [0.0, 0.0, 0.0, 0.0],
+              "Normal Tint": [1.0, 1.0, 1.0, 0.0],
+              "On Click Action": "",
+              "On Hover Enter Action": "",
+              "On Hover Exit Action": "",
+              "On Press Action": "",
+              "On Release Action": "",
+              "Pressed Fill": [0.0, 0.0, 0.0, 0.0],
+              "Pressed Tint": [1.0, 1.0, 1.0, 0.0],
+              "Pressed Offset": [0.0, 0.0, 0.0],
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": ""
+              },
+              "Use Anchored Layout": false,
               "Visible": true,
-              "Z Order": -999
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "RedOverlay",
-            "Properties": {
-              "Screen Position": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "Screen Size": [
-                1920.0,
-                1080.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Content/Texture/sample/checker.png"
-              },
-              "Tint": [
-                1.0,
-                0.12,
-                0.12,
-                0.0
-              ],
-              "Visible": false,
-              "Z Order": 70
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "WhiteFlash",
-            "Properties": {
-              "Screen Position": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "Screen Size": [
-                1920.0,
-                1080.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Content/Texture/sample/checker.png"
-              },
-              "Tint": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-              ],
-              "Visible": false,
-              "Z Order": 90
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "Logo",
-            "Properties": {
-              "Screen Position": [
-                650.0,
-                220.0,
-                0.0
-              ],
-              "Screen Size": [
-                620.0,
-                150.0,
-                0.0
-              ],
-              "Draw Shadow": true,
-              "Shadow Offset": [
-                5.0,
-                5.0,
-                8.0
-              ],
-              "Shadow Tint": [
-                1.0,
-                1.0,
-                1.0,
-                0.3
-              ],
-              "Shadow Top Tint": [
-                1.0,
-                1.0,
-                1.0,
-                0.38
-              ],
-              "Shadow Bottom Tint": [
-                1.0,
-                1.0,
-                1.0,
-                0.14
-              ],
-              "Texture": {
-                "Path": "Asset/Content/Texture/UI/logo_techlab_color.png"
-              },
-              "Tint": [
-                1.0,
-                1.0,
-                1.0,
-                0.0
-              ],
-              "Visible": false,
-              "Z Order": 10
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UNineSlicePanelComponent",
-            "ObjectName": "CommsPanel",
-            "Properties": {
-              "Draw Border": true,
-              "Draw Center": true,
-              "Screen Position": [
-                150.0,
-                640.0,
-                0.0
-              ],
-              "Screen Size": [
-                1620.0,
-                280.0,
-                0.0
-              ],
-              "Style Json": "Asset/Content/Texture/UI/nineslice.json",
-              "Tint": [
-                0.72,
-                0.9,
-                1.0,
-                0.95
-              ],
-              "Visible": false,
-              "Z Order": 20
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "Portrait",
-            "Properties": {
-              "Screen Position": [
-                1405.0,
-                520.0,
-                0.0
-              ],
-              "Screen Size": [
-                420.0,
-                500.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Content/Texture/Story/profile_baek.png"
-              },
-              "Tint": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-              ],
-              "Visible": false,
-              "Z Order": 22
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "DebugIconGrid",
-            "Properties": {
-              "Screen Position": [
-                1470.0,
-                110.0,
-                0.0
-              ],
-              "Screen Size": [
-                56.0,
-                56.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Editor/Toolbar/ViewMode/Grid.png"
-              },
-              "Tint": [
-                0.4,
-                0.78,
-                1.0,
-                0.95
-              ],
-              "Visible": false,
-              "Z Order": 15
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "DebugIconWire",
-            "Properties": {
-              "Screen Position": [
-                1540.0,
-                110.0,
-                0.0
-              ],
-              "Screen Size": [
-                56.0,
-                56.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Editor/Toolbar/ViewMode/LitWireframe_16.png"
-              },
-              "Tint": [
-                0.4,
-                0.78,
-                1.0,
-                0.95
-              ],
-              "Visible": false,
-              "Z Order": 15
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "DebugIconGizmo",
-            "Properties": {
-              "Screen Position": [
-                1610.0,
-                110.0,
-                0.0
-              ],
-              "Screen Size": [
-                56.0,
-                56.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Editor/Toolbar/Transform/TransformMove_16.png"
-              },
-              "Tint": [
-                0.4,
-                0.78,
-                1.0,
-                0.95
-              ],
-              "Visible": false,
-              "Z Order": 15
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIImageComponent",
-            "ObjectName": "DebugIconPanel",
-            "Properties": {
-              "Screen Position": [
-                1680.0,
-                110.0,
-                0.0
-              ],
-              "Screen Size": [
-                56.0,
-                56.0,
-                0.0
-              ],
-              "Texture": {
-                "Path": "Asset/Editor/Panel/Details.png"
-              },
-              "Tint": [
-                0.4,
-                0.78,
-                1.0,
-                0.95
-              ],
-              "Visible": false,
-              "Z Order": 15
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "BootHeader",
-            "Properties": {
-              "Color": [
-                0.54,
-                0.86,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding Bold",
-              "Font Size": 1.2,
-              "Screen Position": [
-                118.0,
-                100.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "BootLine1",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                130.0,
-                175.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "BootLine2",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                130.0,
-                210.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "BootLine3",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                130.0,
-                245.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "BootLine4",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                130.0,
-                280.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "NarrationLine1",
-            "Properties": {
-              "Color": [
-                0.93,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding Bold",
-              "Font Size": 1.15,
-              "Screen Position": [
-                545.0,
-                430.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "NarrationLine2",
-            "Properties": {
-              "Color": [
-                0.93,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                545.0,
-                475.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "NarrationLine3",
-            "Properties": {
-              "Color": [
-                0.93,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                545.0,
-                515.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "NarrationLine4",
-            "Properties": {
-              "Color": [
-                0.93,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                545.0,
-                555.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "NarrationLine5",
-            "Properties": {
-              "Color": [
-                0.93,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                545.0,
-                595.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "NarrationLine6",
-            "Properties": {
-              "Color": [
-                0.93,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                545.0,
-                635.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "SystemLine1",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                1090.0,
-                220.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "SystemLine2",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                1090.0,
-                255.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "SystemLine3",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                1090.0,
-                290.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "SystemLine4",
-            "Properties": {
-              "Color": [
-                0.4,
-                0.78,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.95,
-              "Screen Position": [
-                1090.0,
-                325.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
+              "Z Order": 0
             }
           },
           {
@@ -683,432 +371,108 @@
             "ClassName": "UUIScreenTextComponent",
             "ObjectName": "SpeakerName",
             "Properties": {
-              "Color": [
-                0.62,
-                0.86,
-                1.0,
-                1.0
-              ],
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Color": [0.52549, 0.984314, 1.0, 0.913725],
               "Font": "D2Coding Bold",
-              "Font Size": 1.05,
-              "Screen Position": [
-                250.0,
-                680.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "DialogueLine1",
-            "Properties": {
-              "Color": [
-                0.95,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 1.0,
-              "Screen Position": [
-                250.0,
-                735.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "DialogueLine2",
-            "Properties": {
-              "Color": [
-                0.95,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 1.0,
-              "Screen Position": [
-                250.0,
-                775.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "DialogueLine3",
-            "Properties": {
-              "Color": [
-                0.95,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 1.0,
-              "Screen Position": [
-                250.0,
-                815.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "DialogueLine4",
-            "Properties": {
-              "Color": [
-                0.95,
-                0.97,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 1.0,
-              "Screen Position": [
-                250.0,
-                855.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "MissionTitle",
-            "Properties": {
-              "Color": [
-                1.0,
-                0.92,
-                0.58,
-                1.0
-              ],
-              "Font": "D2Coding Bold",
-              "Font Size": 1.15,
-              "Screen Position": [
-                690.0,
-                170.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "MissionLine1",
-            "Properties": {
-              "Color": [
-                0.88,
-                0.95,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                720.0,
-                255.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "MissionLine2",
-            "Properties": {
-              "Color": [
-                0.88,
-                0.95,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                720.0,
-                295.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "MissionLine3",
-            "Properties": {
-              "Color": [
-                0.88,
-                0.95,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                720.0,
-                335.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "MissionLine4",
-            "Properties": {
-              "Color": [
-                0.88,
-                0.95,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                720.0,
-                375.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "MissionLine5",
-            "Properties": {
-              "Color": [
-                0.88,
-                0.95,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.98,
-              "Screen Position": [
-                720.0,
-                415.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "HudLine1",
-            "Properties": {
-              "Color": [
-                0.55,
-                0.86,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.9,
-              "Screen Position": [
-                1430.0,
-                820.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "HudLine2",
-            "Properties": {
-              "Color": [
-                0.55,
-                0.86,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.9,
-              "Screen Position": [
-                1430.0,
-                855.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "HudLine3",
-            "Properties": {
-              "Color": [
-                0.55,
-                0.86,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.9,
-              "Screen Position": [
-                1430.0,
-                890.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "HudLine4",
-            "Properties": {
-              "Color": [
-                0.55,
-                0.86,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.9,
-              "Screen Position": [
-                1430.0,
-                925.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "CountdownText",
-            "Properties": {
-              "Color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding Bold",
-              "Font Size": 2.4,
-              "Screen Position": [
-                930.0,
-                460.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "StatusText",
-            "Properties": {
-              "Color": [
-                0.58,
-                0.88,
-                1.0,
-                1.0
-              ],
-              "Font": "D2Coding Bold",
-              "Font Size": 1.0,
-              "Screen Position": [
-                690.0,
-                405.0,
-                0.0
-              ],
-              "Text": "",
-              "Visible": false
-            }
-          },
-          {
-            "Children": [],
-            "ClassName": "UUIScreenTextComponent",
-            "ObjectName": "SkipHint",
-            "Properties": {
-              "Color": [
-                0.55,
-                0.72,
-                0.95,
-                0.9
-              ],
-              "Font": "D2Coding",
-              "Font Size": 0.78,
-              "Screen Position": [
-                1705.0,
-                48.0,
-                0.0
-              ],
-              "Text": "[ESC] SKIP",
+              "Font Size": 2.0,
+              "Screen Position": [506.371155, 590.329895, 0.0],
+              "Text": "Commander Baek",
+              "Use Anchored Layout": false,
               "Visible": true
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIScreenTextComponent",
+            "ObjectName": "DialogueText",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Color": [0.92, 0.97, 1.0, 0.82],
+              "Font": "D2Coding",
+              "Font Size": 1.65,
+              "Screen Position": [507.052002, 664.155029, 0.0],
+              "Text": "Dialogue will appear here.",
+              "Use Anchored Layout": false,
+              "Visible": true
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIScreenTextComponent",
+            "ObjectName": "NarrationText",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Color": [0.92, 0.97, 1.0, 0.88],
+              "Font": "D2Coding",
+              "Font Size": 1.9,
+              "Screen Position": [430.0, 500.0, 0.0],
+              "Text": "Narration will appear here.",
+              "Use Anchored Layout": false,
+              "Visible": false
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIScreenTextComponent",
+            "ObjectName": "PageHint",
+            "Properties": {
+              "Alignment": [0.0, 0.0, 0.0],
+              "Anchor": [0.0, 0.0, 0.0],
+              "Anchor Offset": [0.0, 0.0, 0.0],
+              "Color": [0.72, 0.84, 1.0, 0.9],
+              "Font": "Cascadia Code Light",
+              "Font Size": 1.7,
+              "Screen Position": [1305.0, 985.0, 0.0],
+              "Text": "Hold Space to Skip...",
+              "Use Anchored Layout": false,
+              "Visible": true
+            }
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "WhiteFlash",
+            "Properties": {
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/sample/checker.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 0.0],
+              "Visible": false,
+              "Z Order": 95
             }
           }
         ],
         "ClassName": "UCanvasRootComponent",
-        "ObjectName": "UCanvasRootComponent_StoryScene",
+        "ObjectName": "UCanvasRootComponent_1",
         "Properties": {
-          "Canvas Size": [
-            1920.0,
-            1080.0,
-            0.0
-          ],
-          "bEditorOnly": false,
-          "bTickEnable": true
+          "Canvas Size": [1920.0, 1080.0, 0.0],
+          "Location": [1.055727, -0.000003, 1.527864],
+          "Rotation": [0.0, 0.0, 0.0],
+          "Scale": [1.0, 1.0, 1.0]
         }
       },
-      "UUID": 318,
+      "UUID": 287,
       "bVisible": true
     }
   ],
   "ClassName": "UWorld",
   "ContextHandle": "Default",
   "ContextName": "Default",
-  "Name": "story",
+  "Name": "Story",
   "PerspectiveCamera": {
     "FOV": 1.047198,
     "FarClip": 1000.0,
-    "Location": [
-      10.0,
-      0.0,
-      5.0
-    ],
+    "Location": [10.0, 0.0, 5.0],
     "NearClip": 0.1,
-    "Rotation": [
-      0.0,
-      26.565048,
-      -179.999985
-    ]
+    "Rotation": [0.0, 26.565044, -136.848267]
   },
   "Version": 2,
   "WorldType": "Editor"

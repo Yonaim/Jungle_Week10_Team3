@@ -1,5 +1,6 @@
 ﻿#include "Scripting/ScriptProperty.h"
 
+#include "Core/AsciiUtils.h"
 #include "Core/Log.h"
 #include "Platform/Paths.h"
 #include "Platform/ScriptPaths.h"
@@ -32,7 +33,6 @@
 #pragma endregion
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <filesystem>
 
@@ -95,14 +95,7 @@ namespace
 
 	FString ToLower(FString Value)
 	{
-		std::transform(
-			Value.begin(),
-			Value.end(),
-			Value.begin(),
-			[](unsigned char Character)
-			{
-				return static_cast<char>(std::tolower(Character));
-			});
+		AsciiUtils::ToLowerInPlace(Value);
 		return Value;
 	}
 

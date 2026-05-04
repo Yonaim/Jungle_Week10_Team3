@@ -17,7 +17,6 @@
 #include "Scripting/LuaComponentProxy.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <limits>
 

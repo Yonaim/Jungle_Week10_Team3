@@ -1,5 +1,6 @@
 ﻿#include "Texture/Texture2D.h"
 #include "Object/ObjectFactory.h"
+#include "Core/AsciiUtils.h"
 #include "Core/Log.h"
 #include "Engine/Platform/DirectoryWatcher.h"
 #include "Platform/Paths.h"
@@ -413,11 +414,7 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 	const std::wstring WidePath = ResolveTexturePathOnDisk(NormalizedPath);
 	const std::filesystem::path ExtensionPath = std::filesystem::path(WidePath).extension();
 	FString Extension = FPaths::ToUtf8(ExtensionPath.generic_wstring());
-	std::transform(Extension.begin(), Extension.end(), Extension.begin(),
-		[](unsigned char Character)
-		{
-			return static_cast<char>(std::tolower(Character));
-		});
+	AsciiUtils::ToLowerInPlace(Extension);
 
 	ID3D11Resource* Resource = nullptr;
 	ID3D11ShaderResourceView* NewSRV = nullptr;

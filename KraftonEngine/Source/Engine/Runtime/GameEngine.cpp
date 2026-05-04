@@ -7,9 +7,9 @@
 #include "GameFramework/AActor.h"
 #include "Component/CameraComponent.h"
 #include "Component/ActorComponent.h"
+#include "Core/AsciiUtils.h"
 #include "Input/InputManager.h"
 #include "Object/Object.h"
-#include <cctype>
 #include "Viewport/GameViewportClient.h"
 #include "Viewport/Viewport.h"
 #include "Engine/Runtime/WindowsWindow.h"
@@ -35,8 +35,8 @@ namespace
 
 		for (size_t Index = 0; Index < SuffixString.size(); ++Index)
 		{
-			const char Left = static_cast<char>(std::tolower(static_cast<unsigned char>(Value[Value.size() - SuffixString.size() + Index])));
-			const char Right = static_cast<char>(std::tolower(static_cast<unsigned char>(SuffixString[Index])));
+			const char Left = AsciiUtils::ToLower(Value[Value.size() - SuffixString.size() + Index]);
+			const char Right = AsciiUtils::ToLower(SuffixString[Index]);
 			if (Left != Right)
 			{
 				return false;

@@ -37,7 +37,6 @@
 #include "GameFramework/StaticMeshActor.h"
 
 #include <algorithm>
-#include <cctype>
 #include <string>
 
 namespace

@@ -50,6 +50,73 @@
       },
       "UUID" : 500,
       "bVisible" : true
+    },
+    {
+      "ClassName": "AUIRootActor",
+      "NonSceneComponents": [
+        {
+          "ClassName": "UScriptComponent",
+          "ObjectName": "UScriptComponent_PlayerDevFade",
+          "Properties": {
+            "ScriptPath": "Scripts/UI/PlayerDevSceneFade.lua",
+            "bEditorOnly": false,
+            "bTickEnable": true
+          }
+        }
+      ],
+      "ObjectName": "AUIRootActor_PlayerDevFade",
+      "RootComponent": {
+        "Children": [
+          {
+            "Children": [],
+            "ClassName": "UBillboardComponent",
+            "ObjectName": "UBillboardComponent_PlayerDevFade",
+            "Properties": {
+              "Billboard": true,
+              "Cast Shadow": true,
+              "Generates Overlap Event": 2,
+              "Height": 1.0,
+              "Is Collidable": true,
+              "Location": [0.0, 0.0, 0.0],
+              "Mobility": 2,
+              "Rotation": [0.0, 0.0, 0.0],
+              "Scale": [1.0, 1.0, 1.0],
+              "Texture": {
+                "Path": "Asset/Editor/Icons/Actors/Actor_64.png"
+              },
+              "Two Sided Shadow": false,
+              "Visible": false,
+              "Width": 1.0
+            },
+            "bHiddenInComponentTree": true
+          },
+          {
+            "Children": [],
+            "ClassName": "UUIImageComponent",
+            "ObjectName": "WhiteFlash",
+            "Properties": {
+              "Screen Position": [0.0, 0.0, 0.0],
+              "Screen Size": [1920.0, 1080.0, 0.0],
+              "Texture": {
+                "Path": "Asset/Content/Texture/sample/checker.png"
+              },
+              "Tint": [1.0, 1.0, 1.0, 1.0],
+              "Visible": true,
+              "Z Order": 100
+            }
+          }
+        ],
+        "ClassName": "UCanvasRootComponent",
+        "ObjectName": "UCanvasRootComponent_PlayerDevFade",
+        "Properties": {
+          "Canvas Size": [1920.0, 1080.0, 0.0],
+          "Location": [0.0, 0.0, 0.0],
+          "Rotation": [0.0, 0.0, 0.0],
+          "Scale": [1.0, 1.0, 1.0]
+        }
+      },
+      "UUID": 901,
+      "bVisible": true
     }],
   "ClassName" : "UWorld",
   "ContextHandle" : "NewScene",
