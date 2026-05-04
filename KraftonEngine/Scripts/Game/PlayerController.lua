@@ -60,9 +60,12 @@ local skin_width = PlayerConfig.skin_width
 local fallback_half_height = PlayerConfig.fallback_half_height
 -- fall_dead_z는 이 높이 아래로 떨어지면 낙사 처리하는 기준입니다.
 local fall_dead_z = PlayerConfig.fall_dead_z
+local hit_camera_shake_intensity = 2.0
+local hit_camera_shake_duration = 0.35
 
 -- initial_location은 시작 위치 기록용입니다. 나중에 리스폰/디버그에서 쓰기 좋게 남깁니다.
 local initial_location = nil
+local camera = nil
 -- slide는 PlayerSlide 모듈 인스턴스입니다. collision/mesh 변경은 여기로 위임합니다.
 local slide = nil
 -- game_over_tick_logged는 GameOver 후 Tick 중단 로그를 한 번만 찍기 위한 플래그입니다.
@@ -408,7 +411,9 @@ local function handle_obstacle_collision(event_name, other_actor)
         end
     end
     log("[PlayerController] Obstacle collision damage=" .. tostring(damage))
-    PlayerStatus.DamageStability(damage)
+    if PlayerStatus.DamageStability(damage) and camera and camera:IsValid() then
+        camera:StartCameraShake(hit_camera_shake_intensity, hit_camera_shake_duration)
+    end
 end
 
 -- =========================================================
@@ -433,6 +438,7 @@ function BeginPlay()
     half_height_fallback_logged = false
     previous_key_state = {}
     current_key_state = {}
+    camera = obj:FindComponentByClass("CameraComponent")
 
     obj.Tag = "Player"
 

@@ -8,11 +8,10 @@
 #include "Resource/ResourceManager.h"
 #include "Engine/Runtime/Engine.h"
 
-#include "Materials/MaterialManager.h"
-#include "Materials/Material.h"
 #include "Mesh/ObjManager.h"
 #include <Core/Log.h>
 #include "Collision/OverlapInfo.h"
+#include "Math/Vector.h"
 
 
 IMPLEMENT_CLASS(ARunner, APawnActor)
@@ -31,14 +30,14 @@ ARunner::ARunner()
 	BoxComponent = AddComponent<UBoxComponent>();
 	BoxComponent->SetCanDeleteFromDetails(false);
 	// TODO: Runner 충돌 크기는 추후 Lua Config 또는 캐릭터 리소스 데이터로 이동한다.
-	BoxComponent->SetBoxExtent(FVector(0.5f, 0.5f, 1.0f));
+	BoxComponent->SetBoxExtent(FVector(1.5f, 1.f, 0.6f));
 	BoxComponent->SetCollisionEnabled(true);
 	BoxComponent->SetGenerateOverlapEvents(true);
 	
 	SetRootComponent(BoxComponent);
 	// 시작 시 MapManager가 아직 chunk를 만들기 전이라 BeginPlay 첫 ground query는 실패할 수 있다.
 	// 그래서 바닥 위에서 약간 떨어진 높이로 시작시켜, chunk 생성 후 중력으로 자연스럽게 snap되게 한다.
-	SetActorLocation(FVector(1.0f, 0.0f, 2.25f));
+	SetActorLocation(FVector(2.0f, 0.0f, 5.f));
 
 	// Player 표시용 mesh다. 실제 충돌은 Root BoxComponent가 담당하므로 mesh collision은 끈다.
 	MeshComponent = AddComponent<UStaticMeshComponent>();
@@ -86,10 +85,12 @@ void ARunner::ApplyDefaultVisual()
 #pragma region Set Mesh & Material
 	if (GEngine && MeshComponent)
 	{
-		// TODO: 일단 하드코딩 (추후 변경)
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 
-		FString MeshPath = "Asset/Content/Model/BasicShape/cube.obj";
+		FString MeshPath = FResourceManager::Get().ResolvePath(
+			FName("Game.Mesh.Player.Runner"),
+			"Asset/Content/Model/POD/Spaceship.obj"
+		);
 
 		UStaticMesh* Mesh = FObjManager::LoadObjStaticMesh(MeshPath, Device);
 		if (Mesh)
@@ -100,30 +101,6 @@ void ARunner::ApplyDefaultVisual()
 		else
 		{
 			UE_LOG("[Runner] Failed to load mesh: %s", MeshPath.c_str());
-		}
-
-		FString MaterialPath = FResourceManager::Get().ResolvePath(
-			FName("Default.Material.Wood"),
-			"Asset/Content/Materials/Samples/Wood.mat"
-		);
-
-		UMaterial* LoadedMat = FMaterialManager::Get().GetOrCreateMaterial(MaterialPath);
-		if (LoadedMat)
-		{
-			const int32 SlotCount = MeshComponent->GetMaterialSlotCount();
-			const int32 ApplyCount = SlotCount > 0 ? SlotCount : 1;
-
-			for (int32 SlotIndex = 0; SlotIndex < ApplyCount; ++SlotIndex)
-			{
-				MeshComponent->SetMaterial(SlotIndex, LoadedMat);
-				MeshComponent->MarkRenderStateDirty();
-			}
-
-			MeshComponent->PostEditProperty("StaticMesh");
-		}
-		else
-		{
-			UE_LOG("[Runner] Failed to load material: %s", MaterialPath.c_str());
 		}
 	}
 #pragma endregion
