@@ -1100,6 +1100,10 @@ AActor* FLuaScriptInstance::GetOwnerActor() const
 }
 
 // Bind 관련 함수 (추가할 일 없으면 열지 말 것, bind 짬통)
+void FLuaScriptInstance::RegisterEnvFunction(const FString& Name, std::function<void(FLuaActorProxy)> Func) {
+	Impl->Env.set_function(Name, Func);
+}
+
 void FLuaScriptInstance::BindOwnerObject()
 {
 	if (!Impl)

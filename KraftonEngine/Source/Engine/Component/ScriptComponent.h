@@ -58,6 +58,9 @@ public:
 
 	// Lua Property 다시 Load 하는 함수
 	bool RefreshScriptProperties();
+
+	void RegisterEnvFunction(const FString& Name, std::function<void(FLuaActorProxy)> Func) { ScriptInstance.RegisterEnvFunction(Name, Func); }
+
 protected:
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
 

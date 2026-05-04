@@ -71,6 +71,8 @@ public:
 	UScriptComponent* GetOwnerComponent() const;
 	AActor* GetOwnerActor() const;
 
+	void RegisterEnvFunction(const FString& Name, std::function<void(FLuaActorProxy)> Func);
+
 private:
 	// Lua 스크립트에 노출할 바인딩을 environment에 심는다.
 	void BindOwnerObject();

@@ -20,6 +20,8 @@ public:
 	void ResetMap();
 	void SetEnabled(bool bInEnabled);
 	void SetPlayerActor(AActor* InPlayer);
+	void SetObstacleSpawnRate(float InSpawnRate) { ObstacleSpawnRate = InSpawnRate; }
+	void SetGimmickSpawnChance(float InSpawnRate) { GimmickSpawnChance = InSpawnRate; }
 
 private:
 	void  BuildTemplateLibrary();
@@ -38,6 +40,7 @@ private:
 	int32 StraightRunLength = 0;
 	int32 MinStraightsBetweenTurns = 2;
 	int32 TargetChunkCount = 6;
+	float ObstacleSpawnRate  = 0.2f;
 	float GimmickSpawnChance = 0.25f;
 	float GimmickTargetSearchDistance = 60.0f;
 };
