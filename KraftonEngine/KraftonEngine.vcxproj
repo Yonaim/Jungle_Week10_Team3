@@ -285,6 +285,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Engine\Camera\CameraShake.cpp" />
     <ClCompile Include="Source\Game\GameMode\ARunnerGameMode.cpp" />
     <ClCompile Include="Source\Game\Player\Runner.cpp" />
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
@@ -511,6 +512,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Engine\Camera\CameraShake.h" />
     <ClInclude Include="Source\Game\GameMode\ARunnerGameMode.h" />
     <ClInclude Include="Source\Game\Player\Runner.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
