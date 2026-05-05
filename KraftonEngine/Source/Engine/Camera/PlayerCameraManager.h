@@ -15,6 +15,9 @@ public:
 
 public:
 	AActor*			  Target = nullptr;
+
+	// 원래는 FMinimalViewInfo 라는 이름의 struct를 사용해야 함
+	// TODO: FCameraState 에다 월드 위치 정보 추가
 	UCameraComponent* POV	 = nullptr;
 };
 
