@@ -10,6 +10,7 @@ local UI = require("Common.UI")
 local crash_ui = nil		-- Crash Image UI
 local ok_btn = nil			-- 확인 버튼
 local is_crashed = false	-- Crash 여부 뜻하는 Bool 변수
+local listener_key = nil	-- Game Manager Listener key
 
 ------------------------------------------------
 -- 생명주기
@@ -78,16 +79,23 @@ function BeginPlay()
 	end
 	-- BeginPlay가 hot-reload/재진입으로 여러 번 불려도 override가 N중 누적되지 않게
 	-- 최초 1회 베이스 hook을 _G에 백업해 두고 매번 그 위에 한 겹만 얹는다.
-	if _G.__FakeCrashEvent_BaseAnalyzedHook == nil then
-		_G.__FakeCrashEvent_BaseAnalyzedHook = GameManager.OnCrashDumpAnalyzed or function() end
-	end
-	local base_hook = _G.__FakeCrashEvent_BaseAnalyzedHook
-	GameManager.OnCrashDumpAnalyzed = function()
-		print("[FakeCrashEvent] OnCrashDumpAnalyzed hook fired")
-		base_hook()
-		TriggerFakeCrash()
-	end
-	print("[FakeCrashEvent] OnCrashDumpAnalyzed override installed")
+	listener_key = "FakeCrashEvent_" .. tostring(obj and (obj.UUID or obj.Name) or "unknown")
+
+	GameManager.RemoveCrashDumpAnalyzedListener(listener_key)
+
+	GameManager.AddCrashDumpAnalyzedListener(listener_key, function()
+	    -- 이 callback이 남아있더라도 owner가 죽었으면 즉시 제거되게 false 반환
+	    if not Engine.IsValidActor(obj) then
+	        return false
+	    end
+
+	    print("[FakeCrashEvent] OnCrashDumpAnalyzed listener fired")
+	    TriggerFakeCrash()
+
+	    return true
+	end)
+
+	print("[FakeCrashEvent] OnCrashDumpAnalyzed listener installed key=" .. tostring(listener_key))
 end
 
 ------------------------------------------------
@@ -160,4 +168,25 @@ function RunFakeCrashSequence()
 	-- BGM 재시작은 Resume 직후에 한다. StopBGM에서 플래그를 리셋했으므로 정상 재생된다.
 	AudioManager.PlayBGM()
 	print("[FakeCrashEvent] RunFakeCrashSequence 종료")
+end
+
+
+function EndPlay()
+	if listener_key then
+        GameManager.RemoveCrashDumpAnalyzedListener(listener_key)
+        print("[FakeCrashEvent] listener removed key=" .. tostring(listener_key))
+        listener_key = nil
+    end
+
+    is_crashed = false
+
+    if crash_ui then
+        crash_ui:SetVisible(false)
+    end
+
+    if ok_btn then
+        ok_btn:SetVisible(false)
+    end
+
+    GameManager.Resume()
 end

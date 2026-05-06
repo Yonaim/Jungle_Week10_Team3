@@ -196,7 +196,18 @@ void FLuaCoroutineScheduler::BindToEnvironment()
 
 		if (Entry.get_type() == sol::type::function)
 		{
-			return StartCoroutine("<anonymous>", Entry.as<sol::protected_function>());
+			sol::protected_function Function = Entry.as<sol::protected_function>();
+
+			if (!Function.lua_state() || !Function.valid())
+			{
+				if (Owner)
+				{
+					Owner->SetError("StartCoroutine failed: detached anonymous function.");
+				}
+				return false;
+			}
+
+			return StartCoroutine("<anonymous>", std::move(Function));
 		}
 
 		if (Entry.get_type() == sol::type::string)
@@ -304,9 +315,9 @@ bool FLuaCoroutineScheduler::StartCoroutine(const FString& DebugName, sol::prote
 		return false;
 	}
 
-	if (!Function.valid())
+	if (!Function.lua_state() || !Function.valid())
 	{
-		Owner->SetError("StartCoroutine failed: invalid Lua function '" + DebugName + "'.");
+		Owner->SetError("StartCoroutine failed: invalid or detached Lua function '" + DebugName + "'.");
 		return false;
 	}
 
