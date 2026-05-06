@@ -309,6 +309,7 @@
     <ClCompile Include="Source\Editor\UI\ContentBrowser\EditorPrefabWidget.cpp" />
     <ClCompile Include="Source\Editor\Viewport\EditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayout.cpp" />
+    <ClCompile Include="Source\Engine\Asset\AssetCurveUtils.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetData.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetFileSerializer.cpp" />
     <ClCompile Include="Source\Engine\Audio\AudioManager.cpp" />
@@ -565,6 +566,7 @@
     <ClInclude Include="Source\Editor\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Viewport\FLevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\Viewport\LevelEditorViewportClient.h" />
+    <ClInclude Include="Source\Engine\Asset\AssetCurveUtils.h" />
     <ClInclude Include="Source\Engine\Asset\AssetData.h" />
     <ClInclude Include="Source\Engine\Asset\AssetFileSerializer.h" />
     <ClInclude Include="Source\Engine\Audio\AudioManager.h" />
