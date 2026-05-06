@@ -273,9 +273,56 @@ function GameManager.OnHotfixApplied()
     GameManager.AddCoachApproval(CoachConfig.hotfix_delta or 8, "HotfixApplied")
 end
 
+------------------------------------------------
+-- CrashDumpAnalyzed listener
+------------------------------------------------
+
+GameManager.crash_dump_analyzed_listeners =
+    GameManager.crash_dump_analyzed_listeners or {}
+
+function GameManager.AddCrashDumpAnalyzedListener(key, callback)
+    if not key or type(callback) ~= "function" then
+        return false
+    end
+
+    GameManager.crash_dump_analyzed_listeners[key] = callback
+    return true
+end
+
+function GameManager.RemoveCrashDumpAnalyzedListener(key)
+    if not key then
+        return false
+    end
+
+    GameManager.crash_dump_analyzed_listeners[key] = nil
+    return true
+end
+
+local function notify_crash_dump_analyzed_listeners()
+    local listeners = GameManager.crash_dump_analyzed_listeners
+    if not listeners then
+        return
+    end
+
+    for key, callback in pairs(listeners) do
+        if type(callback) == "function" then
+            local alive = callback()
+
+            -- callback이 false를 반환하면 죽은 listener로 보고 제거
+            if alive == false then
+                listeners[key] = nil
+            end
+        else
+            listeners[key] = nil
+        end
+    end
+end
+
 function GameManager.OnCrashDumpAnalyzed()
-    -- Critical Analysis 발동 성공 이벤트입니다. 여기서 큰 분석 완료 이펙트 붙이면 됨.
+    -- Critical Analysis 발동 성공 이벤트입니다.
     GameManager.AddCoachApproval(CoachConfig.critical_analysis_delta or 10, "CrashDumpAnalyzed")
+
+    notify_crash_dump_analyzed_listeners()
 end
 
 function GameManager.OnCrashDumpCollected()
