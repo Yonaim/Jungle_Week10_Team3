@@ -4,6 +4,13 @@
 IMPLEMENT_CLASS(UCameraModifier, UObject)
 
 UCameraModifier::UCameraModifier() {}
+UCameraModifier::~UCameraModifier() 
+{
+	if (ShakePattern) {
+		UObjectManager::Get().DestroyObject(ShakePattern);
+		ShakePattern = nullptr;
+	}	
+}
 
 void UCameraModifier::AddedToCamera(APlayerCameraManager* InCameraManager)
 {

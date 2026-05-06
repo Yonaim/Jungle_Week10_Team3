@@ -5,6 +5,7 @@
 class UCameraShakePattern  : public UObject {
 public:
 	DECLARE_CLASS(UCameraShakePattern, UObject)
+	~UCameraShakePattern();
 
 	// Accessors
 	UCurveFloat* GetTransitionCurveX() const { return TransitionCurveX != nullptr ? TransitionCurveX : nullptr; }
