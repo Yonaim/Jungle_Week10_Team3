@@ -54,6 +54,18 @@ void APlayerCameraManager::Tick(float DeltaTime)
 }
 
 void APlayerCameraManager::UpdateCamera(float DeltaTime) {
+	// Reset Camera Snapshot
+	if (ViewTarget.GetTargetPawn()) {
+		APawnActor* Pawn = ViewTarget.GetTargetPawn();
+		for (UActorComponent* Comp : Pawn->GetComponents())
+		{
+			if (UCameraComponent* Cam = Cast<UCameraComponent>(Comp))
+			{
+				ViewTarget.POV = Cam->GetCameraState();
+			}
+		}
+	}
+
 	ApplyCameraModifiers(DeltaTime, ViewTarget.POV);
 
 	// Fade
@@ -63,7 +75,7 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime) {
 		FadeTimeRemaining -= DeltaTime;
 	}
 
-
+	ViewTarget.POV.PostProcessSettings.FadeColor = FLinearColor(FadeColor.R * FadeAmount, FadeColor.G * FadeAmount, FadeColor.B * FadeAmount, FadeColor.A);
 }
 
 void APlayerCameraManager::SetOwner(APlayerController* InController) {

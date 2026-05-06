@@ -60,7 +60,7 @@ void AGameModeBase::StartPlay()
 		{
 			World->AddActor(CameraManager);
 			if (SpawnedController) {
-				
+				SpawnedController->AcquirePlayerCameraManager(CameraManager);
 			}
 
 		}
