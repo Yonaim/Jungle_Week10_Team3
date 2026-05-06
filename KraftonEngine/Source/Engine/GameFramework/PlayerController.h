@@ -45,5 +45,6 @@ public:
 
 protected:
 	APawnActor* PossessedPawn = nullptr;
+	APlayerCameraManager* CameraManager = nullptr;
 	FEnhancedInputManager EnhancedInput;
 };

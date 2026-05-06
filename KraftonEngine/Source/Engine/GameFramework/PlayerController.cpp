@@ -1,4 +1,4 @@
-#include "PlayerController.h"
+﻿#include "PlayerController.h"
 
 #include "GameFramework/PawnActor.h"
 #include "Input/InputManager.h"
@@ -66,4 +66,10 @@ void APlayerController::Possess(APawnActor* InPawn)
 void APlayerController::UnPossess()
 {
 	PossessedPawn = nullptr;
+}
+
+void APlayerController::AcquirePlayerCameraManager(APlayerCameraManager* InCameraManager) {
+	if (!InCameraManager) return;
+	CameraManager = InCameraManager;
+	
 }

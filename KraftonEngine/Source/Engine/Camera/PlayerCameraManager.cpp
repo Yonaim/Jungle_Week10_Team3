@@ -39,6 +39,10 @@ void APlayerCameraManager::BeginPlay()
 
 void APlayerCameraManager::EndPlay()
 {
+	for (UCameraModifier* Modifier : ModifierList) {
+		if (!Modifier) continue;
+		UObjectManager::Get().DestroyObject(Modifier);
+	}
 	ModifierList.clear();
 	AActor::EndPlay();
 }
