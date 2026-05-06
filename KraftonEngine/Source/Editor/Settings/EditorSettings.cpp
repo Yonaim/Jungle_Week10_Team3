@@ -57,6 +57,7 @@ namespace Key
 
 	// UI Widgets
 	constexpr const char* UIWidgets = "UIWidgets";
+	constexpr const char* ShowViewport = "ShowViewport";
 	constexpr const char* ShowConsole = "ShowConsole";
 	constexpr const char* ShowPropertyWindow = "ShowPropertyWindow";
 	constexpr const char* ShowSceneManager = "ShowSceneManager";
@@ -160,6 +161,7 @@ void FEditorSettings::SaveToFile(const FString& Path) const
 
 	// UI Widgets
 	JSON WidgetsObj = Object();
+	WidgetsObj[Key::ShowViewport] = UI.bViewport;
 	WidgetsObj[Key::ShowConsole] = UI.bConsole;
 	WidgetsObj[Key::ShowPropertyWindow] = UI.bProperty;
 	WidgetsObj[Key::ShowSceneManager] = UI.bScene;
@@ -344,6 +346,7 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 	if (Root.hasKey(Key::UIWidgets))
 	{
 		JSON W = Root[Key::UIWidgets];
+		if (W.hasKey(Key::ShowViewport))       UI.bViewport = W[Key::ShowViewport].ToBool();
 		if (W.hasKey(Key::ShowConsole))        UI.bConsole = W[Key::ShowConsole].ToBool();
 		if (W.hasKey(Key::ShowPropertyWindow)) UI.bProperty = W[Key::ShowPropertyWindow].ToBool();
 		if (W.hasKey(Key::ShowSceneManager))   UI.bScene = W[Key::ShowSceneManager].ToBool();

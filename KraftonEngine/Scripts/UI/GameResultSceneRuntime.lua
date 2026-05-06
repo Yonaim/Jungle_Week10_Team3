@@ -1,33 +1,17 @@
-local Config = require("Game.Config")
+local CollectibleConfig = require("Game.Config.Collectible")
+local ResultScreenConfig = require("Game.Config.ResultScreen")
+local RankConfig = require("Game.Config.Rank")
 local GameManager = require("Game.GameManager")
 local Scoreboard = require("Game.Scoreboard")
+local Engine = require("Common.Engine")
+local Format = require("Common.Format")
+local Table = require("Common.Table")
+local UI = require("Common.UI")
 
-local DIALOGUE_PATH = "Asset/Content/Data/Dialogues/game_result.dialogue.json"
-local DEFAULT_RANK_TEXTURE = "Asset/Content/Texture/UI/rank_c.png"
-local RANK_TEXTURE_BY_CODE = {
-    s = "Asset/Content/Texture/UI/rank_s.png",
-    a = "Asset/Content/Texture/UI/rank_a.png",
-    b = "Asset/Content/Texture/UI/rank_b.png",
-    c = "Asset/Content/Texture/UI/rank_c.png",
-    d = "Asset/Content/Texture/UI/rank_c.png",
-    f = "Asset/Content/Texture/UI/rank_f.png",
-}
-local PREVIEW_RESULT_DATA = {
-    reason = "EditorPreview",
-    score = 128450,
-    logs = 24,
-    trace = 88,
-    dumps = 2,
-    hotfix_count = 3,
-    critical_analysis_count = 1,
-    distance = 1842.0,
-    elapsed_time = 153.4,
-    stability = 2,
-    max_stability = 3,
-    coach_approval = 84,
-    coach_rank = "A",
-    shield_count = 1,
-}
+local DIALOGUE_PATH = ResultScreenConfig.dialogue_path
+local PREVIEW_RESULT_DATA = ResultScreenConfig.preview_result
+local DEFAULT_RANK_TEXTURE = RankConfig.default_texture
+local RANK_TEXTURE_BY_CODE = RankConfig.texture_by_code
 
 local result_data = nil
 local title_text = nil
@@ -42,77 +26,23 @@ local title_loading = false
 local waiting_title_confirm = false
 local preview_mode = false
 
-local function get_component(...)
-    local names = { ... }
-    for index = 1, #names do
-        local name = names[index]
-        local component = obj:GetComponent(name)
-        if component and component:IsValid() then
-            return component
-        end
+local function normalize_rank(rank_code)
+    local normalized = string.upper(tostring(rank_code or "C"))
+    if normalized == "" then
+        return "C"
     end
 
-    return nil
+    return normalized
 end
 
-local function set_text(component, text)
-    if component then
-        component:SetText(text)
-    end
+local function resolve_rank_texture(rank_code)
+    local normalized = string.lower(normalize_rank(rank_code))
+    return RANK_TEXTURE_BY_CODE[normalized] or DEFAULT_RANK_TEXTURE
 end
 
-local function set_label(component, text)
-    if component then
-        component:SetLabel(text)
-    end
-end
-
-local function set_texture(component, texture_path)
-    if component and texture_path and texture_path ~= "" then
-        component:SetTexture(texture_path)
-    end
-end
-
-local function format_number(value)
-    local formatted = tostring(math.floor(value or 0))
-    local sign = ""
-    if string.sub(formatted, 1, 1) == "-" then
-        sign = "-"
-        formatted = string.sub(formatted, 2)
-    end
-
-    local parts = {}
-    while #formatted > 3 do
-        table.insert(parts, 1, string.sub(formatted, -3))
-        formatted = string.sub(formatted, 1, #formatted - 3)
-    end
-    table.insert(parts, 1, formatted)
-
-    return sign .. table.concat(parts, ",")
-end
-
-local function format_percent(current, max_value)
-    local safe_max = max_value or 0
-    if safe_max <= 0 then
-        return "0%"
-    end
-
-    local ratio = math.max(0, math.min((current or 0) / safe_max, 1))
-    return tostring(math.floor(ratio * 100 + 0.5)) .. "%"
-end
-
-local function copy_table(source)
-    local copied = {}
-    if type(source) ~= "table" then
-        return copied
-    end
-
-    for key, value in pairs(source) do
-        copied[key] = value
-    end
-
-    return copied
-end
+------------------------------------------------
+-- 결과 데이터 구성 함수들
+------------------------------------------------
 
 local function build_fallback_result_data()
     return {
@@ -132,7 +62,7 @@ end
 local function resolve_result_data()
     if not (GameManager.IsGameOver and GameManager.IsGameOver()) then
         preview_mode = true
-        return copy_table(PREVIEW_RESULT_DATA)
+        return Table.ShallowCopy(PREVIEW_RESULT_DATA)
     end
 
     local data = GameManager.GetResultData and GameManager.GetResultData() or nil
@@ -146,36 +76,26 @@ local function resolve_result_data()
 end
 
 local function build_metric_rows(data)
-    local trace_max = (Config.collectible and Config.collectible.trace_max) or 100
-    local dumps_required = (Config.collectible and Config.collectible.crash_dump_required) or 3
+    local trace_max = CollectibleConfig.trace_max or 100
+    local dumps_required = CollectibleConfig.crash_dump_required or 3
 
     return {
-        { key = "SCORE", value = format_number(data.score or 0) },
-        { key = "COLLECTED LOGS", value = format_number(data.logs or 0) },
-        { key = "TRACE DATA", value = format_percent(data.trace or 0, trace_max) },
-        { key = "CRASH DUMPS", value = format_number(data.dumps or 0) .. "/" .. format_number(dumps_required) },
+        { key = "SCORE", value = Format.Number(data.score or 0) },
+        { key = "COLLECTED LOGS", value = Format.Number(data.logs or 0) },
+        { key = "TRACE DATA", value = Format.Percent(data.trace or 0, trace_max) },
+        { key = "CRASH DUMPS", value = Format.Number(data.dumps or 0) .. "/" .. Format.Number(dumps_required) },
         { key = "HOTFIX APPLIED", value = tostring(math.floor(data.hotfix_count or 0)) },
         { key = "CRITICAL ANALYSIS", value = tostring(math.floor(data.critical_analysis_count or 0)) },
-        { key = "DISTANCE", value = format_number(data.distance or 0) .. "m" },
+        { key = "DISTANCE", value = Format.Number(data.distance or 0) .. "m" },
     }
 end
 
-local function normalize_rank(rank_code)
-    local normalized = string.upper(tostring(rank_code or "C"))
-    if normalized == "" then
-        return "C"
-    end
-
-    return normalized
-end
-
 local function load_coach_dialogues(data)
-    local screen_config = Config.result_screen or {}
     local result = {
-        baek_name = screen_config.coach_name_baek or "백 사령관",
-        lim_name = screen_config.coach_name_lim or "임 오퍼레이터",
-        baek_message = screen_config.coach_comment_baek or "",
-        lim_message = screen_config.coach_comment_lim or "",
+        baek_name = ResultScreenConfig.coach_name_baek or "백 사령관",
+        lim_name = ResultScreenConfig.coach_name_lim or "임 오퍼레이터",
+        baek_message = ResultScreenConfig.coach_comment_baek or "",
+        lim_message = ResultScreenConfig.coach_comment_lim or "",
     }
 
     local dialogue_root = load_json_file(DIALOGUE_PATH)
@@ -198,6 +118,10 @@ local function load_coach_dialogues(data)
 
     return result
 end
+
+------------------------------------------------
+-- 결과 화면 텍스트 구성 함수들
+------------------------------------------------
 
 local function build_result_keys_text(data)
     local rows = build_metric_rows(data)
@@ -231,21 +155,22 @@ local function build_coach_comments_text(data)
     }, "\n")
 end
 
-local function resolve_rank_texture(rank_code)
-    local normalized = string.lower(normalize_rank(rank_code))
-    return RANK_TEXTURE_BY_CODE[normalized] or DEFAULT_RANK_TEXTURE
-end
+------------------------------------------------
+-- 결과 화면 생명주기 함수들
+------------------------------------------------
 
+-- 결과 화면 컴포넌트를 찾아 최종 점수, 수집량, 코치 코멘트, 랭크 이미지를 채웁니다.
+-- 런타임 결과 데이터가 없으면 에디터 preview용 fallback 데이터를 표시합니다.
 function BeginPlay()
     play_sfx("Sound.SFX.canceled.sound.effect", false)
 
-    title_text = get_component("ResultTitle", "UUIScreenTextComponent_0")
-    result_keys_text = get_component("ResultKeys", "UUIScreenTextComponent_1")
-    result_values_text = get_component("ResultValues", "UUIScreenTextComponent_3")
-    coach_comments_text = get_component("CoachComments", "UUIScreenTextComponent_4")
-    rank_badge = get_component("RankBadge", "UUIImageComponent_1")
-    status_text = get_component("SaveStatusText", "UUIScreenTextComponent_2")
-    save_button = get_component("SaveScoreButton", "UIButtonComponent_0")
+    title_text = Engine.GetComponent(obj, "ResultTitle", "UUIScreenTextComponent_0")
+    result_keys_text = Engine.GetComponent(obj, "ResultKeys", "UUIScreenTextComponent_1")
+    result_values_text = Engine.GetComponent(obj, "ResultValues", "UUIScreenTextComponent_3")
+    coach_comments_text = Engine.GetComponent(obj, "CoachComments", "UUIScreenTextComponent_4")
+    rank_badge = Engine.GetComponent(obj, "RankBadge", "UUIImageComponent_1")
+    status_text = Engine.GetComponent(obj, "SaveStatusText", "UUIScreenTextComponent_2")
+    save_button = Engine.GetComponent(obj, "SaveScoreButton", "UIButtonComponent_0")
 
     if not title_text then
         warn("GameResultScene missing ResultTitle component")
@@ -264,18 +189,20 @@ function BeginPlay()
     end
 
     result_data = resolve_result_data()
-    set_text(title_text, (Config.result_screen and Config.result_screen.title) or "DEBUG SESSION RESULT")
-    set_text(result_keys_text, build_result_keys_text(result_data))
-    set_text(result_values_text, build_result_values_text(result_data))
-    set_text(coach_comments_text, build_coach_comments_text(result_data))
-    set_texture(rank_badge, resolve_rank_texture(result_data and result_data.coach_rank))
-    set_text(status_text, preview_mode and "PREVIEW SAMPLE DATA" or "")
-    set_label(save_button, "SAVE SCORE")
+    UI.SetText(title_text, ResultScreenConfig.title or "DEBUG SESSION RESULT")
+    UI.SetText(result_keys_text, build_result_keys_text(result_data))
+    UI.SetText(result_values_text, build_result_values_text(result_data))
+    UI.SetText(coach_comments_text, build_coach_comments_text(result_data))
+    UI.SetTexture(rank_badge, resolve_rank_texture(result_data and result_data.coach_rank))
+    UI.SetText(status_text, preview_mode and "PREVIEW SAMPLE DATA" or "")
+    UI.SetLabel(save_button, "SAVE SCORE")
     score_saved = false
     title_loading = false
     waiting_title_confirm = false
 end
 
+-- 점수 저장 popup 결과와 title 복귀 확인 popup을 처리합니다.
+-- 저장이 끝난 뒤에는 버튼 상태와 안내 문구를 갱신하고 확인 입력을 기다립니다.
 function Tick(dt)
     local nickname = consume_score_save_popup_result()
     if nickname and not score_saved then
@@ -283,12 +210,12 @@ function Tick(dt)
         if saved then
             score_saved = true
             waiting_title_confirm = true
-            set_text(status_text, "SAVED: " .. tostring(safe_nickname))
-            set_label(save_button, "SAVED")
+            UI.SetText(status_text, "SAVED: " .. tostring(safe_nickname))
+            UI.SetLabel(save_button, "SAVED")
             print("[Scoreboard] Saved to " .. tostring(save_path) .. " nickname=" .. tostring(safe_nickname) .. " score=" .. tostring(math.floor((result_data and result_data.score) or 0)))
             open_message_popup("Returning to title.")
         else
-            set_text(status_text, "SAVE FAILED")
+            UI.SetText(status_text, "SAVE FAILED")
         end
     end
 
@@ -298,6 +225,10 @@ function Tick(dt)
     end
 end
 
+------------------------------------------------
+-- 결과 화면 액션 함수들
+------------------------------------------------
+
 function SaveScore()
     play_sfx("Sound.SFX.arwing.hit.obstacle", false)
 
@@ -306,7 +237,7 @@ function SaveScore()
     end
 
     local score = math.floor((result_data and result_data.score) or 0)
-    set_text(status_text, "")
+    UI.SetText(status_text, "")
     return open_score_save_popup(score)
 end
 

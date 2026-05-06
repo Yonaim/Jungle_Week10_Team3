@@ -94,6 +94,16 @@ namespace EditorPanelTitleUtils
 		return 8.0f;
 	}
 
+	inline float GetPanelContentSideInset()
+	{
+		return 12.0f;
+	}
+
+	inline float GetPanelContentBottomInset()
+	{
+		return 10.0f;
+	}
+
 	inline float GetSelectedPanelTopBorderThickness()
 	{
 		return 2.0f;
@@ -332,8 +342,36 @@ namespace EditorPanelTitleUtils
 		return false;
 	}
 
-	inline void ApplyPanelContentTopInset()
+	inline void ApplyPanelContentTopInset(bool bApplySideInset = true, bool bApplyBottomInset = true)
 	{
+		ImGuiWindow* Window = ImGui::GetCurrentWindow();
+		if (!Window)
+		{
+			return;
+		}
+
+		const ImGuiID InsetStateId = ImHashStr("##EditorPanelContentInsetApplied");
+		int* const LastAppliedFrame = Window->StateStorage.GetIntRef(InsetStateId, -1);
+		if (*LastAppliedFrame != ImGui::GetFrameCount())
+		{
+			*LastAppliedFrame = ImGui::GetFrameCount();
+
+			const float SideInset = bApplySideInset ? (std::max)(GetPanelContentSideInset(), GetPanelFrameGapThickness()) : 0.0f;
+			const float BottomInset = bApplyBottomInset ? (std::max)(GetPanelContentBottomInset(), GetPanelFrameGapThickness()) : 0.0f;
+			Window->WorkRect.Min.x = (std::min)(Window->WorkRect.Max.x, Window->WorkRect.Min.x + SideInset);
+			Window->WorkRect.Max.x = (std::max)(Window->WorkRect.Min.x, Window->WorkRect.Max.x - SideInset);
+			Window->WorkRect.Max.y = (std::max)(Window->WorkRect.Min.y, Window->WorkRect.Max.y - BottomInset);
+
+			Window->ContentRegionRect.Min.x = (std::min)(Window->ContentRegionRect.Max.x, Window->ContentRegionRect.Min.x + SideInset);
+			Window->ContentRegionRect.Max.x = (std::max)(Window->ContentRegionRect.Min.x, Window->ContentRegionRect.Max.x - SideInset);
+			Window->ContentRegionRect.Max.y = (std::max)(Window->ContentRegionRect.Min.y, Window->ContentRegionRect.Max.y - BottomInset);
+
+			Window->DC.Indent.x += SideInset;
+			Window->DC.CursorPos.x += SideInset;
+			Window->DC.CursorStartPos.x += SideInset;
+			Window->DC.CursorMaxPos.x = (std::max)(Window->DC.CursorMaxPos.x, Window->DC.CursorPos.x);
+		}
+
 		ImGui::Dummy(ImVec2(0.0f, GetPanelContentTopInset()));
 	}
 
@@ -371,6 +409,7 @@ namespace EditorPanelTitleUtils
 				ImVec2(WindowRect.Min.x - FrameGapThickness, WindowRect.Min.y),
 				ImVec2(WindowRect.Max.x + FrameGapThickness, WindowRect.Max.y));
 			const float TabRounding = (std::min)(ImGui::GetStyle().TabRounding, TitleRect.GetHeight() * 0.5f);
+			const float TitleGapHeight = (std::min)(GetPanelTitleTopGapHeight(), TitleRect.GetHeight());
 			const float BodyTopY = (std::max)(WindowRect.Min.y + FrameGapThickness, TitleRect.Max.y);
 			DrawList->PushClipRect(ExpandedWindowRect.Min, ExpandedWindowRect.Max, true);
 			DrawList->AddRectFilled(
@@ -395,7 +434,7 @@ namespace EditorPanelTitleUtils
 			DrawList->PushClipRect(TitleRect.Min, TitleRect.Max, true);
 			DrawList->AddRectFilled(
 				TitleRect.Min,
-				ImVec2(TitleRect.Max.x, TitleRect.Min.y + (std::min)(GetPanelTitleTopGapHeight(), TitleRect.GetHeight())),
+				ImVec2(TitleRect.Max.x, TitleRect.Min.y + TitleGapHeight),
 				GetDockTabBarGapColor(),
 				TabRounding,
 				ImDrawFlags_RoundCornersTop);

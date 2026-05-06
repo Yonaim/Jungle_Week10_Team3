@@ -15,8 +15,8 @@
 #include "Platform/Paths.h"
 #include "Platform/ScriptPaths.h"
 #include "SimpleJSON/json.hpp"
-#include "Scripting/ScriptProperty.h"
 #include "Engine/Viewport/GameViewportClient.h"
+#include "GameFramework/GamePlayStatics.h"
 
 // Sol.hpp에 있는 Check 매크로 겹침 방지 목적 제거
 #pragma region SolInclude
@@ -52,6 +52,7 @@
 #include <functional>
 #include <iterator>
 #include "Input/InputAction.h"
+#include "sol/types.hpp"
 
 namespace
 {
@@ -68,6 +69,7 @@ struct FLuaScriptInstance::FInstanceImpl
 	{
 		None,
 		Time,
+		RealTime,
 		Frames,
 		MoveDone,
 		KeyDown,
@@ -130,6 +132,17 @@ struct FLuaScriptInstance::FInstanceImpl
 	{
 		// 매 스크립트 인스턴스는 전역 Lua VM 위에 독립 environment를 만든다.
 		Env = sol::environment(Lua, sol::create, Lua.globals());
+		ClearFunctionCache();
+
+		// 중요:
+		// require_env로 로드된 모듈 안에서 _G.xxx = ... 를 해도
+		// Runtime 전역이 아니라 이 Instance Env에 기록되게 만든다.
+		Env["_G"] = Env;
+
+		// require_env 전용 캐시.
+		// Lua 기본 package.loaded는 Runtime 전체 공유라서 Instance 격리에 맞지 않는다.
+		Env["__env_loaded_modules"] = Lua.create_table();
+
 		ClearFunctionCache();
 	}
 
@@ -229,6 +242,13 @@ struct FLuaScriptInstance::FInstanceImpl
 			return true;
 		}
 
+		if (Type == "real_time")
+		{
+			Entry.Wait.Kind = ELuaWaitKind::RealTime;
+			Entry.Wait.TimeRemaining = (std::max)(0.f, Command["seconds"].get_or(0.0f));
+			return true;
+		}
+
 		if (Type == "frames")
 		{
 			Entry.Wait.Kind = ELuaWaitKind::Frames;
@@ -260,7 +280,7 @@ struct FLuaScriptInstance::FInstanceImpl
 		return false;
 	}
 
-	bool ShouldResumeCoroutine(FRunningCoroutine& Entry, float DeltaTime)
+	bool ShouldResumeCoroutine(FRunningCoroutine& Entry, float DeltaTime, float RawDeltaTime)
 	{
 		// WaitCondition마다 resume 가능 조건이 다르므로 한 곳에서 판단한다.
 		// 이 함수가 false를 반환하면 해당 coroutine만 대기하고 게임 전체 Tick은 계속 진행된다.
@@ -268,16 +288,25 @@ struct FLuaScriptInstance::FInstanceImpl
 		{
 		case ELuaWaitKind::None:
 			return true;
+
 		case ELuaWaitKind::Time:
 			Entry.Wait.TimeRemaining -= DeltaTime;
 			return Entry.Wait.TimeRemaining <= 0.0f;
+
+		case ELuaWaitKind::RealTime:
+			Entry.Wait.TimeRemaining -= RawDeltaTime;
+			return Entry.Wait.TimeRemaining <= 0.0f;
+
 		case ELuaWaitKind::Frames:
 			--Entry.Wait.FramesRemaining;
 			return Entry.Wait.FramesRemaining <= 0;
+
 		case ELuaWaitKind::MoveDone:
 			return OwnerProxy.IsMoveDone();
+
 		case ELuaWaitKind::Signal:
 			return PendingSignals.find(Entry.Wait.Name) != PendingSignals.end();
+
 		default:
 			return true;
 		}
@@ -416,76 +445,6 @@ namespace
 		OutFunction = sol::protected_function();
 	}
 
-	bool TryMakeScriptPropertyValueFromLua(const sol::object& Object, FScriptPropertyValue& OutValue)
-	{
-		// property(name, defaultValue)의 defaultValue를 C++ 저장 타입으로 옮긴다.
-		// Lua 숫자는 int/float 구분이 약하므로 일단 float로 받고, 선언 타입 보정은 UScriptComponent에서 처리한다.
-		if (!Object.valid() || Object == sol::lua_nil)
-		{
-			return false;
-		}
-
-		switch (Object.get_type())
-		{
-		case sol::type::boolean:
-			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Bool);
-			OutValue.BoolValue = Object.as<bool>();
-			return true;
-		case sol::type::number:
-			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Float);
-			OutValue.FloatValue = Object.as<float>();
-			return true;
-		case sol::type::string:
-			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::String);
-			OutValue.StringValue = Object.as<FString>();
-			return true;
-		case sol::type::table:
-		{
-			// ScriptProperty 스캔 stub과 같은 규칙을 사용해 테이블형 vec3도 받아준다.
-			// 실제 런타임 vec3는 userdata지만, 사용자가 직접 {x=0,y=0,z=0}을 넘기는 경우도 허용한다.
-			sol::table Table = Object.as<sol::table>();
-			OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Vector);
-			OutValue.VectorValue.X = Table["x"].get_or(Table["X"].get_or(Table[1].get_or(0.0f)));
-			OutValue.VectorValue.Y = Table["y"].get_or(Table["Y"].get_or(Table[2].get_or(0.0f)));
-			OutValue.VectorValue.Z = Table["z"].get_or(Table["Z"].get_or(Table[3].get_or(0.0f)));
-			return true;
-		}
-		case sol::type::userdata:
-			if (Object.is<FVector>())
-			{
-				OutValue = FScriptProperty::MakeDefaultValue(EScriptPropertyType::Vector);
-				OutValue.VectorValue = Object.as<FVector>();
-				return true;
-			}
-			break;
-		default:
-			break;
-		}
-
-		return false;
-	}
-
-	sol::object MakeLuaObjectFromScriptProperty(sol::state& Lua, const FScriptPropertyValue& Value)
-	{
-		// C++에서 결정한 property 값을 다시 Lua 값으로 돌려준다.
-		// vector는 LuaScriptRuntime에 등록된 FVector userdata로 반환된다.
-		switch (Value.Type)
-		{
-		case EScriptPropertyType::Bool:
-			return sol::make_object(Lua, Value.BoolValue);
-		case EScriptPropertyType::Int:
-			return sol::make_object(Lua, Value.IntValue);
-		case EScriptPropertyType::Float:
-			return sol::make_object(Lua, Value.FloatValue);
-		case EScriptPropertyType::String:
-			return sol::make_object(Lua, Value.StringValue);
-		case EScriptPropertyType::Vector:
-			return sol::make_object(Lua, Value.VectorValue);
-		default:
-			return sol::make_object(Lua, sol::lua_nil);
-		}
-	}
-
 	std::filesystem::path ResolveDataFilePath(const FString& Path)
 	{
 		const std::filesystem::path InputPath(FPaths::ToWide(Path));
@@ -516,6 +475,22 @@ namespace
 		}
 
 		return FullPath.lexically_normal();
+	}
+
+	FString MakeRequireEnvScriptPath(const FString& ModuleName)
+	{
+		FString ScriptPath = ModuleName;
+
+		// require_env("Game.HitEffect") -> Scripts/Game/HitEffect.lua
+		std::replace(ScriptPath.begin(), ScriptPath.end(), '.', '/');
+		std::replace(ScriptPath.begin(), ScriptPath.end(), '\\', '/');
+
+		if (ScriptPath.size() < 4 || ScriptPath.substr(ScriptPath.size() - 4) != ".lua")
+		{
+			ScriptPath += ".lua";
+		}
+
+		return FScriptPaths::NormalizeScriptPath(ScriptPath);
 	}
 
 	sol::object MakeLuaObjectFromJson(sol::state_view Lua, const json::JSON& Value)
@@ -748,7 +723,6 @@ bool FLuaScriptInstance::Initialize(UScriptComponent* InOwnerComponent)
 	BindCoroutineFunctions();
 	BindInputFunctions();
 	BindDebugTimeFunctions();
-	BindPropertyFunctions();
 	BindSoundFunctions();
 	BindWorldFunctions();
 	BindDataFunctions();
@@ -808,7 +782,6 @@ bool FLuaScriptInstance::LoadFromFile(const FString& InScriptPath)
 	BindCoroutineFunctions();
 	BindInputFunctions();
 	BindDebugTimeFunctions();
-	BindPropertyFunctions();
 	BindSoundFunctions();
 	BindWorldFunctions();
 	BindDataFunctions();
@@ -1109,6 +1082,17 @@ void FLuaScriptInstance::TickCoroutines(float DeltaTime)
 		return;
 	}
 
+	// Raw DeltaTime 가져오기
+	float RawDeltaTime = DeltaTime;
+
+	if (AActor* OwnerActor = GetOwnerActor())
+	{
+		if (UWorld* World = OwnerActor->GetWorld())
+		{
+			RawDeltaTime = World->GetRawDeltaTime();
+		}
+	}
+
 	Impl->LastDeltaTime = DeltaTime;
 	Impl->TickLuaProxyTasks(DeltaTime);
 	Impl->bTickingCoroutines = true;
@@ -1117,7 +1101,8 @@ void FLuaScriptInstance::TickCoroutines(float DeltaTime)
 	for (size_t Index = 0; Index < Impl->Coroutines.size();)
 	{
 		FInstanceImpl::FRunningCoroutine& CoroutineEntry = Impl->Coroutines[Index];
-		if (!Impl->ShouldResumeCoroutine(CoroutineEntry, DeltaTime))
+
+		if (!Impl->ShouldResumeCoroutine(CoroutineEntry, DeltaTime, RawDeltaTime))
 		{
 			++Index;
 			continue;
@@ -1230,12 +1215,18 @@ void FLuaScriptInstance::BindCoroutineFunctions()
 		return StartCoroutine(FunctionName);
 	});
 
+	Impl->Env.set_function("start_coroutine", [this](const FString& FunctionName)
+	{
+		return StartCoroutine(FunctionName);
+	});
+
 	// wait 함수들은 실제로 C++ thread를 sleep하지 않는다.
-	// Lua coroutine에서 table command를 yield하고, C++ Scheduler가 그 command를 WaitCondition으로 바꿔 다음 resume 시점을 결정한다.
+	// Lua coroutine에서 table command를 yield하고, 
+	// C++ Scheduler가 그 command를 WaitCondition으로 바꿔 다음 resume 시점을 결정한다.
+	// table 자체는 Lua VM에 생성하고 environment를 통해 yield한다.
+	// sol::environment는 lookup 범위일 뿐 table factory가 아니므로 Runtime의 state를 사용한다.
 	auto MakeWaitCommand = [this](const FString& Type)
 	{
-		// table 자체는 Lua VM에 생성하고 environment를 통해 yield한다.
-		// sol::environment는 lookup 범위일 뿐 table factory가 아니므로 Runtime의 state를 사용한다.
 		sol::table Command = FLuaScriptRuntime::Get().GetLuaState().create_table();
 		Command["type"] = Type;
 		return Command;
@@ -1253,6 +1244,22 @@ void FLuaScriptInstance::BindCoroutineFunctions()
 		sol::table Command = MakeWaitCommand("time");
 		Command["seconds"] = (std::max)(0.0f, Seconds);
 		return Command;
+	}));
+
+	Impl->Env.set_function("wait_real", sol::yielding([MakeWaitCommand](float Seconds)
+	{
+		sol::table Command = MakeWaitCommand("real_time");
+		Command["seconds"] = (std::max)(0.0f, Seconds);
+		return Command;
+		
+	}));
+
+	Impl->Env.set_function("WaitReal", sol::yielding([MakeWaitCommand](float Seconds)
+	{
+		sol::table Command = MakeWaitCommand("real_time");
+		Command["seconds"] = (std::max)(0.0f, Seconds);
+		return Command;
+
 	}));
 
 	Impl->Env.set_function("wait_frames", sol::yielding([MakeWaitCommand](int Frames)
@@ -1399,20 +1406,45 @@ void FLuaScriptInstance::BindDebugTimeFunctions()
 	}
 
 	auto LogLuaMessage = [](ELogLevel Level, const char* Prefix, sol::variadic_args Args)
-	{
-		FString Message;
-		for (auto Arg : Args)
 		{
-			if (!Message.empty())
+			auto LuaArgToString = [](const sol::object& Arg) -> FString
+				{
+					switch (Arg.get_type())
+					{
+					case sol::type::lua_nil:
+						return "nil";
+					case sol::type::boolean:
+						return Arg.as<bool>() ? "true" : "false";
+					case sol::type::number:
+						return std::to_string(Arg.as<double>());
+					case sol::type::string:
+						return Arg.as<FString>();
+					case sol::type::function:
+						return "<function>";
+					case sol::type::table:
+						return "<table>";
+					case sol::type::userdata:
+						return "<userdata>";
+					case sol::type::thread:
+						return "<thread>";
+					default:
+						return "<unknown>";
+					}
+				};
+
+			FString Message;
+			for (auto Arg : Args)
 			{
-				Message += " ";
+				if (!Message.empty())
+				{
+					Message += " ";
+				}
+
+				Message += LuaArgToString(Arg);
 			}
 
-			Message += Arg.as<FString>();
-		}
-
-		FLogManager::Get().LogMessage(Level, "Lua", "%s %s", Prefix, Message.c_str());
-	};
+			FLogManager::Get().LogMessage(Level, "Lua", "%s %s", Prefix, Message.c_str());
+		};
 
 	Impl->Env.set_function("log", [LogLuaMessage](sol::variadic_args Args)
 	{
@@ -1448,49 +1480,6 @@ void FLuaScriptInstance::BindDebugTimeFunctions()
 	Impl->Env.set_function("delta_time", [this]()
 	{
 		return Impl ? Impl->LastDeltaTime : 0.0f;
-	});
-}
-
-void FLuaScriptInstance::BindPropertyFunctions()
-{
-	if (!Impl)
-	{
-		return;
-	}
-
-	Impl->Env.set_function("DeclareProperties", [](sol::object)
-	{
-		// 런타임에서는 ScriptProperty::LoadDescs가 이미 선언을 읽었다.
-		// Lua 실행 중에는 같은 스크립트를 그대로 실행하기 위해 no-op으로 둔다.
-	});
-
-	// Bind 예시:
-	// Impl->Env.set_function("my_api", [this](float Value) { /* OwnerComponent를 통해 엔진 상태를 읽고 쓴다. */ });
-	Impl->Env.set_function("property", [this](const FString& PropertyName, sol::optional<sol::object> DefaultObject)
-	{
-		// Lua 쪽 호출 형태는 property("Speed", 600.0)이다.
-		// 실제 우선순위 판단은 Component가 editor override를 알고 있으므로 Component에 위임한다.
-		sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
-		const sol::object NilObject = sol::make_object(Lua, sol::lua_nil);
-		const sol::object LuaDefaultObject = DefaultObject ? *DefaultObject : NilObject;
-
-		FScriptPropertyValue FallbackValue;
-		const bool bHasFallback = TryMakeScriptPropertyValueFromLua(LuaDefaultObject, FallbackValue);
-
-		UScriptComponent* OwnerComponent = GetOwnerComponent();
-		if (!OwnerComponent)
-		{
-			// owner가 사라진 뒤 Lua 값이 호출되면 C++ 객체 접근을 포기하고 fallback만 돌려준다.
-			return bHasFallback ? LuaDefaultObject : NilObject;
-		}
-
-		FScriptPropertyValue ResolvedValue;
-		if (!OwnerComponent->ResolveScriptPropertyValue(PropertyName, FallbackValue, bHasFallback, ResolvedValue))
-		{
-			return bHasFallback ? LuaDefaultObject : NilObject;
-		}
-
-		return MakeLuaObjectFromScriptProperty(Lua, ResolvedValue);
 	});
 }
 
@@ -1700,11 +1689,44 @@ void FLuaScriptInstance::BindWorldFunctions()
 		return GEngine ? GEngine->RequestSceneLoad(SceneReference) : false;
 	});
 
+	Impl->Env.set_function("set_global_time_dilation", [](const float TimeDilation)
+	{
+		if (!GEngine) return false;
+
+		UWorld* World = GEngine->GetWorld();
+		if (!World) return false;
+		
+		World->SetGlobalTimeDilation(TimeDilation);
+		return true;
+	});
+
+	Impl->Env.set_function("get_global_time_dilation", []()
+	{
+		if (!GEngine)
+		{
+			return 1.0f;
+		}
+
+		UWorld* World = GEngine->GetWorld();
+		return World ? World->GetGlobalTimeDilation() : 1.0f;
+	});
+
+	Impl->Env.set_function("raw_delta_time", []()
+	{
+		if (!GEngine)
+		{
+			return 0.0f;
+		}
+
+		UWorld* World = GEngine->GetWorld();
+		return World ? World->GetRawDeltaTime() : 0.0f;
+	});
+
 	// Global에 load Scene Binding
 	FLuaScriptRuntime::Get().GetLuaState().set_function("load_scene", [](const FString& SceneReference)
 	{
 		return GEngine ? GEngine->RequestSceneLoad(SceneReference) : false;
-	});
+	});	
 }
 
 void FLuaScriptInstance::BindDataFunctions()
@@ -1713,6 +1735,77 @@ void FLuaScriptInstance::BindDataFunctions()
 	{
 		return;
 	}
+
+	Impl->Env.set_function("require_env", [this](const FString& ModuleName) -> sol::object
+		{
+			sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
+
+			if (!Impl || ModuleName.empty())
+			{
+				return sol::make_object(Lua, sol::lua_nil);
+			}
+
+			sol::table ModuleCache = Impl->Env["__env_loaded_modules"];
+			if (!ModuleCache.valid())
+			{
+				ModuleCache = Lua.create_table();
+				Impl->Env["__env_loaded_modules"] = ModuleCache;
+			}
+
+			sol::object CachedModule = ModuleCache[ModuleName];
+			if (CachedModule.valid() && CachedModule != sol::lua_nil)
+			{
+				return CachedModule;
+			}
+
+			const FString ScriptPath = MakeRequireEnvScriptPath(ModuleName);
+
+			FString ScriptSource;
+			FString FileReadError;
+			if (!FScriptPaths::ReadScriptFile(ScriptPath, ScriptSource, FileReadError))
+			{
+				SetError("require_env failed: " + FileReadError);
+				return sol::make_object(Lua, sol::lua_nil);
+			}
+
+			const std::filesystem::path ResolvedPath = FScriptPaths::ResolveScriptPath(ScriptPath);
+			const FString ChunkName = FPaths::ToUtf8(ResolvedPath.generic_wstring());
+
+			sol::protected_function_result Result =
+				Lua.safe_script(
+					ScriptSource,
+					Impl->Env,
+					sol::script_pass_on_error,
+					ChunkName,
+					sol::load_mode::text);
+
+			if (!Result.valid() || Result.status() == sol::call_status::yielded)
+			{
+				Impl->HandleProtectedResult(
+					this,
+					"require_env(" + ModuleName + ")",
+					std::move(Result));
+
+				return sol::make_object(Lua, sol::lua_nil);
+			}
+
+			sol::object ModuleResult = sol::make_object(Lua, sol::lua_nil);
+
+			if (Result.return_count() > 0)
+			{
+				ModuleResult = Result.get<sol::object>(0);
+			}
+
+			// Lua require는 return 값이 없으면 true를 캐시한다.
+			// 똑같이 맞춰준다.
+			if (!ModuleResult.valid() || ModuleResult == sol::lua_nil)
+			{
+				ModuleResult = sol::make_object(Lua, true);
+			}
+
+			ModuleCache[ModuleName] = ModuleResult;
+			return ModuleResult;
+		});
 
 	auto LoadJsonFile = [](const FString& FilePath)
 	{

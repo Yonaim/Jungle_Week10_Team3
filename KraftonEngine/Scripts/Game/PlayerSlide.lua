@@ -1,135 +1,170 @@
+local Engine = require("Common.Engine")
+local Vector = require("Common.Vector")
+
+------------------------------------------------------------------
 -- PlayerSlide.lua
--- Runner 슬라이드 상태 기계.
+-- Runner 슬라이드 State Machine
 --
--- PlayerController.lua는 입력, 이동, 라이프사이클만 담당하게 두고,
--- 슬라이드 중 바뀌는 collision shape / mesh transform은 이 모듈이 관리한다.
+-- PlayerController.lua는 입력, 이동, 생명주기 담당
+-- 슬라이드 중 바뀌는 collision shape / mesh transform은 여기서 관리
+------------------------------------------------------------------
 
 local PlayerSlide = {}
 PlayerSlide.__index = PlayerSlide
 
-local function is_valid_component(component)
-    return component and component:IsValid()
-end
 
-local function find_collision_shape(actor)
-    -- 현재 Runner는 UBoxComponent가 root collision이다.
-    -- 그래도 shape 공통 API를 쓰도록 sphere/capsule까지 순서대로 찾는다.
-    local shape = actor:GetComponentByType("UBoxComponent")
-    if is_valid_component(shape) then
-        return shape
-    end
-
-    shape = actor:GetComponentByType("USphereComponent")
-    if is_valid_component(shape) then
-        return shape
-    end
-
-    shape = actor:GetComponentByType("UCapsuleComponent")
-    if is_valid_component(shape) then
-        return shape
-    end
-
-    return nil
-end
+------------------------------------------------
+-- PlayerSlide 생성 함수들
+------------------------------------------------
 
 function PlayerSlide.new(actor)
     -- PlayerSlide 객체는 한 Runner actor의 슬라이드 중 collision/mesh 변경값을 기억합니다.
     -- PlayerController가 입력을 판단하고, 실제 모양 변경은 여기 Begin/End만 호출하면 됩니다.
     return setmetatable({
-        -- actor는 슬라이드를 적용할 Runner ActorProxy입니다.
-        actor = actor,
-        -- is_sliding은 현재 슬라이드 중인지 나타냅니다.
-        is_sliding = false,
-
-        -- collision_shape는 슬라이드 때 줄일 박스/캡슐/구 shape component입니다.
-        collision_shape = nil,
-        -- normal_shape_extent는 평상시 collision 크기입니다.
-        normal_shape_extent = nil,
-        -- slide_shape_extent는 슬라이드 중 collision 크기입니다.
-        slide_shape_extent = nil,
-        -- slide_shape_z_delta는 collision을 줄인 만큼 바닥에 붙여두기 위한 Z 보정값입니다.
-        slide_shape_z_delta = 0.0,
-
-        -- mesh는 슬라이드 중 시각 높이를 줄일 StaticMeshComponent입니다.
-        mesh = nil,
-        -- normal_mesh_local_scale은 평상시 mesh scale입니다.
-        normal_mesh_local_scale = nil,
-        -- slide_mesh_local_scale은 슬라이드 중 mesh scale입니다.
-        slide_mesh_local_scale = nil,
-        -- normal_mesh_local_location은 평상시 mesh local 위치입니다.
-        normal_mesh_local_location = nil,
-        -- slide_mesh_local_location은 슬라이드 중 mesh local 위치입니다.
-        slide_mesh_local_location = nil
+        actor = actor,                      -- 슬라이드를 적용할 Runner Actor
+        is_sliding = false,                 -- 현재 슬라이드 중 상태값
+        collision_shape = nil,              -- 슬라이드 때 줄일 shape component
+        normal_shape_extent = nil,          -- 평상시 collision 크기
+        slide_shape_extent = nil,           -- 슬라이드 중 collision 크기
+        slide_shape_z_delta = 0.0,          -- collision을 줄인 만큼 바닥에 붙여두기 위한 Z 보정값
+        mesh = nil,                         -- 슬라이드 중 시각 높이를 줄일 static mesh
+        normal_mesh_local_scale = nil,      -- 평상시 mesh scale
+        slide_mesh_local_scale = nil,       -- 슬라이드 중 mesh scale
+        normal_mesh_local_location = nil,   -- 평상시 mesh local 위치
+        slide_mesh_local_location = nil     -- 슬라이드 중 mesh local 위치
     }, PlayerSlide)
 end
 
-function PlayerSlide:Configure()
-    -- Configure는 BeginPlay에서 한 번 호출해 평상시/슬라이드 중 크기 값을 준비합니다.
-    -- 나중에 슬라이드 VFX나 애니메이션을 붙일 때도 이 초기화 뒤에 연결하면 됩니다.
-    self.collision_shape = find_collision_shape(self.actor)
-    if is_valid_component(self.collision_shape) then
-        self.collision_shape:SetCollisionEnabled(true)
-        self.collision_shape:SetGenerateOverlapEvents(true)
+------------------------------------------------
+-- PlayerSlide 초기화 함수들
+------------------------------------------------
 
-        self.normal_shape_extent = self.collision_shape:GetShapeExtent()
+-- PlayerController.lua의 BeginPlay 에서 호출.
+-- 슬라이드 중 사용할 collision 크기와 mesh transform을 미리 계산해 둡니다.
+-- Begin/End에서는 여기서 저장한 값만 적용/복구해서 런타임 계산을 단순하게 유지합니다.
+function PlayerSlide:Configure()
+    self.collision_shape = Engine.FindCollisionShape(self.actor)
+
+    if not Engine.IsValidComponent(self.collision_shape) then
+        warn("[PlayerSlide] Collision shape not found. Slide collision resize disabled.")
+        self.collision_shape = nil
+        self.normal_shape_extent = nil
+        self.slide_shape_extent = nil
+        self.slide_shape_z_delta = 0.0
+    else
+        if self.collision_shape.SetCollisionEnabled then
+            self.collision_shape:SetCollisionEnabled(true)
+        end
+        if self.collision_shape.SetGenerateOverlapEvents then
+            self.collision_shape:SetGenerateOverlapEvents(true)
+        end
+
+        if self.collision_shape.GetShapeExtent then
+            self.normal_shape_extent = self.collision_shape:GetShapeExtent()
+        else
+            self.normal_shape_extent = nil
+        end
+
         if self.normal_shape_extent then
-            self.slide_shape_extent = vec3(
-                self.normal_shape_extent.x,
-                self.normal_shape_extent.y,
-                self.normal_shape_extent.z * 0.5
+            local normal_x = Vector.GetX(self.normal_shape_extent)
+            local normal_y = Vector.GetY(self.normal_shape_extent)
+            local normal_z = Vector.GetZ(self.normal_shape_extent)
+
+            print("[slide Shape X]" .. normal_x)
+            print("[slide Shape Y]" .. normal_y)
+            print("[slide Shape Z]" .. normal_z)
+
+            self.slide_shape_extent = Vector.Make(
+                normal_x,
+                normal_y,
+                normal_z * 0.5
             )
 
-            -- ShapeExtent.z는 box/capsule 계열에서 half-height로 본다.
-            -- 슬라이드 때 줄어든 half-height만큼 아래로 내려야 바닥면이 그대로 유지된다.
-            self.slide_shape_z_delta = self.normal_shape_extent.z - self.slide_shape_extent.z
+            if self.slide_shape_extent then
+                -- ShapeExtent.z는 box/capsule 계열에서 half-height로 본다.
+                -- 슬라이드 때 줄어든 half-height만큼 아래로 내려야 바닥면이 그대로 유지된다.
+                self.slide_shape_z_delta = normal_z - Vector.GetZ(self.slide_shape_extent)
+            else
+                warn("[PlayerSlide] Failed to create slide_shape_extent.")
+                self.slide_shape_z_delta = 0.0
+            end
+        else
+            warn("[PlayerSlide] GetShapeExtent returned nil. Slide collision resize disabled.")
+            self.slide_shape_extent = nil
+            self.slide_shape_z_delta = 0.0
         end
 
         print(
             "[TempleRun] Collision configured. Shape=" ..
-            tostring(self.collision_shape:GetShapeType()) ..
+            tostring(self.collision_shape.GetShapeType and self.collision_shape:GetShapeType() or "Unknown") ..
             ", NormalExtent=(" ..
-            tostring(self.normal_shape_extent and self.normal_shape_extent.x or 0.0) .. ", " ..
-            tostring(self.normal_shape_extent and self.normal_shape_extent.y or 0.0) .. ", " ..
-            tostring(self.normal_shape_extent and self.normal_shape_extent.z or 0.0) .. "), ShapeZDelta=" ..
+            tostring(Vector.GetX(self.normal_shape_extent)) .. ", " ..
+            tostring(Vector.GetY(self.normal_shape_extent)) .. ", " ..
+            tostring(Vector.GetZ(self.normal_shape_extent)) .. "), ShapeZDelta=" ..
             tostring(self.slide_shape_z_delta)
         )
-    else
-        warn("[TempleRun] Collision shape not found. Slide collision resize and ground height fallback may be inaccurate.")
     end
 
-    self.mesh = self.actor:GetStaticMeshComponent()
-    if is_valid_component(self.mesh) then
+    self.mesh = Engine.GetStaticMeshComponent(self.actor)
+    if not Engine.IsValidComponent(self.mesh) then
+        warn("[PlayerSlide] StaticMeshComponent not found. Slide visual scale disabled.")
+        self.mesh = nil
+        self.normal_mesh_local_scale = nil
+        self.slide_mesh_local_scale = nil
+        self.normal_mesh_local_location = nil
+        self.slide_mesh_local_location = nil
+        return
+    end
+
+    if self.mesh.GetLocalScale then
         self.normal_mesh_local_scale = self.mesh:GetLocalScale()
+    end
+
+    if self.mesh.GetLocalLocation then
         self.normal_mesh_local_location = self.mesh:GetLocalLocation()
+    end
 
-        self.slide_mesh_local_scale = vec3(
-            self.normal_mesh_local_scale.x,
-            self.normal_mesh_local_scale.y,
-            self.normal_mesh_local_scale.z * 0.5
-        )
-
-        -- Static mesh scale은 pivot/center 기준으로 줄어든다.
-        -- 그래서 시각 높이 감소분의 절반만큼 local Z를 내려야 mesh가 바닥에서 뜨지 않는다.
-        self.slide_mesh_local_location = vec3(
-            self.normal_mesh_local_location.x,
-            self.normal_mesh_local_location.y,
-            self.normal_mesh_local_location.z
-        )
-
-        print(
-            "[TempleRun] Mesh slide configured. NormalScaleZ=" ..
-            tostring(self.normal_mesh_local_scale.z) ..
-            ", SlideScaleZ=" ..
-            tostring(self.slide_mesh_local_scale.z)
+    if self.normal_mesh_local_scale then
+        self.slide_mesh_local_scale = Vector.Make(
+            Vector.GetX(self.normal_mesh_local_scale),
+            Vector.GetY(self.normal_mesh_local_scale),
+            Vector.GetZ(self.normal_mesh_local_scale) * 0.5
         )
     else
-        warn("[TempleRun] StaticMeshComponent not found. Slide visual scale will not work.")
+        warn("[PlayerSlide] GetLocalScale returned nil. Slide visual scale disabled.")
+        self.slide_mesh_local_scale = nil
+    end
+
+    if self.normal_mesh_local_location then
+        -- Static mesh scale은 pivot/center 기준으로 줄어든다.
+        -- 그래서 시각 높이 감소분의 절반만큼 local Z를 내려야 mesh가 바닥에서 뜨지 않는다.
+        self.slide_mesh_local_location = Vector.Make(
+            Vector.GetX(self.normal_mesh_local_location),
+            Vector.GetY(self.normal_mesh_local_location),
+            Vector.GetZ(self.normal_mesh_local_location)
+        )
+    else
+        warn("[PlayerSlide] GetLocalLocation returned nil. Slide visual location restore disabled.")
+        self.slide_mesh_local_location = nil
+    end
+
+    if self.slide_mesh_local_scale then
+        print(
+            "[TempleRun] Mesh slide configured. NormalScaleZ=" ..
+            tostring(Vector.GetZ(self.normal_mesh_local_scale)) ..
+            ", SlideScaleZ=" ..
+            tostring(Vector.GetZ(self.slide_mesh_local_scale))
+        )
     end
 end
 
+------------------------------------------------
+-- PlayerSlide 상태 조회 함수들
+------------------------------------------------
+
 function PlayerSlide:GetCollisionShape()
     -- PlayerController의 바닥 높이 계산이 현재 collision half-height를 읽을 때 쓰는 getter입니다.
-    if is_valid_component(self.collision_shape) then
+    if Engine.IsValidComponent(self.collision_shape) then
         return self.collision_shape
     end
 
@@ -141,6 +176,10 @@ function PlayerSlide:IsSliding()
     return self.is_sliding
 end
 
+------------------------------------------------
+-- PlayerSlide 제어 함수들
+------------------------------------------------
+
 function PlayerSlide:Begin()
     -- 슬라이드는 duration 기반 타이머가 아니라 누르고 있는 동안 유지하는 방식입니다.
     -- 이 함수는 슬라이드 시작 1회만 호출되어야 하며, 반복 호출은 바로 무시합니다.
@@ -150,30 +189,30 @@ function PlayerSlide:Begin()
 
     self.is_sliding = true
 
-    if is_valid_component(self.collision_shape) and self.slide_shape_extent then
+    if Engine.IsValidComponent(self.collision_shape) and self.slide_shape_extent and self.collision_shape.SetShapeExtent then
         self.collision_shape:SetShapeExtent(self.slide_shape_extent)
 
         -- Runner의 collision box는 현재 root component다.
         -- 저장해 둔 local location으로 되돌리면 달리던 actor의 X/Y까지 예전 위치로 튈 수 있다.
         -- 그래서 현재 위치 기준 AddLocalOffset만 사용한다.
-        if self.slide_shape_z_delta ~= 0.0 then
+        if self.slide_shape_z_delta ~= 0.0 and self.collision_shape.AddLocalOffset then
             self.collision_shape:AddLocalOffset(vec3(0.0, 0.0, -self.slide_shape_z_delta))
         end
 
         print(
             "[TempleRun] Slide collision extent=(" ..
-            tostring(self.slide_shape_extent.x) .. ", " ..
-            tostring(self.slide_shape_extent.y) .. ", " ..
-            tostring(self.slide_shape_extent.z) .. "), ShapeZDelta=" ..
+            tostring(Vector.GetX(self.slide_shape_extent)) .. ", " ..
+            tostring(Vector.GetY(self.slide_shape_extent)) .. ", " ..
+            tostring(Vector.GetZ(self.slide_shape_extent)) .. "), ShapeZDelta=" ..
             tostring(self.slide_shape_z_delta)
         )
     end
 
-    if is_valid_component(self.mesh) then
-        if self.slide_mesh_local_scale then
+    if Engine.IsValidComponent(self.mesh) then
+        if self.slide_mesh_local_scale and self.mesh.SetLocalScale then
             self.mesh:SetLocalScale(self.slide_mesh_local_scale)
         end
-        if self.slide_mesh_local_location then
+        if self.slide_mesh_local_location and self.mesh.SetLocalLocation then
             self.mesh:SetLocalLocation(self.slide_mesh_local_location)
         end
     end
@@ -197,18 +236,18 @@ function PlayerSlide:Restore()
     -- GameOver/EndPlay에서도 호출되므로 nil 체크를 충분히 유지합니다.
     local was_sliding = self.is_sliding
 
-    if is_valid_component(self.collision_shape) and self.normal_shape_extent then
+    if Engine.IsValidComponent(self.collision_shape) and self.normal_shape_extent and self.collision_shape.SetShapeExtent then
         self.collision_shape:SetShapeExtent(self.normal_shape_extent)
-        if was_sliding and self.slide_shape_z_delta ~= 0.0 then
+        if was_sliding and self.slide_shape_z_delta ~= 0.0 and self.collision_shape.AddLocalOffset then
             self.collision_shape:AddLocalOffset(vec3(0.0, 0.0, self.slide_shape_z_delta))
         end
     end
 
-    if is_valid_component(self.mesh) then
-        if self.normal_mesh_local_scale then
+    if Engine.IsValidComponent(self.mesh) then
+        if self.normal_mesh_local_scale and self.mesh.SetLocalScale then
             self.mesh:SetLocalScale(self.normal_mesh_local_scale)
         end
-        if self.normal_mesh_local_location then
+        if self.normal_mesh_local_location and self.mesh.SetLocalLocation then
             self.mesh:SetLocalLocation(self.normal_mesh_local_location)
         end
     end

@@ -1,13 +1,12 @@
-DeclareProperties({
-    ScenarioPath = { type = "string", default = "Asset/Content/Data/Scenarios/story.json" },
-    NextScene = { type = "string", default = "PlayerDev.Scene" },
-})
-
 local ScenarioLoader = require("UI.ScenarioLoader")
 local DialogueUtils = require("UI.DialogueUtils")
+local StoryConfig = require("Game.Config.StoryScene")
+local Engine = require("Common.Engine")
+local Math = require("Common.Math")
+local UI = require("Common.UI")
 
-local SCENARIO_PATH = property("ScenarioPath", "Asset/Content/Data/Scenarios/story.json")
-local NEXT_SCENE = property("NextScene", "PlayerDev.Scene")
+local SCENARIO_PATH = StoryConfig.scenario_path
+local NEXT_SCENE = StoryConfig.next_scene
 
 local ui = {}
 local scenario = nil
@@ -16,7 +15,7 @@ local current_index = 1
 local input_cooldown = 0.0
 local auto_advance_timer = nil
 local scene_change_timer = nil
-local scene_change_duration = 0.18
+local scene_change_duration = StoryConfig.scene_change_duration
 local pending_page_index = nil
 local current_story_background_path = nil
 local story_finished = false
@@ -26,21 +25,13 @@ local typing_state = {
     chars = {},
     visible_count = 0,
     elapsed = 0.0,
-    interval = 0.028,
+    interval = StoryConfig.text.typewriter_interval_seconds,
     full_text = "",
 }
 local dialogue_background_state = {
     current_one_key = nil,
 }
-local OVERLAY_COMPONENTS = {
-    control_room_baek_0 = "StoryBackgroundBaek0",
-    control_room_baek_1 = "StoryBackgroundBaek1",
-    control_room_lim_0 = "StoryBackgroundLim0",
-    control_room_lim_1 = "StoryBackgroundLim1",
-    control_room_pod = "StoryBackgroundPod",
-    control_room_baek_lim_0 = "StoryBackgroundBaekLim0",
-    control_room_baek_lim_1 = "StoryBackgroundBaekLim1",
-}
+local OVERLAY_COMPONENTS = StoryConfig.overlay_components
 local dialogue_transition = {
     active = false,
     elapsed = 0.0,
@@ -57,75 +48,41 @@ local prologue_state = {
     elapsed = 0.0,
     line_index = 0,
     lines = {},
-    intro_fade_seconds = 3.0,
-    intro_hold_seconds = 1.5,
-    outro_fade_seconds = 0.9,
-    control_room_fade_seconds = 0.9,
-    crt_lead_seconds = 1.0,
-    crt_switch_delay_seconds = 0.2,
-    post_crt_hold_seconds = 1.2,
+    intro_fade_seconds = StoryConfig.prologue.intro_fade_seconds,
+    intro_hold_seconds = StoryConfig.prologue.intro_hold_seconds,
+    outro_fade_seconds = StoryConfig.prologue.outro_fade_seconds,
+    control_room_fade_seconds = StoryConfig.prologue.control_room_fade_seconds,
+    crt_lead_seconds = StoryConfig.prologue.crt_lead_seconds,
+    crt_switch_delay_seconds = StoryConfig.prologue.crt_switch_delay_seconds,
+    post_crt_hold_seconds = StoryConfig.prologue.post_crt_hold_seconds,
 }
 
-local MAX_LINE_WIDTH_UNITS = 28
-local SPEAKER_NAME_COLOR = { 134.0 / 255.0, 251.0 / 255.0, 255.0 / 255.0, 233.0 / 255.0 }
-local DIALOGUE_TEXT_COLOR = { 235.0 / 255.0, 247.0 / 255.0, 255.0 / 255.0, 209.0 / 255.0 }
-local PROLOGUE_TEXT_COLOR = { 235.0 / 255.0, 247.0 / 255.0, 255.0 / 255.0, 0.94 }
-local PROLOGUE_HINT_COLOR = { 0.72, 0.84, 1.0, 0.88 }
-local PROLOGUE_DIM_BACKGROUND = 0.32
-local INPUT_COOLDOWN_SECONDS = 0.18
-local DIALOGUE_TRANSITION_DURATION = 0.3
-local TYPEWRITER_INTERVAL_SECONDS = 0.028
-local NEXT_PAGE_SOUND_PATH = "Asset/Content/Sound/SFX/story_next.mp3"
-local TYPEWRITER_SOUND_PATH = "Asset/Content/Sound/SFX/crt-type.wav"
-local DEFAULT_BOOT_SOUND_PATH = "Asset/Content/Sound/SFX/windows-98-startup.mp3"
-local DEFAULT_CRT_ON_SOUND_PATH = "Asset/Content/Sound/SFX/crt-on.mp3"
-local DEFAULT_GO_SOUND_PATH = "Sound.SFX.go"
-local TERMINAL_PROMPT = ">_ "
-local HOLD_SKIP_SECONDS = 2.0
-local HOLD_SKIP_HINT_TEXT = "Hold Space to Skip..."
+local MAX_LINE_WIDTH_UNITS = StoryConfig.text.max_line_width_units
+local SPEAKER_NAME_COLOR = StoryConfig.text.speaker_name_color
+local DIALOGUE_TEXT_COLOR = StoryConfig.text.dialogue_text_color
+local PROLOGUE_TEXT_COLOR = StoryConfig.text.prologue_text_color
+local PROLOGUE_HINT_COLOR = StoryConfig.text.prologue_hint_color
+local PROLOGUE_DIM_BACKGROUND = StoryConfig.text.prologue_dim_background
+local INPUT_COOLDOWN_SECONDS = StoryConfig.text.input_cooldown_seconds
+local DIALOGUE_TRANSITION_DURATION = StoryConfig.text.dialogue_transition_duration
+local TYPEWRITER_INTERVAL_SECONDS = StoryConfig.text.typewriter_interval_seconds
+local NEXT_PAGE_SOUND_PATH = StoryConfig.sounds.next_page
+local TYPEWRITER_SOUND_PATH = StoryConfig.sounds.typewriter
+local DEFAULT_BOOT_SOUND_PATH = StoryConfig.sounds.boot
+local DEFAULT_CRT_ON_SOUND_PATH = StoryConfig.sounds.crt_on
+local DEFAULT_GO_SOUND_PATH = StoryConfig.sounds.go
+local TERMINAL_PROMPT = StoryConfig.text.terminal_prompt
+local HOLD_SKIP_SECONDS = StoryConfig.text.hold_skip_seconds
+local HOLD_SKIP_HINT_TEXT = StoryConfig.text.hold_skip_hint_text
 local apply_page = nil
 local resolve_neutral_background = nil
 
-local function get_component(name)
-    local component = obj:GetComponent(name)
-    if component and component:IsValid() then
-        return component
-    end
-
-    warn("StoryScene component missing:", name)
-    return nil
-end
+------------------------------------------------
+-- 컴포넌트 / Asset / 사운드 헬퍼 함수들
+------------------------------------------------
 
 local function cache_component(name)
-    ui[name] = get_component(name)
-end
-
-local function set_visible(name, visible)
-    local component = ui[name]
-    if component then
-        component:SetVisible(visible)
-    end
-end
-
-local function set_text(name, text)
-    local component = ui[name]
-    if component then
-        component:SetText(text)
-    end
-end
-
-local function set_tint(name, r, g, b, a)
-    local component = ui[name]
-    if component then
-        component:SetTint(r, g, b, a)
-    end
-end
-
-local function set_texture(name, texture_path)
-    local component = ui[name]
-    if component and texture_path and texture_path ~= "" then
-        component:SetTexture(texture_path)
-    end
+    ui[name] = Engine.GetRequiredComponent(obj, "StoryScene component missing:", name)
 end
 
 local function play_story_sfx(sound_path)
@@ -158,10 +115,14 @@ local function play_story_bgm(sound_path, looping)
 end
 
 local function ease_in_power(value, power)
-    local t = math.max(0.0, math.min(1.0, value or 0.0))
+    local t = Math.Clamp01(value or 0.0)
     local exponent = power or 4.0
     return math.pow(t, exponent)
 end
+
+------------------------------------------------
+-- 배경 레이어 함수들
+------------------------------------------------
 
 local function set_story_background_texture(texture_path)
     if not texture_path or texture_path == "" then
@@ -172,9 +133,13 @@ local function set_story_background_texture(texture_path)
         return
     end
 
-    set_texture("StoryBackground", texture_path)
+    UI.SetCachedTexture(ui, "StoryBackground", texture_path)
     current_story_background_path = texture_path
 end
+
+------------------------------------------------
+-- 대화 UI / 전환 상태 함수들
+------------------------------------------------
 
 local function preload_component_texture(name)
     local component = ui[name]
@@ -203,21 +168,21 @@ local function set_default_background()
     if neutral_path then
         set_story_background_texture(neutral_path)
     end
-    set_tint("StoryBackground", 1.0, 1.0, 1.0, 1.0)
+    UI.SetCachedTint(ui, "StoryBackground", 1.0, 1.0, 1.0, 1.0)
 end
 
 local function set_overlay_alpha(background_key, alpha)
     local component_name = OVERLAY_COMPONENTS[background_key]
     if component_name then
-        set_visible(component_name, true)
-        set_tint(component_name, 1.0, 1.0, 1.0, alpha or 0.0)
+        UI.SetCachedVisible(ui, component_name, true)
+        UI.SetCachedTint(ui, component_name, 1.0, 1.0, 1.0, alpha or 0.0)
     end
 end
 
 local function hide_dialogue_background_layers()
     for background_key, component_name in pairs(OVERLAY_COMPONENTS) do
-        set_visible(component_name, true)
-        set_tint(component_name, 1.0, 1.0, 1.0, 0.0)
+        UI.SetCachedVisible(ui, component_name, true)
+        UI.SetCachedTint(ui, component_name, 1.0, 1.0, 1.0, 0.0)
     end
 end
 
@@ -247,14 +212,14 @@ end
 
 local function hide_dialogue_ui()
     reset_typewriter()
-    set_text("SpeakerName", "")
-    set_text("DialogueText", "")
-    set_text("NarrationText", "")
-    set_text("PageHint", HOLD_SKIP_HINT_TEXT)
-    set_visible("SpeakerName", false)
-    set_visible("DialogueText", false)
-    set_visible("NarrationText", false)
-    set_visible("PageHint", true)
+    UI.SetCachedText(ui, "SpeakerName", "")
+    UI.SetCachedText(ui, "DialogueText", "")
+    UI.SetCachedText(ui, "NarrationText", "")
+    UI.SetCachedText(ui, "PageHint", HOLD_SKIP_HINT_TEXT)
+    UI.SetCachedVisible(ui, "SpeakerName", false)
+    UI.SetCachedVisible(ui, "DialogueText", false)
+    UI.SetCachedVisible(ui, "NarrationText", false)
+    UI.SetCachedVisible(ui, "PageHint", true)
 end
 
 local function finish_story(target_scene)
@@ -270,9 +235,13 @@ end
 local function start_scene_change_flash()
     scene_change_duration = 2.0
     scene_change_timer = scene_change_duration
-    set_visible("WhiteFlash", true)
-    set_tint("WhiteFlash", 1.0, 1.0, 1.0, 0.0)
+    UI.SetCachedVisible(ui, "WhiteFlash", true)
+    UI.SetCachedTint(ui, "WhiteFlash", 1.0, 1.0, 1.0, 0.0)
 end
+
+------------------------------------------------
+-- 스킵 입력 함수들
+------------------------------------------------
 
 local function is_skip_key_held()
     return GetKey("SPACE") or GetKey("Space")
@@ -298,10 +267,14 @@ local function update_skip_hold(dt)
 end
 
 local function set_dialogue_alpha(alpha)
-    local clamped = math.max(0.0, math.min(1.0, alpha or 0.0))
-    set_tint("NarrationText", PROLOGUE_TEXT_COLOR[1], PROLOGUE_TEXT_COLOR[2], PROLOGUE_TEXT_COLOR[3], PROLOGUE_TEXT_COLOR[4] * clamped)
-    set_tint("PageHint", PROLOGUE_HINT_COLOR[1], PROLOGUE_HINT_COLOR[2], PROLOGUE_HINT_COLOR[3], PROLOGUE_HINT_COLOR[4] * clamped)
+    local clamped = Math.Clamp01(alpha or 0.0)
+    UI.SetCachedTint(ui, "NarrationText", PROLOGUE_TEXT_COLOR[1], PROLOGUE_TEXT_COLOR[2], PROLOGUE_TEXT_COLOR[3], PROLOGUE_TEXT_COLOR[4] * clamped)
+    UI.SetCachedTint(ui, "PageHint", PROLOGUE_HINT_COLOR[1], PROLOGUE_HINT_COLOR[2], PROLOGUE_HINT_COLOR[3], PROLOGUE_HINT_COLOR[4] * clamped)
 end
+
+------------------------------------------------
+-- 프롤로그 출력 함수들
+------------------------------------------------
 
 local function build_prologue_text(line_count)
     local lines = {}
@@ -315,35 +288,35 @@ local function build_prologue_text(line_count)
 end
 
 local function show_prologue_lines()
-    set_visible("SpeakerName", false)
-    set_visible("DialogueText", false)
-    set_visible("NarrationText", true)
-    set_visible("PageHint", true)
-    set_text("SpeakerName", "")
-    set_text("NarrationText", build_prologue_text(prologue_state.line_index))
-    set_text("PageHint", HOLD_SKIP_HINT_TEXT)
-    set_tint("StoryBackground", PROLOGUE_DIM_BACKGROUND, PROLOGUE_DIM_BACKGROUND, PROLOGUE_DIM_BACKGROUND, 1.0)
+    UI.SetCachedVisible(ui, "SpeakerName", false)
+    UI.SetCachedVisible(ui, "DialogueText", false)
+    UI.SetCachedVisible(ui, "NarrationText", true)
+    UI.SetCachedVisible(ui, "PageHint", true)
+    UI.SetCachedText(ui, "SpeakerName", "")
+    UI.SetCachedText(ui, "NarrationText", build_prologue_text(prologue_state.line_index))
+    UI.SetCachedText(ui, "PageHint", HOLD_SKIP_HINT_TEXT)
+    UI.SetCachedTint(ui, "StoryBackground", PROLOGUE_DIM_BACKGROUND, PROLOGUE_DIM_BACKGROUND, PROLOGUE_DIM_BACKGROUND, 1.0)
     set_dialogue_alpha(1.0)
 end
 
 local function update_typewriter_text()
     if not typing_state.full_text or typing_state.full_text == "" then
-        set_text("DialogueText", TERMINAL_PROMPT)
+        UI.SetCachedText(ui, "DialogueText", TERMINAL_PROMPT)
         return
     end
 
     if typing_state.visible_count <= 0 then
-        set_text("DialogueText", TERMINAL_PROMPT)
+        UI.SetCachedText(ui, "DialogueText", TERMINAL_PROMPT)
         return
     end
 
-    set_text("DialogueText", TERMINAL_PROMPT .. table.concat(typing_state.chars, "", 1, typing_state.visible_count))
+    UI.SetCachedText(ui, "DialogueText", TERMINAL_PROMPT .. table.concat(typing_state.chars, "", 1, typing_state.visible_count))
 end
 
 local function complete_typewriter()
     if typing_state.full_text == "" then
         reset_typewriter()
-        set_text("DialogueText", TERMINAL_PROMPT)
+        UI.SetCachedText(ui, "DialogueText", TERMINAL_PROMPT)
         return
     end
 
@@ -358,7 +331,7 @@ local function start_typewriter(text)
     typing_state.chars = DialogueUtils.split_utf8_chars(typing_state.full_text)
 
     if #typing_state.chars == 0 then
-        set_text("DialogueText", TERMINAL_PROMPT)
+        UI.SetCachedText(ui, "DialogueText", TERMINAL_PROMPT)
         return
     end
 
@@ -374,17 +347,21 @@ local function show_dialogue_ui(page)
         continuation_indent = "   ",
     })
 
-    set_visible("SpeakerName", true)
-    set_visible("DialogueText", true)
-    set_visible("NarrationText", false)
-    set_visible("PageHint", true)
-    set_text("SpeakerName", speaker_name)
-    set_tint("SpeakerName", SPEAKER_NAME_COLOR[1], SPEAKER_NAME_COLOR[2], SPEAKER_NAME_COLOR[3], SPEAKER_NAME_COLOR[4])
-    set_tint("DialogueText", DIALOGUE_TEXT_COLOR[1], DIALOGUE_TEXT_COLOR[2], DIALOGUE_TEXT_COLOR[3], DIALOGUE_TEXT_COLOR[4])
-    set_text("PageHint", HOLD_SKIP_HINT_TEXT)
-    set_text("DialogueText", TERMINAL_PROMPT)
+    UI.SetCachedVisible(ui, "SpeakerName", true)
+    UI.SetCachedVisible(ui, "DialogueText", true)
+    UI.SetCachedVisible(ui, "NarrationText", false)
+    UI.SetCachedVisible(ui, "PageHint", true)
+    UI.SetCachedText(ui, "SpeakerName", speaker_name)
+    UI.SetCachedTint(ui, "SpeakerName", SPEAKER_NAME_COLOR[1], SPEAKER_NAME_COLOR[2], SPEAKER_NAME_COLOR[3], SPEAKER_NAME_COLOR[4])
+    UI.SetCachedTint(ui, "DialogueText", DIALOGUE_TEXT_COLOR[1], DIALOGUE_TEXT_COLOR[2], DIALOGUE_TEXT_COLOR[3], DIALOGUE_TEXT_COLOR[4])
+    UI.SetCachedText(ui, "PageHint", HOLD_SKIP_HINT_TEXT)
+    UI.SetCachedText(ui, "DialogueText", TERMINAL_PROMPT)
     start_typewriter(message)
 end
+
+------------------------------------------------
+-- 대화 페이지 배경 / 전환 함수들
+------------------------------------------------
 
 local function resolve_page_background(page)
     if not scenario or type(page) ~= "table" then
@@ -485,8 +462,8 @@ local function set_non_dialogue_background(background_path)
             end
         end
     end
-    set_visible("StoryBackground", true)
-    set_tint("StoryBackground", 1.0, 1.0, 1.0, 1.0)
+    UI.SetCachedVisible(ui, "StoryBackground", true)
+    UI.SetCachedTint(ui, "StoryBackground", 1.0, 1.0, 1.0, 1.0)
     dialogue_background_state.current_one_key = nil
 end
 
@@ -566,12 +543,16 @@ local function is_auto_page(page)
         and page.duration > 0.0
 end
 
+------------------------------------------------
+-- 스토리 진행 함수들
+------------------------------------------------
+
 local function start_story_sequence()
     prologue_state.mode = "story"
     prologue_state.elapsed = 0.0
     prologue_state.line_index = 0
-    set_tint("StoryBackground", 1.0, 1.0, 1.0, 1.0)
-    set_visible("StoryBackground", true)
+    UI.SetCachedTint(ui, "StoryBackground", 1.0, 1.0, 1.0, 1.0)
+    UI.SetCachedVisible(ui, "StoryBackground", true)
     hide_dialogue_background_layers()
     play_story_bgm(resolve_story_sound("stage_intro", "Asset/Content/Sound/Background/06. Stage Intro.mp3"), true)
     apply_page(pages[current_index])
@@ -601,18 +582,18 @@ local function start_story_prologue()
     reset_typewriter()
     clear_pending_dialogue_ui()
     hide_dialogue_background_layers()
-    set_texture("StoryBackground", resolve_story_image("introduce", "Asset/Content/Texture/Story/introduce.png"))
+    UI.SetCachedTexture(ui, "StoryBackground", resolve_story_image("introduce", "Asset/Content/Texture/Story/introduce.png"))
     current_story_background_path = nil
-    set_visible("StoryBackground", true)
-    set_tint("StoryBackground", 0.0, 0.0, 0.0, 1.0)
-    set_visible("SpeakerName", false)
-    set_visible("DialogueText", false)
-    set_visible("NarrationText", false)
-    set_visible("PageHint", false)
-    set_text("SpeakerName", "")
-    set_text("DialogueText", "")
-    set_text("NarrationText", "")
-    set_text("PageHint", "")
+    UI.SetCachedVisible(ui, "StoryBackground", true)
+    UI.SetCachedTint(ui, "StoryBackground", 0.0, 0.0, 0.0, 1.0)
+    UI.SetCachedVisible(ui, "SpeakerName", false)
+    UI.SetCachedVisible(ui, "DialogueText", false)
+    UI.SetCachedVisible(ui, "NarrationText", false)
+    UI.SetCachedVisible(ui, "PageHint", false)
+    UI.SetCachedText(ui, "SpeakerName", "")
+    UI.SetCachedText(ui, "DialogueText", "")
+    UI.SetCachedText(ui, "NarrationText", "")
+    UI.SetCachedText(ui, "PageHint", "")
     play_story_bgm(resolve_story_sound("boot_startup", DEFAULT_BOOT_SOUND_PATH), false)
 end
 
@@ -641,14 +622,16 @@ local function try_advance_prologue()
     return false
 end
 
+-- 프롤로그의 fade, 줄 단위 진행, CRT 켜짐 연출을 mode 상태값으로 순차 처리합니다.
+-- story mode로 넘어가기 전까지 Tick의 일반 페이지 진행을 막는 gate 역할도 합니다.
 local function update_prologue(dt)
     local delta = dt or 0.0
 
     if prologue_state.mode == "intro_fade_in" then
         prologue_state.elapsed = prologue_state.elapsed + delta
-        local raw_progress = math.min(prologue_state.elapsed / prologue_state.intro_fade_seconds, 1.0)
+        local raw_progress = Math.Clamp01(prologue_state.elapsed / prologue_state.intro_fade_seconds)
         local progress = ease_in_power(raw_progress, 2.8)
-        set_tint("StoryBackground", progress, progress, progress, 1.0)
+        UI.SetCachedTint(ui, "StoryBackground", progress, progress, progress, 1.0)
         if raw_progress >= 1.0 then
             prologue_state.mode = "intro_hold"
             prologue_state.elapsed = 0.0
@@ -662,7 +645,7 @@ local function update_prologue(dt)
             prologue_state.mode = "line_reveal"
             prologue_state.elapsed = 0.0
             prologue_state.line_index = 0
-            set_texture("StoryBackground", resolve_story_image("introduce", "Asset/Content/Texture/Story/introduce.png"))
+            UI.SetCachedTexture(ui, "StoryBackground", resolve_story_image("introduce", "Asset/Content/Texture/Story/introduce.png"))
             show_prologue_lines()
         end
         return true
@@ -683,25 +666,25 @@ local function update_prologue(dt)
 
     if prologue_state.mode == "outro_fade_out" then
         prologue_state.elapsed = prologue_state.elapsed + delta
-        local progress = math.min(prologue_state.elapsed / prologue_state.outro_fade_seconds, 1.0)
+        local progress = Math.Clamp01(prologue_state.elapsed / prologue_state.outro_fade_seconds)
         local alpha = 1.0 - progress
         local brightness = PROLOGUE_DIM_BACKGROUND + ((1.0 - PROLOGUE_DIM_BACKGROUND) * progress)
-        set_tint("StoryBackground", brightness, brightness, brightness, 1.0)
+        UI.SetCachedTint(ui, "StoryBackground", brightness, brightness, brightness, 1.0)
         set_dialogue_alpha(alpha)
         if progress >= 1.0 then
             prologue_state.mode = "control_room_fade_in"
             prologue_state.elapsed = 0.0
             hide_dialogue_ui()
-            set_texture("StoryBackground", resolve_story_image("control_room_off", "Asset/Content/Texture/Story/control_room_screen_off.png"))
-            set_tint("StoryBackground", 1.0, 1.0, 1.0, 0.0)
+            UI.SetCachedTexture(ui, "StoryBackground", resolve_story_image("control_room_off", "Asset/Content/Texture/Story/control_room_screen_off.png"))
+            UI.SetCachedTint(ui, "StoryBackground", 1.0, 1.0, 1.0, 0.0)
         end
         return true
     end
 
     if prologue_state.mode == "control_room_fade_in" then
         prologue_state.elapsed = prologue_state.elapsed + delta
-        local progress = math.min(prologue_state.elapsed / prologue_state.control_room_fade_seconds, 1.0)
-        set_tint("StoryBackground", 1.0, 1.0, 1.0, progress)
+        local progress = Math.Clamp01(prologue_state.elapsed / prologue_state.control_room_fade_seconds)
+        UI.SetCachedTint(ui, "StoryBackground", 1.0, 1.0, 1.0, progress)
         if progress >= 1.0 then
             play_story_sfx(resolve_story_sound("crt_on", DEFAULT_CRT_ON_SOUND_PATH))
             prologue_state.mode = "crt_audio_lead"
@@ -715,8 +698,8 @@ local function update_prologue(dt)
         if prologue_state.elapsed >= prologue_state.crt_lead_seconds then
             prologue_state.mode = "crt_power_on"
             prologue_state.elapsed = 0.0
-            set_texture("StoryBackground", resolve_story_image("control_room_on", "Asset/Content/Texture/Story/control_room_screen_on.png"))
-            set_tint("StoryBackground", 0.2, 0.2, 0.2, 1.0)
+            UI.SetCachedTexture(ui, "StoryBackground", resolve_story_image("control_room_on", "Asset/Content/Texture/Story/control_room_screen_on.png"))
+            UI.SetCachedTint(ui, "StoryBackground", 0.2, 0.2, 0.2, 1.0)
         end
         return true
     end
@@ -725,7 +708,7 @@ local function update_prologue(dt)
         prologue_state.elapsed = prologue_state.elapsed + delta
         local crt_progress = 1.0
         if prologue_state.crt_switch_delay_seconds > 0.0 then
-            crt_progress = math.min(prologue_state.elapsed / prologue_state.crt_switch_delay_seconds, 1.0)
+            crt_progress = Math.Clamp01(prologue_state.elapsed / prologue_state.crt_switch_delay_seconds)
         end
 
         local brightness = 1.0
@@ -742,10 +725,10 @@ local function update_prologue(dt)
         else
             brightness = 1.0
         end
-        set_tint("StoryBackground", brightness, brightness, brightness, 1.0)
+        UI.SetCachedTint(ui, "StoryBackground", brightness, brightness, brightness, 1.0)
 
         if crt_progress >= 1.0 then
-            set_tint("StoryBackground", 1.0, 1.0, 1.0, 1.0)
+            UI.SetCachedTint(ui, "StoryBackground", 1.0, 1.0, 1.0, 1.0)
             prologue_state.mode = "post_crt_hold"
             prologue_state.elapsed = 0.0
         end
@@ -762,6 +745,10 @@ local function update_prologue(dt)
 
     return prologue_state.mode ~= "story"
 end
+
+------------------------------------------------
+-- 페이지 진행 함수들
+------------------------------------------------
 
 apply_page = function(page)
     if type(page) ~= "table" then
@@ -782,14 +769,14 @@ apply_page = function(page)
         reset_typewriter()
         clear_pending_dialogue_ui()
         auto_advance_timer = page.duration
-        set_text("SpeakerName", "")
-        set_text("DialogueText", "")
-        set_text("NarrationText", "")
-        set_text("PageHint", HOLD_SKIP_HINT_TEXT)
-        set_visible("SpeakerName", false)
-        set_visible("DialogueText", false)
-        set_visible("NarrationText", false)
-        set_visible("PageHint", true)
+        UI.SetCachedText(ui, "SpeakerName", "")
+        UI.SetCachedText(ui, "DialogueText", "")
+        UI.SetCachedText(ui, "NarrationText", "")
+        UI.SetCachedText(ui, "PageHint", HOLD_SKIP_HINT_TEXT)
+        UI.SetCachedVisible(ui, "SpeakerName", false)
+        UI.SetCachedVisible(ui, "DialogueText", false)
+        UI.SetCachedVisible(ui, "NarrationText", false)
+        UI.SetCachedVisible(ui, "PageHint", true)
         return
     end
 
@@ -846,9 +833,9 @@ local function load_story()
     scenario = ScenarioLoader.load(SCENARIO_PATH, load_json_file)
     if not scenario then
         warn("Failed to load story scenario:", SCENARIO_PATH)
-        set_text("SpeakerName", "SYSTEM")
-        set_text("DialogueText", "Scenario load failed.")
-        set_text("PageHint", SCENARIO_PATH)
+        UI.SetCachedText(ui, "SpeakerName", "SYSTEM")
+        UI.SetCachedText(ui, "DialogueText", "Scenario load failed.")
+        UI.SetCachedText(ui, "PageHint", SCENARIO_PATH)
         return
     end
 
@@ -856,14 +843,18 @@ local function load_story()
     current_index = 1
 
     if #pages == 0 then
-        set_text("SpeakerName", "SYSTEM")
-        set_text("DialogueText", "No pages in scenario.")
-        set_text("PageHint", SCENARIO_PATH)
+        UI.SetCachedText(ui, "SpeakerName", "SYSTEM")
+        UI.SetCachedText(ui, "DialogueText", "No pages in scenario.")
+        UI.SetCachedText(ui, "PageHint", SCENARIO_PATH)
         return
     end
 
     start_story_prologue()
 end
+
+------------------------------------------------
+-- StoryScene 생명주기 함수들
+------------------------------------------------
 
 function BeginPlay()
     cache_component("StoryBackground")
@@ -882,17 +873,19 @@ function BeginPlay()
     cache_component("NextPageButton")
 
     preload_story_background_layers()
-    set_visible("StoryBackground", true)
+    UI.SetCachedVisible(ui, "StoryBackground", true)
     hide_dialogue_background_layers()
     hide_dialogue_ui()
-    set_text("PageHint", HOLD_SKIP_HINT_TEXT)
-    set_visible("PageHint", true)
-    set_visible("WhiteFlash", false)
-    set_tint("WhiteFlash", 1.0, 1.0, 1.0, 0.0)
+    UI.SetCachedText(ui, "PageHint", HOLD_SKIP_HINT_TEXT)
+    UI.SetCachedVisible(ui, "PageHint", true)
+    UI.SetCachedVisible(ui, "WhiteFlash", false)
+    UI.SetCachedTint(ui, "WhiteFlash", 1.0, 1.0, 1.0, 0.0)
 
     load_story()
 end
 
+-- 스토리 화면의 전체 진행 루프입니다.
+-- skip hold, 프롤로그, typewriter, 자동 페이지, 씬 전환 flash, 입력 advance를 순서대로 처리합니다.
 function Tick(dt)
     if story_finished then
         return
@@ -958,8 +951,8 @@ function Tick(dt)
             progress = 1.0 - math.max(scene_change_timer, 0.0) / scene_change_duration
         end
         local alpha = ease_in_power(progress, 1.8)
-        set_visible("WhiteFlash", true)
-        set_tint("WhiteFlash", 1.0, 1.0, 1.0, alpha)
+        UI.SetCachedVisible(ui, "WhiteFlash", true)
+        UI.SetCachedTint(ui, "WhiteFlash", 1.0, 1.0, 1.0, alpha)
         if scene_change_timer <= 0.0 then
             scene_change_timer = nil
             finish_story("PlayerDev.Scene")

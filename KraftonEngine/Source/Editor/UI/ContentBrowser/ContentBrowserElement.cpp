@@ -1,6 +1,7 @@
 #include "ContentBrowserElement.h"
 #include "Editor/UI/EditorFileUtils.h"
 #include "Editor/UI/EditorAccentColor.h"
+#include "Editor/UI/AssetEditor/AssetEditorWidget.h"
 #include "Platform/Paths.h"
 #include "Core/Notification.h"
 #include "Materials/MaterialManager.h"
@@ -312,5 +313,15 @@ void MtlElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
 	else
 	{
 		FNotificationManager::Get().AddNotification("Failed to import MTL: " + RelativeMtlPath, ENotificationType::Error, 5.0f);
+	}
+}
+
+
+void UAssetElement::OnDoubleLeftClicked(ContentBrowserContext& Context)
+{
+	(void)Context;
+	if (!FAssetEditorWidget::OpenAssetFile(ContentItem.Path))
+	{
+		FNotificationManager::Get().AddNotification("Failed to open asset: " + GetDisplayName(), ENotificationType::Error, 5.0f);
 	}
 }

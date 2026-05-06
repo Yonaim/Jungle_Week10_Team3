@@ -1,5 +1,9 @@
 local DialogueUtils = {}
 
+------------------------------------------------
+-- UTF-8 문자 처리 함수들
+------------------------------------------------
+
 function DialogueUtils.split_utf8_chars(value)
     local chars = {}
     if type(value) ~= "string" or value == "" then
@@ -32,6 +36,12 @@ function DialogueUtils.is_typing_sound_character(char)
     return char ~= nil and char ~= "" and char ~= " " and char ~= "\n" and char ~= "\t"
 end
 
+------------------------------------------------
+-- 터미널 메시지 포맷 함수들
+------------------------------------------------
+
+-- 터미널풍 대화 텍스트를 폭 제한에 맞춰 줄바꿈하고,
+-- 긴 줄은 공백 우선 분리와 들여쓰기 보정까지 한 번에 처리합니다.
 function DialogueUtils.format_terminal_message(text, options)
     local source = type(text) == "string" and text or ""
     if source == "" then
@@ -210,6 +220,10 @@ function DialogueUtils.format_terminal_message(text, options)
 
     return message:gsub("\n", "\n" .. continuation_indent)
 end
+
+------------------------------------------------
+-- Typewriter 상태 함수들
+------------------------------------------------
 
 function DialogueUtils.create_typewriter_state(default_interval)
     return {

@@ -351,7 +351,7 @@ void AMapManager::SpawnNextChunk(bool Init)
 	// TODO: 장애물 생성 확률은 생존 시간/거리 기반으로 서서히 증가시키되,
 	// 플레이 불가능한 수준으로 올라가지 않게 적당한 상한을 둔다.
 	Chunk->InitFromTemplate(T, ObstacleSpawnRate);
-	if (ChunkBuggedRate < 1.0f) ChunkBuggedRate += 0.05;
+	if (ChunkBuggedRate < 1.0f) ChunkBuggedRate += 0.05f;
 	ActiveChunks.push_back(Chunk);
 
 	//bool bIsTurn = (T.ChunkType == EChunkType::TurnLeft || T.ChunkType == EChunkType::TurnRight);

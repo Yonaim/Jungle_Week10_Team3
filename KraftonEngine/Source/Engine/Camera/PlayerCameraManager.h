@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "GameFramework/AActor.h"
 #include "CameraModifier.h"
+#include <filesystem>
 #include "Core/EngineTypes.h"
 #include "Core/CollisionEventTypes.h"  
 
@@ -51,6 +52,13 @@ public:
 
 	void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, FLinearColor Color);
 	void EndCameraFade();
+	void LoadCameraModifierStackAsset(const std::filesystem::path& AssetPath);
+
+	//void StartCameraShake();
+	//void EndCameraShake();
+
+	//void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, FLinearColor Color);
+	//void EndCameraFade();
 
 public:
 	FViewTarget		ViewTarget;

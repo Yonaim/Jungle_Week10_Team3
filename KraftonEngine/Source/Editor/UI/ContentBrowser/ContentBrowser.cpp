@@ -17,9 +17,30 @@
 
 namespace
 {
+	bool IsParentDirectoryReference(const std::filesystem::path& Path);
+
 	FString GetEditorPathResource(const char* Key)
 	{
 		return FResourceManager::Get().ResolvePath(FName(Key));
+	}
+
+	FString MakeContentBrowserDisplayPath(const std::wstring& CurrentPath)
+	{
+		const std::filesystem::path RootPath = std::filesystem::path(FPaths::RootDir()).lexically_normal();
+		const std::filesystem::path Path = std::filesystem::path(CurrentPath).lexically_normal();
+		const std::filesystem::path RelativePath = Path.lexically_relative(RootPath);
+
+		if (Path == RootPath)
+		{
+			return "Project Root";
+		}
+
+		if (!RelativePath.empty() && !IsParentDirectoryReference(RelativePath))
+		{
+			return FPaths::ToUtf8(RelativePath.generic_wstring());
+		}
+
+		return FPaths::ToUtf8(Path.generic_wstring());
 	}
 
 	bool IsParentDirectoryReference(const std::filesystem::path& Path)
@@ -305,27 +326,23 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
 	}
 	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
-	ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::WithAlpha(0.85f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 6.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.14f, 0.16f, 1.0f));
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::WithAlpha(1.0f));
 	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.08f, 0.42f, 0.78f, 1.0f));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.28f, 0.30f, 0.34f, 1.0f));
 	if (ImGui::Button("Refresh##ContentBrowser"))
 	{
 		Refresh();
 		SaveToSettings();
 	}
-	ImGui::PopStyleColor(3);
-	ImGui::PopStyleVar(2);
-
-	std::filesystem::path CurrentPathLabel = std::filesystem::path(BrowserContext.CurrentPath).lexically_normal().filename();
-	if (CurrentPathLabel.empty())
-	{
-		CurrentPathLabel = L"All";
-	}
+	ImGui::PopStyleColor(4);
+	ImGui::PopStyleVar(3);
 
 	ImGui::SameLine();
-	ImGui::TextUnformatted(FPaths::ToUtf8(CurrentPathLabel.wstring()).c_str());
+	ImGui::TextDisabled("%s", MakeContentBrowserDisplayPath(BrowserContext.CurrentPath).c_str());
 
 	int size = static_cast<int>(BrowserContext.ContentSize.x);
 	//ImGui::SliderInt("##slider", &size, 20, 100);
@@ -433,6 +450,11 @@ void FEditorContentBrowserWidget::RefreshContent()
 			element = std::make_shared<MtlElement>();
 			ID3D11ShaderResourceView* PreviewSRV = GetMtlPreviewSRV(Content.Path);
 			element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".mtl"].Get());
+		}
+		else if (Extension == ".uasset")
+		{
+			element = std::make_shared<UAssetElement>();
+			element.get()->SetIcon(ICons["Default"].Get());
 		}
 		else if (UTexture2D::IsSupportedTextureExtension(Content.Path))
 		{
