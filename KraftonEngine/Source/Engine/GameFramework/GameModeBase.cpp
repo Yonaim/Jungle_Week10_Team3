@@ -1,5 +1,6 @@
 ﻿#include "GameModeBase.h"
 
+#include "Engine/Camera/PlayerCameraManager.h"
 #include "GameFramework/PawnActor.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/World.h"
@@ -45,6 +46,23 @@ void AGameModeBase::StartPlay()
 			{
 				SpawnedController->Possess(SpawnedPawn);
 			}
+		}
+		else if (Obj)
+		{
+			UObjectManager::Get().DestroyObject(Obj);
+		}
+	}
+
+	if (!PlayerCameraManagerClassName.empty()) {
+		UObject* Obj = FObjectFactory::Get().Create(PlayerCameraManagerClassName, World->GetCurrentLevel());
+		CameraManager = Cast<APlayerCameraManager>(Obj);
+		if (CameraManager) 
+		{
+			World->AddActor(CameraManager);
+			if (SpawnedController) {
+				
+			}
+
 		}
 		else if (Obj)
 		{

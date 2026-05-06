@@ -1,4 +1,5 @@
-#include "ARunnerGameMode.h"
+﻿#include "ARunnerGameMode.h"
+#include "Engine/Camera/PlayerCameraManager.h"
 #include "Game/Map/AMapManager.h"
 #include "GameFramework/PawnActor.h"
 #include "GameFramework/World.h"
@@ -36,6 +37,13 @@ void ARunnerGameMode::StartPlay()
 		UE_LOG("[RunnerGameMode] MapManager spawn failed");
 		return;
 	}
+
+	//CameraManager = GetPlayerCameraManager();
+	//if (!CameraManager) 
+	//{
+	//	UE_LOG("[RunnerGameMode] PlayerCameraManager spawn failed");
+	//	return;
+	//}
 
 	MapManager->Initialize(PlayerPawn);
 }

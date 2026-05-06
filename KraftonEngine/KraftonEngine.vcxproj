@@ -309,8 +309,8 @@
     <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayout.cpp" />
     <ClCompile Include="Source\Engine\Audio\AudioManager.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraModifier.cpp" />
-    <ClCompile Include="Source\Engine\Camera\CameraModifier_CameraShake.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraShake.cpp" />
+    <ClCompile Include="Source\Engine\Camera\CameraShakePattern.cpp" />
     <ClCompile Include="Source\Engine\Camera\PlayerCameraManager.cpp" />
     <ClCompile Include="Source\Engine\Collision\CollisionDispatcher.cpp" />
     <ClCompile Include="Source\Engine\Collision\ConvexVolume.cpp" />
@@ -561,8 +561,8 @@
     <ClInclude Include="Source\Engine\Audio\AudioManager.h" />
     <ClInclude Include="Source\Engine\Audio\AudioTypes.h" />
     <ClInclude Include="Source\Engine\Camera\CameraModifier.h" />
-    <ClInclude Include="Source\Engine\Camera\CameraModifier_CameraShake.h" />
     <ClInclude Include="Source\Engine\Camera\CameraShake.h" />
+    <ClInclude Include="Source\Engine\Camera\CameraShakePattern.h" />
     <ClInclude Include="Source\Engine\Camera\PlayerCameraManager.h" />
     <ClInclude Include="Source\Engine\Collision\CollisionDispatcher.h" />
     <ClInclude Include="Source\Engine\Collision\ConvexVolume.h" />
