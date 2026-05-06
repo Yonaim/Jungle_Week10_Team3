@@ -180,13 +180,11 @@ void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier)
 	{
 		if (ExistingModifier == InModifier)
 		{
-			InModifier->EnableModifier();
 			return;
 		}
 	}
 
 	InModifier->AddedToCamera(this);
-	InModifier->EnableModifier();
 	ModifierList.push_back(InModifier);
 	std::sort(ModifierList.begin(), ModifierList.end(), [](const UCameraModifier* A, const UCameraModifier* B) {
 		return A->Priority > B->Priority;
