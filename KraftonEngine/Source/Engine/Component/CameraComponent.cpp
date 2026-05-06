@@ -44,6 +44,18 @@ FConvexVolume UCameraComponent::GetConvexVolume() const
 	return ConvexVolume;
 }
 
+void UCameraComponent::RefreshCameraStateTransform() const
+{
+	CameraState.Location = GetWorldLocation();
+	CameraState.Rotation = FRotator(GetWorldRotation());
+}
+
+const FMinimalViewInfo& UCameraComponent::GetCameraState() const
+{
+	RefreshCameraStateTransform();
+	return CameraState;
+}
+
 void UCameraComponent::LookAt(const FVector& Target)
 {
 	FVector Position = GetWorldLocation();
@@ -69,6 +81,9 @@ void UCameraComponent::OnResize(int32 Width, int32 Height)
 void UCameraComponent::SetCameraState(const FMinimalViewInfo& NewState)
 {
 	CameraState = NewState;
+	SetWorldLocation(CameraState.Location);
+	SetWorldRotation(CameraState.Rotation);
+	RefreshCameraStateTransform();
 }
 
 FRay UCameraComponent::DeprojectScreenToWorld(float MouseX, float MouseY, float ScreenWidth, float ScreenHeight) {

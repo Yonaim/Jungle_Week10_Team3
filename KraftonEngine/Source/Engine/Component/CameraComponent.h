@@ -42,7 +42,7 @@ public:
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 	void LookAt(const FVector& Target);
 	void SetCameraState(const FMinimalViewInfo& NewState);
-	const FMinimalViewInfo& GetCameraState() const { return CameraState; }
+	const FMinimalViewInfo& GetCameraState() const;
 
 	void SetFOV(float InFOV) { CameraState.FOV = InFOV; }
 	void SetOrthoWidth(float InWidth) { CameraState.OrthoWidth = InWidth; }
@@ -70,7 +70,9 @@ public://expose in lua
 	float GetHitEffectIntensity() const { return HitEffectIntensity; }
 
 private:
-	FMinimalViewInfo CameraState;
+	void RefreshCameraStateTransform() const;
+
+	mutable FMinimalViewInfo CameraState;
 
 
 	TArray<UCameraShakeBase*> ActiveShakes;
