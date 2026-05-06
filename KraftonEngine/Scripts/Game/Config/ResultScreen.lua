@@ -1,5 +1,9 @@
 local DialogueConfig = require("Game.Config.Dialogue")
 
+---------------------------
+-- 결과 화면에 필요한 resource
+---------------------------
+
 local ResultScreenConfig = {
     -- scene_path: GameOver 후 이동할 결과 화면 씬입니다.
     scene_path = "game/gameresult.scene",

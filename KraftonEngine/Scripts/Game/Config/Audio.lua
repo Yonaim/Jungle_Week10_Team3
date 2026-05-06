@@ -1,3 +1,7 @@
+---------------------------
+-- Audio 설정값 모음 Config
+---------------------------
+
 local AudioConfig = {
     -- enabled: 게임플레이 오디오 재생 여부
     enabled = true,
@@ -12,6 +16,7 @@ local AudioConfig = {
     stop_bgm_on_game_over = true,
 
     -- *_sfx: AudioManager shortcut에서 사용하는 게임 이벤트 SFX 경로
+    -- TODO 채워야함
     hit_sfx = "",
     jump_sfx = "",
     slide_sfx = "",

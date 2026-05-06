@@ -1,3 +1,7 @@
+---------------------------
+-- Story Scene에서 필요한 resource 모음
+---------------------------
+
 local StorySceneConfig = {
     -- scenario_path / next_scene: 스토리 데이터 경로와 완료 후 이동할 씬입니다.
     scenario_path = "Asset/Content/Data/Scenarios/story.json",

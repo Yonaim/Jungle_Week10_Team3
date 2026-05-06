@@ -231,13 +231,13 @@ void FLuaScriptRuntime::InitializeHotReload()
 	}
 
 	WatchSub = FDirectoryWatcher::Get().Subscribe(
-		WatchID,
-		[this](const TSet<FString>& Files)
-		{
-			// ProcessChanges()에서 메인 스레드로 디스패치되므로
-			// 여기서 바로 UObject 접근과 ReloadScript() 호출이 가능하다.
-			OnScriptsChanged(Files);
-		});
+	WatchID,
+	[this](const TSet<FString>& Files)
+	{
+		// ProcessChanges()에서 메인 스레드로 디스패치되므로
+		// 여기서 바로 UObject 접근과 ReloadScript() 호출이 가능하다.
+		OnScriptsChanged(Files);
+	});
 }
 
 void FLuaScriptRuntime::ShutdownHotReload()

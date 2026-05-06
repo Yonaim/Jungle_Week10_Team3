@@ -1,9 +1,13 @@
-local FadeConfig = require("Game.Config.PlayerDevSceneFade")
 local Engine = require("Common.Engine")
 local Math = require("Common.Math")
 
+local FadeSettings = {
+    -- fade_duration: PlayerDev 씬 진입 흰색 flash fade 시간입니다.
+    fade_duration = 0.42,
+}
+
 local fade_elapsed = 0.0
-local fade_duration = FadeConfig.fade_duration
+local fade_duration = FadeSettings.fade_duration
 local flash = nil
 
 ------------------------------------------------

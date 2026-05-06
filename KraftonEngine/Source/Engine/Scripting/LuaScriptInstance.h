@@ -2,12 +2,14 @@
 
 #include "Core/CoreTypes.h"
 #include "Scripting/LuaScriptRuntime.h"
+#include "sol/forward.hpp"
 
 #include <memory>
 #include <functional>
 
 class AActor;
 class UScriptComponent;
+class FLuaCoroutineScheduler;
 struct FInputActionValue;
 
 // ======================================================
@@ -60,6 +62,7 @@ public:
 
 	// 스크립트가 시작한 coroutine을 관리한다.
 	bool StartCoroutine(const FString& FunctionName);
+	bool StartCoroutineFunction(const FString& DebugName, sol::protected_function Function);
 	void TickCoroutines(float DeltaTime);
 	void StopAllCoroutines();
 
@@ -75,6 +78,8 @@ public:
 	void RegisterEnvFunction(const FString& Name, std::function<void(FLuaActorProxy)> Func);
 
 private:
+	friend class FLuaCoroutineScheduler;
+
 	// Lua 스크립트에 노출할 바인딩을 environment에 심는다.
 	void BindOwnerObject();
 	void BindCoroutineFunctions();

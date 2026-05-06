@@ -1,3 +1,6 @@
+---------------------------
+-- Score 계산 계수
+---------------------------
 local CollectibleConfig = {
     -- log_fragment_*: Log Fragment 획득 보상
     log_fragment_score = 10,

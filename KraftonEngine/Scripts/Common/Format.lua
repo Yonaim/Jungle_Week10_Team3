@@ -1,7 +1,10 @@
 local Math = require("Common.Math")
-
+------------------------------------------------------------------------------
+-- 문자열에서 사용하는 Formatting Helper
+------------------------------------------------------------------------------
 local Format = {}
 
+-- 문자를 숫자로 바꿔주는 함수
 function Format.Number(value)
     local formatted = tostring(math.floor(value or 0))
     local sign = ""
@@ -20,10 +23,11 @@ function Format.Number(value)
     return sign .. table.concat(parts, ",")
 end
 
+-- 소수점 자리수 맞춰서 string formatting 하는 함수
 function Format.Decimal(value, digits)
     return string.format("%." .. tostring(digits or 1) .. "f", value or 0)
 end
-
+-- percentage로 formatting 하는 함수
 function Format.Percent(current, max_value)
     local safe_max = max_value or 0
     if safe_max <= 0 then

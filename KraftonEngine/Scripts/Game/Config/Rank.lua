@@ -1,3 +1,7 @@
+---------------------------
+-- Rank 관련 resource
+---------------------------
+
 local RankConfig = {
     -- default_texture: 알 수 없는 랭크에 사용할 기본 배지 텍스처입니다.
     default_texture = "Asset/Content/Texture/UI/rank_c.png",

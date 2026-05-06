@@ -1,13 +1,20 @@
 local DebugConfig = require("Game.Config.Debug")
 local AudioConfig = require("Game.Config.Audio")
 local PlayerStatusConfig = require("Game.Config.PlayerStatus")
-local ScoreConfig = require("Game.Config.Score")
 local CoachConfig = require("Game.Config.Coach")
 local CollectibleConfig = require("Game.Config.Collectible")
 local ResultScreenConfig = require("Game.Config.ResultScreen")
 local AudioManager = require("Game.AudioManager")
 local Log = require("Common.Log")
 local Math = require("Common.Math")
+
+local ScoreSettings = {
+    -- distance_weight: 주행 거리 1m당 점수 가중치입니다.
+    distance_weight = 10.0,
+
+    -- survival_time_weight: 생존 시간 1초당 점수 가중치입니다.
+    survival_time_weight = 5.0,
+}
 
 local GameManager = {
     State = {
@@ -176,8 +183,8 @@ function GameManager.Tick(dt, moved_distance)
     GameManager.distance = GameManager.distance + safe_moved_distance
     GameManager.elapsed_time = GameManager.elapsed_time + safe_dt
     GameManager.score = math.floor(
-        GameManager.distance * ScoreConfig.distance_weight
-        + GameManager.elapsed_time * ScoreConfig.survival_time_weight
+        GameManager.distance * ScoreSettings.distance_weight
+        + GameManager.elapsed_time * ScoreSettings.survival_time_weight
     ) + GameManager.bonus_score
 
     GameManager.score_log_timer = GameManager.score_log_timer + safe_dt
@@ -255,12 +262,6 @@ function GameManager.OnLogCollected()
     -- Log Fragment를 먹었을 때 코치 인정도가 소폭 올라가는 이벤트입니다.
     GameManager.AddCoachApproval(CoachConfig.log_collected_delta or 1, "LogCollected")
     queue_dialogue_trigger("onCollectLog")
-end
-
-function GameManager.OnObstacleAvoided()
-    -- TODO: 장애물을 실제로 지나쳤는지 판정하는 지점이 생기면 여기서 호출하면 됨.
-    -- 지금 마감 전에는 장애물 회피 판정까지 새로 만들지 않고, 이벤트 함수만 먼저 준비합니다.
-    GameManager.AddCoachApproval(CoachConfig.obstacle_avoided_delta or 1, "ObstacleAvoided")
 end
 
 function GameManager.OnSpeedUp()

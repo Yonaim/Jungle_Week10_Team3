@@ -1,3 +1,7 @@
+---------------------------
+-- Screen Animation 계수
+---------------------------
+
 local ScreenConsoleAnimatorConfig = {
     -- tint_*: 화면 전환 애니메이션에서 반복 사용되는 색상값입니다.
     tint_clear = { 0.0, 0.0, 0.0, 0.0 },

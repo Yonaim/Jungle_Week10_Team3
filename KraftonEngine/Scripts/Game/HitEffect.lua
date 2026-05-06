@@ -6,34 +6,29 @@ local HitEffects = {}
 
 local active_time_token = 0
 local active_squash_token = 0
-local active_knockback_token = 0
-local Runtime = {}
 
--- GlobalTimeDilation을 조절하는 함수.
+-- GlobalTimeDilation 설정 함수
 local function set_time_dilation(scale)
-    local set_global_time = Runtime.set_global_time_dilation or set_global_time_dilation
-    if set_global_time then
-        set_global_time(scale)
+    if set_global_time_dilation then
+        set_global_time_dilation(scale)
     end
 end
 
 local function wait_real_seconds(seconds)
-    local wait_real_func = Runtime.wait_real or wait_real
-    if wait_real_func then
-        wait_real_func(seconds)
+    if wait_real then
+        wait_real(Math.SafeNumber(seconds, 0.0))
     end
 end
 
 local function get_raw_delta_time()
-    local raw_delta_time_func = Runtime.raw_delta_time or raw_delta_time
-    if raw_delta_time_func then
-        local dt = raw_delta_time_func()
+    if raw_delta_time then
+        local dt = raw_delta_time()
         if type(dt) == "number" and dt > 0.0 then
             return dt
         end
     end
 
-    return 1.0 / 60.0 -- 실패한다면 60fps 가정하고 return 해줌
+    return 1.0 / 60.0 -- 실패한다면 60fps 가정하고 return
 end
 
 local function apply_scale(use_component, component, actor, scale)
@@ -50,18 +45,16 @@ local function apply_scale(use_component, component, actor, scale)
 end
 
 ------------------------------------------------
--- 시간 제어 함수들 (Hit Stop, Slomo)
+-- 특수효과 모음
 ------------------------------------------------
 
-function HitEffects.SetRuntime(runtime)
-    Runtime = type(runtime) == "table" and runtime or {}
-end
-
+-- 안전하게 값을 복구해주는 함수
 function HitEffects.StopTimeEffects()
     active_time_token = active_time_token + 1
     set_time_dilation(1.0)
 end
 
+-- HitStop
 function HitEffects.HitStop(duration)
     duration = Math.SafeNumber(duration, 0.055)
 
@@ -78,6 +71,7 @@ function HitEffects.HitStop(duration)
     end
 end
 
+-- Slomo
 function HitEffects.Slomo(scale, duration)
     scale = Math.Clamp(Math.SafeNumber(scale, 0.25), 0.05, 1.0)
     duration = Math.SafeNumber(duration, 0.18)
@@ -94,9 +88,8 @@ function HitEffects.Slomo(scale, duration)
         set_time_dilation(1.0)
     end
 end
-
--- duration만큼 Hit Stop 을 수행한 후 slomo를 수행하는 함수
-function HitEffects.HitStopThenSlomo(hit_stop_duration, slomo_scale, slomo_duration)
+-- Hit stop 이후 Slomo 진행 함수
+function HitEffects.HitStopAndSlomo(hit_stop_duration, slomo_scale, slomo_duration)
     hit_stop_duration = Math.SafeNumber(hit_stop_duration, 0.055)
     slomo_scale = Math.Clamp(Math.SafeNumber(slomo_scale, 0.25), 0.05, 1.0)
     slomo_duration = Math.SafeNumber(slomo_duration, 0.18)
@@ -124,7 +117,7 @@ function HitEffects.HitStopThenSlomo(hit_stop_duration, slomo_scale, slomo_durat
 end
 
 ------------------------------------------------
--- Hit Squash 함수들
+-- Hit Squash
 ------------------------------------------------
 
 -- 피격 순간 actor 또는 mesh scale을 squash 목표값으로 보간한 뒤,
@@ -134,6 +127,7 @@ function HitEffects.PlayHitSquash(actor, squash_x, squash_y, squash_z, squash_du
         return
     end
 
+    -- Default값과 같이 넣기
     squash_x = Math.SafeNumber(squash_x, 1.25)
     squash_y = Math.SafeNumber(squash_y, 0.75)
     squash_z = Math.SafeNumber(squash_z, 1.0)
@@ -167,6 +161,7 @@ function HitEffects.PlayHitSquash(actor, squash_x, squash_y, squash_z, squash_du
 
     while elapsed < squash_duration do
         if token ~= active_squash_token then
+            apply_scale(use_component, comp, actor, original_scale)
             return
         end
 
@@ -183,6 +178,7 @@ function HitEffects.PlayHitSquash(actor, squash_x, squash_y, squash_z, squash_du
 
     while elapsed < recover_duration do
         if token ~= active_squash_token then
+            apply_scale(use_component, comp, actor, original_scale)
             return
         end
 

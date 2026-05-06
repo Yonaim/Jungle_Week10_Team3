@@ -3,6 +3,10 @@ local AudioManager = require("Game.AudioManager")
 local Engine = require("Common.Engine")
 local UI = require("Common.UI")
 
+---------------------------
+-- Crash Log 연출
+---------------------------
+
 local crash_ui = nil		-- Crash Image UI
 local ok_btn = nil			-- 확인 버튼
 local is_crashed = false	-- Crash 여부 뜻하는 Bool 변수
@@ -155,4 +159,5 @@ function RunFakeCrashSequence()
 	GameManager.Resume()
 	-- BGM 재시작은 Resume 직후에 한다. StopBGM에서 플래그를 리셋했으므로 정상 재생된다.
 	AudioManager.PlayBGM()
+	print("[FakeCrashEvent] RunFakeCrashSequence 종료")
 end

@@ -5,7 +5,6 @@
 
 local DebugConfig = require("Game.Config.Debug")
 local PlayerConfig = require("Game.Config.PlayerController")
-local ObstacleConfig = require("Game.Config.Obstacle")
 local GameManager = require("Game.GameManager")
 local PlayerStatus = require("Game.PlayerStatus")
 local AudioManager = require("Game.AudioManager")
@@ -16,8 +15,8 @@ local Log = require("Common.Log")
 local Engine = require("Common.Engine")
 local Math = require("Common.Math")
 local UI = require("Common.UI")
+local HitEffects = require_env("Game.HitEffect")
 local Vector = require("Common.Vector")
-local HitEffects = require("Game.HitEffect")
 local HitFeedback = require("Game.Camera.HitFeedback")
 
 if HitEffects and HitEffects.SetRuntime then
@@ -30,10 +29,16 @@ end
 
 local is_input_locked = false;
 
+-- 무한 overlap 방지용 weakptr 테이블
+local hit_obstacles = setmetatable({}, { __mode = "k" })
+
 -- =========================================================
 -- 런타임 상태
 -- =========================================================
 
+-- PlayerController 설정은 초기 튜닝값이다.
+-- require()로 캐시되는 공유 table이므로 런타임 상태를 저장하지 않는다.
+-- 런타임 중 바뀌는 값은 PlayerController.lua의 local state에 둔다.
 local forward_speed = PlayerConfig.forward_speed                            -- Runner가 매 프레임 자동으로 앞으로 가는 속도
 local lane_width = PlayerConfig.lane_width                                  -- 레인 사이 간격
 local lane_change_speed = PlayerConfig.lane_change_speed                    -- 목표 레인으로 부드럽게 이동하는 속도
@@ -88,27 +93,6 @@ local COACH_WINDOW_TEXTURES = PlayerConfig.coach_window_textures
 ------------------------------------------------
 
 local log = Log.MakeLogger(DebugConfig, "[Player]")
-
-
-local function start_hit_stop_then_slomo(hit_stop_duration, slomo_scale, slomo_duration)
-    if not HitEffects or not HitEffects.HitStopThenSlomo then
-        warn("[PlayerController] HitEffects.HitStopThenSlomo missing.")
-        return
-    end
-
-    if not StartCoroutine then
-        warn("[PlayerController] StartCoroutine missing. Hit time effect skipped.")
-        return
-    end
-
-    local started = StartCoroutine(function()
-        HitEffects.HitStopThenSlomo(hit_stop_duration, slomo_scale, slomo_duration)
-    end)
-
-    if started == false then
-        warn("[PlayerController] Failed to start hit time effect coroutine.")
-    end
-end
 
 -- 가장 왼쪽 Lane 번호
 local function lane_min()
@@ -536,15 +520,19 @@ local function handle_obstacle_collision(event_name, other_actor)
         return
     end
 
-    local damage = ObstacleConfig.default_damage
+    local damage = 1 -- 데미지 하드코딩
     -- 장애물별 피해량을 다르게 줄 수 있게 C++ Damage 값을 Lua에서 읽는다.
-    -- 바인딩 안 된 장애물은 ObstacleConfig.default_damage를 사용합니다.
     if other_actor and other_actor.GetDamage then
         local obstacle_damage = other_actor:GetDamage()
         if obstacle_damage and obstacle_damage > 0 then
             damage = obstacle_damage
             log("Start Coroutine")
-            start_hit_stop_then_slomo(1.0, 0.1, 1.0)
+            StartCoroutine(function() HitEffects.HitStopAndSlomo(0.2, 0.7, 1.0) end)
+            -- StartCoroutine(function() HitEffects.HitStop(0.1) end)
+            -- StartCoroutine(function() HitEffects.Slomo(0.1, 1.0) end)
+            if HitEffects and HitEffects.PlayHitSquash then
+                StartCoroutine(function() HitEffects.PlayHitSquash(obj, 0.8, 0.8, 0.8, 0.1, 1.0) end)
+            end
         end
     end
     log("[PlayerController] Obstacle collision damage=" .. tostring(damage))
@@ -563,6 +551,8 @@ end
 -- PlayerController가 한 런에 필요한 이동/충돌/슬라이드/오디오 상태를 초기화합니다.
 -- Map 생성 순서가 늦을 수 있어 첫 바닥 판정은 실패해도 Tick에서 다시 복구되게 둡니다.
 function BeginPlay()
+    -- 장애물 초기화
+    hit_obstacles = setmetatable({}, { __mode = "k" })
     local loc = obj:GetWorldLocation()
 
     current_lane = Math.Clamp(Math.Round(loc.y / lane_width), lane_min(), lane_max())
@@ -734,6 +724,9 @@ function Tick(dt)
 end
 
 function EndPlay()
+    if HitEffects and HitEffects.StopTimeEffects then
+        HitEffects.StopTimeEffects()
+    end
     if slide then
         slide:Restore()
     end
@@ -746,6 +739,19 @@ end
 ------------------------------------------------
 
 function OnBeginOverlap(otherActor, otherComp, selfComp)
+    if not otherActor then
+        return
+    end
+
+    if hit_obstacles[otherActor] then
+        return
+    end
+
+    if PlayerStatus:IsInvincible() then
+        return
+    end
+    hit_obstacles[otherActor] = true
+
     handle_obstacle_collision("BeginOverlap", otherActor)
 end
 

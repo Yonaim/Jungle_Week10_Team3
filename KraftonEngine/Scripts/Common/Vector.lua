@@ -1,7 +1,12 @@
 local Math = require("Common.Math")
 
+------------------------------------------------------------------------------
+-- Vector Helper Class
+------------------------------------------------------------------------------
+
 local VectorUtils = {}
 
+-- vector 생성 함수
 function VectorUtils.Make(x, y, z)
     if vec3 then
         return vec3(x, y, z)
@@ -22,6 +27,7 @@ function VectorUtils.Make(x, y, z)
     return { x = x, y = y, z = z }
 end
 
+-- Vector에서 X, Y, Z 축 가져오는 함수
 function VectorUtils.GetX(v)
     if not v then
         return 0.0
@@ -46,6 +52,7 @@ function VectorUtils.GetZ(v)
     return v.z or v.Z or v[3] or 0.0
 end
 
+-- vector간 선형 보간
 function VectorUtils.Lerp(a, b, t)
     return VectorUtils.Make(
         Math.Lerp(VectorUtils.GetX(a), VectorUtils.GetX(b), t),
@@ -54,6 +61,7 @@ function VectorUtils.Lerp(a, b, t)
     )
 end
 
+-- vector 복사 함수
 function VectorUtils.Copy(v)
     return VectorUtils.Make(
         VectorUtils.GetX(v),

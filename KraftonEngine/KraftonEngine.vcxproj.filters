@@ -947,6 +947,9 @@
     <ClCompile Include="Source\Engine\Scripting\LuaActorProxy.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Scripting\LuaCoroutineScheduler.cpp">
+      <Filter>Source\Engine\Scripting</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Scripting\LuaComponentProxy.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
@@ -1845,6 +1848,9 @@
       <Filter>Source\Engine\Runtime</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Scripting\LuaActorProxy.h">
+      <Filter>Source\Engine\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Scripting\LuaCoroutineScheduler.h">
       <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Scripting\LuaComponentProxy.h">

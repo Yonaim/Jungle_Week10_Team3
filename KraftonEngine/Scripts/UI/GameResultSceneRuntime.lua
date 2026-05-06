@@ -5,7 +5,6 @@ local GameManager = require("Game.GameManager")
 local Scoreboard = require("Game.Scoreboard")
 local Engine = require("Common.Engine")
 local Format = require("Common.Format")
-local Table = require("Common.Table")
 local UI = require("Common.UI")
 
 local DIALOGUE_PATH = ResultScreenConfig.dialogue_path
@@ -40,6 +39,19 @@ local function resolve_rank_texture(rank_code)
     return RANK_TEXTURE_BY_CODE[normalized] or DEFAULT_RANK_TEXTURE
 end
 
+local function shallow_copy(source)
+    local copied = {}
+    if type(source) ~= "table" then
+        return copied
+    end
+
+    for key, value in pairs(source) do
+        copied[key] = value
+    end
+
+    return copied
+end
+
 ------------------------------------------------
 -- 결과 데이터 구성 함수들
 ------------------------------------------------
@@ -62,7 +74,8 @@ end
 local function resolve_result_data()
     if not (GameManager.IsGameOver and GameManager.IsGameOver()) then
         preview_mode = true
-        return Table.ShallowCopy(PREVIEW_RESULT_DATA)
+        -- preview_result는 설정 table이므로 화면에서 쓰기 전에 얕은 복사본으로 분리합니다.
+        return shallow_copy(PREVIEW_RESULT_DATA)
     end
 
     local data = GameManager.GetResultData and GameManager.GetResultData() or nil
