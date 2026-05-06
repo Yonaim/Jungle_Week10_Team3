@@ -6,6 +6,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UBoxComponent;
 class UStaticMeshComponent;
+class UBillboardComponent;
 class USFXComponent;
 class UBackgroundSoundComponent;
 /*
@@ -29,6 +30,7 @@ protected:
 
 private:
 	void ApplyDefaultVisual();
+	void SetupDreamBillboard();
 	void SetupCamera();
 
 	// RootComponent (Box)
@@ -40,6 +42,8 @@ private:
 	UCameraComponent* MainCamera = nullptr;
 	// StaticMesh
 	UStaticMeshComponent* MeshComponent = nullptr;
+	// Dream billboard
+	UBillboardComponent* DreamBillboard = nullptr;
 	// Sound
 	UBackgroundSoundComponent* BackgroundSound = nullptr;
 	USFXComponent* SFXSound = nullptr;

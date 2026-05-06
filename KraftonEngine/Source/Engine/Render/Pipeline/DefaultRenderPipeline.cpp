@@ -63,7 +63,7 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 		Camera->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
 		const FMinimalViewInfo* ActivePOV = nullptr;
 
-		const float ClearColor[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
+		const float ClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 		VP->BeginRender(Ctx, ClearColor);
 
 		Frame.SetViewportInfo(VP);

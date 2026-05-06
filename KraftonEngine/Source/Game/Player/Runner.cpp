@@ -4,9 +4,11 @@
 #include "Component/ScriptComponent.h"
 #include "Component/CameraComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/BillboardComponent.h"
 #include "Component/SoundComponent.h"
 #include "Resource/ResourceManager.h"
 #include "Engine/Runtime/Engine.h"
+#include "Texture/Texture2D.h"
 
 #include "Mesh/ObjManager.h"
 #include <Core/Log.h>
@@ -15,6 +17,16 @@
 
 
 IMPLEMENT_CLASS(ARunner, APawnActor)
+
+namespace
+{
+constexpr const char* DreamBillboardComponentName = "DreamBillboard";
+constexpr const char* DreamBillboardTextureKey = "Game.Texture.Dream";
+constexpr const char* DreamBillboardTextureFallback = "Asset/Content/Texture/Dream.png";
+constexpr float DreamBillboardInitialOffsetX = 1000.0f;
+constexpr float DreamBillboardSpriteSize = 100.0f;
+constexpr float DreamBillboardMirroredSpriteWidth = -DreamBillboardSpriteSize;
+}
 
 ARunner::ARunner()
 {
@@ -46,6 +58,15 @@ ARunner::ARunner()
 	MeshComponent->SetRelativeScale(FVector(0.5f, 0.5f, 1.0f));
 	MeshComponent->SetCollisionEnabled(false);
 
+	// Dream.png billboard. It is intentionally not attached to RootComponent;
+	// PlayerController.lua advances it by the player's actual X movement.
+	DreamBillboard = AddComponent<UBillboardComponent>();
+	DreamBillboard->SetFName(FName(DreamBillboardComponentName));
+	DreamBillboard->SetCanDeleteFromDetails(false);
+	DreamBillboard->SetCollisionEnabled(false);
+	DreamBillboard->SetGenerateOverlapEvents(false);
+	DreamBillboard->SetSpriteSize(DreamBillboardMirroredSpriteWidth, DreamBillboardSpriteSize);
+
 	// 이동/중력/HP/score/audio 시작 흐름은 Lua에서 빠르게 조정할 수 있게 둔다.
 	PlayerMove = AddComponent<UScriptComponent>();
 	PlayerMove->SetCanDeleteFromDetails(false);
@@ -74,6 +95,7 @@ void ARunner::BeginPlay()
 	// Lua BeginPlay에서 mesh local transform을 읽으므로 visual setup을 먼저 끝낸다.
 	// 이 프로젝트의 Super::BeginPlay()가 ScriptComponent BeginPlay를 호출하기 때문에 일반 순서와 다르게 둔다.
 	ApplyDefaultVisual();
+	SetupDreamBillboard();
 	Super::BeginPlay();
 	SetupCamera();
 }
@@ -104,6 +126,41 @@ void ARunner::ApplyDefaultVisual()
 		}
 	}
 #pragma endregion
+}
+
+void ARunner::SetupDreamBillboard()
+{
+	if (!DreamBillboard)
+	{
+		return;
+	}
+
+	DreamBillboard->SetCollisionEnabled(false);
+	DreamBillboard->SetGenerateOverlapEvents(false);
+	DreamBillboard->SetSpriteSize(DreamBillboardMirroredSpriteWidth, DreamBillboardSpriteSize);
+	DreamBillboard->SetWorldLocation(GetActorLocation() + FVector(DreamBillboardInitialOffsetX, 0.0f, 0.0f));
+
+	if (GEngine)
+	{
+		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+		const FString TexturePath = FResourceManager::Get().ResolvePath(
+			FName(DreamBillboardTextureKey),
+			DreamBillboardTextureFallback);
+
+		if (Device)
+		{
+			if (UTexture2D* Texture = UTexture2D::LoadFromFile(TexturePath, Device))
+			{
+				DreamBillboard->SetTexture(Texture);
+			}
+			else
+			{
+				UE_LOG("[Runner] Failed to load dream billboard texture: %s", TexturePath.c_str());
+			}
+		}
+	}
+
+	DreamBillboard->MarkRenderStateDirty();
 }
 
 void ARunner::SetupCamera()

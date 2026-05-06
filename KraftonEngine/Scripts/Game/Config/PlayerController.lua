@@ -7,6 +7,9 @@ local PlayerControllerConfig = {
     -- forward_speed: 플레이어가 매 프레임 자동 전진하는 속도
     forward_speed = 10.0,
 
+    -- dream_billboard_offset_x: Dream.png billboard를 Player 앞 X+ 방향에 두는 초기 거리
+    dream_billboard_offset_x = 50.0,
+
     -- max_move_step: overlap 누락을 줄이기 위해 전진 이동을 쪼개는 최대 거리
     max_move_step = 0.25,
 

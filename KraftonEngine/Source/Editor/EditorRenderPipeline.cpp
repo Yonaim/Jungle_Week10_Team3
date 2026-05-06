@@ -170,7 +170,8 @@ void FEditorRenderPipeline::PrepareViewport(FViewport* VP, UCameraComponent* Cam
 	{
 		Camera->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
 	}
-	VP->BeginRender(Ctx);
+	const float ClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	VP->BeginRender(Ctx, ClearColor);
 }
 
 // ============================================================
