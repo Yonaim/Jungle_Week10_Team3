@@ -584,19 +584,19 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			Cmd.BuildSortKey(4);
 		}
 	}
-
-	UWorld* CurrentWorld = GEngine ? GEngine->GetWorld() : nullptr;
-	if (CurrentWorld && CurrentWorld->GetActiveCamera() && CurrentWorld->GetActiveCamera()->GetHitEffectIntensity() > 0.001f)
-	{
-		// Use direct path string if EShaderPath constant is causing issues
-		FShader* HitShader = FShaderManager::Get().GetOrCreate("Shaders/PostProcess/HitVignette.hlsl");
-		if (HitShader)
-		{
-			FDrawCommand& Cmd = DrawCommandList.AddCommand();
-			Cmd.InitFullscreenTriangle(HitShader, ERenderPass::PostProcess, PPRS);
-			Cmd.BuildSortKey(5);
-		}
-	}
+	//ToDelete
+	//UWorld* CurrentWorld = GEngine ? GEngine->GetWorld() : nullptr;
+	//if (CurrentWorld && CurrentWorld->GetActiveCamera() && CurrentWorld->GetActiveCamera()->GetHitEffectIntensity() > 0.001f)
+	//{
+	//	// Use direct path string if EShaderPath constant is causing issues
+	//	FShader* HitShader = FShaderManager::Get().GetOrCreate("Shaders/PostProcess/HitVignette.hlsl");
+	//	if (HitShader)
+	//	{
+	//		FDrawCommand& Cmd = DrawCommandList.AddCommand();
+	//		Cmd.InitFullscreenTriangle(HitShader, ERenderPass::PostProcess, PPRS);
+	//		Cmd.BuildSortKey(5);
+	//	}
+	//}
 
 	// FXAA
 	if (Frame.RenderOptions.ShowFlags.bFXAA)

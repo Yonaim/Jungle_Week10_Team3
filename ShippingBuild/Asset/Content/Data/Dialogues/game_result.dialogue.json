@@ -1,0 +1,119 @@
+{
+  "version": 2,
+  "id": "game_result_dialogues",
+  "name": "Game Result Scene Dialogues",
+  "characters": {
+    "BAEK_COMMANDER": {
+      "displayName": "백 사령관",
+      "shortName": "백 사령관",
+      "defaultPortrait": "portrait_baek_normal",
+      "emotions": {
+        "normal": "portrait_baek_normal",
+        "calm": "portrait_baek_calm",
+        "serious": "portrait_baek_serious",
+        "annoyed": "portrait_baek_annoyed",
+        "angry": "portrait_baek_angry",
+        "panic": "portrait_baek_panic"
+      }
+    },
+    "LIM_COMMANDER": {
+      "displayName": "임 오퍼레이터",
+      "shortName": "임 오퍼레이터",
+      "defaultPortrait": "portrait_lim_normal",
+      "emotions": {
+        "normal": "portrait_lim_normal",
+        "joke": "portrait_lim_joke",
+        "serious": "portrait_lim_serious",
+        "excited": "portrait_lim_excited",
+        "surprised": "portrait_lim_surprised",
+        "angry": "portrait_lim_angry"
+      }
+    }
+  },
+  "dialogues": [
+    {
+      "id": "gameresult_rank_s_baek",
+      "rank": "S",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "calm",
+      "message": "내가 칭찬을 잘 안 하는데, 꽤 쓸 만한 결과다. 이 정도면 네 투입 비용이 아깝지 않다."
+    },
+    {
+      "id": "gameresult_rank_s_lim",
+      "rank": "S",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "excited",
+      "message": "이 정도면 버그들이 네 이름 듣고 먼저 숨겠다. 오늘은 꽤 사람 같았다."
+    },
+    {
+      "id": "gameresult_rank_a_baek",
+      "rank": "A",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "calm",
+      "message": "잘했다. 하지만 여기서 만족하면 바로 평범한 수준으로 추락한다."
+    },
+    {
+      "id": "gameresult_rank_a_lim",
+      "rank": "A",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "normal",
+      "message": "좋아, 제법이네. 그런데 S 못 찍은 이상 아직 자랑할 단계는 아니다."
+    },
+    {
+      "id": "gameresult_rank_b_baek",
+      "rank": "B",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "serious",
+      "message": "어설프게 해낸 수준이다. 살아남은 걸 실력이라고 착각하지 마라."
+    },
+    {
+      "id": "gameresult_rank_b_lim",
+      "rank": "B",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "normal",
+      "message": "나쁘진 않았는데, 딱 거기까지다. 잘했다고 하기엔 구멍이 너무 많이 보였다."
+    },
+    {
+      "id": "gameresult_rank_c_baek",
+      "rank": "C",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "serious",
+      "message": "턱걸이다. 이 정도 판단력으로는 엔진 안에서 오래 못 버틴다."
+    },
+    {
+      "id": "gameresult_rank_c_lim",
+      "rank": "C",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "joke",
+      "message": "간신히 체면치레는 했다. 솔직히 방금 건 잘한 게 아니라 덜 망한 거다."
+    },
+    {
+      "id": "gameresult_rank_d_baek",
+      "rank": "D",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "annoyed",
+      "message": "형편없었다. 움직임도 판단도 전부 엉성했다. 처음부터 다시 훈련해라."
+    },
+    {
+      "id": "gameresult_rank_d_lim",
+      "rank": "D",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "serious",
+      "message": "오늘은 버그보다 네가 더 문제였다. 이 상태면 다음 투입도 기대하기 어렵다."
+    },
+    {
+      "id": "gameresult_rank_f_baek",
+      "rank": "F",
+      "speaker": "BAEK_COMMANDER",
+      "emotion": "angry",
+      "message": "실패다. 결과는 변명의 여지도 없다. 이 수준으로는 다시 투입할 가치조차 없다."
+    },
+    {
+      "id": "gameresult_rank_f_lim",
+      "rank": "F",
+      "speaker": "LIM_COMMANDER",
+      "emotion": "surprised",
+      "message": "이건 그냥 박살났다. 다음엔 멋진 척 말고, 최소한 사고는 치지 말고 돌아와라."
+    }
+  ]
+}

@@ -823,16 +823,16 @@ void FSystemResources::UpdateFrameBuffer(FD3DDevice& Device, const FFrameContext
 	{
 		frameConstantData.Time = static_cast<float>(GEngine->GetTimer()->GetTotalTime());
 	}
-
+	//ToDelete
 	// Active Camera HitEffectIntensity 
-	if (Frame.ViewportRTV)
-	{
-		UWorld* World = GEngine ? GEngine->GetWorld() : nullptr;
-		if (World && World->GetActiveCamera())
-		{
-			frameConstantData.HitEffectIntensity = World->GetActiveCamera()->GetHitEffectIntensity();
-		}
-	}
+	//if (Frame.ViewportRTV)
+	//{
+	//	UWorld* World = GEngine ? GEngine->GetWorld() : nullptr;
+	//	if (World && World->GetActiveCamera())
+	//	{
+	//		frameConstantData.HitEffectIntensity = World->GetActiveCamera()->GetHitEffectIntensity();
+	//	}
+	//}
 
 	FrameBuffer.Update(Ctx, &frameConstantData, sizeof(FFrameConstants));
 	ID3D11Buffer* b0 = FrameBuffer.GetBuffer();

@@ -1,4 +1,4 @@
-#include "Scripting/LuaComponentProxy.h"
+﻿#include "Scripting/LuaComponentProxy.h"
 
 #include "Component/ActorComponent.h"
 #include "Component/Movement/InterpToMovementComponent.h"
@@ -1075,30 +1075,30 @@ bool FLuaComponentProxy::IsMoveDone() const
 
 	return false;
 }
-
-bool FLuaComponentProxy::StartCameraShake(float Intensity, float Duration)
-{
-	UActorComponent* TargetComp = this->GetComponent();
-	if (TargetComp && TargetComp->IsA<UCameraComponent>())
-	{
-		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
-		Camera->StartCameraShake(Intensity, Duration);
-		return true;
-	}
-	return false;
-}
-
-bool FLuaComponentProxy::AddHitEffect(float Intensity, float Duration)
-{
-	UActorComponent* TargetComp = this->GetComponent();
-	if (TargetComp && TargetComp->IsA<UCameraComponent>())
-	{
-		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
-		Camera->AddHitEffect(Intensity, Duration);
-		return true;
-	}
-	return false;
-}
+//ToDelete
+//bool FLuaComponentProxy::StartCameraShake(float Intensity, float Duration)
+//{
+//	UActorComponent* TargetComp = this->GetComponent();
+//	if (TargetComp && TargetComp->IsA<UCameraComponent>())
+//	{
+//		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
+//		Camera->StartCameraShake(Intensity, Duration);
+//		return true;
+//	}
+//	return false;
+//}
+//
+//bool FLuaComponentProxy::AddHitEffect(float Intensity, float Duration)
+//{
+//	UActorComponent* TargetComp = this->GetComponent();
+//	if (TargetComp && TargetComp->IsA<UCameraComponent>())
+//	{
+//		UCameraComponent* Camera = static_cast<UCameraComponent*>(TargetComp);
+//		Camera->AddHitEffect(Intensity, Duration);
+//		return true;
+//	}
+//	return false;
+//}
 
 bool FLuaComponentProxy::SetBoxExtent(const FVector& Extent)
 {

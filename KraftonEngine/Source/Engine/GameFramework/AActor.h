@@ -62,7 +62,18 @@ public:
 	void SyncEditorBillboardVisibility();
 
 	const TArray<UActorComponent*>& GetComponents() const { return OwnedComponents; }
-
+	template<typename T>
+	T* GetComponentByClass() const
+	{
+		static_assert(std::is_base_of_v<UActorComponent, T>,
+			"GetComponentByClass<T>: T must derive from UActorComponent");
+		for (UActorComponent* Component : OwnedComponents)
+		{
+			if (T* TypedComponent = Cast<T>(Component))
+				return TypedComponent;
+		}
+		return nullptr;
+	}
 	// Transform — Location
 	FVector GetActorLocation() const;
 	void SetActorLocation(const FVector& Location);

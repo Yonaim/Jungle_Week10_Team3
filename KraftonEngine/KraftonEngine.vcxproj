@@ -311,6 +311,7 @@
     <ClCompile Include="Source\Engine\Camera\CameraModifier.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraModifier_CameraShake.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraShake.cpp" />
+    <ClCompile Include="Source\Engine\Camera\MinimalViewInfo.cpp" />
     <ClCompile Include="Source\Engine\Camera\PlayerCameraManager.cpp" />
     <ClCompile Include="Source\Engine\Collision\CollisionDispatcher.cpp" />
     <ClCompile Include="Source\Engine\Collision\ConvexVolume.cpp" />
@@ -563,6 +564,7 @@
     <ClInclude Include="Source\Engine\Camera\CameraModifier.h" />
     <ClInclude Include="Source\Engine\Camera\CameraModifier_CameraShake.h" />
     <ClInclude Include="Source\Engine\Camera\CameraShake.h" />
+    <ClInclude Include="Source\Engine\Camera\MinimalViewInfo.h" />
     <ClInclude Include="Source\Engine\Camera\PlayerCameraManager.h" />
     <ClInclude Include="Source\Engine\Collision\CollisionDispatcher.h" />
     <ClInclude Include="Source\Engine\Collision\ConvexVolume.h" />
@@ -1185,6 +1187,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="KraftonEngine.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Source\Engine\GameFramework\CameraActor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

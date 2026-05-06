@@ -1,0 +1,119 @@
+{
+  "Actors" : [{
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_121",
+      "PrimitiveKey" : "865",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_245",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [0.000000, 0.000000, 0.000000],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Static Mesh" : "",
+          "Two Sided Shadow" : false,
+          "Visible" : true
+        }
+      },
+      "UUID" : 865,
+      "bVisible" : true
+    }, {
+      "ClassName" : "AStaticMeshActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "AStaticMeshActor_122",
+      "PrimitiveKey" : "868",
+      "RootComponent" : {
+        "Children" : [],
+        "ClassName" : "UStaticMeshComponent",
+        "ObjectName" : "UStaticMeshComponent_244",
+        "Properties" : {
+          "Cast Shadow" : true,
+          "Generates Overlap Event" : 2,
+          "Is Collidable" : true,
+          "Location" : [0.000000, 0.000000, -1.500000],
+          "Mobility" : 2,
+          "Rotation" : [0.000000, 0.000000, 0.000000],
+          "Scale" : [100.000000, 100.000000, 1.000000],
+          "Static Mesh" : "",
+          "Two Sided Shadow" : false,
+          "Visible" : true
+        }
+      },
+      "UUID" : 868,
+      "bVisible" : true
+    }, {
+      "ClassName" : "ADirectionalLightActor",
+      "NonSceneComponents" : [],
+      "ObjectName" : "ADirectionalLightActor_3",
+      "RootComponent" : {
+        "Children" : [{
+            "Children" : [],
+            "ClassName" : "UBillboardComponent",
+            "ObjectName" : "UBillboardComponent_17",
+            "Properties" : {
+              "Billboard" : true,
+              "Cast Shadow" : true,
+              "Generates Overlap Event" : 2,
+              "Height" : 1.000000,
+              "Is Collidable" : true,
+              "Location" : [0.000000, 0.000000, 0.000000],
+              "Mobility" : 2,
+              "Rotation" : [0.000000, 0.000000, 0.000000],
+              "Scale" : [1.000000, 1.000000, 1.000000],
+              "Texture" : {
+                "Path" : "Asset/Editor/Icons/Actors/S_DirectionalLight_256x.PNG"
+              },
+              "Two Sided Shadow" : false,
+              "Visible" : true,
+              "Width" : 1.000000
+            },
+            "bHiddenInComponentTree" : true
+          }],
+        "ClassName" : "UDirectionalLightComponent",
+        "ObjectName" : "UDirectionalLightComponent_3",
+        "Properties" : {
+          "Cast Shadows" : false,
+          "Color" : [1.000000, 1.000000, 1.000000, 1.000000],
+          "Intensity" : 1.000000,
+          "Location" : [-0.135615, -0.898725, 4.039026],
+          "Rotation" : [45.000000, 0.000000, 0.000000],
+          "Scale" : [1.000000, 1.000000, 1.000000],
+          "Shadow Bias" : 0.005000,
+          "Shadow Normal Bias" : -0.002000,
+          "Shadow Resolution Scale" : 1.000000,
+          "Shadow Sharpen" : 0.000000,
+          "Shadow Slope Bias" : 1.000000,
+          "Visible" : true
+        }
+      },
+      "UUID" : 873,
+      "bVisible" : true
+    }],
+  "ClassName" : "UWorld",
+  "ContextHandle" : "Default",
+  "ContextName" : "Default",
+  "Primitives" : {
+    "865" : {
+      "Location" : [0.000000, 0.000000, 0.000000],
+      "ObjStaticMeshAsset" : "",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [1.000000, 1.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    },
+    "868" : {
+      "Location" : [0.000000, 0.000000, -1.500000],
+      "ObjStaticMeshAsset" : "",
+      "Rotation" : [0.000000, -0.000000, 0.000000],
+      "Scale" : [100.000000, 100.000000, 1.000000],
+      "Type" : "StaticMeshComp"
+    }
+  },
+  "Version" : 2,
+  "WorldType" : "Game"
+}

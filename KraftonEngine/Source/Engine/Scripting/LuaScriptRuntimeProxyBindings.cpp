@@ -1,4 +1,4 @@
-#include "Scripting/LuaScriptRuntime.h"
+﻿#include "Scripting/LuaScriptRuntime.h"
 #include "Math/Rotator.h"
 
 #ifdef check
@@ -137,8 +137,9 @@ void FLuaScriptRuntime::BindComponentProxyType()
 			&FLuaComponentProxy::MoveByXYZ),
 		"StopMove", &FLuaComponentProxy::StopMove,
 		"IsMoveDone", &FLuaComponentProxy::IsMoveDone,
-		"StartCameraShake", &FLuaComponentProxy::StartCameraShake,
-		"AddHitEffect", &FLuaComponentProxy::AddHitEffect,
+			//ToDelete
+		//"StartCameraShake", &FLuaComponentProxy::StartCameraShake,
+		//"AddHitEffect", &FLuaComponentProxy::AddHitEffect,
 		"SetBoxExtent", sol::overload(
 			&FLuaComponentProxy::SetBoxExtent,
 			&FLuaComponentProxy::SetBoxExtentXYZ),

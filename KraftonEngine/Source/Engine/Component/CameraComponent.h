@@ -55,20 +55,21 @@ public:
 	FRay DeprojectScreenToWorld(float MouseX, float MouseY, float ScreenWidth, float ScreenHeight);
 
 public://expose in lua 
-	void StartCameraShake(float Intensity, float duration);
-	void AddHitEffect(float Intensity, float Duration);
-
-	float GetHitEffectIntensity() const { return HitEffectIntensity; }
+	//ToDelete
+	//void StartCameraShake(float Intensity, float duration);
+	//void AddHitEffect(float Intensity, float Duration);
+	
+	//float GetHitEffectIntensity() const { return HitEffectIntensity; }
 
 private:
 	FCameraState CameraState;
 
-
-	TArray<UCameraShakeBase*> ActiveShakes;
+	//ToDelete
+	//TArray<UCameraShakeBase*> ActiveShakes;
 	FVector AdditiveLocationOffset = FVector::ZeroVector;
 	FRotator AdditiveRotationOffset = FRotator::ZeroRotator;
-
+	
 	// Hit Effect
-	float HitEffectIntensity = 0.0f;
-	float HitEffectDuration = 1.0f;
+	//float HitEffectIntensity = 0.0f;
+	//float HitEffectDuration = 1.0f;
 };

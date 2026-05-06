@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
@@ -111,9 +111,9 @@ struct FLuaComponentProxy
 	bool MoveByXYZ(float X, float Y, float Z);
 	bool StopMove();
 	bool IsMoveDone() const;
-
-	bool StartCameraShake(float Intensity, float Duration);
-	bool AddHitEffect(float Intensity, float Duration);
+	//ToDelete
+	/*bool StartCameraShake(float Intensity, float Duration);
+	bool AddHitEffect(float Intensity, float Duration);*/
 
 	bool SetBoxExtent(const FVector& Extent);
 	bool SetBoxExtentXYZ(float X, float Y, float Z);

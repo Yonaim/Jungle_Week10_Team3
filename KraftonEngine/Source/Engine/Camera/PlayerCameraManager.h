@@ -5,7 +5,7 @@
 
 class APawnActor;
 class APlayerController;
-
+class UCameraComponent;
 struct FViewTarget {
 public:
 	void SetNewTarget(AActor* InTarget);
@@ -15,19 +15,23 @@ public:
 
 public:
 	AActor*			  Target = nullptr;
-
+	FMinimalViewInfo POV;
 	// 원래는 FMinimalViewInfo 라는 이름의 struct를 사용해야 함
-	// TODO: FCameraState 에다 월드 위치 정보 추가
-	UCameraComponent* POV	 = nullptr;
 };
 
+struct FCameraCacheEntry
+{
+	float TimeStamp=0.0f;
+	FMinimalViewInfo POV;
+};
 
 class APlayerCameraManager : public AActor
 {
 public:
 	DECLARE_CLASS(APlayerCameraManager, AActor)
-	void ApplyCameraModifiers(float DeltaTime, UCameraComponent* InOutPOV);
-
+	void ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV);
+	void UpdateCamera(float deltaTime);
+	// Find CameraComponent to actor
 public:
 	FViewTarget		ViewTarget;
 	FName			CameraStyle;
@@ -36,7 +40,11 @@ public:
 	FVector2		FadeAlpha;
 	float			FadeTime;
 	float			FadeTimeRemaining;
-
+	FCameraCacheEntry CameraCache;
+	FCameraCacheEntry LastFrameCameraCache;
+private:
+	UCameraComponent* FindCameraComponent(AActor* Target);
+	FMinimalViewInfo BuildFallbackCameraView(AActor* Target) const;
 private:
 	APlayerController* Owner = nullptr;
 	TArray<UCameraModifier*> ModifierList;
