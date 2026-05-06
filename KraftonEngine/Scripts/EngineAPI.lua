@@ -542,9 +542,9 @@ function GetDragDeltaY(buttonName) end
 ---@return number
 function GetDragDistance(buttonName) end
 
----@param functionName string
+---@param entry string|function
 ---@return boolean
-function StartCoroutine(functionName) end
+function StartCoroutine(entry) end
 
 ---@param seconds number
 function wait(seconds) end

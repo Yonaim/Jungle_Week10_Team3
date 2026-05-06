@@ -1,35 +1,31 @@
-local crash_ui = nil
-local ok_btn = nil
-local is_crashed = false
 local GameManager = require("Game.GameManager")
 local AudioManager = require("Game.AudioManager")
+local Engine = require("Common.Engine")
+local UI = require("Common.UI")
 
--- 컴포넌트를 여러 이름으로 시도해서 찾는 헬퍼 함수
-local function get_component(...)
-    local names = { ... }
-    for index = 1, #names do
-        local name = names[index]
-        local component = obj:GetComponent(name)
-        if component and component:IsValid() then
-            return component
-        end
-    end
-    return nil
-end
+local crash_ui = nil		-- Crash Image UI
+local ok_btn = nil			-- 확인 버튼
+local is_crashed = false	-- Crash 여부 뜻하는 Bool 변수
 
+------------------------------------------------
+-- 생명주기
+------------------------------------------------
+
+-- FakeCrash 연출에 필요한 UI 컴포넌트를 찾고,
+-- CrashDump 분석 이벤트에 연출 트리거 hook을 1회 연결합니다
 function BeginPlay()
 	print("[FakeCrashEvent] BeginPlay 진입 owner=" .. tostring(obj and obj.Name))
 
-	-- 디버그: obj가 들고 있는 OwnedComponents 이름을 전부 찍는다.
+	-- 디버그: obj가 들고 있는 OwnedComponents 이름을 전부 찍는다
 	-- 이 액터에 실제로 어떤 컴포넌트가 등록돼 있는지 직접 확인해서
-	-- crash_ui/ok_btn 매칭 실패 원인을 좁힌다.
+	-- crash_ui/ok_btn 매칭 실패 원인을 좁힌다
 	if obj and obj.GetComponentByType then
-		local img = obj:GetComponentByType("UUIImageComponent")
+		local img = Engine.GetComponentByType(obj, "UUIImageComponent")
 		print("[FakeCrashEvent] GetComponentByType(UUIImageComponent) valid=" ..
-			tostring(img and img.IsValid and img:IsValid()))
-		local btn = obj:GetComponentByType("UIButtonComponent")
+			tostring(Engine.IsValidComponent(img)))
+		local btn = Engine.GetComponentByType(obj, "UIButtonComponent")
 		print("[FakeCrashEvent] GetComponentByType(UIButtonComponent) valid=" ..
-			tostring(btn and btn.IsValid and btn:IsValid()))
+			tostring(Engine.IsValidComponent(btn)))
 	end
 
 	-- PIE 진입 시 Editor->Game World 복제 과정에서 컴포넌트 ObjectName이 새로 생성되므로
@@ -37,36 +33,36 @@ function BeginPlay()
 	-- 같은 액터 안에 UUIImageComponent / UIButtonComponent가 1개만 있다는 전제이며,
 	-- 여러 개가 필요해지면 별도 ScriptComponent를 두거나 상위 컴포넌트로 좁히는 식으로 분리한다.
 	if obj and obj.GetComponentByType then
-		local img = obj:GetComponentByType("UUIImageComponent")
-		if img and img.IsValid and img:IsValid() then
+		local img = Engine.GetComponentByType(obj, "UUIImageComponent")
+		if img then
 			crash_ui = img
 		end
 
-		local btn = obj:GetComponentByType("UIButtonComponent")
-		if btn and btn.IsValid and btn:IsValid() then
+		local btn = Engine.GetComponentByType(obj, "UIButtonComponent")
+		if btn then
 			ok_btn = btn
 		end
 	end
 
 	-- 이름 매칭은 PIE에서 깨지지만, 에디터/Standalone에서 디버그 도움이 되므로 fallback으로 둔다.
 	if not crash_ui then
-		crash_ui = get_component("CrashAlertBox", "UUIImageComponent_36", "UUIImageComponent_0")
+		crash_ui = Engine.GetComponent(obj, "CrashAlertBox", "UUIImageComponent_36", "UUIImageComponent_0")
 	end
 	if not ok_btn then
-		ok_btn = get_component("CrashOKButton", "UIButtonComponent_10", "UIButtonComponent_0")
+		ok_btn = Engine.GetComponent(obj, "CrashOKButton", "UIButtonComponent_10", "UIButtonComponent_0")
 	end
 
 	if crash_ui then
-		crash_ui:SetTexture("Asset/Content/Texture/CrashImage.png")
-		crash_ui:SetVisible(false)
+		UI.SetTexture(crash_ui, "Asset/Content/Texture/CrashImage.png")
+		UI.SetVisible(crash_ui, false)
 		print("[FakeCrashEvent] crash_ui 확보 완료, 초기 visible=false")
 	else
 		warn("Crash 배경 이미지 컴포넌트를 찾을 수 없습니다.")
 	end
 
 	if ok_btn then
-		ok_btn:SetTexture("Asset/Content/Texture/OK.png")
-		ok_btn:SetVisible(false)
+		UI.SetTexture(ok_btn, "Asset/Content/Texture/OK.png")
+		UI.SetVisible(ok_btn, false)
 		print("[FakeCrashEvent] ok_btn 확보 완료, 초기 visible=false")
 	else
 		warn("Crash OK 버튼 컴포넌트를 찾을 수 없습니다.")
@@ -90,6 +86,10 @@ function BeginPlay()
 	print("[FakeCrashEvent] OnCrashDumpAnalyzed override installed")
 end
 
+------------------------------------------------
+-- Fake Crash 연출 함수들
+------------------------------------------------
+
 function TriggerFakeCrash()
 	print("[FakeCrashEvent] TriggerFakeCrash 호출 is_crashed=" .. tostring(is_crashed) ..
 		" crash_ui=" .. tostring(crash_ui ~= nil))
@@ -109,6 +109,8 @@ function OnCrashOKClicked()
 	end
 end
 
+-- 게임을 잠시 멈추고 가짜 오류창 UI/사운드를 보여준 뒤,
+-- 플레이어 입력을 받으면 UI를 닫고 게임과 BGM을 원래 흐름으로 복구합니다.
 function RunFakeCrashSequence()
 	print("[FakeCrashEvent] RunFakeCrashSequence 시작")
 	GameManager.Pause()
@@ -153,7 +155,4 @@ function RunFakeCrashSequence()
 	GameManager.Resume()
 	-- BGM 재시작은 Resume 직후에 한다. StopBGM에서 플래그를 리셋했으므로 정상 재생된다.
 	AudioManager.PlayBGM()
-end
-
-function Tick(dt)
 end

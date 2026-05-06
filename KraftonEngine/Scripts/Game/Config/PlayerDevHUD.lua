@@ -7,7 +7,7 @@ local PlayerDevHUDConfig = {
     -- dialogue_sound_path: 대사가 출력될 때 재생할 기본 타자음입니다.
     dialogue_sound_path = "Asset/Content/Sound/SFX/dialogue.mp3",
 
-    -- event_sound_by_token: dialogue JSON의 sound token을 실제 SFX 경로로 바꿉니다.
+    -- event_sound_by_token: dialogue JSON의 sound token을 실제 SFX 경로로 변경
     event_sound_by_token = {
         agents_are_go = "Asset/Content/Sound/SFX/agents-are-go.mp3",
         pickup_log = "Asset/Content/Sound/SFX/story_next.mp3",

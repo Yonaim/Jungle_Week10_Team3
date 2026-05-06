@@ -1,16 +1,20 @@
-local Config = require("Game.Config")
+local DebugConfig = require("Game.Config.Debug")
+local PlayerStatusConfig = require("Game.Config.PlayerStatus")
+local ObstacleConfig = require("Game.Config.Obstacle")
 local GameManager = require("Game.GameManager")
 local AudioManager = require("Game.AudioManager")
+local Log = require("Common.Log")
+local Math = require("Common.Math")
 
 -- PlayerStatus는 플레이어 생존 상태를 관리합니다.
 -- 외부 Lua 코드는 Stability API를 사용하고, 내부 hp/max_hp 값은 실제 저장 슬롯으로만 다룹니다.
 local PlayerStatus = {
     -- max_hp는 내부 저장 이름이고, 공개 API에서는 포드 안정도 최대치(max_stability)로 다룹니다.
-    max_hp = Config.player.max_hp,
+    max_hp = PlayerStatusConfig.max_hp,
     -- hp는 내부 저장 이름이고, 공개 API에서는 포드 안정도 현재값(stability)로 다룹니다.
-    hp = Config.player.max_hp,
+    hp = PlayerStatusConfig.max_hp,
     -- invincible_time은 피격/방어막 발동 직후 중복 충돌을 막는 시간입니다.
-    invincible_time = Config.player.invincible_time,
+    invincible_time = PlayerStatusConfig.invincible_time,
     -- invincible_timer는 현재 남은 무적 시간입니다.
     invincible_timer = 0.0,
     -- is_dead는 안정도가 0이 되었거나 낙사 등으로 사망했는지 나타냅니다.
@@ -19,21 +23,11 @@ local PlayerStatus = {
     invincible_end_logged = true,
 }
 
--- log는 PlayerStatus 디버그 메시지 출력용 함수입니다.
-local function log(message)
-    if Config.debug.enable_log then
-        print(message)
-    end
-end
+local log = Log.MakeLogger(DebugConfig)
 
--- safe_amount는 nil/음수 피해량이나 회복량이 들어와도 게임 수치가 깨지지 않게 보정합니다.
-local function safe_amount(amount, fallback)
-    local value = amount or fallback
-    if value < 0 then
-        return 0
-    end
-    return value
-end
+------------------------------------------------
+-- 내부 동기화 함수들
+------------------------------------------------
 
 -- sync_stability_to_manager는 실제 안정도 값을 GameManager HUD 스냅샷에 맞춰 둡니다.
 -- HUD 작업자는 PlayerStatus를 직접 몰라도 GameManager getter만 읽으면 안정도 표시가 가능합니다.
@@ -47,12 +41,16 @@ local function start_invincible_window()
     PlayerStatus.invincible_end_logged = false
 end
 
+------------------------------------------------
+-- 생명주기 함수들
+------------------------------------------------
+
 function PlayerStatus.ResetForStart()
     -- ResetForStart는 새 게임 시작 시 안정도/무적/사망 상태를 초기화합니다.
     -- 초기화 직후 GameManager에도 같은 안정도 값을 동기화합니다.
-    PlayerStatus.max_hp = Config.player.max_hp
+    PlayerStatus.max_hp = PlayerStatusConfig.max_hp
     PlayerStatus.hp = PlayerStatus.max_hp
-    PlayerStatus.invincible_time = Config.player.invincible_time
+    PlayerStatus.invincible_time = PlayerStatusConfig.invincible_time
     PlayerStatus.invincible_timer = 0.0
     PlayerStatus.is_dead = false
     PlayerStatus.invincible_end_logged = true
@@ -82,10 +80,14 @@ function PlayerStatus.Tick(dt)
     end
 end
 
+------------------------------------------------
+-- 안정도 변경 함수들
+------------------------------------------------
+
 function PlayerStatus.DamageStability(amount)
     -- 포드 안정도 피해를 적용하는 단일 진입점입니다.
     -- 장애물 충돌 피해는 PlayerController에서 이 함수로 바로 연결합니다.
-    local damage = safe_amount(amount, Config.obstacle.default_damage)
+    local damage = Math.SafeNonNegative(amount, ObstacleConfig.default_damage)
 
     if PlayerStatus.is_dead then
         log("[PlayerStatus] DamageStability ignored: already dead damage=" .. tostring(damage))
@@ -145,7 +147,7 @@ function PlayerStatus.RecoverStability(amount)
         return false
     end
 
-    local recover_amount = safe_amount(amount, 0)
+    local recover_amount = Math.SafeNonNegative(amount, 0)
     local old_hp = PlayerStatus.hp
     PlayerStatus.hp = math.min(PlayerStatus.max_hp, PlayerStatus.hp + recover_amount)
     sync_stability_to_manager()
@@ -174,6 +176,10 @@ function PlayerStatus.Kill(reason)
     GameManager.GameOver(reason or "Kill")
     return true
 end
+
+------------------------------------------------
+-- 상태 조회 함수들
+------------------------------------------------
 
 function PlayerStatus.IsDead()
     -- 플레이어가 이미 죽었는지 확인하는 함수입니다.

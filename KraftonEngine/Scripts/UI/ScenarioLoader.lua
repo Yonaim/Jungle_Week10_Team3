@@ -5,19 +5,13 @@ local CHARACTER_TEXTURES = {
     profile_lim = "Asset/Content/Texture/Story/profile_lim.png",
 
     portrait_baek_normal = "Asset/Content/Texture/UI/portrait_baek_normal_0.png",
-    portrait_baek_calm = "Asset/Content/Texture/UI/portrait_baek_normal_0.png",
-    portrait_baek_serious = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
-    portrait_baek_annoyed = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
-    portrait_baek_angry = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
-    portrait_baek_panic = "Asset/Content/Texture/UI/portrait_baek_normal_1.png",
 
     portrait_lim_normal = "Asset/Content/Texture/UI/portrait_lim_normal_0.png",
-    portrait_lim_joke = "Asset/Content/Texture/UI/portrait_lim_normal_0.png",
-    portrait_lim_serious = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
-    portrait_lim_excited = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
-    portrait_lim_surprised = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
-    portrait_lim_angry = "Asset/Content/Texture/UI/portrait_lim_normal_1.png",
 }
+
+------------------------------------------------
+-- 문자열 / 라인 처리 함수들
+------------------------------------------------
 
 local function starts_with(value, prefix)
     return type(value) == "string" and value:sub(1, #prefix) == prefix
@@ -36,6 +30,8 @@ local function copy_lines(lines)
     return result
 end
 
+-- JSON 시나리오의 긴 대사를 UI 줄 수와 byte 제한에 맞춰 나눕니다.
+-- 이미 줄바꿈이 들어온 텍스트는 작성자가 지정한 줄 구성을 우선 보존합니다.
 local function wrap_text(text, max_lines, max_bytes)
     if type(text) ~= "string" or text == "" then
         return {}
@@ -79,6 +75,10 @@ local function wrap_text(text, max_lines, max_bytes)
 
     return result
 end
+
+------------------------------------------------
+-- 시나리오 로드 / Asset 조회 함수들
+------------------------------------------------
 
 function ScenarioLoader.load(path, json_loader)
     local loader = json_loader
@@ -161,6 +161,10 @@ function ScenarioLoader.resolve_dialogue_texture(data, speaker_id, emotion)
 
     return ScenarioLoader.resolve_texture(image_id)
 end
+
+------------------------------------------------
+-- 대화 줄 변환 함수들
+------------------------------------------------
 
 function ScenarioLoader.dialogue_lines(step, max_lines)
     local message = type(step) == "table" and step.message or nil

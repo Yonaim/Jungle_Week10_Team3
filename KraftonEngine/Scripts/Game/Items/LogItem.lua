@@ -1,32 +1,19 @@
 local ItemBase = require("Game.Items.ItemBase")
+local ItemsConfig = require("Game.Config.Items")
 
-local Config = require("Game.Config")
+local LogFragmentConfig = ItemsConfig.log_fragment
 
--- Log Fragment입니다. 여기서 logs/score/trace/coach approval을 올리면 됨.
-DeclareProperties({
-    -- RequiredInteractorTag는 어떤 actor가 이 Log Fragment를 먹을 수 있는지 정합니다.
-    { name = "RequiredInteractorTag", type = "string", default = "Player" },
-})
-
--- item은 ItemBase 공통 pickup 객체입니다.
--- LogFragmentReward feature가 켜져 있어서 overlap 시 GameManager.CollectLogFragment()가 호출됩니다.
 local item = ItemBase.New({
-    -- Log Fragment 점수는 Config.collectible.log_fragment_score에서만 관리합니다.
-    ScoreValue = Config.collectible.log_fragment_score,
-    RequiredInteractorTag = property("RequiredInteractorTag", "Player"),
-    Features = {
-        PickupOnOverlap = true,
-        ConsumeOnPickup = false,
-        ScoreReward = false,
-        LogFragmentReward = true,
-        SingleUse = true,
-        DebugLog = true,
-    },
+    ScoreValue = LogFragmentConfig.score_value,
+    RequiredInteractorTag = ItemsConfig.required_interactor_tag,
+    Features = LogFragmentConfig.features,
 })
+
+------------------------------------------------
+-- Log Fragment 충돌 콜백 함수들
+------------------------------------------------
 
 function OnBeginOverlap(otherActor, otherComp, selfComp)
-    -- ScriptComponent가 C++ overlap event를 이 전역 함수로 전달합니다.
-    -- 실제 판정과 Log Fragment 보상은 ItemBase가 처리합니다.
     item:OnBeginOverlap(otherActor, otherComp, selfComp)
 end
 

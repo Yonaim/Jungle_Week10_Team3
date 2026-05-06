@@ -1,9 +1,13 @@
-local Config = require("Game.Config")
+local ScoreboardConfig = require("Game.Config.Scoreboard")
 
 local Scoreboard = {}
 
-local SCOREBOARD_PATH = (Config.result_screen and Config.result_screen.scoreboard_path) or "Saves/scoreboard.json"
-local SCOREBOARD_LIMIT = (Config.result_screen and Config.result_screen.scoreboard_limit) or 20
+local SCOREBOARD_PATH = ScoreboardConfig.path or "Saves/scoreboard.json"
+local SCOREBOARD_LIMIT = ScoreboardConfig.limit or 20
+
+------------------------------------------------
+-- Scoreboard 내부 헬퍼 함수들
+------------------------------------------------
 
 local function sanitize_nickname(nickname)
     local source = tostring(nickname or "")
@@ -54,6 +58,10 @@ local function trim_entries(entries)
         table.remove(entries)
     end
 end
+
+------------------------------------------------
+-- Scoreboard 저장 / 조회 함수들
+------------------------------------------------
 
 function Scoreboard.SaveResult(nickname, result_data)
     local safe_nickname = sanitize_nickname(nickname)
