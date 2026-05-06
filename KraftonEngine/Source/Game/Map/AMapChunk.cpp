@@ -336,7 +336,7 @@ void AMapChunk::SpawnObstacle()
 		case (Pendulum):
 		{
 			FVector SpawnLoc = WorldPositionForLane(1);
-			SpawnLoc.Z = SpawnLoc.Z + 0.35f;
+			SpawnLoc.Z = SpawnLoc.Z + 1.f;
 			if (AObstacleActorBase* Obs = SpawnObstacleAt(GetWorld(), EObstacleType::Pendulum, SpawnLoc)) {
 				SpawnedObstacles.push_back(Obs);
 			}
