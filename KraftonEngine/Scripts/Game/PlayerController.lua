@@ -19,20 +19,15 @@ local UI = require("Common.UI")
 local Vector = require("Common.Vector")
 local HitEffects = require_env("Game.HitEffect")
 
-if HitEffects and HitEffects.SetRuntime then
-    HitEffects.SetRuntime({
-        set_global_time_dilation = set_global_time_dilation,
-        wait_real = wait_real,
-        raw_delta_time = raw_delta_time,
-    })
-end
-
 local is_input_locked = false;
 
 -- =========================================================
 -- 런타임 상태
 -- =========================================================
 
+-- PlayerController 설정은 초기 튜닝값이다.
+-- require()로 캐시되는 공유 table이므로 런타임 상태를 저장하지 않는다.
+-- 런타임 중 바뀌는 값은 PlayerController.lua의 local state에 둔다.
 local forward_speed = PlayerConfig.forward_speed                            -- Runner가 매 프레임 자동으로 앞으로 가는 속도
 local lane_width = PlayerConfig.lane_width                                  -- 레인 사이 간격
 local lane_change_speed = PlayerConfig.lane_change_speed                    -- 목표 레인으로 부드럽게 이동하는 속도
@@ -546,6 +541,9 @@ local function handle_obstacle_collision(event_name, other_actor)
             damage = obstacle_damage
             log("Start Coroutine")
             start_hit_stop_then_slomo(1.0, 0.1, 1.0)
+            if HitEffects and HitEffects.PlayHitSquash then
+                StartCoroutine(function() HitEffects.PlayHitSquash(obj, 0.8, 0.8, 0.8, 0.1, 1.0) end)
+            end
         end
     end
     log("[PlayerController] Obstacle collision damage=" .. tostring(damage))

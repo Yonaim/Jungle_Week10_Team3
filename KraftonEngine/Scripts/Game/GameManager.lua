@@ -1,13 +1,20 @@
 local DebugConfig = require("Game.Config.Debug")
 local AudioConfig = require("Game.Config.Audio")
 local PlayerStatusConfig = require("Game.Config.PlayerStatus")
-local ScoreConfig = require("Game.Config.Score")
 local CoachConfig = require("Game.Config.Coach")
 local CollectibleConfig = require("Game.Config.Collectible")
 local ResultScreenConfig = require("Game.Config.ResultScreen")
 local AudioManager = require("Game.AudioManager")
 local Log = require("Common.Log")
 local Math = require("Common.Math")
+
+local ScoreSettings = {
+    -- distance_weight: 주행 거리 1m당 점수 가중치입니다.
+    distance_weight = 10.0,
+
+    -- survival_time_weight: 생존 시간 1초당 점수 가중치입니다.
+    survival_time_weight = 5.0,
+}
 
 local GameManager = {
     State = {
@@ -176,8 +183,8 @@ function GameManager.Tick(dt, moved_distance)
     GameManager.distance = GameManager.distance + safe_moved_distance
     GameManager.elapsed_time = GameManager.elapsed_time + safe_dt
     GameManager.score = math.floor(
-        GameManager.distance * ScoreConfig.distance_weight
-        + GameManager.elapsed_time * ScoreConfig.survival_time_weight
+        GameManager.distance * ScoreSettings.distance_weight
+        + GameManager.elapsed_time * ScoreSettings.survival_time_weight
     ) + GameManager.bonus_score
 
     GameManager.score_log_timer = GameManager.score_log_timer + safe_dt

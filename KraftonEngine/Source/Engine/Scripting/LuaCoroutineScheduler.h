@@ -30,8 +30,8 @@
 #endif
 #pragma endregion
 
-#include <string>
 #include <memory>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -41,6 +41,8 @@ class FLuaScriptInstance;
 class FLuaCoroutineScheduler
 {
 public:
+	// Lua coroutine은 OS thread가 아니라 한 Lua VM 안에서 협력적으로 yield/resume되는 실행 흐름이다.
+	// StartCoroutine은 등록만 수행하고, 실제 resume은 Tick에서만 처리해서 이벤트 호출 중 nested yield를 막는다.
 	enum class EWaitKind
 	{
 		None,
@@ -66,6 +68,8 @@ public:
 		FString DebugName;
 		uint64 Id = 0;
 
+		// sol::thread는 Lua VM 안의 별도 runnable state/stack이다.
+		// EntryFunction과 sol::coroutine을 함께 보관해 coroutine lifetime 동안 Lua reference가 살아 있게 한다.
 		sol::thread Thread;
 		sol::protected_function EntryFunction;
 		sol::coroutine Coroutine;
@@ -83,8 +87,11 @@ public:
 
 	void BindToEnvironment();
 
+	// StartCoroutine은 coroutine을 즉시 resume하지 않고 실행 대기열에만 등록한다.
 	bool StartCoroutine(const FString& DebugName, sol::protected_function Function);
 
+	// 여러 coroutine을 동시에 실행하는 것은 정상이며, Tick이 각 wait 조건을 확인해 순차적으로 resume한다.
+	// GlobalTimeDilation 같은 전역 리소스는 token 또는 단일 관리자 함수로 충돌을 막아야 한다.
 	void Tick(float DeltaTime, float RawDeltaTime);
 
 	void StopAll();
@@ -99,6 +106,7 @@ private:
 	bool ApplyYieldResult(FRunningCoroutine& Entry, sol::protected_function_result& Result);
 	bool HandleCoroutineError(FRunningCoroutine& Entry, sol::protected_function_result&& Result);
 
+	// wait command table은 현재 실행 중인 Lua thread 기준으로 만들어야 한다.
 	sol::table MakeWaitCommand(sol::this_state ThisState, const FString& Type);
 
 private:

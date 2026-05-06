@@ -552,6 +552,14 @@ function wait(seconds) end
 ---@param seconds number
 function Wait(seconds) end
 
+-- wait_real/wait_signal/signal은 LuaCoroutineScheduler가 ScriptInstance 환경에 바인딩합니다.
+-- yield API는 StartCoroutine 안에서만 호출해야 합니다.
+---@param seconds number
+function wait_real(seconds) end
+
+---@param seconds number
+function WaitReal(seconds) end
+
 ---@param frames integer
 function wait_frames(frames) end
 
@@ -560,8 +568,11 @@ function wait_until_move_done() end
 ---@param keyName string
 function wait_key_down(keyName) end
 
--- TODO: wait_signal/signal은 현재 런타임 바인딩에서 꺼져 있습니다.
--- 필요해지면 C++ 바인딩을 켠 뒤 이 문서에 함수 stub을 다시 추가하세요.
+---@param name string
+function wait_signal(name) end
+
+---@param name string
+function signal(name) end
 
 ---@param className string
 ---@param location Vector

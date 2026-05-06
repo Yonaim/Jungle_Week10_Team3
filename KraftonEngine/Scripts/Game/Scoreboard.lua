@@ -1,9 +1,15 @@
-local ScoreboardConfig = require("Game.Config.Scoreboard")
-
 local Scoreboard = {}
 
-local SCOREBOARD_PATH = ScoreboardConfig.path or "Saves/scoreboard.json"
-local SCOREBOARD_LIMIT = ScoreboardConfig.limit or 20
+local ScoreboardSettings = {
+    -- path: 스코어보드 저장 파일 경로입니다.
+    path = "Saves/scoreboard.json",
+
+    -- limit: 스코어보드에 유지할 최대 항목 수입니다.
+    limit = 20,
+}
+
+local SCOREBOARD_PATH = ScoreboardSettings.path
+local SCOREBOARD_LIMIT = ScoreboardSettings.limit
 
 ------------------------------------------------
 -- Scoreboard 내부 헬퍼 함수들

@@ -6,28 +6,23 @@ local HitEffects = {}
 
 local active_time_token = 0
 local active_squash_token = 0
-local active_knockback_token = 0
-local Runtime = {}
 
 -- GlobalTimeDilation을 조절하는 함수.
 local function set_time_dilation(scale)
-    local set_global_time = Runtime.set_global_time_dilation or set_global_time_dilation
-    if set_global_time then
-        set_global_time(scale)
+    if set_global_time_dilation then
+        set_global_time_dilation(scale)
     end
 end
 
 local function wait_real_seconds(seconds)
-    local wait_real_func = Runtime.wait_real or wait_real
-    if wait_real_func then
-        wait_real_func(seconds)
+    if wait_real then
+        wait_real(Math.SafeNumber(seconds, 0.0))
     end
 end
 
 local function get_raw_delta_time()
-    local raw_delta_time_func = Runtime.raw_delta_time or raw_delta_time
-    if raw_delta_time_func then
-        local dt = raw_delta_time_func()
+    if raw_delta_time then
+        local dt = raw_delta_time()
         if type(dt) == "number" and dt > 0.0 then
             return dt
         end
@@ -52,10 +47,6 @@ end
 ------------------------------------------------
 -- 시간 제어 함수들 (Hit Stop, Slomo)
 ------------------------------------------------
-
-function HitEffects.SetRuntime(runtime)
-    Runtime = type(runtime) == "table" and runtime or {}
-end
 
 function HitEffects.StopTimeEffects()
     active_time_token = active_time_token + 1

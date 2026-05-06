@@ -286,6 +286,9 @@ void FLuaCoroutineScheduler::BindToEnvironment()
 	});
 }
 
+// StartCoroutine은 coroutine을 즉시 resume하지 않는다.
+// Lua 이벤트 실행 중 nested resume/yield가 발생하면 stack/lifetime 관리가 복잡해지므로
+// 여기서는 FRunningCoroutine을 생성해 큐에 등록만 하고 실제 실행은 Tick()에서만 한다.
 bool FLuaCoroutineScheduler::StartCoroutine(const FString& DebugName, sol::protected_function Function)
 {
 	if (!Owner || !Lua || !Env)
@@ -365,6 +368,8 @@ bool FLuaCoroutineScheduler::StartCoroutine(const FString& DebugName, sol::prote
 	return true;
 }
 
+// Scheduler Tick은 coroutine resume이 발생하는 유일한 지점이다.
+// wait 조건이 끝난 coroutine만 resume하고, yield 결과를 다시 WaitCondition으로 변환한다.
 void FLuaCoroutineScheduler::Tick(float DeltaTime, float RawDeltaTime)
 {
 	ActiveSignals.swap(PendingSignals);
@@ -692,6 +697,8 @@ bool FLuaCoroutineScheduler::HandleCoroutineError(
 	return false;
 }
 
+// wait/wait_real/wait_frames가 yield할 command table은 현재 실행 중인 Lua thread 기준으로 만든다.
+// 메인 Lua state에서 table을 만들면 coroutine thread stack과 섞일 수 있으므로 sol::this_state를 사용한다.
 sol::table FLuaCoroutineScheduler::MakeWaitCommand(sol::this_state ThisState, const FString& Type)
 {
 	sol::state_view State(ThisState);
