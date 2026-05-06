@@ -17,7 +17,6 @@
 #include "Component/CameraComponent.h"
 #include "Component/DecalComponent.h"
 #include "Component/HeightFogComponent.h"
-#include "Component/ScriptComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "GameFramework/StaticMeshActor.h"
 #include "Materials/MaterialManager.h"
@@ -127,153 +126,6 @@ static void ApplySingleMaterialOverride(UStaticMeshComponent* StaticMeshComponen
 	}
 }
 
-static const char* ScriptPropertyTypeToString(EScriptPropertyType Type)
-{
-	switch (Type)
-	{
-	case EScriptPropertyType::Bool:
-		return "Bool";
-	case EScriptPropertyType::Int:
-		return "Int";
-	case EScriptPropertyType::Float:
-		return "Float";
-	case EScriptPropertyType::String:
-		return "String";
-	case EScriptPropertyType::Vector:
-		return "Vector";
-	default:
-		return "Float";
-	}
-}
-
-static EScriptPropertyType ScriptPropertyTypeFromString(const FString& TypeName)
-{
-	if (TypeName == "Bool")
-	{
-		return EScriptPropertyType::Bool;
-	}
-	if (TypeName == "Int")
-	{
-		return EScriptPropertyType::Int;
-	}
-	if (TypeName == "String")
-	{
-		return EScriptPropertyType::String;
-	}
-	if (TypeName == "Vector")
-	{
-		return EScriptPropertyType::Vector;
-	}
-	return EScriptPropertyType::Float;
-}
-
-static json::JSON SerializeScriptPropertyValue(const FScriptPropertyValue& Value)
-{
-	using namespace json;
-
-	JSON Node = json::Object();
-	Node["Type"] = ScriptPropertyTypeToString(Value.Type);
-
-	switch (Value.Type)
-	{
-	case EScriptPropertyType::Bool:
-		Node["Value"] = Value.BoolValue;
-		break;
-	case EScriptPropertyType::Int:
-		Node["Value"] = Value.IntValue;
-		break;
-	case EScriptPropertyType::Float:
-		Node["Value"] = static_cast<double>(Value.FloatValue);
-		break;
-	case EScriptPropertyType::String:
-		Node["Value"] = Value.StringValue;
-		break;
-	case EScriptPropertyType::Vector:
-	{
-		JSON Arr = json::Array();
-		Arr.append(static_cast<double>(Value.VectorValue.X));
-		Arr.append(static_cast<double>(Value.VectorValue.Y));
-		Arr.append(static_cast<double>(Value.VectorValue.Z));
-		Node["Value"] = Arr;
-		break;
-	}
-	default:
-		Node["Value"] = static_cast<double>(Value.FloatValue);
-		break;
-	}
-
-	return Node;
-}
-
-static FScriptPropertyValue DeserializeScriptPropertyValue(json::JSON& Node)
-{
-	FScriptPropertyValue Value;
-	const FString TypeName = Node.hasKey("Type") ? Node["Type"].ToString() : FString("Float");
-	Value.Type = ScriptPropertyTypeFromString(TypeName);
-
-	if (!Node.hasKey("Value"))
-	{
-		return Value;
-	}
-
-	json::JSON& RawValue = Node["Value"];
-	switch (Value.Type)
-	{
-	case EScriptPropertyType::Bool:
-		Value.BoolValue = RawValue.ToBool();
-		break;
-	case EScriptPropertyType::Int:
-		Value.IntValue = RawValue.ToInt();
-		break;
-	case EScriptPropertyType::Float:
-		Value.FloatValue = static_cast<float>(RawValue.ToFloat());
-		break;
-	case EScriptPropertyType::String:
-		Value.StringValue = RawValue.ToString();
-		break;
-	case EScriptPropertyType::Vector:
-	{
-		int Index = 0;
-		for (auto& Elem : RawValue.ArrayRange())
-		{
-			if (Index == 0) Value.VectorValue.X = static_cast<float>(Elem.ToFloat());
-			else if (Index == 1) Value.VectorValue.Y = static_cast<float>(Elem.ToFloat());
-			else if (Index == 2) Value.VectorValue.Z = static_cast<float>(Elem.ToFloat());
-			++Index;
-		}
-		break;
-	}
-	default:
-		break;
-	}
-
-	return Value;
-}
-
-static json::JSON SerializeScriptPropertyOverrides(const TMap<FString, FScriptPropertyValue>& Overrides)
-{
-	using namespace json;
-
-	JSON Node = json::Object();
-	for (const auto& Pair : Overrides)
-	{
-		Node[Pair.first] = SerializeScriptPropertyValue(Pair.second);
-	}
-
-	return Node;
-}
-
-static TMap<FString, FScriptPropertyValue> DeserializeScriptPropertyOverrides(json::JSON& Node)
-{
-	TMap<FString, FScriptPropertyValue> Overrides;
-	for (auto& Pair : Node.ObjectRange())
-	{
-		Overrides[Pair.first] = DeserializeScriptPropertyValue(Pair.second);
-	}
-
-	return Overrides;
-}
-
 static void ClearActorComponentsForDeserialization(AActor* Actor)
 {
 	if (!Actor)
@@ -312,7 +164,6 @@ namespace SceneKeys
 	static constexpr const char* RootComponent = "RootComponent";
 	static constexpr const char* NonSceneComponents = "NonSceneComponents";
 	static constexpr const char* Properties = "Properties";
-	static constexpr const char* ScriptPropertyOverrides = "__ScriptPropertyOverrides";
 	static constexpr const char* Children = "Children";
 	static constexpr const char* HiddenInComponentTree = "bHiddenInComponentTree";
 	static constexpr const char* GameModeClass = "GameModeClass";
@@ -642,14 +493,6 @@ json::JSON FSceneSaveManager::SerializeProperties(UActorComponent* Comp)
 		props[Prop.Name] = SerializePropertyValue(Prop);
 	}
 
-	if (UScriptComponent* ScriptComponent = Cast<UScriptComponent>(Comp))
-	{
-		const TMap<FString, FScriptPropertyValue>& Overrides = ScriptComponent->GetSerializedScriptPropertyOverrides();
-		if (!Overrides.empty())
-		{
-			props[SceneKeys::ScriptPropertyOverrides] = SerializeScriptPropertyOverrides(Overrides);
-		}
-	}
 	return props;
 }
 
@@ -1419,14 +1262,6 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON&
 		}
 	}
 
-	if (UScriptComponent* ScriptComponent = Cast<UScriptComponent>(Comp))
-	{
-		if (PropsJSON.hasKey(SceneKeys::ScriptPropertyOverrides))
-		{
-			json::JSON& OverridesJSON = PropsJSON[SceneKeys::ScriptPropertyOverrides];
-			ScriptComponent->SetSerializedScriptPropertyOverrides(DeserializeScriptPropertyOverrides(OverridesJSON));
-		}
-	}
 }
 
 void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json::JSON& Value)

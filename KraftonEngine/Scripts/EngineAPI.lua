@@ -1,7 +1,8 @@
 ---@meta KraftonEngine
 
--- VSCode/LuaLS 자동완성 전용 stub입니다.
--- 런타임에서 require하지 않습니다. 실제 구현은 C++ LuaScriptRuntime/LuaScriptInstance 바인딩에 있습니다.
+-- VSCode/LuaLS 자동완성 전용 stub
+-- 런타임에서 require하지 않는다
+-- 실제 구현은 C++ LuaScriptRuntime/LuaScriptInstance 바인딩에 있음
 
 ---@class Vector
 ---@field x number
@@ -44,7 +45,7 @@ local GroundHit = {}
 ---@class ActorProxy
 ---@field Name string
 ---@field UUID integer
----@field Tag string 임시 프로토타입용 태그입니다. 장기적으로 정식 식별 방식으로 교체해야 합니다.
+---@field Tag string
 ---@field Velocity Vector
 local ActorProxy = {}
 
@@ -541,9 +542,9 @@ function GetDragDeltaY(buttonName) end
 ---@return number
 function GetDragDistance(buttonName) end
 
----@param functionName string
+---@param entry string|function
 ---@return boolean
-function StartCoroutine(functionName) end
+function StartCoroutine(entry) end
 
 ---@param seconds number
 function wait(seconds) end
@@ -561,23 +562,6 @@ function wait_key_down(keyName) end
 
 -- TODO: wait_signal/signal은 현재 런타임 바인딩에서 꺼져 있습니다.
 -- 필요해지면 C++ 바인딩을 켠 뒤 이 문서에 함수 stub을 다시 추가하세요.
-
----@alias ScriptPropertyType '"bool"'|'"int"'|'"float"'|'"string"'|'"vector"'
-
----@class ScriptPropertyDesc
----@field type ScriptPropertyType
----@field default? boolean|integer|number|string|Vector
----@field min? number
----@field max? number
-
----@param properties table<string, ScriptPropertyDesc>
-function DeclareProperties(properties) end
-
----@generic T
----@param name string
----@param defaultValue T
----@return T
-function property(name, defaultValue) end
 
 ---@param className string
 ---@param location Vector

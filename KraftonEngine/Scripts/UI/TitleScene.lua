@@ -1,3 +1,5 @@
+local Engine = require("Common.Engine")
+local UI = require("Common.UI")
 local story_scene_loading = false
 local loading_overlay = nil
 local loading_text = nil
@@ -7,46 +9,26 @@ local options_button = nil
 local exit_button = nil
 local logo_image = nil
 
-local function get_component(name)
-    local component = obj:GetComponent(name)
-    if component and component:IsValid() then
-        return component
-    end
-
-    warn("TitleScene 컴포넌트를 찾을 수 없습니다:", name)
-    return nil
-end
-
-local function set_visible(component, visible)
-    if component then
-        component:SetVisible(visible)
-    end
-end
-
-local function set_text(component, text)
-    if component then
-        component:SetText(text)
-    end
-end
-
-local function set_tint(component, r, g, b, a)
-    if component then
-        component:SetTint(r, g, b, a)
-    end
-end
+------------------------------------------------
+-- TitleScene 생명주기 함수들
+------------------------------------------------
 
 function BeginPlay()
-    loading_overlay = get_component("LoadingOverlay")
-    loading_text = get_component("LoadingText")
-    start_button = get_component("UIButtonComponent_0")
-    score_button = get_component("ScoreButton")
-    options_button = get_component("OptionsButton")
-    exit_button = get_component("ExitButton")
-    logo_image = get_component("UUIImageComponent_0")
+    loading_overlay = Engine.GetRequiredComponent(obj, "TitleScene 컴포넌트를 찾을 수 없습니다:", "LoadingOverlay")
+    loading_text = Engine.GetRequiredComponent(obj, "TitleScene 컴포넌트를 찾을 수 없습니다:", "LoadingText")
+    start_button = Engine.GetRequiredComponent(obj, "TitleScene 컴포넌트를 찾을 수 없습니다:", "UIButtonComponent_0")
+    score_button = Engine.GetRequiredComponent(obj, "TitleScene 컴포넌트를 찾을 수 없습니다:", "ScoreButton")
+    options_button = Engine.GetRequiredComponent(obj, "TitleScene 컴포넌트를 찾을 수 없습니다:", "OptionsButton")
+    exit_button = Engine.GetRequiredComponent(obj, "TitleScene 컴포넌트를 찾을 수 없습니다:", "ExitButton")
+    logo_image = Engine.GetRequiredComponent(obj, "TitleScene 컴포넌트를 찾을 수 없습니다:", "UUIImageComponent_0")
 
-    set_visible(loading_overlay, false)
-    set_visible(loading_text, false)
+    UI.SetVisible(loading_overlay, false)
+    UI.SetVisible(loading_text, false)
 end
+
+------------------------------------------------
+-- TitleScene 버튼 액션 함수들
+------------------------------------------------
 
 function ShowScoreboard()
     play_sfx("Sound.SFX.arwing.hit.obstacle", false)
@@ -73,6 +55,10 @@ function StartStoryScene()
     play_sfx("Sound.SFX.arwing.hit.obstacle", false)
     return load_scene("game/story.scene")
 end
+
+------------------------------------------------
+-- TitleScene 프레임 갱신 함수들
+------------------------------------------------
 
 function Tick(dt)
     if story_scene_loading then

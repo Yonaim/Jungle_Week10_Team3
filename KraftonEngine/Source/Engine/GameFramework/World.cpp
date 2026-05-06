@@ -325,6 +325,11 @@ void UWorld::RemoveLevel(ULevel* InLevel)
 
 void UWorld::ClearLevels()
 {
+	// Scene 전환, World 정리 후 Slomo, DeltaTime 남는 문제 방지
+	RawDeltaTime = 0.f;
+	DeltaTime = 0.f;
+	SetGlobalTimeDilation(1.0f);
+
 	TickManager.Reset();
 	AuthorGameMode = nullptr;
 	ActiveCamera = nullptr;
@@ -617,12 +622,25 @@ void UWorld::BeginPlay()
 		AuthorGameMode->StartPlay();
 }
 
-void UWorld::Tick(float DeltaTime, ELevelTick TickType)
+void UWorld::Tick(float InRawDeltaTime, ELevelTick TickType)
 {
+	// Global Time Dilation 조절
+	RawDeltaTime = std::max(0.0f, InRawDeltaTime);
+
+	if (TickType == LEVELTICK_PauseTick)
+	{
+		DeltaTime = 0.f;
+	}
+	else
+	{
+		DeltaTime = RawDeltaTime * GlobalTimeDilation;
+	}
+
 	{
 		SCOPE_STAT_CAT("FlushPrimitive", "1_WorldTick");
 		Partition.FlushPrimitive();
 	}
+
 	Scene.GetDebugDrawQueue().Tick(DeltaTime);
 	TickManager.Tick(this, DeltaTime, TickType);
 	ProcessOverlapEvents();
@@ -634,6 +652,11 @@ void UWorld::AddPendingOverlapComponent(UPrimitiveComponent* InComp) {
 
 void UWorld::RemovePendingOverlapComponent(UPrimitiveComponent* InComp) {
 	if (InComp) PendingOverlapComponents.erase(InComp);
+}
+
+void UWorld::SetGlobalTimeDilation(float InTimeDilation)
+{
+	GlobalTimeDilation = std::clamp(InTimeDilation, MinGlobalTimeDilation, MaxGlobalTimeDilation);
 }
 
 void UWorld::ProcessOverlapEvents() {
@@ -733,6 +756,11 @@ void UWorld::ResolvePenetration(UPrimitiveComponent* A, UPrimitiveComponent* B, 
 
 void UWorld::EndPlay()
 {
+	// Scene 전환, World 정리 후 Slomo, DeltaTime 남는 문제 방지
+	RawDeltaTime = 0.f;
+	DeltaTime = 0.f;
+	SetGlobalTimeDilation(1.0f);
+
 	bHasBegunPlay = false;
 	TickManager.Reset();
 	ActiveCamera = nullptr;

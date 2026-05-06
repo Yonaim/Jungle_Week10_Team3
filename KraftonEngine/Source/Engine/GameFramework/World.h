@@ -167,7 +167,7 @@ public:
 
 	void InitWorld();      // Set up the world before gameplay begins
 	void BeginPlay();      // Triggers BeginPlay on all actors
-	void Tick(float DeltaTime, ELevelTick TickType);  // Drives the game loop every frame
+	void Tick(float InRawDeltaTime, ELevelTick TickType);  // Drives the game loop every frame
 	void EndPlay();        // Cleanup before world is destroyed
 
 	bool HasBegunPlay() const { return bHasBegunPlay; }
@@ -193,6 +193,15 @@ public:
 	// Adds a primitive component to the pending overlap update array
 	void AddPendingOverlapComponent(UPrimitiveComponent* InComp);
 	void RemovePendingOverlapComponent(UPrimitiveComponent* InComp);
+
+	// Hit Time-System
+	// 전역 시간 배율 조절
+	float GetGlobalTimeDilation() const { return GlobalTimeDilation; }
+
+	void SetGlobalTimeDilation(float InTimeDilation);
+
+	float GetRawDeltaTime() const { return RawDeltaTime; }
+	float GetDeltaTime() const { return DeltaTime; }
 
 private:
 	// Overlaps
@@ -220,6 +229,14 @@ private:
 	FScene Scene;
 	FTickManager TickManager;
 	FSpatialPartition Partition;
+
+	// Hit-stop, slomo 목적
+	float RawDeltaTime = 0.f;					// 프레임 시간 
+	float DeltaTime = 0.f;						// 게임 시간
+
+	float GlobalTimeDilation = 1.0f;			// 전역 시간 배율
+	const float MinGlobalTimeDilation = 0.0f;	// 최소
+	const float MaxGlobalTimeDilation = 20.0f;	// 최대
 
 	std::unordered_set<UPrimitiveComponent*> PendingOverlapComponents;
 };

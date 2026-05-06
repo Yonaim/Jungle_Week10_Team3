@@ -80,7 +80,6 @@ private:
 	void BindCoroutineFunctions();
 	void BindInputFunctions();
 	void BindDebugTimeFunctions();
-	void BindPropertyFunctions();
 	void BindSoundFunctions();
 	void BindWorldFunctions();
 	void BindDataFunctions();

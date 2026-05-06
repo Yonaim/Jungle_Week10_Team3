@@ -1,27 +1,16 @@
 local ItemBase = require("Game.Items.ItemBase")
+local ItemsConfig = require("Game.Config.Items")
 
--- CrashDumpItem은 Crash Dump 수집 규칙만 연결하는 Lua 아이템입니다.
--- HUD/비주얼 담당자는 dumps가 3개 됐을 때 GameManager.ApplyCriticalAnalysis 지점에 연출을 붙이면 됩니다.
-DeclareProperties({
-    -- RequiredInteractorTag는 어떤 actor가 Crash Dump를 먹을 수 있는지 정합니다.
-    { name = "RequiredInteractorTag", type = "string", default = "Player" },
-})
-
--- item은 ItemBase 공통 pickup 객체입니다.
--- CrashDumpReward feature가 켜져 있어서 overlap 시 dumps가 쌓이고 3개째에 Critical Analysis가 발동됩니다.
 local item = ItemBase.New({
-    RequiredInteractorTag = property("RequiredInteractorTag", "Player"),
-    Features = {
-        PickupOnOverlap = true,
-        ConsumeOnPickup = false,
-        CrashDumpReward = true,
-        SingleUse = true,
-        DebugLog = true,
-    },
+    RequiredInteractorTag = ItemsConfig.required_interactor_tag,
+    Features = ItemsConfig.crash_dump.features,
 })
+
+------------------------------------------------
+-- Crash Dump 충돌 콜백 함수들
+------------------------------------------------
 
 function OnBeginOverlap(otherActor, otherComp, selfComp)
-    -- Crash Dump 획득 시작점입니다. 실제 수치 처리는 ItemBase가 담당합니다.
     item:OnBeginOverlap(otherActor, otherComp, selfComp)
 end
 

@@ -1,65 +1,30 @@
-local Config = require("Game.Config")
+local DebugConfig = require("Game.Config.Debug")
+local CollectibleConfig = require("Game.Config.Collectible")
+local HUDConfig = require("Game.Config.PlayerDevHUD")
+local RankConfig = require("Game.Config.Rank")
 local GameManager = require("Game.GameManager")
 local ScenarioLoader = require("UI.ScenarioLoader")
 local DialogueUtils = require("UI.DialogueUtils")
+local Log = require("Common.Log")
+local Engine = require("Common.Engine")
+local Format = require("Common.Format")
+local Math = require("Common.Math")
+local UI = require("Common.UI")
 
 print("[PlayerDevHUD] module loaded")
 
-local DEFAULT_RANK_TEXTURE = "Asset/Content/Texture/UI/rank_c.png"
-local DIALOGUE_PATH = "Asset/Content/Data/Dialogues/play.dialogue.json"
-local DIALOGUE_SOUND_PATH = "Asset/Content/Sound/SFX/dialogue.mp3"
-local EVENT_SOUND_BY_TOKEN = {
-    agents_are_go = "Asset/Content/Sound/SFX/agents-are-go.mp3",
-    pickup_log = "Asset/Content/Sound/SFX/story_next.mp3",
-    pickup_dump = "Asset/Content/Sound/SFX/glitch_noise.wav",
-    hit_error = "Asset/Content/Sound/SFX/arwing-hit-obstacle.mp3",
-    alarm_warning = "Asset/Content/Sound/SFX/windows-98-error.mp3",
-    hotfix_ready = "Asset/Content/Sound/SFX/go.mp3",
-    hotfix_apply = "Asset/Content/Sound/SFX/crt-on.mp3",
-    critical_analysis = "Asset/Content/Sound/SFX/glitch_noise.wav",
-    speed_up = "Asset/Content/Sound/SFX/fired-sound-effect.mp3",
-    near_miss = "Asset/Content/Sound/SFX/canceled-sound-effect.mp3",
-    shield_block = "Asset/Content/Sound/SFX/story_next.mp3",
-    game_over = "Asset/Content/Sound/SFX/windows-98-error.mp3",
-}
-local DEFAULT_EVENT_SOUND_BY_TRIGGER = {
-    onRunStart = "Asset/Content/Sound/SFX/agents-are-go.mp3",
-    onCollectLog = "Asset/Content/Sound/SFX/story_next.mp3",
-    onCollectCrashDump = "Asset/Content/Sound/SFX/glitch_noise.wav",
-    onHitObstacle = "Asset/Content/Sound/SFX/arwing-hit-obstacle.mp3",
-    onShieldBlocked = "Asset/Content/Sound/SFX/story_next.mp3",
-    onStabilityLow = "Asset/Content/Sound/SFX/windows-98-error.mp3",
-    onHotfixReady = "Asset/Content/Sound/SFX/go.mp3",
-    onApplyHotfix = "Asset/Content/Sound/SFX/crt-on.mp3",
-    onCriticalAnalysis = "Asset/Content/Sound/SFX/glitch_noise.wav",
-    onSpeedUp = "Asset/Content/Sound/SFX/fired-sound-effect.mp3",
-    onNearMiss = "Asset/Content/Sound/SFX/canceled-sound-effect.mp3",
-    onGameOver = "Asset/Content/Sound/SFX/windows-98-error.mp3",
-}
-local TYPEWRITER_INTERVAL_SECONDS = 0.028
-local PORTRAIT_ANIMATION_INTERVAL_SECONDS = 0.12
-local DIALOGUE_HOLD_SECONDS = 1.8
-local DIALOGUE_MAX_LINE_WIDTH_UNITS = 16
-local DIALOGUE_CONTINUATION_INDENT = ""
-local WINDOW_TEXTURES = {
-    BAEK_COMMANDER = {
-        closed = "Asset/Content/Texture/UI/window_portrait_baek_0.png",
-        open = "Asset/Content/Texture/UI/window_portrait_baek_1.png",
-    },
-    LIM_COMMANDER = {
-        closed = "Asset/Content/Texture/UI/window_portrait_lim_0.png",
-        open = "Asset/Content/Texture/UI/window_portrait_lim_1.png",
-    },
-}
-local RANK_TEXTURE_BY_CODE = {
-    s = "Asset/Content/Texture/UI/rank_s.png",
-    a = "Asset/Content/Texture/UI/rank_a.png",
-    b = "Asset/Content/Texture/UI/rank_b.png",
-    c = "Asset/Content/Texture/UI/rank_c.png",
-    d = "Asset/Content/Texture/UI/rank_c.png",
-    f = "Asset/Content/Texture/UI/rank_f.png",
-}
-
+local DIALOGUE_PATH = HUDConfig.dialogue_path
+local DIALOGUE_SOUND_PATH = HUDConfig.dialogue_sound_path
+local EVENT_SOUND_BY_TOKEN = HUDConfig.event_sound_by_token
+local DEFAULT_EVENT_SOUND_BY_TRIGGER = HUDConfig.default_event_sound_by_trigger
+local TYPEWRITER_INTERVAL_SECONDS = HUDConfig.dialogue_timing.typewriter_interval_seconds
+local PORTRAIT_ANIMATION_INTERVAL_SECONDS = HUDConfig.dialogue_timing.portrait_animation_interval_seconds
+local DIALOGUE_HOLD_SECONDS = HUDConfig.dialogue_timing.hold_seconds
+local DIALOGUE_MAX_LINE_WIDTH_UNITS = HUDConfig.dialogue_timing.max_line_width_units
+local DIALOGUE_CONTINUATION_INDENT = HUDConfig.dialogue_timing.continuation_indent
+local WINDOW_TEXTURES = HUDConfig.window_textures
+local DEFAULT_RANK_TEXTURE = RankConfig.default_texture
+local RANK_TEXTURE_BY_CODE = RankConfig.texture_by_code
 local title_text = nil
 local core_metrics_text = nil
 local run_details_text = nil
@@ -88,78 +53,18 @@ local portrait_frame_open = false
 local current_window_textures = WINDOW_TEXTURES.BAEK_COMMANDER
 local typing_state = DialogueUtils.create_typewriter_state(TYPEWRITER_INTERVAL_SECONDS)
 
-local function log(message)
-    if Config.debug and Config.debug.enable_log then
-        print("[PlayerDevHUD] " .. tostring(message))
-    end
-end
+local log = Log.MakeLogger(DebugConfig, "[PlayerDevHUD] ")
 
-local function get_component(name)
-    local component = obj:GetComponent(name)
-    if component and component:IsValid() then
-        return component
-    end
-    return nil
-end
-
-local function set_text(component, text)
-    if component then
-        component:SetText(text)
-    end
-end
-
-local function set_texture(component, texture_path)
-    if component and texture_path and texture_path ~= "" then
-        component:SetTexture(texture_path)
-    end
-end
-
-local function set_screen_position(component, x, y)
-    if component then
-        component:SetScreenPositionXYZ(x, y, 0.0)
-    end
-end
-
-local function set_screen_size(component, width, height)
-    if component then
-        component:SetScreenSizeXYZ(width, height, 0.0)
-    end
-end
-
-local function format_number(value)
-    local formatted = tostring(math.floor(value or 0))
-    local sign = ""
-    if string.sub(formatted, 1, 1) == "-" then
-        sign = "-"
-        formatted = string.sub(formatted, 2)
-    end
-
-    local parts = {}
-    while #formatted > 3 do
-        table.insert(parts, 1, string.sub(formatted, -3))
-        formatted = string.sub(formatted, 1, #formatted - 3)
-    end
-    table.insert(parts, 1, formatted)
-
-    return sign .. table.concat(parts, ",")
-end
-
-local function format_decimal(value)
-    return string.format("%.1f", value or 0)
-end
-
-local function format_percent(current, max_value)
-    local safe_max = max_value or 0
-    if safe_max <= 0 then
-        return "0%"
-    end
-
-    local ratio = math.max(0, math.min((current or 0) / safe_max, 1))
-    return tostring(math.floor(ratio * 100 + 0.5)) .. "%"
-end
+------------------------------------------------
+-- HUD 텍스트 / 레이아웃 함수들
+------------------------------------------------
 
 local function resolve_rank_texture(rank_code)
-    local normalized = string.lower(tostring(rank_code or "c"))
+    local normalized = string.lower(tostring(rank_code or "C"))
+    if normalized == "" then
+        normalized = "c"
+    end
+
     return RANK_TEXTURE_BY_CODE[normalized] or DEFAULT_RANK_TEXTURE
 end
 
@@ -183,69 +88,45 @@ local function build_snapshot_key(data)
 end
 
 local function build_core_metrics_text(data)
-    local trace_max = (Config.collectible and Config.collectible.trace_max) or 100
-    local dumps_required = (Config.collectible and Config.collectible.crash_dump_required) or 3
+    local trace_max = CollectibleConfig.trace_max or 100
+    local dumps_required = CollectibleConfig.crash_dump_required or 3
 
     return table.concat({
-        "SCORE           " .. format_number(data.score or 0),
-        "LOGS            " .. format_number(data.logs or 0),
-        "TRACE           " .. format_percent(data.trace or 0, trace_max),
-        "DUMPS           " .. format_number(data.dumps or 0) .. "/" .. format_number(dumps_required),
-        "STABILITY       " .. format_percent(data.stability or 0, data.max_stability or 0),
+        "SCORE           " .. Format.Number(data.score or 0),
+        "LOGS            " .. Format.Number(data.logs or 0),
+        "TRACE           " .. Format.Percent(data.trace or 0, trace_max),
+        "DUMPS           " .. Format.Number(data.dumps or 0) .. "/" .. Format.Number(dumps_required),
+        "STABILITY       " .. Format.Percent(data.stability or 0, data.max_stability or 0),
     }, "\n")
 end
 
 local function build_run_details_text(data)
     return table.concat({
-        "DISTANCE        " .. format_decimal(data.distance or 0) .. "m",
-        "TIME            " .. format_decimal(data.elapsed_time or 0) .. "s",
+        "DISTANCE        " .. Format.Decimal(data.distance or 0) .. "m",
+        "TIME            " .. Format.Decimal(data.elapsed_time or 0) .. "s",
     }, "\n")
 end
 
-local APPROVAL_GAUGE = {
-    x = 1496.0,
-    y = 258.0,
-    width = 316.0,
-    height = 18.0,
-}
-
-local RANK_MARKER = {
-    width = 110.0,
-    height = 48.0,
-    offset_y = -42.0,
-}
-
-local HUD_LAYOUT = {
-    title = { x = 1202.0, y = 56.0 },
-    core_title = { x = 1240.0, y = 118.0 },
-    core_text = { x = 1240.0, y = 149.0 },
-    details_title = { x = 1510.0, y = 118.0 },
-    details_text = { x = 1510.0, y = 149.0 },
-    approval_label = { x = 1510.0, y = 220.0 },
-    approval_value = { x = 1768.0, y = 220.0 },
-}
-
-local DIALOGUE_LAYOUT = {
-    window = { x = 32.0, y = 32.0 },
-    speaker = { x = 292.0, y = 74.0 },
-    message = { x = 292.0, y = 124.0 },
-}
+local APPROVAL_GAUGE = HUDConfig.approval_gauge
+local RANK_MARKER = HUDConfig.rank_marker
+local HUD_LAYOUT = HUDConfig.hud_layout
+local DIALOGUE_LAYOUT = HUDConfig.dialogue_layout
 
 local function apply_hud_layout()
-    set_screen_position(title_text, HUD_LAYOUT.title.x, HUD_LAYOUT.title.y)
-    set_screen_position(core_metrics_text, HUD_LAYOUT.core_text.x, HUD_LAYOUT.core_text.y)
-    set_screen_position(run_details_text, HUD_LAYOUT.details_text.x, HUD_LAYOUT.details_text.y)
-    set_screen_position(approval_label_text, HUD_LAYOUT.approval_label.x, HUD_LAYOUT.approval_label.y)
-    set_screen_position(approval_value_text, HUD_LAYOUT.approval_value.x, HUD_LAYOUT.approval_value.y)
-    set_screen_position(approval_gauge_track, APPROVAL_GAUGE.x, APPROVAL_GAUGE.y)
-    set_screen_position(approval_gauge_fill, APPROVAL_GAUGE.x, APPROVAL_GAUGE.y)
-    set_screen_position(dialogue_window, DIALOGUE_LAYOUT.window.x, DIALOGUE_LAYOUT.window.y)
-    set_screen_position(dialogue_speaker_text, DIALOGUE_LAYOUT.speaker.x, DIALOGUE_LAYOUT.speaker.y)
-    set_screen_position(dialogue_message_text, DIALOGUE_LAYOUT.message.x, DIALOGUE_LAYOUT.message.y)
+    UI.SetScreenPosition(title_text, HUD_LAYOUT.title.x, HUD_LAYOUT.title.y)
+    UI.SetScreenPosition(core_metrics_text, HUD_LAYOUT.core_text.x, HUD_LAYOUT.core_text.y)
+    UI.SetScreenPosition(run_details_text, HUD_LAYOUT.details_text.x, HUD_LAYOUT.details_text.y)
+    UI.SetScreenPosition(approval_label_text, HUD_LAYOUT.approval_label.x, HUD_LAYOUT.approval_label.y)
+    UI.SetScreenPosition(approval_value_text, HUD_LAYOUT.approval_value.x, HUD_LAYOUT.approval_value.y)
+    UI.SetScreenPosition(approval_gauge_track, APPROVAL_GAUGE.x, APPROVAL_GAUGE.y)
+    UI.SetScreenPosition(approval_gauge_fill, APPROVAL_GAUGE.x, APPROVAL_GAUGE.y)
+    UI.SetScreenPosition(dialogue_window, DIALOGUE_LAYOUT.window.x, DIALOGUE_LAYOUT.window.y)
+    UI.SetScreenPosition(dialogue_speaker_text, DIALOGUE_LAYOUT.speaker.x, DIALOGUE_LAYOUT.speaker.y)
+    UI.SetScreenPosition(dialogue_message_text, DIALOGUE_LAYOUT.message.x, DIALOGUE_LAYOUT.message.y)
 end
 
 local function refresh_approval_gauge(data)
-    local approval = math.max(0, math.min(data.coach_approval or 0, 100))
+    local approval = Math.Clamp(data.coach_approval or 0, 0, 100)
     local ratio = approval / 100.0
 
     if ratio ~= last_approval_ratio then
@@ -254,18 +135,18 @@ local function refresh_approval_gauge(data)
             fill_width = 1.0
         end
 
-        set_screen_size(approval_gauge_fill, fill_width, APPROVAL_GAUGE.height)
+        UI.SetScreenSize(approval_gauge_fill, fill_width, APPROVAL_GAUGE.height)
 
         local marker_x = APPROVAL_GAUGE.x + APPROVAL_GAUGE.width * ratio - (RANK_MARKER.width * 0.5)
         local min_marker_x = APPROVAL_GAUGE.x - (RANK_MARKER.width * 0.5)
         local max_marker_x = APPROVAL_GAUGE.x + APPROVAL_GAUGE.width - (RANK_MARKER.width * 0.5)
-        marker_x = math.max(min_marker_x, math.min(marker_x, max_marker_x))
-        set_screen_position(rank_marker, marker_x, APPROVAL_GAUGE.y + RANK_MARKER.offset_y)
+        marker_x = Math.Clamp(marker_x, min_marker_x, max_marker_x)
+        UI.SetScreenPosition(rank_marker, marker_x, APPROVAL_GAUGE.y + RANK_MARKER.offset_y)
 
         last_approval_ratio = ratio
     end
 
-    set_text(approval_value_text, format_number(approval))
+    UI.SetText(approval_value_text, Format.Number(approval))
 end
 
 local function refresh_hud()
@@ -276,9 +157,9 @@ local function refresh_hud()
 
     local snapshot_key = build_snapshot_key(data)
     if snapshot_key ~= last_snapshot_key then
-        set_text(title_text, "PLAYER DEV FUD  [" .. tostring(data.coach_rank or "C") .. "]")
-        set_text(core_metrics_text, build_core_metrics_text(data))
-        set_text(run_details_text, build_run_details_text(data))
+        UI.SetText(title_text, "PLAYER DEV FUD  [" .. tostring(data.coach_rank or "C") .. "]")
+        UI.SetText(core_metrics_text, build_core_metrics_text(data))
+        UI.SetText(run_details_text, build_run_details_text(data))
         last_snapshot_key = snapshot_key
     end
 
@@ -286,10 +167,14 @@ local function refresh_hud()
 
     local rank_texture = resolve_rank_texture(data.coach_rank)
     if rank_texture ~= last_rank_texture then
-        set_texture(rank_marker, rank_texture)
+        UI.SetTexture(rank_marker, rank_texture)
         last_rank_texture = rank_texture
     end
 end
+
+------------------------------------------------
+-- 대화 사운드 / 포트레이트 함수들
+------------------------------------------------
 
 local function stop_dialogue_audio()
     if dialogue_audio_handle and dialogue_audio_handle ~= "" then
@@ -348,12 +233,16 @@ end
 
 local function set_window_frame(opened)
     local frame_path = current_window_textures and (opened and current_window_textures.open or current_window_textures.closed) or nil
-    set_texture(dialogue_window, frame_path)
+    UI.SetTexture(dialogue_window, frame_path)
 end
 
 local function update_dialogue_text()
-    set_text(dialogue_message_text, DialogueUtils.get_visible_text(typing_state, ""))
+    UI.SetText(dialogue_message_text, DialogueUtils.get_visible_text(typing_state, ""))
 end
+
+------------------------------------------------
+-- 대화 엔트리 선택 / 재생 함수들
+------------------------------------------------
 
 local function load_dialogue_entries()
     dialogue_data = ScenarioLoader.load(DIALOGUE_PATH, load_json_file)
@@ -451,7 +340,7 @@ local function start_dialogue_preview(entry)
     portrait_frame_open = false
     set_window_frame(false)
 
-    set_text(dialogue_speaker_text, ScenarioLoader.resolve_speaker_name(dialogue_data, entry.speaker))
+    UI.SetText(dialogue_speaker_text, ScenarioLoader.resolve_speaker_name(dialogue_data, entry.speaker))
 
     local message = DialogueUtils.format_terminal_message(tostring(entry.message or ""), {
         max_line_width_units = DIALOGUE_MAX_LINE_WIDTH_UNITS,
@@ -469,8 +358,8 @@ end
 local function advance_random_dialogue()
     local next_entry = pick_random_dialogue_entry()
     if not next_entry then
-        set_text(dialogue_speaker_text, "DIALOGUE OFFLINE")
-        set_text(dialogue_message_text, "play.dialogue.json load failed.")
+        UI.SetText(dialogue_speaker_text, "DIALOGUE OFFLINE")
+        UI.SetText(dialogue_message_text, "play.dialogue.json load failed.")
         return
     end
 
@@ -496,6 +385,8 @@ local function consume_runtime_dialogue_trigger()
     return trigger_name
 end
 
+-- 대화 preview의 런타임 trigger, typewriter, 초상화 입 모양, 자동 다음 대사를 갱신합니다.
+-- 게임 이벤트로 들어온 trigger는 현재 preview보다 우선 적용해 반응성을 유지합니다.
 local function update_dialogue_preview(dt)
     if #dialogue_entries <= 0 then
         return
@@ -548,21 +439,25 @@ local function update_dialogue_preview(dt)
     end
 end
 
+------------------------------------------------
+-- HUD 생명주기 함수들
+------------------------------------------------
+
 function BeginPlay()
     print("[PlayerDevHUD] BeginPlay entered")
     math.randomseed(math.floor(time() * 1000) % 2147483647)
 
-    title_text = get_component("FUDTitle")
-    core_metrics_text = get_component("FUDCoreMetricsText")
-    run_details_text = get_component("FUDRunDetailsText")
-    approval_label_text = get_component("FUDApprovalLabel")
-    approval_value_text = get_component("FUDApprovalValue")
-    approval_gauge_track = get_component("FUDApprovalGaugeTrack")
-    approval_gauge_fill = get_component("FUDApprovalGaugeFill")
-    rank_marker = get_component("FUDRankMarker")
-    dialogue_window = get_component("DialogueWindowPortrait")
-    dialogue_speaker_text = get_component("DialogueSpeakerName")
-    dialogue_message_text = get_component("DialogueMessage")
+    title_text = Engine.GetComponent(obj, "FUDTitle")
+    core_metrics_text = Engine.GetComponent(obj, "FUDCoreMetricsText")
+    run_details_text = Engine.GetComponent(obj, "FUDRunDetailsText")
+    approval_label_text = Engine.GetComponent(obj, "FUDApprovalLabel")
+    approval_value_text = Engine.GetComponent(obj, "FUDApprovalValue")
+    approval_gauge_track = Engine.GetComponent(obj, "FUDApprovalGaugeTrack")
+    approval_gauge_fill = Engine.GetComponent(obj, "FUDApprovalGaugeFill")
+    rank_marker = Engine.GetComponent(obj, "FUDRankMarker")
+    dialogue_window = Engine.GetComponent(obj, "DialogueWindowPortrait")
+    dialogue_speaker_text = Engine.GetComponent(obj, "DialogueSpeakerName")
+    dialogue_message_text = Engine.GetComponent(obj, "DialogueMessage")
 
     last_snapshot_key = nil
     last_rank_texture = nil

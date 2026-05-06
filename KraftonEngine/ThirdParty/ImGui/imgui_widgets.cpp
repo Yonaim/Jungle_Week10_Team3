@@ -9718,6 +9718,11 @@ bool    ImGui::BeginTabBarEx(ImGuiTabBar* tab_bar, const ImRect& tab_bar_bb, ImG
     tab_bar->LastTabItemIdx = -1;
     tab_bar->BeginCount = 1;
 
+    if (flags & ImGuiTabBarFlags_DockNode)
+    {
+        window->DrawList->AddRectFilled(tab_bar->BarRect.Min, tab_bar->BarRect.Max, GetColorU32(ImGuiCol_TabDimmed));
+    }
+
     // Set cursor pos in a way which only be used in the off-chance the user erroneously submits item before BeginTabItem(): items will overlap
     window->DC.CursorPos = ImVec2(tab_bar->BarRect.Min.x, tab_bar->BarRect.Max.y + tab_bar->ItemSpacingY);
 

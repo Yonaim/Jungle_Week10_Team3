@@ -280,6 +280,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Engine\GameFramework\GamePlayStatics.cpp" />
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
     <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp" />
     <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp" />
@@ -480,7 +481,6 @@
     <ClCompile Include="Source\Engine\Scripting\LuaScriptInstance.cpp" />
     <ClCompile Include="Source\Engine\Scripting\LuaScriptRuntime.cpp" />
     <ClCompile Include="Source\Engine\Scripting\LuaScriptRuntimeProxyBindings.cpp" />
-    <ClCompile Include="Source\Engine\Scripting\ScriptProperty.cpp" />
     <ClCompile Include="Source\Engine\Serialization\SceneSaveManager.cpp" />
     <ClCompile Include="Source\Engine\Texture\Texture2D.cpp" />
     <ClCompile Include="Source\Engine\UI\SSplitter.cpp" />
@@ -523,6 +523,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Engine\GameFramework\GamePlayStatics.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
     <ClInclude Include="Source\Editor\EditorRenderPipeline.h" />
     <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h" />
@@ -774,7 +775,6 @@
     <ClInclude Include="Source\Engine\Scripting\LuaComponentProxy.h" />
     <ClInclude Include="Source\Engine\Scripting\LuaScriptInstance.h" />
     <ClInclude Include="Source\Engine\Scripting\LuaScriptRuntime.h" />
-    <ClInclude Include="Source\Engine\Scripting\ScriptProperty.h" />
     <ClInclude Include="Source\Engine\Serialization\Archive.h" />
     <ClInclude Include="Source\Engine\Serialization\MemoryArchive.h" />
     <ClInclude Include="Source\Engine\Serialization\SceneSaveManager.h" />

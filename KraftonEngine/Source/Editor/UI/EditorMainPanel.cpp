@@ -130,7 +130,7 @@ namespace
 		Style.Colors[ImGuiCol_Tab] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabHovered] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabSelected] = UnrealPanelSurface;
-		Style.Colors[ImGuiCol_TabDimmed] = UnrealDockEmpty;
+		Style.Colors[ImGuiCol_TabDimmed] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabDimmedSelected] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabSelectedOverline] = UnrealDockEmpty;
 		Style.Colors[ImGuiCol_TabDimmedSelectedOverline] = UnrealDockEmpty;
@@ -330,7 +330,8 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ImGui::PopStyleVar(4);
 
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
-	if (EditorEngine)
+	const FEditorSettings& Settings = FEditorSettings::Get();
+	if (EditorEngine && Settings.UI.bViewport)
 	{
 		SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
 		EditorEngine->RenderViewportUI(DeltaTime);
@@ -340,8 +341,6 @@ void FEditorMainPanel::Render(float DeltaTime)
 			EditorEngine->GetOverlayStatSystem().RenderImGui(*EditorEngine, ActiveViewport->GetViewportScreenRect());
 		}
 	}
-
-	const FEditorSettings& Settings = FEditorSettings::Get();
 
 	if (!bHideEditorWindows && Settings.UI.bImGUISettings)
 	{
@@ -580,6 +579,8 @@ void FEditorMainPanel::RenderMainMenuBar()
 
 		if (ImGui::BeginMenu("Window"))
 		{
+			ImGui::Checkbox("Viewport", &Settings.UI.bViewport);
+			ImGui::Separator();
 			ImGui::Checkbox("Console", &Settings.UI.bConsole);
 			ImGui::Checkbox("Details", &Settings.UI.bProperty);
 			ImGui::Checkbox("Outliner", &Settings.UI.bScene);

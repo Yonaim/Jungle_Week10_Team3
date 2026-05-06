@@ -17,14 +17,12 @@
 
 #include <shellapi.h>
 
-#include <algorithm>
-#include <cmath>
 #include <cstring>
 #include <filesystem>
 
 IMPLEMENT_CLASS(UScriptComponent, UActorComponent)
 
-#pragma region Path&Property Helper
+#pragma region Path Helper
 namespace
 {
 	// 스크립트 자동 생성 시 장면/액터 이름을 조합할 때 쓰는 fallback 이름.
@@ -137,142 +135,6 @@ namespace
 		const FString FileName = SceneName + "_" + ActorName + ".lua";
 		return FScriptPaths::NormalizeScriptPath(FileName);
 	}
-
-	EPropertyType ToEditablePropertyType(EScriptPropertyType Type)
-	{
-		// Lua property 타입을 기존 Details 자동 위젯 타입으로 변환한다.
-		// 에디터 렌더링 코드를 새로 만들지 않고 기존 PropertyDescriptor 파이프라인을 그대로 쓰기 위함이다.
-		switch (Type)
-		{
-		case EScriptPropertyType::Bool:
-			return EPropertyType::Bool;
-		case EScriptPropertyType::Int:
-			return EPropertyType::Int;
-		case EScriptPropertyType::Float:
-			return EPropertyType::Float;
-		case EScriptPropertyType::String:
-			return EPropertyType::String;
-		case EScriptPropertyType::Vector:
-			return EPropertyType::Vec3;
-		default:
-			return EPropertyType::Float;
-		}
-	}
-
-	void* GetEditableScriptPropertyValuePtr(FScriptPropertyValue& Value)
-	{
-		// PropertyDescriptor는 void*를 요구하므로 실제 타입별 멤버 주소를 넘긴다.
-		// 이 주소는 EditableScriptPropertyValues map 안의 값 수명에 묶여 있다.
-		switch (Value.Type)
-		{
-		case EScriptPropertyType::Bool:
-			return &Value.BoolValue;
-		case EScriptPropertyType::Int:
-			return &Value.IntValue;
-		case EScriptPropertyType::Float:
-			return &Value.FloatValue;
-		case EScriptPropertyType::String:
-			return &Value.StringValue;
-		case EScriptPropertyType::Vector:
-			return &Value.VectorValue;
-		default:
-			return &Value.FloatValue;
-		}
-	}
-
-	FScriptPropertyValue CoerceScriptPropertyValue(const FScriptPropertyValue& Source, EScriptPropertyType TargetType, const FScriptPropertyValue& FallbackValue)
-	{
-		// Lua property("Speed", 600)처럼 fallback 타입과 선언 타입이 살짝 달라도
-		// 숫자/불리언 정도는 자연스럽게 맞춰 준다. 문자열/벡터는 암묵 변환하지 않는다.
-		if (Source.Type == TargetType)
-		{
-			return Source;
-		}
-
-		FScriptPropertyValue Result = FScriptProperty::MakeDefaultValue(TargetType);
-		switch (TargetType)
-		{
-		case EScriptPropertyType::Bool:
-			if (Source.Type == EScriptPropertyType::Int)
-			{
-				Result.BoolValue = Source.IntValue != 0;
-			}
-			else if (Source.Type == EScriptPropertyType::Float)
-			{
-				Result.BoolValue = Source.FloatValue != 0.0f;
-			}
-			else
-			{
-				Result.BoolValue = FallbackValue.BoolValue;
-			}
-			break;
-		case EScriptPropertyType::Int:
-			if (Source.Type == EScriptPropertyType::Bool)
-			{
-				Result.IntValue = Source.BoolValue ? 1 : 0;
-			}
-			else if (Source.Type == EScriptPropertyType::Float)
-			{
-				Result.IntValue = static_cast<int32>(Source.FloatValue);
-			}
-			else
-			{
-				Result.IntValue = FallbackValue.IntValue;
-			}
-			break;
-		case EScriptPropertyType::Float:
-			if (Source.Type == EScriptPropertyType::Bool)
-			{
-				Result.FloatValue = Source.BoolValue ? 1.0f : 0.0f;
-			}
-			else if (Source.Type == EScriptPropertyType::Int)
-			{
-				Result.FloatValue = static_cast<float>(Source.IntValue);
-			}
-			else
-			{
-				Result.FloatValue = FallbackValue.FloatValue;
-			}
-			break;
-		case EScriptPropertyType::String:
-			Result.StringValue = FallbackValue.StringValue;
-			break;
-		case EScriptPropertyType::Vector:
-			Result.VectorValue = FallbackValue.VectorValue;
-			break;
-		default:
-			break;
-		}
-
-		return Result;
-	}
-
-	void ClampScriptPropertyValue(FScriptPropertyValue& Value, const FScriptPropertyDesc& Desc)
-	{
-		// min/max는 숫자 타입 전용 힌트다. bool/string/vector에는 적용하지 않는다.
-		if (Value.Type == EScriptPropertyType::Float)
-		{
-			if (Desc.bHasMin)
-			{
-				Value.FloatValue = (std::max)(Value.FloatValue, Desc.Min);
-			}
-			if (Desc.bHasMax)
-			{
-				Value.FloatValue = (std::min)(Value.FloatValue, Desc.Max);
-			}
-		}
-		else if (Value.Type == EScriptPropertyType::Int)
-		{
-			if (Desc.bHasMin)
-			{
-				Value.IntValue = (std::max)(Value.IntValue, static_cast<int32>(Desc.Min));
-			}
-			if (Desc.bHasMax)
-			{
-				Value.IntValue = (std::min)(Value.IntValue, static_cast<int32>(Desc.Max));
-			}
-		}
-	}
 }
 #pragma endregion
 
@@ -357,39 +219,10 @@ void UScriptComponent::Serialize(FArchive& Ar)
 	// ScriptPath는 component 상태의 일부이므로 저장/로드 시 그대로 직렬화한다.
 	Ar << ScriptPath;
 
-	uint32 OverrideCount = static_cast<uint32>(ScriptPropertyOverrides.size());
-	Ar << OverrideCount;
 	if (Ar.IsLoading())
 	{
-		// 저장 파일에는 override만 들어 있다.
-		// 선언 정보는 Lua 파일에서 다시 읽어야 stale property를 정리할 수 있다.
-		ScriptPropertyOverrides.clear();
-		for (uint32 Index = 0; Index < OverrideCount; ++Index)
-		{
-			FString Name;
-			FScriptPropertyValue Value;
-			Ar << Name;
-			Ar << Value;
-			if (!Name.empty())
-			{
-				ScriptPropertyOverrides[Name] = Value;
-			}
-		}
-
 		ScriptPath = FScriptPaths::NormalizeScriptPath(ScriptPath);
 		ScriptInstance.SetScriptPath(ScriptPath);
-		InvalidateScriptPropertyDescs();
-	}
-	else
-	{
-		// unordered_map 순서는 저장 파일마다 달라질 수 있지만, 각 항목이 name/value 쌍이라 로드 결과에는 영향이 없다.
-		for (const auto& Pair : ScriptPropertyOverrides)
-		{
-			FString Name = Pair.first;
-			FScriptPropertyValue Value = Pair.second;
-			Ar << Name;
-			Ar << Value;
-		}
 	}
 }
 
@@ -397,39 +230,6 @@ void UScriptComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutPro
 {
 	Super::GetEditableProperties(OutProps);
 	OutProps.push_back({ "ScriptPath", EPropertyType::String, &ScriptPath });
-
-	if (!RefreshScriptPropertyDescs(false))
-	{
-		// property 스캔에 실패한 경우에는 오래된 UI 값을 보여주지 않는다.
-		// 스크립트 로드 실패와 property 0개를 구분하기 위해 실패 상태는 내부에 남긴다.
-		return;
-	}
-
-	for (const FScriptPropertyDesc& Desc : ScriptPropertyDescs)
-	{
-		// Details에 넘기는 값은 override 또는 default를 복사한 편집용 값이다.
-		// 이 단계에서는 저장 상태를 바꾸지 않는다.
-		auto ValueIt = EditableScriptPropertyValues.find(Desc.Name);
-		if (ValueIt == EditableScriptPropertyValues.end())
-		{
-			continue;
-		}
-
-		FPropertyDescriptor Property;
-		Property.Name = Desc.Name;
-		Property.Type = ToEditablePropertyType(Desc.Type);
-		Property.ValuePtr = GetEditableScriptPropertyValuePtr(ValueIt->second);
-		Property.Speed = Desc.Type == EScriptPropertyType::Int ? 1.0f : 0.1f;
-		if (Desc.bHasMin)
-		{
-			Property.Min = Desc.Min;
-		}
-		if (Desc.bHasMax)
-		{
-			Property.Max = Desc.Max;
-		}
-		OutProps.push_back(Property);
-	}
 }
 
 void UScriptComponent::PostEditProperty(const char* PropertyName)
@@ -447,12 +247,6 @@ void UScriptComponent::PostEditProperty(const char* PropertyName)
 			ReloadScript();
 		}
 	}
-	else if (ApplyEditedScriptProperty(PropertyName))
-	{
-		// Details UI는 ValuePtr을 먼저 수정한 뒤 PostEditProperty를 호출한다.
-		// 여기서만 override를 만들면 패널을 열어 보기만 해서는 저장 상태가 바뀌지 않는다.
-		PruneScriptPropertyOverrides();
-	}
 }
 
 void UScriptComponent::SetScriptPath(const FString& InPath)
@@ -460,7 +254,6 @@ void UScriptComponent::SetScriptPath(const FString& InPath)
 	// 직렬화/에디터 입력/코드 호출 경로를 모두 같은 내부 표기로 맞춘다.
 	ScriptPath = FScriptPaths::NormalizeScriptPath(InPath);
 	ScriptInstance.SetScriptPath(ScriptPath);
-	InvalidateScriptPropertyDescs();
 
 	AActor* OwnerActor = GetOwner();
 	if (OwnerActor && OwnerActor->HasActorBegunPlay())
@@ -555,9 +348,6 @@ bool UScriptComponent::LoadScript()
 		return false;
 	}
 
-	InvalidateScriptPropertyDescs();
-	RefreshScriptPropertyDescs();
-
 	if (!ScriptInstance.Initialize(this))
 	{
 		SetScriptError(ScriptInstance.GetLastError());
@@ -596,9 +386,6 @@ bool UScriptComponent::ReloadScript()
 		SetScriptError("ReloadScript failed: script file does not exist: " + FPaths::ToUtf8(AbsoluteScriptPath.generic_wstring()));
 		return false;
 	}
-
-	InvalidateScriptPropertyDescs();
-	RefreshScriptPropertyDescs();
 
 	if (ScriptInstance.GetOwnerComponent() != this)
 	{
@@ -707,24 +494,6 @@ bool UScriptComponent::CallScriptFunction(const FString& FunctionName)
 	return true;
 }
 
-void UScriptComponent::SetSerializedScriptPropertyOverrides(const TMap<FString, FScriptPropertyValue>& InOverrides)
-{
-	ScriptPropertyOverrides = InOverrides;
-
-	if (RefreshScriptPropertyDescs(false))
-	{
-		PruneScriptPropertyOverrides();
-		RebuildEditableScriptPropertyValues();
-		return;
-	}
-
-	EditableScriptPropertyValues.clear();
-	for (const auto& Pair : ScriptPropertyOverrides)
-	{
-		EditableScriptPropertyValues[Pair.first] = Pair.second;
-	}
-}
-
 void UScriptComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -748,219 +517,6 @@ void UScriptComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	}
 	ScriptInstance.TickCoroutines(DeltaTime);
 	RefreshScriptErrorState();
-}
-
-bool UScriptComponent::ResolveScriptPropertyValue(const FString& PropertyName, const FScriptPropertyValue& FallbackValue, bool bHasFallback, FScriptPropertyValue& OutValue)
-{
-	if (PropertyName.empty())
-	{
-		return false;
-	}
-
-	if (!RefreshScriptPropertyDescs())
-	{
-		// property 선언을 읽지 못해도 Lua 실행 자체는 fallback/default 인자로 계속 진행할 수 있게 둔다.
-		// 단, 이미 저장된 override가 있으면 사용자 의도를 최대한 보존해 반환한다.
-		const auto OverrideIt = ScriptPropertyOverrides.find(PropertyName);
-		if (OverrideIt != ScriptPropertyOverrides.end())
-		{
-			OutValue = OverrideIt->second;
-			return true;
-		}
-
-		if (bHasFallback)
-		{
-			OutValue = FallbackValue;
-			return true;
-		}
-
-		return false;
-	}
-
-	const FScriptPropertyDesc* Desc = FindScriptPropertyDesc(PropertyName);
-	const auto OverrideIt = ScriptPropertyOverrides.find(PropertyName);
-	if (Desc)
-	{
-		// 우선순위: editor override -> 선언 default -> property 함수 fallback.
-		if (OverrideIt != ScriptPropertyOverrides.end() && FScriptProperty::IsTypeCompatible(OverrideIt->second, Desc->Type))
-		{
-			OutValue = OverrideIt->second;
-			ClampScriptPropertyValue(OutValue, *Desc);
-			return true;
-		}
-
-		if (Desc->bHasDefault || !bHasFallback)
-		{
-			OutValue = Desc->DefaultValue;
-			return true;
-		}
-
-		OutValue = CoerceScriptPropertyValue(FallbackValue, Desc->Type, Desc->DefaultValue);
-		ClampScriptPropertyValue(OutValue, *Desc);
-		return true;
-	}
-
-	if (OverrideIt != ScriptPropertyOverrides.end())
-	{
-		OutValue = OverrideIt->second;
-		return true;
-	}
-
-	if (bHasFallback)
-	{
-		OutValue = FallbackValue;
-		return true;
-	}
-
-	return false;
-}
-
-bool UScriptComponent::RefreshScriptProperties()
-{
-	InvalidateScriptPropertyDescs();
-	return RefreshScriptPropertyDescs();
-}
-
-void UScriptComponent::InvalidateScriptPropertyDescs()
-{
-	// ScriptPath 변경, load/reload 진입 시 호출된다.
-	// 다음 Details 표시나 property() 호출 때 최신 Lua 선언을 다시 읽게 만든다.
-	ScriptPropertyDescs.clear();
-	EditableScriptPropertyValues.clear();
-	LastScriptPropertyError.clear();
-	bScriptPropertyDescsLoaded = false;
-	bScriptPropertyDescsValid = false;
-}
-
-bool UScriptComponent::RefreshScriptPropertyDescs(bool bLogFailure)
-{
-	if (bScriptPropertyDescsLoaded)
-	{
-		// 같은 캐시 주기에서는 Lua 파일을 반복 실행하지 않는다.
-		// Details 패널은 매 프레임 그려질 수 있으므로 이 가드가 필요하다.
-		return bScriptPropertyDescsValid;
-	}
-
-	bScriptPropertyDescsLoaded = true;
-	bScriptPropertyDescsValid = false;
-	ScriptPropertyDescs.clear();
-	EditableScriptPropertyValues.clear();
-	LastScriptPropertyError.clear();
-
-	if (ScriptPath.empty())
-	{
-		bScriptPropertyDescsValid = true;
-		PruneScriptPropertyOverrides();
-		return true;
-	}
-
-	FString LoadError;
-	TArray<FScriptPropertyDesc> LoadedDescs;
-	if (!FScriptProperty::LoadDescs(ScriptPath, LoadedDescs, LoadError))
-	{
-		// 스크립트 실행 실패와 "정상적으로 property 0개"를 구분하기 위해 실패 상태를 별도 보관한다.
-		LastScriptPropertyError = LoadError;
-		if (bLogFailure)
-		{
-			UE_LOG_CATEGORY(ScriptComponent, Warning, "Script property scan failed: %s", LoadError.c_str());
-		}
-		return false;
-	}
-
-	ScriptPropertyDescs = std::move(LoadedDescs);
-	bScriptPropertyDescsValid = true;
-	// 선언이 바뀐 뒤 남은 override를 먼저 정리하고, 그 결과를 UI 편집값에 반영한다.
-	PruneScriptPropertyOverrides();
-	RebuildEditableScriptPropertyValues();
-	return true;
-}
-
-void UScriptComponent::RebuildEditableScriptPropertyValues()
-{
-	EditableScriptPropertyValues.clear();
-	for (const FScriptPropertyDesc& Desc : ScriptPropertyDescs)
-	{
-		// UI에는 "현재 적용될 값"을 보여준다. override가 없으면 선언 default가 그대로 보인다.
-		FScriptPropertyValue Value = Desc.DefaultValue;
-		const auto OverrideIt = ScriptPropertyOverrides.find(Desc.Name);
-		if (OverrideIt != ScriptPropertyOverrides.end() && FScriptProperty::IsTypeCompatible(OverrideIt->second, Desc.Type))
-		{
-			Value = OverrideIt->second;
-		}
-
-		ClampScriptPropertyValue(Value, Desc);
-		EditableScriptPropertyValues[Desc.Name] = Value;
-	}
-}
-
-void UScriptComponent::PruneScriptPropertyOverrides()
-{
-	for (auto It = ScriptPropertyOverrides.begin(); It != ScriptPropertyOverrides.end();)
-	{
-		// 삭제된 선언, 타입이 바뀐 선언, default와 같은 값은 저장할 필요가 없다.
-		const FScriptPropertyDesc* Desc = FindScriptPropertyDesc(It->first);
-		if (!Desc || !FScriptProperty::IsTypeCompatible(It->second, Desc->Type))
-		{
-			It = ScriptPropertyOverrides.erase(It);
-			continue;
-		}
-
-		ClampScriptPropertyValue(It->second, *Desc);
-		if (FScriptProperty::AreValuesEqual(It->second, Desc->DefaultValue))
-		{
-			It = ScriptPropertyOverrides.erase(It);
-			continue;
-		}
-
-		++It;
-	}
-}
-
-bool UScriptComponent::ApplyEditedScriptProperty(const FString& PropertyName)
-{
-	auto EditedValueIt = EditableScriptPropertyValues.find(PropertyName);
-	if (EditedValueIt == EditableScriptPropertyValues.end())
-	{
-		return false;
-	}
-
-	const FScriptPropertyDesc* Desc = FindScriptPropertyDesc(PropertyName);
-	if (!Desc)
-	{
-		ScriptPropertyOverrides.erase(PropertyName);
-		EditableScriptPropertyValues.erase(EditedValueIt);
-		return true;
-	}
-
-	FScriptPropertyValue EditedValue = EditedValueIt->second;
-	EditedValue.Type = Desc->Type;
-	ClampScriptPropertyValue(EditedValue, *Desc);
-	EditedValueIt->second = EditedValue;
-
-	// 사용자가 default와 같은 값으로 되돌리면 override를 제거한다.
-	// 이 규칙 덕분에 Details를 열고 닫기만 해도 저장 데이터가 늘어나는 일이 없다.
-	if (FScriptProperty::AreValuesEqual(EditedValue, Desc->DefaultValue))
-	{
-		ScriptPropertyOverrides.erase(PropertyName);
-	}
-	else
-	{
-		ScriptPropertyOverrides[PropertyName] = EditedValue;
-	}
-
-	return true;
-}
-
-const FScriptPropertyDesc* UScriptComponent::FindScriptPropertyDesc(const FString& PropertyName) const
-{
-	const auto It = std::find_if(
-		ScriptPropertyDescs.begin(),
-		ScriptPropertyDescs.end(),
-		[&PropertyName](const FScriptPropertyDesc& Desc)
-		{
-			return Desc.Name == PropertyName;
-		});
-	return It != ScriptPropertyDescs.end() ? &(*It) : nullptr;
 }
 
 void UScriptComponent::BindOwnerShapeCollisionEvents()
