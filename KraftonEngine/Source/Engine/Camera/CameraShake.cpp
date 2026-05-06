@@ -1,20 +1,38 @@
-﻿#include "Camera/CameraShake.h"
-#include <cmath>
+#include "Camera/CameraShake.h"
 
-IMPLEMENT_ABSTRACT_CLASS(UCameraShakeBase, UObject)
-IMPLEMENT_CLASS(USinWaveCameraShake, UCameraShakeBase)
+IMPLEMENT_CLASS(UCameraShakeBase, UObject)
 
-void USinWaveCameraShake::UpdateShake(float DeltaTime, FVector& OutLoc, FRotator& OutRot)
+UCameraShakeBase::~UCameraShakeBase()
+{
+	if (RootShakePattern)
+	{
+		UObjectManager::Get().DestroyObject(RootShakePattern);
+		RootShakePattern = nullptr;
+	}
+}
+
+void UCameraShakeBase::UpdateShake(float DeltaTime, FVector& OutLoc, FRotator& OutRot)
 {
 	ElapsedTime += DeltaTime;
-	float Alpha = 1.0f - (ElapsedTime / Duration);
-	if (Alpha < 0.0f) Alpha = 0.0f;
 
-	// Simple sinusoidal movement on Y and Z axis
-	float Wave = sinf(ElapsedTime * 25.0f) * Intensity * Alpha;
-	OutLoc = FVector(0.0f, Wave, Wave * 0.5f);
-	
-	// Subtle rotation shake on Roll and Yaw
-	OutRot.Roll = Wave * 0.2f;
-	OutRot.Yaw = Wave * 0.1f;
+	const float ShakeAlpha = Duration > 0.0f ? ElapsedTime / Duration : 1.0f;
+	const float ClampedAlpha = ShakeAlpha > 1.0f ? 1.0f : ShakeAlpha;
+	const float FadeOutAlpha = 1.0f - ClampedAlpha;
+
+	if (!RootShakePattern)
+	{
+		OutLoc = FVector::ZeroVector;
+		OutRot = FRotator::ZeroRotator;
+		return;
+	}
+
+	OutLoc = FVector(
+		RootShakePattern->EvalTransitionX(ClampedAlpha),
+		RootShakePattern->EvalTransitionY(ClampedAlpha),
+		RootShakePattern->EvalTransitionZ(ClampedAlpha)) * Intensity * FadeOutAlpha;
+
+	OutRot = FRotator(
+		RootShakePattern->EvalRotationX(ClampedAlpha),
+		RootShakePattern->EvalRotationY(ClampedAlpha),
+		RootShakePattern->EvalRotationZ(ClampedAlpha)) * Intensity * FadeOutAlpha;
 }

@@ -1,8 +1,6 @@
 #pragma once
 #include "Camera/MinimalViewInfo.h"
-#include "CameraShakePattern.h"
 #include "Core/CoreTypes.h"
-#include "Math/CurveFloat.h"
 #include "Object/Object.h"
 
 class APlayerCameraManager;
@@ -14,15 +12,7 @@ public:
 	UCameraModifier();
 
 	virtual void AddedToCamera(APlayerCameraManager* Camera);
-
-	/**
-	 * Directly modifies variables in the owning camera.
-	 * @param DeltaTime Change in time since last update.
-	 * @param InOutPOV Current point of view, to be updated.
-	 * @return True if modifier processing should stop, false otherwise.
-	 */
 	virtual bool ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV);
-
 	virtual void UpdateAlpha(float DeltaTime);
 
 	virtual bool IsDisabled() const { return bDisabled; }
@@ -38,9 +28,6 @@ public:
 	float GetAlphaInTime() const { return AlphaInTime; }
 	float GetAlphaOutTime() const { return AlphaOutTime; }
 
-	void SetCameraShakePattern(UCameraShakePattern* InShakePattern) { ShakePattern = InShakePattern; }
-	UCameraShakePattern* GetCameraShakePattern() const { return ShakePattern; }
-
 protected:
 	virtual ~UCameraModifier();
 
@@ -51,7 +38,6 @@ public:
 
 protected:
 	APlayerCameraManager* CameraOwner = nullptr;
-	UCameraShakePattern* ShakePattern = nullptr;
 
 	float AlphaInTime = 0.0f;
 	float AlphaOutTime = 0.0f;

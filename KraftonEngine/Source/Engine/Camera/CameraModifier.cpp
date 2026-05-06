@@ -5,14 +5,7 @@ IMPLEMENT_CLASS(UCameraModifier, UObject)
 
 UCameraModifier::UCameraModifier() {}
 
-UCameraModifier::~UCameraModifier()
-{
-	if (ShakePattern)
-	{
-		UObjectManager::Get().DestroyObject(ShakePattern);
-		ShakePattern = nullptr;
-	}
-}
+UCameraModifier::~UCameraModifier() {}
 
 void UCameraModifier::AddedToCamera(APlayerCameraManager* InCameraManager)
 {
@@ -61,21 +54,6 @@ void UCameraModifier::DisableModifier(bool bImmediate)
 
 bool UCameraModifier::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
-	if (!ShakePattern)
-	{
-		return false;
-	}
-
-	const float TOffsetX = ShakePattern->EvalTransitionX(Alpha);
-	const float TOffsetY = ShakePattern->EvalTransitionY(Alpha);
-	const float TOffsetZ = ShakePattern->EvalTransitionZ(Alpha);
-	InOutPOV.Location += FVector(TOffsetX, TOffsetY, TOffsetZ) * TransitionIntensity;
-
-	const float ROffsetX = ShakePattern->EvalRotationX(Alpha);
-	const float ROffsetY = ShakePattern->EvalRotationY(Alpha);
-	const float ROffsetZ = ShakePattern->EvalRotationZ(Alpha);
-	InOutPOV.Rotation += FRotator(ROffsetX, ROffsetY, ROffsetZ) * RotationIntensity;
-
 	return false;
 }
 

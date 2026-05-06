@@ -130,7 +130,8 @@ void UCameraComponent::BeginPlay()
 
 //void UCameraComponent::StartCameraShake(float Intensity, float duration)
 //{
-//	USinWaveCameraShake* NewShake = UObjectManager::Get().CreateObject<USinWaveCameraShake>(this);
+//	UCameraShakeBase* NewShake = UObjectManager::Get().CreateObject<UCameraShakeBase>(this);
+//	NewShake->SetRootShakePattern(UObjectManager::Get().CreateObject<USinWaveCameraShakePattern>(NewShake));
 //	NewShake->Intensity = Intensity;
 //	NewShake->Duration = duration;
 //	ActiveShakes.push_back(NewShake);
