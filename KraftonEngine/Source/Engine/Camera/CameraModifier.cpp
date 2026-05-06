@@ -49,7 +49,6 @@ bool UCameraModifier::ModifyCamera(float DeltaTime, UCameraComponent* InOutPOV)
 {
 	float Wave = Intensity * CameraCurve->Evaluate(Alpha);
 	InOutPOV->AddWorldOffset(FVector(0.0f, Wave, Wave * 0.5f));
-
 	InOutPOV->AddLocalRotation(FRotator(Wave * 0.05f, Wave * 0.1f, Wave * 0.2f));
 	return false;
 }
