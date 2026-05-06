@@ -10,6 +10,10 @@ local PlayerControllerConfig = {
     -- max_move_step: overlap 누락을 줄이기 위해 전진 이동을 쪼개는 최대 거리
     max_move_step = 0.25,
 
+    -- knockback_*: 장애물 충돌 시 Runner를 전진 반대 방향으로 밀어내는 거리
+    knockback_enabled = false,
+    knockback_distance = 1.5,
+
     -- lane_*: 레인 개수, 간격, 레인 이동 보간 속도
     lane_width = 4.0,
     lane_count = 3,
