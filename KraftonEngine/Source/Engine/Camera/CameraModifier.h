@@ -3,6 +3,7 @@
 #include "Core/CoreTypes.h"
 #include "Math/CurveFloat.h"
 #include "Object/Object.h"
+#include "CameraShakePattern.h"
 
 class APlayerCameraManager;
 
@@ -39,21 +40,8 @@ public:
 	float GetAlphaInTime() const { return AlphaInTime; }
 	float GetAlphaOutTime() const { return AlphaOutTime; }
 
-
-	// Curve Accessors
-	UCurveFloat* GetTransitionCurveX() const { return TransitionCurveX != nullptr ? TransitionCurveX : nullptr; }
-	virtual void SetTransitionCurveX(UCurveFloat* InCurve) { TransitionCurveX = InCurve; }
-	UCurveFloat* GetTransitionCurveY() const { return TransitionCurveY != nullptr ? TransitionCurveY : nullptr; }
-	virtual void SetTransitionCurveY(UCurveFloat* InCurve) { TransitionCurveY = InCurve; }
-	UCurveFloat* GetTransitionCurveZ() const { return TransitionCurveZ != nullptr ? TransitionCurveZ : nullptr; }
-	virtual void SetTransitionCurveZ(UCurveFloat* InCurve) { TransitionCurveZ = InCurve; }
-
-	UCurveFloat* GetRotationCurveX() const { return RotationCurveX != nullptr ? RotationCurveX : nullptr; }
-	virtual void SetRotationCurveX(UCurveFloat* InCurve) { RotationCurveX = InCurve; }
-	UCurveFloat* GetRotationCurveY() const { return RotationCurveY != nullptr ? RotationCurveY : nullptr; }
-	virtual void SetRotationCurveY(UCurveFloat* InCurve) { RotationCurveY = InCurve; }
-	UCurveFloat* GetRotationCurveZ() const { return RotationCurveZ != nullptr ? RotationCurveZ : nullptr; }
-	virtual void SetRotationCurveZ(UCurveFloat* InCurve) { RotationCurveZ = InCurve; }
+	void SetCameraShakePattern(UCameraShakePattern* InShakePattern) { ShakePattern = InShakePattern; }
+	UCameraShakePattern* GetCameraShakePattern() const { return ShakePattern != nullptr ? ShakePattern : nullptr; }
 
 protected:
 	virtual ~UCameraModifier() = default;
@@ -66,13 +54,7 @@ public:
 
 protected:
 	APlayerCameraManager* CameraOwner = nullptr;
-
-	UCurveFloat* TransitionCurveX = nullptr;
-	UCurveFloat* TransitionCurveY = nullptr;
-	UCurveFloat* TransitionCurveZ = nullptr;
-	UCurveFloat* RotationCurveX   = nullptr;
-	UCurveFloat* RotationCurveY   = nullptr;
-	UCurveFloat* RotationCurveZ   = nullptr;
+	UCameraShakePattern* ShakePattern = nullptr;
 
 	// Time it takes for Alpha to go from 0.0 to 1.0
 	float AlphaInTime		= 0.f;

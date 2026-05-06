@@ -59,6 +59,9 @@ void AGameModeBase::StartPlay()
 		if (CameraManager) 
 		{
 			World->AddActor(CameraManager);
+			if (SpawnedController) {
+				
+			}
 
 		}
 		else if (Obj)

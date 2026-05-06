@@ -52,14 +52,14 @@ bool UCameraModifier::ModifyCamera(float DeltaTime, UCameraComponent* InOutPOV)
 	//InOutPOV->AddLocalRotation(FRotator(Wave * 0.05f, Wave * 0.1f, Wave * 0.2f));
 	//return false;
 
-	float TOffsetX = TransitionCurveX != nullptr ? TransitionCurveX->Evaluate(Alpha) : 0;
-	float TOffsetY = TransitionCurveY != nullptr ? TransitionCurveY->Evaluate(Alpha) : 0;
-	float TOffsetZ = TransitionCurveZ != nullptr ? TransitionCurveZ->Evaluate(Alpha) : 0;
+	float TOffsetX = ShakePattern->EvalTransitionX(Alpha);
+	float TOffsetY = ShakePattern->EvalTransitionY(Alpha);
+	float TOffsetZ = ShakePattern->EvalTransitionZ(Alpha);
 	InOutPOV->AddWorldOffset(FVector(TOffsetX, TOffsetY, TOffsetZ) * TransitionIntensity);
 	
-	float ROffsetX = RotationCurveX != nullptr ? RotationCurveX->Evaluate(Alpha) : 0;
-	float ROffsetY = RotationCurveY != nullptr ? RotationCurveY->Evaluate(Alpha) : 0;
-	float ROffsetZ = RotationCurveZ != nullptr ? RotationCurveZ->Evaluate(Alpha) : 0;
+	float ROffsetX = ShakePattern->EvalRotationX(Alpha);
+	float ROffsetY = ShakePattern->EvalRotationY(Alpha);
+	float ROffsetZ = ShakePattern->EvalRotationZ(Alpha);
 	InOutPOV->AddLocalRotation(FRotator(ROffsetX, ROffsetY, ROffsetZ) * RotationIntensity);
 	return false;
 }
