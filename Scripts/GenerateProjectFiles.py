@@ -312,6 +312,11 @@ def generate_vcxproj(files: dict[str, list[str]]):
         ET.SubElement(link, "SubSystem").text = subsystem
         ET.SubElement(link, "GenerateDebugInformation").text = "true"
 
+        manifest = ET.SubElement(idg, "Manifest")
+        ET.SubElement(manifest, "AdditionalManifestFiles").text = (
+            "KraftonEngine.exe.manifest;%(AdditionalManifestFiles)"
+        )
+
     # ClCompile items
     ig = ET.SubElement(proj, "ItemGroup")
     for f in files["ClCompile"]:

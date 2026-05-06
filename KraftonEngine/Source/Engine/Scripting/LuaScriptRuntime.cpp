@@ -49,6 +49,36 @@ struct FLuaScriptRuntime::FRuntimeImpl
 
 namespace
 {
+	FString MakeRequireScriptPath(const FString& ModuleName)
+	{
+		FString ScriptPath = ModuleName;
+
+		std::replace(ScriptPath.begin(), ScriptPath.end(), '.', '/');
+		std::replace(ScriptPath.begin(), ScriptPath.end(), '\\', '/');
+
+		if (ScriptPath.size() < 4 || ScriptPath.substr(ScriptPath.size() - 4) != ".lua")
+		{
+			ScriptPath += ".lua";
+		}
+
+		return FScriptPaths::NormalizeScriptPath(ScriptPath);
+	}
+
+	bool IsTruthyLuaObject(const sol::object& Object)
+	{
+		if (!Object.valid() || Object == sol::lua_nil)
+		{
+			return false;
+		}
+
+		if (Object.get_type() == sol::type::boolean)
+		{
+			return Object.as<bool>();
+		}
+
+		return true;
+	}
+
 	void ConfigurePackagePath(sol::state& Lua)
 	{
 		sol::table Package = Lua["package"];
@@ -71,6 +101,94 @@ namespace
 
 		// require로 불러온 모듈은 Lua state 안에서 캐시됩니다.
 		// 여러 스크립트가 같은 모듈 테이블을 공유하므로 Config는 상수처럼 사용하는 것이 안전합니다.
+	}
+
+	void BindWidePathRequire(sol::state& Lua)
+	{
+		Lua.set_function("require", [&Lua](const FString& ModuleName) -> sol::object
+		{
+			if (ModuleName.empty())
+			{
+				throw sol::error("require failed: module name is empty");
+			}
+
+			sol::table Package = Lua["package"];
+			if (!Package.valid())
+			{
+				Package = Lua.create_table();
+				Lua["package"] = Package;
+			}
+
+			sol::table Loaded = Package["loaded"];
+			if (!Loaded.valid())
+			{
+				Loaded = Lua.create_table();
+				Package["loaded"] = Loaded;
+			}
+
+			sol::object CachedModule = Loaded[ModuleName];
+			if (IsTruthyLuaObject(CachedModule))
+			{
+				return CachedModule;
+			}
+
+			const FString ScriptPath = MakeRequireScriptPath(ModuleName);
+
+			FString ScriptSource;
+			FString FileReadError;
+			if (!FScriptPaths::ReadScriptFile(ScriptPath, ScriptSource, FileReadError))
+			{
+				const FString ErrorMessage = "require failed: " + FileReadError;
+				throw sol::error(ErrorMessage);
+			}
+
+			const std::filesystem::path ResolvedPath = FScriptPaths::ResolveScriptPath(ScriptPath);
+			const FString ChunkName = "@" + FPaths::ToUtf8(ResolvedPath.generic_wstring());
+
+			// Mark as loading before executing the chunk, matching Lua require's shared module cache behavior.
+			Loaded[ModuleName] = true;
+
+			sol::protected_function_result Result =
+				Lua.safe_script(
+					ScriptSource,
+					sol::script_pass_on_error,
+					ChunkName,
+					sol::load_mode::text);
+
+			if (!Result.valid() || Result.status() == sol::call_status::yielded)
+			{
+				Loaded[ModuleName] = sol::lua_nil;
+				FString ErrorText = "module yielded while loading";
+				if (!Result.valid())
+				{
+					sol::error Error = Result;
+					ErrorText = Error.what();
+				}
+
+				const FString ErrorMessage = "require failed: " + ModuleName + ": " + ErrorText;
+				throw sol::error(ErrorMessage);
+			}
+
+			sol::object ModuleResult = sol::make_object(Lua, sol::lua_nil);
+			if (Result.return_count() > 0)
+			{
+				ModuleResult = Result.get<sol::object>(0);
+			}
+			if (ModuleResult.valid() && ModuleResult != sol::lua_nil)
+			{
+				Loaded[ModuleName] = ModuleResult;
+				return ModuleResult;
+			}
+
+			sol::object LoadedModule = Loaded[ModuleName];
+			if (LoadedModule.valid() && LoadedModule != sol::lua_nil)
+			{
+				return LoadedModule;
+			}
+
+			Loaded[ModuleName] = true;
+			return sol::make_object(Lua, true);
+		});
 	}
 
 	bool IsLuaScriptFile(const FString& Path)
@@ -115,6 +233,7 @@ bool FLuaScriptRuntime::Initialize()
 			sol::lib::coroutine,
 			sol::lib::package);
 		ConfigurePackagePath(Impl->Lua);
+		BindWidePathRequire(Impl->Lua);
 
 		RegisterBindings();
 
