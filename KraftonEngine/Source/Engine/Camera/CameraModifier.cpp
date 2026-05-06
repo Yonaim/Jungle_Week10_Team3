@@ -52,24 +52,19 @@ void UCameraModifier::DisableModifier(bool bImmediate)
 	bPendingDisable = true;
 }
 
-bool UCameraModifier::ModifyCamera(float DeltaTime, UCameraComponent* InOutPOV)
+bool UCameraModifier::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
-	//float Wave = Intensity * CameraCurve->Evaluate(Alpha);
-	//InOutPOV->AddWorldOffset(FVector(0.0f, Wave, Wave * 0.5f));
-	//InOutPOV->AddLocalRotation(FRotator(Wave * 0.05f, Wave * 0.1f, Wave * 0.2f));
-	//return false;
-
 	if (!ShakePattern) return false;
 
 	float TOffsetX = ShakePattern->EvalTransitionX(Alpha);
 	float TOffsetY = ShakePattern->EvalTransitionY(Alpha);
 	float TOffsetZ = ShakePattern->EvalTransitionZ(Alpha);
-	InOutPOV->AddWorldOffset(FVector(TOffsetX, TOffsetY, TOffsetZ) * TransitionIntensity);
+	InOutPOV.Location += FVector(TOffsetX, TOffsetY, TOffsetZ) * TransitionIntensity;
 	
 	float ROffsetX = ShakePattern->EvalRotationX(Alpha);
 	float ROffsetY = ShakePattern->EvalRotationY(Alpha);
 	float ROffsetZ = ShakePattern->EvalRotationZ(Alpha);
-	InOutPOV->AddLocalRotation(FRotator(ROffsetX, ROffsetY, ROffsetZ) * RotationIntensity);
+	InOutPOV.Rotation += FRotator(ROffsetX, ROffsetY, ROffsetZ) * RotationIntensity;
 	return false;
 }
 

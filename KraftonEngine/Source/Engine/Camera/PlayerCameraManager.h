@@ -17,10 +17,7 @@ public:
 
 public:
 	AActor*			  Target = nullptr;
-
-	// 원래는 FMinimalViewInfo 라는 이름의 struct를 사용해야 함
-	// TODO: FCameraState 에다 월드 위치 정보 추가
-	UCameraComponent* POV	 = nullptr;
+	FMinimalViewInfo  POV;
 };
 
 
@@ -47,7 +44,7 @@ public:
 	void AddCameraModifier(UCameraModifier* InModifier);
 
 	// 카메라 모디파이어 적용 (매 틱 호출됨)
-	void ApplyCameraModifiers(float DeltaTime, UCameraComponent* InOutPOV);
+	void ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV);
 
 	void StartCameraShake();
 	void EndCameraShake();

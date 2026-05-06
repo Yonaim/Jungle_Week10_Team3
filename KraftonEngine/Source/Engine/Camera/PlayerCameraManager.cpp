@@ -20,10 +20,10 @@ APawnActor* FViewTarget::GetTargetPawn() const
 
 bool FViewTarget::Equal(const FViewTarget& OtherTarget) const
 {
-	if (POV && OtherTarget.POV)
-	{
-		return POV == OtherTarget.POV;
+	if (Target && OtherTarget.Target) {
+		return Target == OtherTarget.Target;
 	}
+
 	return false;
 }
 
@@ -62,6 +62,8 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime) {
 		FadeAmount = FadeAlpha.X + (FadeAlpha.Y - FadeAlpha.X) * (FadeTime - FadeTimeRemaining) / FadeTime;
 		FadeTimeRemaining -= DeltaTime;
 	}
+
+
 }
 
 void APlayerCameraManager::SetOwner(APlayerController* InController) {
@@ -94,13 +96,8 @@ void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier)
 	});
 }
 
-void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, UCameraComponent* InOutPOV)
+void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
-	if (!InOutPOV)
-	{
-		return;
-	}
-
 	for (UCameraModifier* CameraModifier : ModifierList)
 	{
 		if (!CameraModifier || CameraModifier->IsDisabled())
