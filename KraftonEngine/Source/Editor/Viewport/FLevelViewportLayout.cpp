@@ -324,6 +324,26 @@ void DrawShowFlagsPopupContent(FViewportRenderOptions& Opts)
 			ImGui::SetNextItemWidth(CompactSliderWidth);
 			ImGui::SliderFloat("FXAA Edge Threshold Min", &Opts.EdgeThresholdMin, 0.0312f, 0.0833f, "%.4f");
 		}
+		ImGui::Checkbox("Gamma Correction", &Opts.ShowFlags.bGammaCorrection);
+		if (Opts.ShowFlags.bGammaCorrection)
+		{
+			const char* CurveModes[] = { "sRGB Curve", "Power Gamma" };
+			int32 CurveMode = Opts.bUseSRGBCurve ? 0 : 1;
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			if (ImGui::Combo("Output Curve", &CurveMode, CurveModes, ARRAYSIZE(CurveModes)))
+			{
+				Opts.bUseSRGBCurve = CurveMode == 0;
+			}
+
+			if (!Opts.bUseSRGBCurve)
+			{
+				ImGui::SetNextItemWidth(CompactSliderWidth);
+				ImGui::SliderFloat("Display Gamma", &Opts.DisplayGamma, 1.0f, 3.0f, "%.2f");
+			}
+
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderFloat("Gamma Blend", &Opts.GammaCorrectionBlend, 0.0f, 1.0f, "%.2f");
+		}
 	}
 	ImGui::EndGroup();
 	ImGui::PopStyleVar(3);

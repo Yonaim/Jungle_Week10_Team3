@@ -34,12 +34,16 @@ namespace Key
 	constexpr const char* bLightHitMap = "bLightHitMap";
 	constexpr const char* bFog = "bFog";
 	constexpr const char* bShowShadowFrustum = "bShowShadowFrustum";
+	constexpr const char* bGammaCorrection = "bGammaCorrection";
 	constexpr const char* GridSpacing = "GridSpacing";
 	constexpr const char* GridHalfLineCount = "GridHalfLineCount";
 	constexpr const char* DebugLineThickness = "DebugLineThickness";
 	constexpr const char* ActorHelperBillboardScale = "ActorHelperBillboardScale";
 	constexpr const char* CameraMoveSensitivity = "CameraMoveSensitivity";
 	constexpr const char* CameraRotateSensitivity = "CameraRotateSensitivity";
+	constexpr const char* DisplayGamma = "DisplayGamma";
+	constexpr const char* GammaCorrectionBlend = "GammaCorrectionBlend";
+	constexpr const char* bUseSRGBCurve = "bUseSRGBCurve";
 	constexpr const char* DirectionalLightVisualizationScale = "DirectionalLightVisualizationScale";
 	constexpr const char* PointLightVisualizationScale = "PointLightVisualizationScale";
 	constexpr const char* SpotLightVisualizationScale = "SpotLightVisualizationScale";
@@ -138,12 +142,16 @@ void FEditorSettings::SaveToFile(const FString& Path) const
 		SlotObj[Key::bLightHitMap] = Opts.ShowFlags.bLightHitMap;
 		SlotObj[Key::bFog] = Opts.ShowFlags.bFog;
 		SlotObj[Key::bShowShadowFrustum] = Opts.ShowFlags.bShowShadowFrustum;
+		SlotObj[Key::bGammaCorrection] = Opts.ShowFlags.bGammaCorrection;
 		SlotObj[Key::GridSpacing] = Opts.GridSpacing;
 		SlotObj[Key::GridHalfLineCount] = Opts.GridHalfLineCount;
 		SlotObj[Key::DebugLineThickness] = Opts.DebugLineThickness;
 		SlotObj[Key::ActorHelperBillboardScale] = Opts.ActorHelperBillboardScale;
 		SlotObj[Key::CameraMoveSensitivity] = Opts.CameraMoveSensitivity;
 		SlotObj[Key::CameraRotateSensitivity] = Opts.CameraRotateSensitivity;
+		SlotObj[Key::DisplayGamma] = Opts.DisplayGamma;
+		SlotObj[Key::GammaCorrectionBlend] = Opts.GammaCorrectionBlend;
+		SlotObj[Key::bUseSRGBCurve] = Opts.bUseSRGBCurve;
 		SlotObj[Key::DirectionalLightVisualizationScale] = Opts.DirectionalLightVisualizationScale;
 		SlotObj[Key::PointLightVisualizationScale] = Opts.PointLightVisualizationScale;
 		SlotObj[Key::SpotLightVisualizationScale] = Opts.SpotLightVisualizationScale;
@@ -309,6 +317,8 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 					Opts.ShowFlags.bFog = S[Key::bFog].ToBool();
 				if (S.hasKey(Key::bShowShadowFrustum))
 					Opts.ShowFlags.bShowShadowFrustum = S[Key::bShowShadowFrustum].ToBool();
+				if (S.hasKey(Key::bGammaCorrection))
+					Opts.ShowFlags.bGammaCorrection = S[Key::bGammaCorrection].ToBool();
 				if (S.hasKey(Key::GridSpacing))
 					Opts.GridSpacing = static_cast<float>(S[Key::GridSpacing].ToFloat());
 				if (S.hasKey(Key::GridHalfLineCount))
@@ -321,6 +331,12 @@ void FEditorSettings::LoadFromFile(const FString& Path)
 					Opts.CameraMoveSensitivity = static_cast<float>(S[Key::CameraMoveSensitivity].ToFloat());
 				if (S.hasKey(Key::CameraRotateSensitivity))
 					Opts.CameraRotateSensitivity = static_cast<float>(S[Key::CameraRotateSensitivity].ToFloat());
+				if (S.hasKey(Key::DisplayGamma))
+					Opts.DisplayGamma = static_cast<float>(S[Key::DisplayGamma].ToFloat());
+				if (S.hasKey(Key::GammaCorrectionBlend))
+					Opts.GammaCorrectionBlend = static_cast<float>(S[Key::GammaCorrectionBlend].ToFloat());
+				if (S.hasKey(Key::bUseSRGBCurve))
+					Opts.bUseSRGBCurve = S[Key::bUseSRGBCurve].ToBool();
 				if (S.hasKey(Key::DirectionalLightVisualizationScale))
 					Opts.DirectionalLightVisualizationScale = static_cast<float>(S[Key::DirectionalLightVisualizationScale].ToFloat());
 				if (S.hasKey(Key::PointLightVisualizationScale))
