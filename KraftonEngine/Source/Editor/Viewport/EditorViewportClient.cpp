@@ -1765,6 +1765,8 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 	DrawList->AddImage((ImTextureID)Viewport->GetSRV(), Min, Max);
 	if (bIsActiveViewport)
 	{
+		constexpr float ActiveBorderThickness = 4.0f;
+		const float BorderInset = ActiveBorderThickness * 0.5f;
 		ImU32 BorderColor = IM_COL32(255, 165, 0, 220);
 		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
 		{
@@ -1775,7 +1777,16 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
 					: IM_COL32(52, 199, 89, 255);
 			}
 		}
-		DrawList->AddRect(Min, Max, BorderColor, 0.0f, 0, 4.0f);
+		if (R.Width > ActiveBorderThickness && R.Height > ActiveBorderThickness)
+		{
+			DrawList->AddRect(
+				ImVec2(Min.x + BorderInset, Min.y + BorderInset),
+				ImVec2(Max.x - BorderInset, Max.y - BorderInset),
+				BorderColor,
+				0.0f,
+				0,
+				ActiveBorderThickness);
+		}
 	}
 	if (bIsMarqueeSelecting)
 	{
