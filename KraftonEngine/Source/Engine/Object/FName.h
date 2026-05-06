@@ -54,3 +54,14 @@ private:
 	TArray<FString> Entries;
 	TMap<FString, uint32> LookupMap;
 };
+namespace std
+{
+	template<>
+	struct hash<FName>
+	{
+		size_t operator()(const FName& Name) const
+		{
+			return FName::Hash{}(Name);
+		}
+	};
+}

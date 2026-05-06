@@ -6,6 +6,7 @@
 #include "Math/MathUtils.h"
 #include "Math/Vector.h"
 #include "Collision/ConvexVolume.h"
+#include <Camera/MinimalViewInfo.h>
 
 struct FCameraState
 {
@@ -41,6 +42,9 @@ public:
 	FMatrix GetProjectionMatrix() const;
 	FMatrix GetViewProjectionMatrix() const;
 	FConvexVolume GetConvexVolume() const;
+	// CameraComponents default view provider
+	void GetCameraView(float deltaTime, FMinimalViewInfo& outView) const;
+	
 
 	float GetFOV() const { return CameraState.FOV; }
 	float GetNearPlane() const { return CameraState.NearZ; }

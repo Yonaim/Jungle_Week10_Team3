@@ -44,6 +44,17 @@ FConvexVolume UCameraComponent::GetConvexVolume() const
 	return ConvexVolume;
 }
 
+void UCameraComponent::GetCameraView(float deltaTime, FMinimalViewInfo& outView) const
+{
+	outView.Location = GetWorldLocation();
+	outView.Rotation = GetComponentRotation();
+	outView.FOV = CameraState.FOV;
+	outView.NearZ = CameraState.NearZ;
+	outView.FarZ = CameraState.FarZ;
+	outView.bIsOrthogonal = CameraState.bIsOrthogonal;
+	outView.OrthoWidth = CameraState.OrthoWidth;
+}
+
 void UCameraComponent::LookAt(const FVector& Target)
 {
 	FVector Position = GetWorldLocation();
