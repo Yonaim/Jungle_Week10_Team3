@@ -60,8 +60,9 @@ protected:
 
 public:
 	// Unreal Engine도 Public에 넣어둠
-	uint8 Priority  = 0;
-	float Intensity = 1.f;
+	uint8 Priority			  = 0;
+	float TransitionIntensity = 1.f;
+	float RotationIntensity   = 1.f;
 
 protected:
 	APlayerCameraManager* CameraOwner = nullptr;

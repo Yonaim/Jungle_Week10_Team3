@@ -55,12 +55,12 @@ bool UCameraModifier::ModifyCamera(float DeltaTime, UCameraComponent* InOutPOV)
 	float TOffsetX = TransitionCurveX != nullptr ? TransitionCurveX->Evaluate(Alpha) : 0;
 	float TOffsetY = TransitionCurveY != nullptr ? TransitionCurveY->Evaluate(Alpha) : 0;
 	float TOffsetZ = TransitionCurveZ != nullptr ? TransitionCurveZ->Evaluate(Alpha) : 0;
-	InOutPOV->AddWorldOffset(FVector(TOffsetX, TOffsetY, TOffsetZ));
+	InOutPOV->AddWorldOffset(FVector(TOffsetX, TOffsetY, TOffsetZ) * TransitionIntensity);
 	
 	float ROffsetX = RotationCurveX != nullptr ? RotationCurveX->Evaluate(Alpha) : 0;
 	float ROffsetY = RotationCurveY != nullptr ? RotationCurveY->Evaluate(Alpha) : 0;
 	float ROffsetZ = RotationCurveZ != nullptr ? RotationCurveZ->Evaluate(Alpha) : 0;
-	InOutPOV->AddLocalRotation(FRotator(ROffsetX, ROffsetY, ROffsetZ));
+	InOutPOV->AddLocalRotation(FRotator(ROffsetX, ROffsetY, ROffsetZ) * RotationIntensity);
 	return false;
 }
 
