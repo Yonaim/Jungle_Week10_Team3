@@ -7,6 +7,7 @@ REGISTER_RENDER_PASS(FPostProcessPass)
 #include "Render/Types/FrameContext.h"
 #include "Render/Types/RenderConstants.h"
 #include "Render/Command/DrawCommandList.h"
+#include "Render/Resource/RenderResources.h"
 
 FPostProcessPass::FPostProcessPass()
 {
@@ -25,6 +26,7 @@ bool FPostProcessPass::BeginPass(const FPassContext& Ctx)
 	FStateCache& Cache = Ctx.Cache;
 
 	DC->OMSetRenderTargets(0, nullptr, nullptr);
+	Ctx.Resources.UnbindSystemTextures(Ctx.Device);
 
 	DC->CopyResource(Frame.DepthCopyTexture, Frame.DepthTexture);
 

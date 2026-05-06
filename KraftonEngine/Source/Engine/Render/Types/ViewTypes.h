@@ -41,6 +41,7 @@ struct FShowFlags
 	bool bViewLightCulling = false;
 	bool bVisualize25DCulling = false;
 	bool bShowShadowFrustum = false;
+	bool bGammaCorrection = true;
 };
 
 // 뷰포트 카메라 프리셋 (Perspective / 6방향 Orthographic)
@@ -78,6 +79,11 @@ struct FViewportRenderOptions
 	// FXAA 전용 설정
 	float EdgeThreshold = 0.125f;
 	float EdgeThresholdMin = 0.0625f;
+
+	// Gamma correction output settings
+	float DisplayGamma = 2.2f;
+	float GammaCorrectionBlend = 1.0f;
+	bool bUseSRGBCurve = true;
 
 	// Light Culling 뷰모드 전용 설정
 	ELightCullingMode LightCullingMode = ELightCullingMode::Cluster;

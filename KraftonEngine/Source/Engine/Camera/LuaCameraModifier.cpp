@@ -94,7 +94,7 @@ struct FLuaCameraView
 		View.FarZ = POV.FarZ;
 		View.bIsOrthogonal = POV.bIsOrthogonal;
 		View.OrthoWidth = POV.OrthoWidth;
-		View.PostProcess.Settings = &POV.PostPorcessSettings;
+		View.PostProcess.Settings = &POV.PostProcessSettings;
 		return View;
 	}
 

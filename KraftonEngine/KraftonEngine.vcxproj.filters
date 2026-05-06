@@ -59,7 +59,7 @@
       <UniqueIdentifier>{d0b56061-5521-9f21-3d03-1e11f47e99a7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Asset">
-      <UniqueIdentifier>{2f0b65be-8e5f-4d94-b517-373d13b9b2a3}</UniqueIdentifier>
+      <UniqueIdentifier>{5425e5c6-8625-eb75-03f5-e74a5efa2fc3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Audio">
       <UniqueIdentifier>{60f7fb11-d80b-bf66-98c3-689d6f8326ab}</UniqueIdentifier>
@@ -303,7 +303,16 @@
     <FxCompile Include="Shaders\Lighting\VSMBlur.hlsl">
       <Filter>Shaders\Lighting</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\DamagePostProcess.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\PostProcess\FXAA.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\Fade.hlsl">
+      <Filter>Shaders\PostProcess</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PostProcess\GammaCorrection.hlsl">
       <Filter>Shaders\PostProcess</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\PostProcess\HeightFog.hlsl">
@@ -449,10 +458,19 @@
     <ClCompile Include="Source\Engine\Camera\CameraModifier.cpp">
       <Filter>Source\Engine\Camera</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Camera\CameraModifier_CameraShake.cpp">
+      <Filter>Source\Engine\Camera</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Camera\CameraShake.cpp">
       <Filter>Source\Engine\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Camera\CameraShakePattern.cpp">
+      <Filter>Source\Engine\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Camera\LuaCameraModifier.cpp">
+      <Filter>Source\Engine\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Camera\MinimalViewInfo.cpp">
       <Filter>Source\Engine\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Camera\PlayerCameraManager.cpp">
@@ -503,9 +521,6 @@
     <ClCompile Include="Source\Engine\Component\DecalComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\SpringArmComponent.cpp">
-      <Filter>Source\Engine\Component</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Component\GizmoComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
@@ -525,6 +540,9 @@
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\SoundComponent.cpp">
+      <Filter>Source\Engine\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Component\SpringArmComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\StaticMeshComponent.cpp">
@@ -833,6 +851,9 @@
     <ClCompile Include="Source\Engine\Render\RenderPass\FXAAPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\RenderPass\GammaCorrectionPass.cpp">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\GizmoInnerPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
@@ -950,10 +971,10 @@
     <ClCompile Include="Source\Engine\Scripting\LuaActorProxy.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Scripting\LuaCoroutineScheduler.cpp">
+    <ClCompile Include="Source\Engine\Scripting\LuaComponentProxy.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Scripting\LuaComponentProxy.cpp">
+    <ClCompile Include="Source\Engine\Scripting\LuaCoroutineScheduler.cpp">
       <Filter>Source\Engine\Scripting</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Scripting\LuaScriptInstance.cpp">
@@ -1086,15 +1107,6 @@
       <Filter>ThirdParty\miniaudio</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Source\Engine\Camera\CameraModifier_CameraShake.cpp">
-      <Filter>Source\Engine\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Camera\LuaCameraModifier.cpp">
-      <Filter>Source\Engine\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Math\CurveFloat.cpp">
-      <Filter>Source\Engine\Math</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1232,10 +1244,19 @@
     <ClInclude Include="Source\Engine\Camera\CameraModifier.h">
       <Filter>Source\Engine\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Camera\CameraModifier_CameraShake.h">
+      <Filter>Source\Engine\Camera</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Camera\CameraShake.h">
       <Filter>Source\Engine\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Camera\CameraShakePattern.h">
+      <Filter>Source\Engine\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Camera\LuaCameraModifier.h">
+      <Filter>Source\Engine\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Camera\MinimalViewInfo.h">
       <Filter>Source\Engine\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Camera\PlayerCameraManager.h">
@@ -1286,9 +1307,6 @@
     <ClInclude Include="Source\Engine\Component\CylindricalBillboardComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\SpringArmComponent.h">
-      <Filter>Source\Engine\Component</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Engine\Component\DecalComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
@@ -1311,6 +1329,9 @@
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\SoundComponent.h">
+      <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\SpringArmComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\StaticMeshComponent.h">
@@ -1440,6 +1461,9 @@
       <Filter>Source\Engine\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\AActor.h">
+      <Filter>Source\Engine\GameFramework</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\CameraActor.h">
       <Filter>Source\Engine\GameFramework</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\CharacterActor.h">
@@ -1697,6 +1721,9 @@
     <ClInclude Include="Source\Engine\Render\RenderPass\FXAAPass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\RenderPass\GammaCorrectionPass.h">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\GizmoInnerPass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
@@ -1856,16 +1883,19 @@
     <ClInclude Include="Source\Engine\Scripting\LuaActorProxy.h">
       <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Scripting\LuaCoroutineScheduler.h">
+    <ClInclude Include="Source\Engine\Scripting\LuaComponentProxy.h">
       <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Scripting\LuaComponentProxy.h">
+    <ClInclude Include="Source\Engine\Scripting\LuaCoroutineScheduler.h">
       <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Scripting\LuaScriptInstance.h">
       <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Scripting\LuaScriptRuntime.h">
+      <Filter>Source\Engine\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Scripting\SolInclude.h">
       <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Serialization\Archive.h">
@@ -2362,22 +2392,6 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Camera\CameraModifier_CameraShake.h">
-      <Filter>Source\Engine\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Camera\LuaCameraModifier.h">
-      <Filter>Source\Engine\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Math\CurveFloat.h">
-      <Filter>Source\Engine\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\UI\CurveEditor.h">
-      <Filter>Source\Editor\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\GameFramework\GamePlayStatics.h" />
-    <ClInclude Include="Source\Engine\Scripting\SolInclude.h">
-      <Filter>Source\Engine\Scripting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

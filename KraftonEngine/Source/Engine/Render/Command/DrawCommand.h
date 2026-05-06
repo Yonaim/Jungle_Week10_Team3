@@ -84,7 +84,7 @@ struct FDrawCommand
 	}
 
 	// ===== SortKey 생성 유틸리티 (정적) =====
-	// Pass(4bit) | ShaderHash(16bit) | MeshHash(16bit) | SRVHash(16bit) | UserBits(12bit)
+	// Pass(8bit) | ShaderHash(16bit) | MeshHash(16bit) | SRVHash(16bit) | UserBits(8bit)
 	static uint64 ComputeSortKey(ERenderPass InPass, const FShader* InShader,
 		const void* InMeshId, const ID3D11ShaderResourceView* InSRV,
 		uint16 UserBits = 0)
@@ -97,15 +97,16 @@ struct FDrawCommand
 		};
 
 		uint64 Key = 0;
-		Key |= (static_cast<uint64>(InPass) & 0xF) << 60;           // [63:60] Pass
-		Key |= (static_cast<uint64>(PtrHash16(InShader))) << 44;     // [59:44] Shader
-		Key |= (static_cast<uint64>(PtrHash16(InMeshId))) << 28;      // [43:28] MeshBuffer
-		Key |= (static_cast<uint64>(PtrHash16(InSRV))) << 12;        // [27:12] SRV
-		Key |= (static_cast<uint64>(UserBits) & 0xFFF);              // [11:0]  User
+		Key |= (static_cast<uint64>(InPass) & 0xFF) << 56;           // [63:56] Pass
+		Key |= (static_cast<uint64>(PtrHash16(InShader))) << 40;     // [55:40] Shader
+		Key |= (static_cast<uint64>(PtrHash16(InMeshId))) << 24;      // [39:24] MeshBuffer
+		Key |= (static_cast<uint64>(PtrHash16(InSRV))) << 8;         // [23:8]  SRV
+		Key |= (static_cast<uint64>(UserBits) & 0xFF);              // [7:0]   User
 		return Key;
 	}
 
 	// UI는 텍스처 상태 변화보다 z-order 보장이 더 중요하므로 UserBits를 앞에 둔다.
+	// Pass(8bit) | UI Z(16bit) | Shader(16bit) | SRV(16bit) | User(8bit)
 	static uint64 ComputeUISortKey(ERenderPass InPass, uint16 PackedZOrder,
 		const FShader* InShader, const ID3D11ShaderResourceView* InSRV)
 	{
@@ -116,10 +117,10 @@ struct FDrawCommand
 		};
 
 		uint64 Key = 0;
-		Key |= (static_cast<uint64>(InPass) & 0xF) << 60;            // [63:60] Pass
-		Key |= (static_cast<uint64>(PackedZOrder) & 0xFFF) << 48;   // [59:48] UI Z
-		Key |= (static_cast<uint64>(PtrHash16(InShader))) << 32;    // [47:32] Shader
-		Key |= (static_cast<uint64>(PtrHash16(InSRV))) << 16;       // [31:16] SRV
+		Key |= (static_cast<uint64>(InPass) & 0xFF) << 56;            // [63:56] Pass
+		Key |= (static_cast<uint64>(PackedZOrder) & 0xFFFF) << 40;   // [55:40] UI Z
+		Key |= (static_cast<uint64>(PtrHash16(InShader))) << 24;     // [39:24] Shader
+		Key |= (static_cast<uint64>(PtrHash16(InSRV))) << 8;        // [23:8]  SRV
 		return Key;
 	}
 };

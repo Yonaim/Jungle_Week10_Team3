@@ -56,7 +56,7 @@ struct FMinimalViewInfo
 	float	 LetterBoxingAspectH = 9.0f;
 	bool	 bConstrainAspectRatio = false;
 	
-	FPostProcessSettings PostPorcessSettings;
+	FPostProcessSettings PostProcessSettings;
 	float PostProcessBlendWeight = 1.0f;
 };
 

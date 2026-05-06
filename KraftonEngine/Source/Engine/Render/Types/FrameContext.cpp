@@ -51,7 +51,7 @@ void FFrameContext::SetCameraInfo(const FMinimalViewInfo& POV)
 	OrthoWidth = POV.OrthoWidth;
 	NearClip = POV.NearZ;
 	FarClip = POV.FarZ;
-	PostProcessSettings = POV.PostPorcessSettings;
+	PostProcessSettings = POV.PostProcessSettings;
 
 	FrustumVolume.UpdateFromMatrix(View * Proj);
 }

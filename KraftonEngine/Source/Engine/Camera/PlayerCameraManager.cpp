@@ -15,6 +15,7 @@
 #include "Object/ObjectFactory.h"
 
 #include <algorithm>
+#include <cmath>
 
 IMPLEMENT_CLASS(APlayerCameraManager, AActor)
 
@@ -134,7 +135,6 @@ void APlayerCameraManager::Tick(float DeltaTime)
 {
 	AActor::Tick(DeltaTime);
 	UpdateCamera(DeltaTime);
-	// StartLetterBoxing(10.f, 10.f);
 }
 
 // Function : Bind camera manager to controller and initialize view target from pawn
@@ -225,32 +225,53 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 	ViewTarget.CheckViewTarget(Owner);
 
 	FMinimalViewInfo NewPOV;
-	if (ViewTarget.Target)
+
+	if (bIsBlendingViewTarget)
 	{
-		ViewTarget.Target->CalcCamera(DeltaTime, NewPOV);
+		FMinimalViewInfo FromPOV = BlendParams.bLockOutgoing
+			? OutgoingViewTarget.POV
+			: CalcViewTargetPOV(OutgoingViewTarget, DeltaTime);
+
+		FMinimalViewInfo ToPOV = CalcViewTargetPOV(PendingViewTarget, DeltaTime);
+
+		const float RawAlpha = BlendTotalTime > 0.0f
+			? 1.0f - (BlendTimeToGo / BlendTotalTime)
+			: 1.0f;
+
+		const float Alpha = ApplyViewTargetBlendFunction(RawAlpha);
+		NewPOV = BlendViewInfo(FromPOV, ToPOV, Alpha);
+
+		BlendTimeToGo -= DeltaTime;
+
+		if (BlendTimeToGo <= 0.0f)
+		{
+			ViewTarget = PendingViewTarget;
+			ViewTarget.POV = ToPOV;
+			NewPOV = ToPOV;
+
+			PendingViewTarget = {};
+			OutgoingViewTarget = {};
+			BlendTimeToGo = 0.0f;
+			BlendTotalTime = 0.0f;
+			bIsBlendingViewTarget = false;
+		}
 	}
 	else
 	{
-		NewPOV = BuildFallbackCameraView(nullptr);
+		NewPOV = CalcViewTargetPOV(ViewTarget, DeltaTime);
 	}
 
 	ApplyCameraModifiers(DeltaTime, NewPOV);
 
 	if (bEnableFading && FadeTime > 0.0f)
 	{
-		if (FadeTimeRemaining < 0.0f)
-		{
-			// Keep remaining fade time non-negative before evaluating the blend.
-			FadeTimeRemaining = 0.0f;
-		}
-
+		FadeTimeRemaining = std::max(0.0f, FadeTimeRemaining - DeltaTime);
 		const float Elapsed = FadeTime - FadeTimeRemaining;
 		FadeAmount = FadeAlpha.X + (FadeAlpha.Y - FadeAlpha.X) * (Elapsed / FadeTime);
-		FadeTimeRemaining -= DeltaTime;
 	}
 
-	NewPOV.PostPorcessSettings.FadeColor = FadeColor;
-	NewPOV.PostPorcessSettings.FadeAmount = FadeAmount;
+	NewPOV.PostProcessSettings.FadeColor = FadeColor;
+	NewPOV.PostProcessSettings.FadeAmount = FadeAmount;
 	NewPOV.bConstrainAspectRatio = bEnableLetterBoxing;
 	if (bEnableLetterBoxing)
 	{
@@ -328,9 +349,18 @@ void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float
 	// Initialize fade state immediately from call parameters.
 	FadeColor = Color;
 	FadeAlpha = FVector2(FromAlpha, ToAlpha);
-	FadeTimeRemaining = Duration;
-	FadeTime = Duration;
+	FadeTime = std::max(0.0f, Duration);
+	FadeTimeRemaining = FadeTime;
+	FadeAmount = FadeTime > 0.0f ? FromAlpha : ToAlpha;
 	bEnableFading = true;
+
+	ViewTarget.POV.PostProcessSettings.FadeColor = FadeColor;
+	ViewTarget.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	if (bHasValidCameraCachePOV)
+	{
+		CameraCache.POV.PostProcessSettings.FadeColor = FadeColor;
+		CameraCache.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	}
 }
 
 void APlayerCameraManager::EndCameraFade()
@@ -339,6 +369,13 @@ void APlayerCameraManager::EndCameraFade()
 	bEnableFading = false;
 	FadeAmount = 0.0f;
 	FadeTimeRemaining = 0.0f;
+	ViewTarget.POV.PostProcessSettings.FadeColor = FadeColor;
+	ViewTarget.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	if (bHasValidCameraCachePOV)
+	{
+		CameraCache.POV.PostProcessSettings.FadeColor = FadeColor;
+		CameraCache.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	}
 }
 
 void APlayerCameraManager::LoadCameraModifierStackAsset(const std::filesystem::path& AssetPath)
@@ -389,6 +426,50 @@ void APlayerCameraManager::LoadCameraModifierStackAsset(const std::filesystem::p
 
 	UObjectManager::Get().DestroyObject(LoadedAsset);
 }
+
+void APlayerCameraManager::SetViewTarget(AActor* NewTarget)
+{
+	if (!NewTarget)
+	{
+		return;
+	}
+
+	ViewTarget.SetNewTarget(NewTarget);
+	PendingViewTarget = {};
+	OutgoingViewTarget = {};
+	BlendTimeToGo = 0.0f;
+	BlendTotalTime = 0.0f;
+	bIsBlendingViewTarget = false;
+}
+
+
+void APlayerCameraManager::SetViewTargetWithBlend(AActor* NewTarget, const FViewTargetTransitionParams& Params)
+{
+	if (!NewTarget)
+	{
+		return;
+	}
+
+	if (Params.BlendTime <= 0.0f || !ViewTarget.Target)
+	{
+		SetViewTarget(NewTarget);
+		return;
+	}
+
+	BlendParams = Params;
+	BlendTotalTime = Params.BlendTime;
+	BlendTimeToGo = Params.BlendTime;
+	bIsBlendingViewTarget = true;
+
+	OutgoingViewTarget = ViewTarget;
+	if (BlendParams.bLockOutgoing)
+	{
+		OutgoingViewTarget.POV = CameraCache.POV;
+	}
+
+	PendingViewTarget.SetNewTarget(NewTarget);
+}
+
 
 UCameraComponent* APlayerCameraManager::FindCameraComponent(AActor* Target)
 {
@@ -463,5 +544,54 @@ void APlayerCameraManager::EndLetterBoxing() {
 	if (bHasValidCameraCachePOV)
 	{
 		CameraCache.POV.bConstrainAspectRatio = false;
+	}
+}
+
+FMinimalViewInfo APlayerCameraManager::CalcViewTargetPOV(FViewTarget& InViewTarget, float DeltaTime)
+{
+	if (InViewTarget.Target)
+	{
+		InViewTarget.Target->CalcCamera(DeltaTime, InViewTarget.POV);
+		return InViewTarget.POV;
+	}
+
+	InViewTarget.POV = BuildFallbackCameraView(nullptr);
+	return InViewTarget.POV;
+}
+
+
+FMinimalViewInfo APlayerCameraManager::BlendViewInfo(const FMinimalViewInfo& FromPOV, const FMinimalViewInfo& ToPOV, float Alpha) const
+{
+	FMinimalViewInfo Result = ToPOV;
+
+	Result.Location = FromPOV.Location + (ToPOV.Location - FromPOV.Location) * Alpha;
+	Result.Rotation.Pitch = FromPOV.Rotation.Pitch + (ToPOV.Rotation.Pitch - FromPOV.Rotation.Pitch) * Alpha;
+	Result.Rotation.Yaw = FromPOV.Rotation.Yaw + (ToPOV.Rotation.Yaw - FromPOV.Rotation.Yaw) * Alpha;
+	Result.Rotation.Roll = FromPOV.Rotation.Roll + (ToPOV.Rotation.Roll - FromPOV.Rotation.Roll) * Alpha;
+	Result.FOV = FromPOV.FOV + (ToPOV.FOV - FromPOV.FOV) * Alpha;
+	Result.OrthoWidth = FromPOV.OrthoWidth + (ToPOV.OrthoWidth - FromPOV.OrthoWidth) * Alpha;
+	Result.PostProcessBlendWeight =
+		FromPOV.PostProcessBlendWeight + (ToPOV.PostProcessBlendWeight - FromPOV.PostProcessBlendWeight) * Alpha;
+
+	return Result;
+}
+
+float APlayerCameraManager::ApplyViewTargetBlendFunction(float Alpha) const
+{
+	Alpha = (std::clamp)(Alpha, 0.0f, 1.0f);
+
+	switch (BlendParams.BlendFunction)
+	{
+	case EViewTargetBlendFunction::EaseIn:
+		return std::pow(Alpha, BlendParams.BlendExp);
+	case EViewTargetBlendFunction::EaseOut:
+		return 1.0f - std::pow(1.0f - Alpha, BlendParams.BlendExp);
+	case EViewTargetBlendFunction::EaseInOut:
+		return Alpha < 0.5f
+			? 0.5f * std::pow(Alpha * 2.0f, BlendParams.BlendExp)
+			: 1.0f - 0.5f * std::pow((1.0f - Alpha) * 2.0f, BlendParams.BlendExp);
+	case EViewTargetBlendFunction::Linear:
+	default:
+		return Alpha;
 	}
 }

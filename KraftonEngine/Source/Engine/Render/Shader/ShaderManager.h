@@ -76,6 +76,7 @@ namespace EShaderPath
 	inline constexpr const char* SceneNormal = "Shaders/PostProcess/SceneNormal.hlsl";
 	inline constexpr const char* HeightFog = "Shaders/PostProcess/HeightFog.hlsl";
 	inline constexpr const char* LightCulling = "Shaders/PostProcess/LightCulling.hlsl";
+	inline constexpr const char* Fade = "Shaders/PostProcess/Fade.hlsl";
 	inline constexpr const char* HitVignette = "Shaders/PostProcess/HitVignette.hlsl";
 
 	inline constexpr const char* Font = "Shaders/UI/Font.hlsl";
@@ -87,6 +88,7 @@ namespace EShaderPath
 	inline constexpr const char* ShadowDepth = "Shaders/Lighting/ShadowDepth.hlsl";
 	inline constexpr const char* VSMBlur = "Shaders/Lighting/VSMBlur.hlsl";
 	inline constexpr const char* ShadowMapVis = "Shaders/PostProcess/ShadowMapVis.hlsl";
+	inline constexpr const char* GammaCorrection = "Shaders/PostProcess/GammaCorrection.hlsl";
 }
 
 namespace EUberLitDefines

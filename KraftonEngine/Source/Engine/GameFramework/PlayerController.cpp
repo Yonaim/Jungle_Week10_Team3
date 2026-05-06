@@ -1,4 +1,4 @@
-#include "PlayerController.h"
+﻿#include "PlayerController.h"
 
 #include "Component/CameraComponent.h"
 #include "Engine/Camera/PlayerCameraManager.h"
@@ -72,6 +72,35 @@ void APlayerController::Possess(APawnActor* InPawn)
 void APlayerController::UnPossess()
 {
 	PossessedPawn = nullptr;
+}
+
+void APlayerController::SetViewTarget(AActor* NewViewTarget)
+{
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->SetViewTarget(NewViewTarget);
+	}
+}
+
+void APlayerController::SetViewTargetWithBlend(
+	AActor* NewViewTarget,
+	float BlendTime,
+	EViewTargetBlendFunction BlendFunction,
+	float BlendExp,
+	bool bLockOutgoing)
+{
+	if (!PlayerCameraManager)
+	{
+		return;
+	}
+
+	FViewTargetTransitionParams Params;
+	Params.BlendTime = BlendTime;
+	Params.BlendFunction = BlendFunction;
+	Params.BlendExp = BlendExp;
+	Params.bLockOutgoing = bLockOutgoing;
+
+	PlayerCameraManager->SetViewTargetWithBlend(NewViewTarget, Params);
 }
 
 void APlayerController::AcquirePlayerCameraManager(APlayerCameraManager* InCameraManager)

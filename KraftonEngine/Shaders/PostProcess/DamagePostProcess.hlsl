@@ -32,7 +32,7 @@ float4 PS(PS_Input_UV input) : SV_TARGET
         float vignette = pow(saturate(length(dir * 2.0f) * 0.8f), 4.0f);
         float hitEffect = vignette * HitEffectIntensity;
         float3 hitColor = float3(0.8f, 0.0f, 0.0f);
-        color.rgb = lerp(color.rgb, hitColor, hitEffect);
+        color.rgb = lerp(color.rgb, hitColor, saturate(hitEffect));
         color.rgb += hitColor * HitEffectIntensity * 0.05f;
         return color;
     }
@@ -47,7 +47,7 @@ float4 PS(PS_Input_UV input) : SV_TARGET
     float vignetteOnly = pow(saturate(length(dist) * 0.8f), 4.0f);
     float hitOnly = vignetteOnly * HitEffectIntensity;
     float3 redColor = float3(0.8f, 0.0f, 0.0f);
-    baseColor.rgb = lerp(baseColor.rgb, redColor, hitOnly);
+    baseColor.rgb = lerp(baseColor.rgb, redColor, saturate(hitOnly));
     baseColor.rgb += redColor * HitEffectIntensity * 0.05f;
     return baseColor;
 }
