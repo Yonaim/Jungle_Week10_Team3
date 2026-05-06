@@ -4,6 +4,7 @@
 
 class APawnActor;
 class APlayerController;
+class APlayerCameraManager;
 
 class AGameModeBase : public AActor
 {
@@ -16,11 +17,14 @@ public:
 	// subclass consturctor default value( DefaultPawnClass / PlayerControllerClass)
 	FString DefaultPawnClassName = "APawnActor";
 	FString PlayerControllerClassName = "APlayerController";
+	FString PlayerCameraManagerClassName = "APlayerCameraManager";
 
 	APawnActor* GetSpawnedPawn() const { return SpawnedPawn; }
 	APlayerController* GetSpawnedController() const { return SpawnedController; }
+	APlayerCameraManager* GetPlayerCameraManager() const { return CameraManager; }
 
 protected:
 	APawnActor* SpawnedPawn = nullptr;
 	APlayerController* SpawnedController = nullptr;
+	APlayerCameraManager* CameraManager = nullptr;
 };

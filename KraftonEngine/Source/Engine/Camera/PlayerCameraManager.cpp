@@ -1,4 +1,4 @@
-﻿#include "PlayerCameraManager.h"
+#include "PlayerCameraManager.h"
 #include "Engine/GameFramework/PlayerController.h"
 #include "Engine/GameFramework/PawnActor.h"
 #include "Object/Object.h"
@@ -11,13 +11,21 @@ IMPLEMENT_CLASS(APlayerCameraManager, AActor)
 
 void FViewTarget::SetNewTarget(AActor* NewTarget)
 {
-	if (!NewTarget) return;
+	if (!NewTarget)
+	{
+		return;
+	}
+
 	Target = NewTarget;
 }
 
 APawnActor* FViewTarget::GetTargetPawn() const
 {
-	if (!Target) return nullptr;
+	if (!Target)
+	{
+		return nullptr;
+	}
+
 	return Cast<APawnActor>(Target);
 }
 
@@ -34,74 +42,133 @@ void FViewTarget::CheckViewTarget(APlayerController* OwningController)
 	}
 }
 
+void APlayerCameraManager::BeginPlay()
+{
+	AActor::BeginPlay();
+}
+
+void APlayerCameraManager::EndPlay()
+{
+	ModifierList.clear();
+	AActor::EndPlay();
+}
+
+void APlayerCameraManager::Tick(float DeltaTime)
+{
+	AActor::Tick(DeltaTime);
+	UpdateCamera(DeltaTime);
+}
+
+void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier)
+{
+	if (!InModifier)
+	{
+		return;
+	}
+
+	for (UCameraModifier* ExistingModifier : ModifierList)
+	{
+		if (ExistingModifier == InModifier)
+		{
+			InModifier->EnableModifier();
+			return;
+		}
+	}
+
+	InModifier->AddedToCamera(this);
+	InModifier->EnableModifier();
+	ModifierList.push_back(InModifier);
+	SortModifiersByPriority();
+}
+
 void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
 	RemoveFinishedModifiers();
+
 	for (UCameraModifier* CameraModifier : ModifierList)
 	{
 		if (!CameraModifier || CameraModifier->IsDisabled())
+		{
 			continue;
+		}
+
 		CameraModifier->UpdateAlpha(DeltaTime);
-		const bool bStop = CameraModifier->ModifyCamera(DeltaTime, InOutPOV);
-		if (bStop)
+		if (CameraModifier->IsDisabled())
+		{
+			continue;
+		}
+
+		const bool bStopProcessing = CameraModifier->ModifyCamera(DeltaTime, InOutPOV);
+		if (bStopProcessing)
 		{
 			break;
-		}	
+		}
 	}
+
 	RemoveFinishedModifiers();
 }
 
-void APlayerCameraManager::UpdateCamera(float deltaTime)
+void APlayerCameraManager::UpdateCamera(float DeltaTime)
 {
 	LastFrameCameraCache = CameraCache;
 
 	ViewTarget.CheckViewTarget(Owner);
+
 	FMinimalViewInfo NewPOV;
 	if (ViewTarget.Target)
 	{
-		ViewTarget.Target->CalcCamera(deltaTime, NewPOV);
+		ViewTarget.Target->CalcCamera(DeltaTime, NewPOV);
 	}
 	else
 	{
-		NewPOV = BuildFallbackCameraView(ViewTarget.Target);
+		NewPOV = BuildFallbackCameraView(nullptr);
 	}
 
-
-	ApplyCameraModifiers(deltaTime, NewPOV);
+	ApplyCameraModifiers(DeltaTime, NewPOV);
 
 	ViewTarget.POV = NewPOV;
-	CameraCache.TimeStamp += deltaTime;
+	CameraCache.TimeStamp += DeltaTime;
 	CameraCache.POV = NewPOV;
 }
+
 void APlayerCameraManager::SortModifiersByPriority()
 {
 	std::sort(ModifierList.begin(), ModifierList.end(),
 		[](const UCameraModifier* A, const UCameraModifier* B)
-	{
-		if (!A) return false;
-		if (!B) return true;
-		return A->Priority > B->Priority;
-	});
+		{
+			if (!A)
+			{
+				return false;
+			}
+			if (!B)
+			{
+				return true;
+			}
+			return A->Priority > B->Priority;
+		});
 }
+
 void APlayerCameraManager::RemoveFinishedModifiers()
 {
-	ModifierList.erase(std::remove_if(ModifierList.begin(), ModifierList.end()
-		, [](UCameraModifier* Modifier)
-	{
-		return !Modifier || Modifier->IsFinished();
-	}),
-	ModifierList.end());
+	ModifierList.erase(
+		std::remove_if(ModifierList.begin(), ModifierList.end(),
+			[](UCameraModifier* Modifier)
+			{
+				return !Modifier || Modifier->IsFinished();
+			}),
+		ModifierList.end());
 }
+
 UCameraComponent* APlayerCameraManager::FindCameraComponent(AActor* Target)
 {
 	if (!Target)
 	{
 		return nullptr;
 	}
-	return Target->GetComponentByClass<UCameraComponent>();
 
+	return Target->GetComponentByClass<UCameraComponent>();
 }
-// Build to CameraView if Target is nullptr make default FMinimalViewInfo
+
 FMinimalViewInfo APlayerCameraManager::BuildFallbackCameraView(AActor* Target) const
 {
 	FMinimalViewInfo ViewInfo;
@@ -115,6 +182,7 @@ FMinimalViewInfo APlayerCameraManager::BuildFallbackCameraView(AActor* Target) c
 		ViewInfo.Location = FVector::ZeroVector;
 		ViewInfo.Rotation = FRotator::ZeroRotator;
 	}
+
 	ViewInfo.FOV = 3.14159265358979f / 3.0f;
 	ViewInfo.NearZ = 0.1f;
 	ViewInfo.FarZ = 1000.0f;
@@ -124,15 +192,3 @@ FMinimalViewInfo APlayerCameraManager::BuildFallbackCameraView(AActor* Target) c
 
 	return ViewInfo;
 }
-
-void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier) {
-	if (!InModifier)
-	{
-		return;
-	}
-
-	InModifier->AddedToCamera(this);
-	ModifierList.push_back(InModifier);
-	SortModifiersByPriority();
-}
-

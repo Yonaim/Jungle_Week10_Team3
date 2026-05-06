@@ -1,9 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include "GameFramework/AActor.h"
 #include "Input/EnhancedInputManager.h"
 
 class APawnActor;
+class APlayerCameraManager;
 struct FInputMappingContext;
 struct FInputAction;
 
@@ -39,6 +40,8 @@ public:
 	{
 		EnhancedInput.BindAction(Action, TriggerEvent, std::move(Callback));
 	}
+
+	void AcquirePlayerCameraManager(APlayerCameraManager* InCameraManager);
 
 protected:
 	APawnActor* PossessedPawn = nullptr;
