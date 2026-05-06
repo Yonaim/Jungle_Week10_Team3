@@ -265,12 +265,14 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 	OutlinerWidget.Initialize(InEditorEngine);
 	PlaceActorsWidget.Initialize(InEditorEngine);
 	StatWidget.Initialize(InEditorEngine);
+	AssetEditorWidget.Initialize(InEditorEngine);
 	ContentBrowserWidget.Initialize(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
 	ShadowMapDebugWidget.Initialize(InEditorEngine);
 }
 
 void FEditorMainPanel::Release()
 {
+	AssetEditorWidget.Shutdown();
 	ConsoleWidget.Shutdown();
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
@@ -381,6 +383,12 @@ void FEditorMainPanel::Render(float DeltaTime)
 	{
 		SCOPE_STAT_CAT("ContentBrowserWidget.Render", "5_UI");
 		ContentBrowserWidget.Render(DeltaTime);
+	}
+
+	if (!bHideEditorWindows && AssetEditorWidget.IsOpen())
+	{
+		SCOPE_STAT_CAT("AssetEditorWidget.Render", "5_UI");
+		AssetEditorWidget.Render(DeltaTime);
 	}
 
 	if (!bHideEditorWindows && Settings.UI.bShadowMapDebug)
@@ -522,6 +530,17 @@ void FEditorMainPanel::RenderMainMenuBar()
 			{
 				EditorEngine->RequestSaveSceneAsDialog();
 			}
+
+			DrawPopupSectionHeader("ASSET");
+			if (ImGui::MenuItem("New UAsset..."))
+			{
+				AssetEditorWidget.CreateCameraShakeAsset();
+			}
+			if (ImGui::MenuItem("Open UAsset...", "Ctrl+Alt+O"))
+			{
+				AssetEditorWidget.OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
+			}
+
 			DrawPopupSectionHeader("IMPORT");
 			if (ImGui::MenuItem("Import Material...") && EditorEngine)
 			{
@@ -688,6 +707,11 @@ void FEditorMainPanel::RenderMainMenuBar()
 						.Filter = L"Level Files (*.umap)\0*.umap\0",
 						.Title = L"Add Existing Level",
 						.InitialDirectory = InitialDir.c_str(),
+						.OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
+						.bFileMustExist = true,
+						.bPathMustExist = true,
+						.bPromptOverwrite = false,
+						.bReturnRelativeToProjectRoot = false,
 						});
 					if (!SelectedPath.empty())
 					{
@@ -1070,7 +1094,8 @@ void FEditorMainPanel::Update()
 	// 뷰포트 슬롯 위에서는 bUsingMouse를 해제해야 TickInteraction이 동작
 	bool bWantMouse = IO.WantCaptureMouse;
 	bool bWantKeyboard = IO.WantCaptureKeyboard || bShowShortcutOverlay || bShowCreditsOverlay;
-	if (EditorEngine && EditorEngine->IsMouseOverViewport())
+	const bool bAssetEditorCapturingInput = AssetEditorWidget.IsCapturingInput();
+	if (EditorEngine && EditorEngine->IsMouseOverViewport() && !bAssetEditorCapturingInput)
 	{
 		bWantMouse = false;
 		if (!IO.WantTextInput && !bShowShortcutOverlay && !bShowCreditsOverlay)

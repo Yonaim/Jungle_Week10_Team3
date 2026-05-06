@@ -33,8 +33,6 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 	UWorld* World = Engine->GetWorld();
 	UCameraComponent* Camera = World ? World->GetActiveCamera() : nullptr;
 
-	// Game/Shipping에서 화면에 그리려면 FViewport(오프스크린 RT)가 필요.
-	// UGameEngine::Init이 GameViewportClient에 FViewport를 세팅해뒀음.
 	FViewport* VP = nullptr;
 	if (UGameViewportClient* GVC = Engine->GetGameViewportClient())
 	{
@@ -64,7 +62,6 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 	{
 		Camera->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
 
-		// 1) 오프스크린 RT 클리어 + 바인딩
 		const float ClearColor[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
 		VP->BeginRender(Ctx, ClearColor);
 
@@ -72,12 +69,9 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 
 		AGameModeBase* GameMode = World->GetAuthGameMode();
 		APlayerCameraManager* CameraManager = GameMode ? GameMode->GetPlayerCameraManager() : nullptr;
-		if (CameraManager && CameraManager->CameraCache.TimeStamp > 0.0f)
+		if (CameraManager && CameraManager->HasValidCameraCachePOV())
 		{
-			const float AspectRatio = VP->GetHeight() > 0
-				? static_cast<float>(VP->GetWidth()) / static_cast<float>(VP->GetHeight())
-				: 16.0f / 9.0f;
-			Frame.SetCameraInfo(CameraManager->CameraCache.POV, AspectRatio);
+			Frame.SetCameraInfo(CameraManager->GetCameraCachePOV());
 		}
 		else
 		{
@@ -109,8 +103,6 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 		Renderer.Render(Frame, *Scene);
 	}
 
-	// 오프스크린 RT 내용을 스왑체인 백버퍼로 복사 — ImGui 합성 없이도 화면에 출력되게 함.
-	// BeginFrame이 백버퍼를 클리어한 뒤이므로 여기서 덮어써도 안전.
 	if (VP && VP->GetRTTexture())
 	{
 		Renderer.GetFD3DDevice().CopyToBackbuffer(VP->GetRTTexture());

@@ -31,8 +31,6 @@ local PlayerControllerConfig = {
     fallback_half_height = 1.0,
 
     -- hit_camera_*: 장애물 피격 시 카메라 흔들림 설정입니다.
-    hit_camera_shake_intensity = 2.0,
-    hit_camera_shake_duration = 0.35,
 
     -- dialogue_data_path: 런타임 코치 대화 데이터를 읽는 경로입니다.
     dialogue_data_path = DialogueConfig.play_path,

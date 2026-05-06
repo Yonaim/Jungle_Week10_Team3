@@ -18,6 +18,7 @@ local Math = require("Common.Math")
 local UI = require("Common.UI")
 local Vector = require("Common.Vector")
 local HitEffects = require("Game.HitEffect")
+local HitFeedback = require("Game.Camera.HitFeedback")
 
 if HitEffects and HitEffects.SetRuntime then
     HitEffects.SetRuntime({
@@ -53,8 +54,6 @@ local ground_snap_distance = PlayerConfig.ground_snap_distance              -- �
 local skin_width = PlayerConfig.skin_width                                  -- 바닥/충돌 판정 여유값
 local fallback_half_height = PlayerConfig.fallback_half_height              -- collision shape를 못 찾았을 때 쓰는 반높이
 local fall_dead_z = PlayerConfig.fall_dead_z                                -- 이 높이 아래로 떨어지면 낙사 처리하는 기준
-local hit_camera_shake_intensity = PlayerConfig.hit_camera_shake_intensity  
-local hit_camera_shake_duration = PlayerConfig.hit_camera_shake_duration     
 local DIALOGUE_DATA_PATH = PlayerConfig.dialogue_data_path                  -- Player dialogue 경로
 
 local camera = nil
@@ -109,27 +108,6 @@ local function start_hit_stop_then_slomo(hit_stop_duration, slomo_scale, slomo_d
     if started == false then
         warn("[PlayerController] Failed to start hit time effect coroutine.")
     end
-end
-
--- Function : Play hit camera feedback through PlayerCameraManager modifier chain
--- input : none
--- HitCameraShake : Lua camera modifier that edits final POV location and rotation
--- DamagePostProcess : Lua camera modifier that writes post process scalar parameters
-local function play_hit_camera_feedback()
-    if not obj or not obj.PlayCameraModifier then
-        warn("[PlayerController] PlayCameraModifier missing. Hit camera feedback skipped.")
-        return
-    end
-
-    obj:PlayCameraModifier("Game/Camera/HitCameraShake", {
-        intensity = hit_camera_shake_intensity,
-        duration = hit_camera_shake_duration,
-    })
-
-    obj:PlayCameraModifier("Game/Camera/DamagePostProcess", {
-        intensity = 2.0,
-        duration = 0.7,
-    })
 end
 
 -- 가장 왼쪽 Lane 번호
@@ -571,7 +549,7 @@ local function handle_obstacle_collision(event_name, other_actor)
     end
     log("[PlayerController] Obstacle collision damage=" .. tostring(damage))
     if PlayerStatus.DamageStability(damage) then
-        play_hit_camera_feedback()
+        HitFeedback.Play(obj)
     end
 end
 

@@ -4,8 +4,8 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#include <commdlg.h>
 #include <shellapi.h>
-#include <shobjidl.h>
 
 #include <filesystem>
 #include <vector>
@@ -14,142 +14,61 @@
 
 namespace
 {
-	std::vector<COMDLG_FILTERSPEC> BuildFilterSpecs(const wchar_t* InFilter)
+	std::vector<wchar_t> BuildFileBuffer(const wchar_t* DefaultFileName)
 	{
-		std::vector<COMDLG_FILTERSPEC> Specs;
-		if (!InFilter)
+		std::vector<wchar_t> Buffer(32768, L'\0');
+		if (!DefaultFileName)
 		{
-			return Specs;
+			return Buffer;
 		}
 
-		const wchar_t* Cursor = InFilter;
-		while (*Cursor)
-		{
-			const wchar_t* DisplayName = Cursor;
-			Cursor += wcslen(Cursor) + 1;
-			if (!*Cursor)
-			{
-				break;
-			}
-
-			const wchar_t* Pattern = Cursor;
-			Cursor += wcslen(Cursor) + 1;
-			Specs.push_back({ DisplayName, Pattern });
-		}
-
-		return Specs;
+		wcsncpy_s(Buffer.data(), Buffer.size(), DefaultFileName, _TRUNCATE);
+		return Buffer;
 	}
 
 	FString RunFileDialog(const FEditorFileDialogOptions& InOptions, bool bOpenDialog)
 	{
-		HRESULT InitHr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-		const bool bShouldUninitialize = SUCCEEDED(InitHr);
-		if (FAILED(InitHr) && InitHr != RPC_E_CHANGED_MODE)
-		{
-			return FString();
-		}
-
-		IFileDialog* Dialog = nullptr;
-		const HRESULT CreateHr = bOpenDialog
-			? CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&Dialog))
-			: CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&Dialog));
-		if (FAILED(CreateHr) || !Dialog)
-		{
-			if (bShouldUninitialize)
-			{
-				CoUninitialize();
-			}
-			return FString();
-		}
-
-		if (InOptions.Title)
-		{
-			Dialog->SetTitle(InOptions.Title);
-		}
-		if (InOptions.DefaultExtension)
-		{
-			Dialog->SetDefaultExtension(InOptions.DefaultExtension);
-		}
-		if (InOptions.DefaultFileName)
-		{
-			Dialog->SetFileName(InOptions.DefaultFileName);
-		}
-
-		const std::vector<COMDLG_FILTERSPEC> FilterSpecs = BuildFilterSpecs(InOptions.Filter);
-		if (!FilterSpecs.empty())
-		{
-			Dialog->SetFileTypes(static_cast<UINT>(FilterSpecs.size()), FilterSpecs.data());
-			Dialog->SetFileTypeIndex(1);
-		}
-
-		DWORD Flags = 0;
-		Dialog->GetOptions(&Flags);
-		Flags |= FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR;
+		std::vector<wchar_t> FileBuffer = BuildFileBuffer(InOptions.DefaultFileName);
+		OPENFILENAMEW DialogOptions{};
+		DialogOptions.lStructSize = sizeof(DialogOptions);
+		DialogOptions.hwndOwner = static_cast<HWND>(InOptions.OwnerWindowHandle);
+		DialogOptions.lpstrFilter = InOptions.Filter;
+		DialogOptions.nFilterIndex = 1;
+		DialogOptions.lpstrFile = FileBuffer.data();
+		DialogOptions.nMaxFile = static_cast<DWORD>(FileBuffer.size());
+		DialogOptions.lpstrTitle = InOptions.Title;
+		DialogOptions.lpstrDefExt = InOptions.DefaultExtension;
+		DialogOptions.lpstrInitialDir = InOptions.InitialDirectory;
+		DialogOptions.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR;
 		if (InOptions.bPathMustExist)
 		{
-			Flags |= FOS_PATHMUSTEXIST;
+			DialogOptions.Flags |= OFN_PATHMUSTEXIST;
 		}
 		if (InOptions.bFileMustExist)
 		{
-			Flags |= FOS_FILEMUSTEXIST;
+			DialogOptions.Flags |= OFN_FILEMUSTEXIST;
 		}
 		if (InOptions.bPromptOverwrite)
 		{
-			Flags |= FOS_OVERWRITEPROMPT;
-		}
-		Dialog->SetOptions(Flags);
-
-		IShellItem* InitialFolder = nullptr;
-		if (InOptions.InitialDirectory && *InOptions.InitialDirectory)
-		{
-			const HRESULT FolderHr = SHCreateItemFromParsingName(
-				InOptions.InitialDirectory,
-				nullptr,
-				IID_PPV_ARGS(&InitialFolder));
-			if (SUCCEEDED(FolderHr) && InitialFolder)
-			{
-				Dialog->SetFolder(InitialFolder);
-				Dialog->SetDefaultFolder(InitialFolder);
-			}
+			DialogOptions.Flags |= OFN_OVERWRITEPROMPT;
 		}
 
-		const HRESULT ShowHr = Dialog->Show(static_cast<HWND>(InOptions.OwnerWindowHandle));
-		FString Result;
-		if (SUCCEEDED(ShowHr))
+		const BOOL bSucceeded = bOpenDialog
+			? GetOpenFileNameW(&DialogOptions)
+			: GetSaveFileNameW(&DialogOptions);
+		if (!bSucceeded)
 		{
-			IShellItem* ResultItem = nullptr;
-			if (SUCCEEDED(Dialog->GetResult(&ResultItem)) && ResultItem)
-			{
-				PWSTR FilePath = nullptr;
-				if (SUCCEEDED(ResultItem->GetDisplayName(SIGDN_FILESYSPATH, &FilePath)) && FilePath)
-				{
-					const std::filesystem::path AbsolutePath = std::filesystem::path(FilePath).lexically_normal();
-					if (InOptions.bReturnRelativeToProjectRoot)
-					{
-						const std::filesystem::path ProjectRoot(FPaths::RootDir());
-						Result = FPaths::ToUtf8(AbsolutePath.lexically_relative(ProjectRoot).generic_wstring());
-					}
-					else
-					{
-						Result = FPaths::ToUtf8(AbsolutePath.generic_wstring());
-					}
-					CoTaskMemFree(FilePath);
-				}
-				ResultItem->Release();
-			}
+			return FString();
 		}
 
-		if (InitialFolder)
+		const std::filesystem::path AbsolutePath = std::filesystem::path(FileBuffer.data()).lexically_normal();
+		if (InOptions.bReturnRelativeToProjectRoot)
 		{
-			InitialFolder->Release();
-		}
-		Dialog->Release();
-		if (bShouldUninitialize)
-		{
-			CoUninitialize();
+			const std::filesystem::path ProjectRoot(FPaths::RootDir());
+			return FPaths::ToUtf8(AbsolutePath.lexically_relative(ProjectRoot).generic_wstring());
 		}
 
-		return Result;
+		return FPaths::ToUtf8(AbsolutePath.generic_wstring());
 	}
 }
 

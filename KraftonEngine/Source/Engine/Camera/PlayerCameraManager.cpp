@@ -1,14 +1,74 @@
-﻿#include "PlayerCameraManager.h"
+#include "PlayerCameraManager.h"
+
+#include "Camera/CameraModifier_CameraShake.h"
+#include "Camera/CameraShake.h"
+#include "Camera/CameraShakePattern.h"
 #include "Camera/LuaCameraModifier.h"
-#include "Engine/GameFramework/PlayerController.h"
-#include "Engine/GameFramework/PawnActor.h"
-#include "Object/Object.h"
 #include "Component/ActorComponent.h"
 #include "Component/CameraComponent.h"
+#include "Engine/Asset/AssetCurveUtils.h"
+#include "Engine/Asset/AssetData.h"
+#include "Engine/Asset/AssetFileSerializer.h"
+#include "Engine/Core/Log.h"
+#include "Engine/GameFramework/PawnActor.h"
+#include "Engine/GameFramework/PlayerController.h"
+#include "Object/ObjectFactory.h"
 
 #include <algorithm>
 
 IMPLEMENT_CLASS(APlayerCameraManager, AActor)
+
+static UCameraShakeBase* BuildCameraShakeFromAssetDesc(UObject* Outer, const FCameraShakeModifierAssetDesc& Desc)
+{
+	UCameraShakeBase* Shake = UObjectManager::Get().CreateObject<UCameraShakeBase>(Outer);
+	if (!Shake)
+	{
+		return nullptr;
+	}
+
+	UCameraShakePattern* RootPattern = nullptr;
+	if (Desc.bUseCurves)
+	{
+		UCurveCameraShakePattern* CurvePattern = UObjectManager::Get().CreateObject<UCurveCameraShakePattern>(Shake);
+		if (CurvePattern)
+		{
+			CurvePattern->SetTransitionCurveX(FAssetCurveUtils::MakeCurveFromBezier(Desc.Curves.TranslationX, Desc.LocationAmplitude.X));
+			CurvePattern->SetTransitionCurveY(FAssetCurveUtils::MakeCurveFromBezier(Desc.Curves.TranslationY, Desc.LocationAmplitude.Y));
+			CurvePattern->SetTransitionCurveZ(FAssetCurveUtils::MakeCurveFromBezier(Desc.Curves.TranslationZ, Desc.LocationAmplitude.Z));
+			CurvePattern->SetRotationCurveX(FAssetCurveUtils::MakeCurveFromBezier(Desc.Curves.RotationX, Desc.RotationAmplitude.Pitch));
+			CurvePattern->SetRotationCurveY(FAssetCurveUtils::MakeCurveFromBezier(Desc.Curves.RotationY, Desc.RotationAmplitude.Yaw));
+			CurvePattern->SetRotationCurveZ(FAssetCurveUtils::MakeCurveFromBezier(Desc.Curves.RotationZ, Desc.RotationAmplitude.Roll));
+			RootPattern = CurvePattern;
+		}
+	}
+	else
+	{
+		USinWaveCameraShakePattern* SinPattern = UObjectManager::Get().CreateObject<USinWaveCameraShakePattern>(Shake);
+		if (SinPattern)
+		{
+			SinPattern->Frequency = Desc.Frequency;
+			SinPattern->TransitionAmplitudeX = Desc.LocationAmplitude.X;
+			SinPattern->TransitionAmplitudeY = Desc.LocationAmplitude.Y;
+			SinPattern->TransitionAmplitudeZ = Desc.LocationAmplitude.Z;
+			SinPattern->RotationAmplitudeX = Desc.RotationAmplitude.Pitch;
+			SinPattern->RotationAmplitudeY = Desc.RotationAmplitude.Yaw;
+			SinPattern->RotationAmplitudeZ = Desc.RotationAmplitude.Roll;
+			RootPattern = SinPattern;
+		}
+	}
+
+	if (!RootPattern)
+	{
+		UObjectManager::Get().DestroyObject(Shake);
+		return nullptr;
+	}
+
+	Shake->Duration = Desc.Duration;
+	Shake->Intensity = Desc.Intensity;
+	Shake->SetRootShakePattern(RootPattern);
+
+	return Shake;
+}
 
 void FViewTarget::SetNewTarget(AActor* NewTarget)
 {
@@ -50,7 +110,16 @@ void APlayerCameraManager::BeginPlay()
 
 void APlayerCameraManager::EndPlay()
 {
+	for (UCameraModifier* Modifier : ModifierList)
+	{
+		if (Modifier)
+		{
+			UObjectManager::Get().DestroyObject(Modifier);
+		}
+	}
+
 	ModifierList.clear();
+	CameraShakeModifier = nullptr;
 	AActor::EndPlay();
 }
 
@@ -60,9 +129,15 @@ void APlayerCameraManager::Tick(float DeltaTime)
 	UpdateCamera(DeltaTime);
 }
 
-// Function : Add camera modifier to manager and sort by priority
-// input : InModifier
-// InModifier : modifier instance that will edit final camera POV
+void APlayerCameraManager::SetOwner(APlayerController* InPlayerController)
+{
+	Owner = InPlayerController;
+	if (Owner && Owner->GetPawn())
+	{
+		ViewTarget.SetNewTarget(Owner->GetPawn());
+	}
+}
+
 void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier)
 {
 	if (!InModifier)
@@ -85,10 +160,6 @@ void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier)
 	SortModifiersByPriority();
 }
 
-// Function : Create and play a Lua camera modifier through PlayerCameraManager
-// input : ScriptPath, Params
-// ScriptPath : Lua modifier script path under Scripts
-// Params : numeric parameters passed to Lua modifier Begin(params)
 void APlayerCameraManager::PlayCameraModifier(const FString& ScriptPath, const TMap<FString, float>& Params)
 {
 	ULuaCameraModifier* Modifier = UObjectManager::Get().CreateObject<ULuaCameraModifier>(this);
@@ -106,10 +177,6 @@ void APlayerCameraManager::PlayCameraModifier(const FString& ScriptPath, const T
 	AddCameraModifier(Modifier);
 }
 
-// Function : Apply active camera modifiers to the current POV
-// input : DeltaTime, InOutPOV
-// DeltaTime : frame delta time
-// InOutPOV : camera POV modified by active modifiers in priority order
 void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
 	RemoveFinishedModifiers();
@@ -137,11 +204,9 @@ void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInf
 	RemoveFinishedModifiers();
 }
 
-// Function : Update view target POV and camera cache for this frame
-// input : DeltaTime
-// DeltaTime : frame delta time used by CalcCamera and modifiers
 void APlayerCameraManager::UpdateCamera(float DeltaTime)
 {
+	bHasValidCameraCachePOV = false;
 	LastFrameCameraCache = CameraCache;
 
 	ViewTarget.CheckViewTarget(Owner);
@@ -158,14 +223,27 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 
 	ApplyCameraModifiers(DeltaTime, NewPOV);
 
+	if (bEnableFading && FadeTime > 0.0f)
+	{
+		if (FadeTimeRemaining < 0.0f)
+		{
+			FadeTimeRemaining = 0.0f;
+		}
+
+		const float Elapsed = FadeTime - FadeTimeRemaining;
+		FadeAmount = FadeAlpha.X + (FadeAlpha.Y - FadeAlpha.X) * (Elapsed / FadeTime);
+		FadeTimeRemaining -= DeltaTime;
+	}
+
+	NewPOV.PostPorcessSettings.FadeColor = FadeColor;
+	NewPOV.PostPorcessSettings.FadeAmount = FadeAmount;
+
 	ViewTarget.POV = NewPOV;
 	CameraCache.TimeStamp += DeltaTime;
 	CameraCache.POV = NewPOV;
+	bHasValidCameraCachePOV = true;
 }
 
-// Function : Sort active camera modifiers by priority
-// input : none
-// Priority : modifier with higher priority is processed first
 void APlayerCameraManager::SortModifiersByPriority()
 {
 	std::sort(ModifierList.begin(), ModifierList.end(),
@@ -183,18 +261,111 @@ void APlayerCameraManager::SortModifiersByPriority()
 		});
 }
 
-// Function : Remove modifiers that finished or became invalid
-// input : none
-// ModifierList : active modifier list owned by PlayerCameraManager
 void APlayerCameraManager::RemoveFinishedModifiers()
 {
 	ModifierList.erase(
 		std::remove_if(ModifierList.begin(), ModifierList.end(),
-			[](UCameraModifier* Modifier)
+			[this](UCameraModifier* Modifier)
 			{
-				return !Modifier || Modifier->IsFinished();
+				if (!Modifier)
+				{
+					return true;
+				}
+
+				if (Modifier->IsFinished())
+				{
+					if (Modifier == CameraShakeModifier)
+					{
+						CameraShakeModifier = nullptr;
+					}
+					UObjectManager::Get().DestroyObject(Modifier);
+					return true;
+				}
+
+				return false;
 			}),
 		ModifierList.end());
+}
+
+void APlayerCameraManager::StartCameraShake()
+{
+	if (CameraShakeModifier)
+	{
+		CameraShakeModifier->EnableModifier();
+	}
+}
+
+void APlayerCameraManager::EndCameraShake()
+{
+	if (CameraShakeModifier)
+	{
+		CameraShakeModifier->DisableModifier();
+	}
+}
+
+void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float Duration, FLinearColor Color)
+{
+	FadeColor = Color;
+	FadeAlpha = FVector2(FromAlpha, ToAlpha);
+	FadeTimeRemaining = Duration;
+	FadeTime = Duration;
+	bEnableFading = true;
+}
+
+void APlayerCameraManager::EndCameraFade()
+{
+	bEnableFading = false;
+	FadeAmount = 0.0f;
+	FadeTimeRemaining = 0.0f;
+}
+
+void APlayerCameraManager::LoadCameraModifierStackAsset(const std::filesystem::path& AssetPath)
+{
+	FString Error;
+	UAssetData* LoadedAsset = FAssetFileSerializer::LoadAssetFromFile(AssetPath, &Error);
+	if (!LoadedAsset)
+	{
+		UE_LOG_CATEGORY(PlayerCameraManager, Error, "Failed to load camera modifier asset: %s", Error.c_str());
+		return;
+	}
+
+	UCameraModifierStackAssetData* StackAsset = Cast<UCameraModifierStackAssetData>(LoadedAsset);
+	if (!StackAsset)
+	{
+		UE_LOG_CATEGORY(PlayerCameraManager, Error, "Asset type mismatch: %s", AssetPath.string().c_str());
+		UObjectManager::Get().DestroyObject(LoadedAsset);
+		return;
+	}
+
+	for (const FCameraShakeModifierAssetDesc& Desc : StackAsset->CameraShakes)
+	{
+		if (Desc.Common.bStartDisabled)
+		{
+			continue;
+		}
+
+		UCameraModifier_CameraShake* Modifier = EnsureCameraShakeModifier();
+		if (!Modifier)
+		{
+			UE_LOG_CATEGORY(PlayerCameraManager, Error, "Failed to create camera shake modifier from asset entry: %s", Desc.Name.c_str());
+			continue;
+		}
+
+		UCameraShakeBase* Shake = BuildCameraShakeFromAssetDesc(Modifier, Desc);
+		if (!Shake)
+		{
+			UE_LOG_CATEGORY(PlayerCameraManager, Error, "Failed to create camera shake from asset entry: %s", Desc.Name.c_str());
+			continue;
+		}
+
+		Modifier->Priority = Desc.Common.Priority > Modifier->Priority ? Desc.Common.Priority : Modifier->Priority;
+		Modifier->SetAlphaInTime(Desc.Common.AlphaInTime);
+		Modifier->SetAlphaOutTime(Desc.Common.AlphaOutTime);
+		Modifier->AddCameraShake(Shake);
+		SortModifiersByPriority();
+	}
+
+	UObjectManager::Get().DestroyObject(LoadedAsset);
 }
 
 UCameraComponent* APlayerCameraManager::FindCameraComponent(AActor* Target)
@@ -221,12 +392,22 @@ FMinimalViewInfo APlayerCameraManager::BuildFallbackCameraView(AActor* Target) c
 		ViewInfo.Rotation = FRotator::ZeroRotator;
 	}
 
-	ViewInfo.FOV = 3.14159265358979f / 3.0f;
-	ViewInfo.NearZ = 0.1f;
-	ViewInfo.FarZ = 1000.0f;
-	ViewInfo.bIsOrthogonal = false;
-	ViewInfo.OrthoWidth = 10.0f;
-	ViewInfo.PostProcessBlendWeight = 1.0f;
-
 	return ViewInfo;
+}
+
+UCameraModifier_CameraShake* APlayerCameraManager::EnsureCameraShakeModifier()
+{
+	if (CameraShakeModifier)
+	{
+		return CameraShakeModifier;
+	}
+
+	CameraShakeModifier = UObjectManager::Get().CreateObject<UCameraModifier_CameraShake>(this);
+	if (!CameraShakeModifier)
+	{
+		return nullptr;
+	}
+
+	AddCameraModifier(CameraShakeModifier);
+	return CameraShakeModifier;
 }

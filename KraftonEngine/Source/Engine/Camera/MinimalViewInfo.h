@@ -5,6 +5,9 @@
 #include <Object/FName.h>
 struct FPostProcessSettings
 {
+	FLinearColor FadeColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	float FadeAmount = 0.0f;
+
 	TMap<FName, float> ScalarParameter;
 	TMap<FName, FVector> VectorParameter;
 	TMap<FName, FLinearColor> ColorParameter;
@@ -39,13 +42,14 @@ struct FPostProcessSettings
 };
 struct FMinimalViewInfo
 {
-	FVector Location;
-	FRotator Rotation;
-	float FOV;
-	float NearZ;
-	float FarZ;
-	bool bIsOrthogonal;
-	float OrthoWidth;
+	FVector Location = FVector::ZeroVector;
+	FRotator Rotation = FRotator::ZeroRotator;
+	float FOV = 3.14159265358979f / 3.0f;
+	float AspectRatio = 16.0f / 9.0f;
+	float NearZ = 0.1f;
+	float FarZ = 1000.0f;
+	bool bIsOrthogonal = false;
+	float OrthoWidth = 10.0f;
 	
 	FPostProcessSettings PostPorcessSettings;
 	float PostProcessBlendWeight = 1.0f;

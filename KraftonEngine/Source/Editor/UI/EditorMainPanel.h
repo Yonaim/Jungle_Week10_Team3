@@ -8,6 +8,7 @@
 #include "Editor/UI/EditorShadowMapDebugWidget.h"
 #include "Editor/UI/EditorPlaceActorsWidget.h"
 #include "Editor/UI/ContentBrowser/ContentBrowser.h"
+#include "Editor/UI/AssetEditor/AssetEditorWidget.h"
 
 class FRenderer;
 class UEditorEngine;
@@ -31,6 +32,7 @@ public:
 	void RefreshContentBrowser() { ContentBrowserWidget.Refresh(); }
 	void SetContentBrowserIconSize(float Size) { ContentBrowserWidget.SetIconSize(Size); }
 	float GetContentBrowserIconSize() const { return ContentBrowserWidget.GetIconSize(); }
+	bool IsAssetEditorCapturingInput() const { return AssetEditorWidget.IsCapturingInput(); }
 
 private:
 	void RenderMainMenuBar();
@@ -51,6 +53,7 @@ private:
 	FEditorPlaceActorsWidget PlaceActorsWidget;
 	FEditorStatWidget StatWidget;
 	FEditorContentBrowserWidget ContentBrowserWidget;
+	FAssetEditorWidget AssetEditorWidget;
 	EditorShadowMapDebugWidget ShadowMapDebugWidget;
 	bool bShowWidgetList = false;
 	bool bShowShortcutOverlay = false;

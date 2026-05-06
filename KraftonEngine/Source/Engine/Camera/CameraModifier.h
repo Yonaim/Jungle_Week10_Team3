@@ -12,7 +12,16 @@ public:
 	UCameraModifier();
 
 	virtual void AddedToCamera(APlayerCameraManager* Camera);
+
+	// Function : Modify final camera POV
+	// input : DeltaTime, InOutPOV
+	// DeltaTime : frame delta time used by modifier state
+	// InOutPOV : final camera view data modified in place
 	virtual bool ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV);
+
+	// Function : Update modifier blend alpha
+	// input : DeltaTime
+	// DeltaTime : frame delta time used for alpha in/out
 	virtual void UpdateAlpha(float DeltaTime);
 
 	virtual bool IsDisabled() const { return bDisabled; }
