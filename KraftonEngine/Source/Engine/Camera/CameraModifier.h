@@ -1,9 +1,7 @@
-﻿#pragma once
-#include "Component/CameraComponent.h"
+#pragma once
+#include "Camera/MinimalViewInfo.h"
 #include "Core/CoreTypes.h"
-#include "Math/CurveFloat.h"
 #include "Object/Object.h"
-#include "CameraShakePattern.h"
 
 class APlayerCameraManager;
 
@@ -15,20 +13,19 @@ public:
 
 	virtual void AddedToCamera(APlayerCameraManager* Camera);
 
-	/**
-	 * Directly modifies variables in the owning camera
-	 * @param	DeltaTime	Change in time since last update
-	 * @param	InOutPOV	Current Point of View, to be updated.
-	 * @return	bool		True if should STOP looping the chain, false otherwise
-	 */
-	// 원래는 FMinimalViewInfo 라는 이름의 struct를 사용해야 함
-	// TODO: FCameraState 에다 월드 위치 정보 추가
-	virtual bool ModifyCamera(float DeltaTime, UCameraComponent* InOutPOV);
+	// Function : Modify final camera POV
+	// input : DeltaTime, InOutPOV
+	// DeltaTime : frame delta time used by modifier state
+	// InOutPOV : final camera view data modified in place
+	virtual bool ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV);
 
-
+	// Function : Update modifier blend alpha
+	// input : DeltaTime
+	// DeltaTime : frame delta time used for alpha in/out
 	virtual void UpdateAlpha(float DeltaTime);
 
 	virtual bool IsDisabled() const { return bDisabled; }
+	virtual bool IsFinished() const;
 	virtual void EnableModifier();
 	virtual void ToggleModifier();
 	virtual void DisableModifier(bool bImmediate = false);
@@ -40,30 +37,20 @@ public:
 	float GetAlphaInTime() const { return AlphaInTime; }
 	float GetAlphaOutTime() const { return AlphaOutTime; }
 
-	void SetCameraShakePattern(UCameraShakePattern* InShakePattern) { ShakePattern = InShakePattern; }
-	UCameraShakePattern* GetCameraShakePattern() const { return ShakePattern != nullptr ? ShakePattern : nullptr; }
-
 protected:
 	virtual ~UCameraModifier();
 
 public:
-	// Unreal Engine도 Public에 넣어둠
-	uint8 Priority			  = 0;
-	float TransitionIntensity = 1.f;
-	float RotationIntensity   = 1.f;
+	uint8 Priority = 0;
+	float TransitionIntensity = 1.0f;
+	float RotationIntensity = 1.0f;
 
 protected:
 	APlayerCameraManager* CameraOwner = nullptr;
-	UCameraShakePattern* ShakePattern = nullptr;
 
-	// Time it takes for Alpha to go from 0.0 to 1.0
-	float AlphaInTime		= 0.f;
-
-	// Time it takes for Alpha to go from 1.0 to 0.0
-	float AlphaOutTime		= 0.f;
-
-	float Alpha				= 0.f;
-	uint32 bPendingDisable	= false;
-	uint32 bDisabled		= false;
+	float AlphaInTime = 0.0f;
+	float AlphaOutTime = 0.0f;
+	float Alpha = 0.0f;
+	uint32 bPendingDisable = false;
+	uint32 bDisabled = false;
 };
-

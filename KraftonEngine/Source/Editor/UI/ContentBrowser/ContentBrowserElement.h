@@ -82,3 +82,9 @@ class MtlElement final : public ContentBrowserElement
 public:
 	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
 };
+
+class UAssetElement final : public ContentBrowserElement
+{
+public:
+	void OnDoubleLeftClicked(ContentBrowserContext& Context) override;
+};

@@ -130,7 +130,7 @@ namespace
 		Style.Colors[ImGuiCol_Tab] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabHovered] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabSelected] = UnrealPanelSurface;
-		Style.Colors[ImGuiCol_TabDimmed] = UnrealDockEmpty;
+		Style.Colors[ImGuiCol_TabDimmed] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabDimmedSelected] = UnrealPanelSurface;
 		Style.Colors[ImGuiCol_TabSelectedOverline] = UnrealDockEmpty;
 		Style.Colors[ImGuiCol_TabDimmedSelectedOverline] = UnrealDockEmpty;
@@ -265,12 +265,14 @@ void FEditorMainPanel::Create(FWindowsWindow* InWindow, FRenderer& InRenderer, U
 	OutlinerWidget.Initialize(InEditorEngine);
 	PlaceActorsWidget.Initialize(InEditorEngine);
 	StatWidget.Initialize(InEditorEngine);
+	AssetEditorWidget.Initialize(InEditorEngine);
 	ContentBrowserWidget.Initialize(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
 	ShadowMapDebugWidget.Initialize(InEditorEngine);
 }
 
 void FEditorMainPanel::Release()
 {
+	AssetEditorWidget.Shutdown();
 	ConsoleWidget.Shutdown();
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
@@ -330,7 +332,8 @@ void FEditorMainPanel::Render(float DeltaTime)
 	ImGui::PopStyleVar(4);
 
 	// 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
-	if (EditorEngine)
+	const FEditorSettings& Settings = FEditorSettings::Get();
+	if (EditorEngine && Settings.UI.bViewport)
 	{
 		SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
 		EditorEngine->RenderViewportUI(DeltaTime);
@@ -340,8 +343,6 @@ void FEditorMainPanel::Render(float DeltaTime)
 			EditorEngine->GetOverlayStatSystem().RenderImGui(*EditorEngine, ActiveViewport->GetViewportScreenRect());
 		}
 	}
-
-	const FEditorSettings& Settings = FEditorSettings::Get();
 
 	if (!bHideEditorWindows && Settings.UI.bImGUISettings)
 	{
@@ -382,6 +383,12 @@ void FEditorMainPanel::Render(float DeltaTime)
 	{
 		SCOPE_STAT_CAT("ContentBrowserWidget.Render", "5_UI");
 		ContentBrowserWidget.Render(DeltaTime);
+	}
+
+	if (!bHideEditorWindows && AssetEditorWidget.IsOpen())
+	{
+		SCOPE_STAT_CAT("AssetEditorWidget.Render", "5_UI");
+		AssetEditorWidget.Render(DeltaTime);
 	}
 
 	if (!bHideEditorWindows && Settings.UI.bShadowMapDebug)
@@ -523,6 +530,17 @@ void FEditorMainPanel::RenderMainMenuBar()
 			{
 				EditorEngine->RequestSaveSceneAsDialog();
 			}
+
+			DrawPopupSectionHeader("ASSET");
+			if (ImGui::MenuItem("New UAsset..."))
+			{
+				AssetEditorWidget.CreateCameraShakeAsset();
+			}
+			if (ImGui::MenuItem("Open UAsset...", "Ctrl+Alt+O"))
+			{
+				AssetEditorWidget.OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
+			}
+
 			DrawPopupSectionHeader("IMPORT");
 			if (ImGui::MenuItem("Import Material...") && EditorEngine)
 			{
@@ -580,6 +598,8 @@ void FEditorMainPanel::RenderMainMenuBar()
 
 		if (ImGui::BeginMenu("Window"))
 		{
+			ImGui::Checkbox("Viewport", &Settings.UI.bViewport);
+			ImGui::Separator();
 			ImGui::Checkbox("Console", &Settings.UI.bConsole);
 			ImGui::Checkbox("Details", &Settings.UI.bProperty);
 			ImGui::Checkbox("Outliner", &Settings.UI.bScene);
@@ -687,6 +707,11 @@ void FEditorMainPanel::RenderMainMenuBar()
 						.Filter = L"Level Files (*.umap)\0*.umap\0",
 						.Title = L"Add Existing Level",
 						.InitialDirectory = InitialDir.c_str(),
+						.OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
+						.bFileMustExist = true,
+						.bPathMustExist = true,
+						.bPromptOverwrite = false,
+						.bReturnRelativeToProjectRoot = false,
 						});
 					if (!SelectedPath.empty())
 					{
@@ -1069,7 +1094,8 @@ void FEditorMainPanel::Update()
 	// 뷰포트 슬롯 위에서는 bUsingMouse를 해제해야 TickInteraction이 동작
 	bool bWantMouse = IO.WantCaptureMouse;
 	bool bWantKeyboard = IO.WantCaptureKeyboard || bShowShortcutOverlay || bShowCreditsOverlay;
-	if (EditorEngine && EditorEngine->IsMouseOverViewport())
+	const bool bAssetEditorCapturingInput = AssetEditorWidget.IsCapturingInput();
+	if (EditorEngine && EditorEngine->IsMouseOverViewport() && !bAssetEditorCapturingInput)
 	{
 		bWantMouse = false;
 		if (!IO.WantTextInput && !bShowShortcutOverlay && !bShowCreditsOverlay)

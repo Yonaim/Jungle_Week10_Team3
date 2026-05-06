@@ -541,6 +541,27 @@ FVector AActor::GetActorForward() const
 
 	return FVector(0, 0, 1);
 }
+// this actor base calculate camera view
+// if have cameraComponent use cameraComp view
+// If not present 
+// fallback to the Actor's own Location,Rotation
+#include "Component/CameraComponent.h"
+void AActor::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	if (UCameraComponent* CameraComponent = GetComponentByClass<UCameraComponent>())
+	{
+		CameraComponent->GetCameraView(DeltaTime, OutResult);
+		return;
+	}
+	OutResult.Location = GetActorLocation();
+	OutResult.Rotation = GetActorRotation();
+	OutResult.FOV = 3.14159265358979f / 3.0f;
+	OutResult.NearZ = 0.1f;
+	OutResult.FarZ = 1000.0f;
+	OutResult.bIsOrthogonal = false;
+	OutResult.OrthoWidth = 10.0f;
+	OutResult.PostProcessBlendWeight = 1.0f;
+}
 
 void AActor::Serialize(FArchive& Ar)
 {

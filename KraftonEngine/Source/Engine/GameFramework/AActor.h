@@ -4,7 +4,7 @@
 #include "Component/SceneComponent.h"
 #include "Core/TickFunction.h"
 #include "Collision/OverlapInfo.h"
-
+#include "Camera/MinimalViewInfo.h"
 
 class FArchive;
 
@@ -62,7 +62,18 @@ public:
 	void SyncEditorBillboardVisibility();
 
 	const TArray<UActorComponent*>& GetComponents() const { return OwnedComponents; }
-
+	template<typename T>
+	T* GetComponentByClass() const
+	{
+		static_assert(std::is_base_of_v<UActorComponent, T>,
+			"GetComponentByClass<T>: T must derive from UActorComponent");
+		for (UActorComponent* Component : OwnedComponents)
+		{
+			if (T* TypedComponent = Cast<T>(Component))
+				return TypedComponent;
+		}
+		return nullptr;
+	}
 	// Transform — Location
 	FVector GetActorLocation() const;
 	void SetActorLocation(const FVector& Location);
@@ -80,8 +91,12 @@ public:
 	// Direction
 	FVector GetActorForward() const;
 
+	void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult);
+
+
 	UWorld* GetWorld() const;
 	ULevel* GetLevel() const;
+
 
 	bool IsVisible() const { return bVisible; }
 	void SetVisible(bool Visible);
@@ -114,7 +129,6 @@ public:
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) {}
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) {}
 	virtual void NotifyActorHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, const FHitResult& Hit) {}
-
 protected:
 	virtual void TickActor( float DeltaSeconds, ELevelTick TickType, FActorTickFunction& ThisTickFunction );
 	

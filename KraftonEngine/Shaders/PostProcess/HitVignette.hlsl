@@ -7,6 +7,12 @@
 #define SceneColor SceneColorTexture
 #define Sampler LinearClampSampler
 
+cbuffer PostProcessMaterialBuffer : register(b2)
+{
+    float HitEffectIntensity;
+    float3 _Pad;
+}
+
 PS_Input_UV VS(uint vertexID : SV_VertexID)
 {
     return FullscreenTriangleVS(vertexID);

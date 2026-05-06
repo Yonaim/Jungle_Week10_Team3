@@ -27,23 +27,38 @@ public:
 	// 서브클래스가 BeginPlay 시점에 매핑 컨텍스트/액션 바인딩을 등록하기 위한 훅 (UE의 SetupPlayerInputComponent 대응).
 	virtual void SetupInputComponent() {}
 
-	// 매핑/바인딩 헬퍼 — 서브클래스가 SetupInputComponent에서 호출.
+	// Function : Add mapping context to manager and sort by priority
+	// input : Context, Priority
+	// Context : mapping context to add
+	// Priority : if there are multiple mapping context, context with higher priority will be processed first
 	void AddMappingContext(FInputMappingContext* Context, int32 Priority = 0)
 	{
 		EnhancedInput.AddMappingContext(Context, Priority);
 	}
+
 	void RemoveMappingContext(FInputMappingContext* Context)
 	{
 		EnhancedInput.RemoveMappingContext(Context);
 	}
+
 	void BindAction(FInputAction* Action, ETriggerEvent TriggerEvent, FInputActionCallback Callback)
 	{
 		EnhancedInput.BindAction(Action, TriggerEvent, std::move(Callback));
 	}
 
+	// Function : Assign PlayerCameraManager to this controller
+	// input : InCameraManager
+	// InCameraManager : camera manager responsible for final player camera POV
 	void AcquirePlayerCameraManager(APlayerCameraManager* InCameraManager);
+
+	// Function : Request camera modifier playback on the owned PlayerCameraManager
+	// input : ScriptPath, Params
+	// ScriptPath : Lua modifier script path under Scripts
+	// Params : numeric parameters passed to Lua modifier Begin(params)
+	void PlayCameraModifier(const FString& ScriptPath, const TMap<FString, float>& Params = {});
 
 protected:
 	APawnActor* PossessedPawn = nullptr;
+	APlayerCameraManager* PlayerCameraManager = nullptr;
 	FEnhancedInputManager EnhancedInput;
 };

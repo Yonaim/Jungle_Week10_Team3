@@ -806,6 +806,10 @@ void FSystemResources::Release()
 	TileCullingResource.Release();
 }
 
+// Function : Update per-frame GPU constant buffer from final frame context
+// input : Device, Frame
+// Device : D3D device wrapper used to update and bind constant buffer
+// Frame : final frame context generated from active camera or PlayerCameraManager POV
 void FSystemResources::UpdateFrameBuffer(FD3DDevice& Device, const FFrameContext& Frame)
 {
 	ID3D11DeviceContext* Ctx = Device.GetDeviceContext();
@@ -822,16 +826,6 @@ void FSystemResources::UpdateFrameBuffer(FD3DDevice& Device, const FFrameContext
 	if (GEngine && GEngine->GetTimer())
 	{
 		frameConstantData.Time = static_cast<float>(GEngine->GetTimer()->GetTotalTime());
-	}
-
-	// Active Camera HitEffectIntensity 
-	if (Frame.ViewportRTV)
-	{
-		UWorld* World = GEngine ? GEngine->GetWorld() : nullptr;
-		if (World && World->GetActiveCamera())
-		{
-			frameConstantData.HitEffectIntensity = World->GetActiveCamera()->GetHitEffectIntensity();
-		}
 	}
 
 	FrameBuffer.Update(Ctx, &frameConstantData, sizeof(FFrameConstants));

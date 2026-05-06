@@ -12,6 +12,7 @@
 #include "Render/RenderPass/PassRenderStateTable.h"
 #include "Render/Pipeline/RenderCollector.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialManager.h"
 #include "Texture/Texture2D.h"
 #include "Engine/Runtime/Engine.h"
 
@@ -26,6 +27,27 @@ namespace
 	{
 		const int32 Clamped = (std::clamp)(ZOrder, -2048, 2047);
 		return static_cast<uint16>(Clamped + 2048);
+	}
+
+	FString ResolvePostProcessMaterialPath(const FString& MaterialPath)
+	{
+		if (MaterialPath.empty() || MaterialPath.rfind("Asset/", 0) == 0)
+		{
+			return MaterialPath;
+		}
+
+		FString ResolvedPath = "Asset/Content/Materials/" + MaterialPath;
+		if (ResolvedPath.find(".mat") == FString::npos)
+		{
+			ResolvedPath += ".mat";
+		}
+		return ResolvedPath;
+	}
+
+	uint64 MakePostProcessSortKey(uint16 UserBits)
+	{
+		return (static_cast<uint64>(ERenderPass::PostProcess) & 0xF) << 60
+			| (static_cast<uint64>(UserBits) & 0xFFF);
 	}
 }
 
@@ -518,7 +540,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
 			Cmd.InitFullscreenTriangle(FogShader, ERenderPass::PostProcess, PPRS);
 			Cmd.Bindings.PerShaderCB[0] = &FogCB;
-			Cmd.BuildSortKey(0);
+			Cmd.SortKey = MakePostProcessSortKey(0);
 		}
 	}
 
@@ -536,7 +558,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
 			Cmd.InitFullscreenTriangle(PPShader, ERenderPass::PostProcess, PPRS);
 			Cmd.Bindings.PerShaderCB[0] = &OutlineCB;
-			Cmd.BuildSortKey(1);
+			Cmd.SortKey = MakePostProcessSortKey(1);
 		}
 	}
 
@@ -557,7 +579,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
 			Cmd.InitFullscreenTriangle(DepthShader, ERenderPass::PostProcess, PPRS);
 			Cmd.Bindings.PerShaderCB[0] = &SceneDepthCB;
-			Cmd.BuildSortKey(2);
+			Cmd.SortKey = MakePostProcessSortKey(2);
 		}
 	}
 
@@ -569,7 +591,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 		{
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
 			Cmd.InitFullscreenTriangle(NormalShader, ERenderPass::PostProcess, PPRS);
-			Cmd.BuildSortKey(3);
+			Cmd.SortKey = MakePostProcessSortKey(3);
 		}
 	}
 
@@ -581,21 +603,42 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 		{
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
 			Cmd.InitFullscreenTriangle(CullingShader, ERenderPass::PostProcess, PPRS);
-			Cmd.BuildSortKey(4);
+			Cmd.SortKey = MakePostProcessSortKey(4);
 		}
 	}
-
-	UWorld* CurrentWorld = GEngine ? GEngine->GetWorld() : nullptr;
-	if (CurrentWorld && CurrentWorld->GetActiveCamera() && CurrentWorld->GetActiveCamera()->GetHitEffectIntensity() > 0.001f)
+	uint16 PostProcessMaterialSort = 5;
+	for (const FPostProcessSettings::FMaterialEntry& Entry : Frame.PostProcessSettings.Materials)
 	{
-		// Use direct path string if EShaderPath constant is causing issues
-		FShader* HitShader = FShaderManager::Get().GetOrCreate("Shaders/PostProcess/HitVignette.hlsl");
-		if (HitShader)
+		if (Entry.MaterialPath.empty() || Entry.BlendWeight <= 0.0f)
 		{
-			FDrawCommand& Cmd = DrawCommandList.AddCommand();
-			Cmd.InitFullscreenTriangle(HitShader, ERenderPass::PostProcess, PPRS);
-			Cmd.BuildSortKey(5);
+			continue;
 		}
+
+		UMaterial* Material = FMaterialManager::Get().GetOrCreateMaterial(ResolvePostProcessMaterialPath(Entry.MaterialPath));
+		if (!Material || !Material->GetShader())
+		{
+			continue;
+		}
+
+		for (const auto& Pair : Entry.Parameters.ScalarParameter)
+		{
+			Material->SetScalarParameter(Pair.first.ToString(), Pair.second);
+		}
+
+		Material->FlushDirtyBuffers(CachedDevice, Ctx);
+
+		FDrawCommand& Cmd = DrawCommandList.AddCommand();
+		Cmd.InitFullscreenTriangle(Material->GetShader(), ERenderPass::PostProcess, PPRS);
+		Cmd.Bindings.PerShaderCB[0] = Material->GetGPUBufferBySlot(ECBSlot::PerShader0);
+		Cmd.Bindings.PerShaderCB[1] = Material->GetGPUBufferBySlot(ECBSlot::PerShader1);
+
+		const ID3D11ShaderResourceView* const* MatSRVs = Material->GetCachedSRVs();
+		for (int s = 0; s < (int)EMaterialTextureSlot::Max; s++)
+		{
+			Cmd.Bindings.SRVs[s] = const_cast<ID3D11ShaderResourceView*>(MatSRVs[s]);
+		}
+
+		Cmd.SortKey = MakePostProcessSortKey(PostProcessMaterialSort++);
 	}
 
 	// FXAA

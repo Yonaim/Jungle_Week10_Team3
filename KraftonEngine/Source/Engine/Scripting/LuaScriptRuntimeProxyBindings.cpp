@@ -1,4 +1,7 @@
-#include "Scripting/LuaScriptRuntime.h"
+﻿#include "Scripting/LuaScriptRuntime.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/World.h"
 #include "Math/Rotator.h"
 
 #ifdef check
@@ -137,8 +140,9 @@ void FLuaScriptRuntime::BindComponentProxyType()
 			&FLuaComponentProxy::MoveByXYZ),
 		"StopMove", &FLuaComponentProxy::StopMove,
 		"IsMoveDone", &FLuaComponentProxy::IsMoveDone,
-		"StartCameraShake", &FLuaComponentProxy::StartCameraShake,
-		"AddHitEffect", &FLuaComponentProxy::AddHitEffect,
+			//ToDelete
+		//"StartCameraShake", &FLuaComponentProxy::StartCameraShake,
+		//"AddHitEffect", &FLuaComponentProxy::AddHitEffect,
 		"SetBoxExtent", sol::overload(
 			&FLuaComponentProxy::SetBoxExtent,
 			&FLuaComponentProxy::SetBoxExtentXYZ),
@@ -214,6 +218,40 @@ void FLuaScriptRuntime::BindActorProxyType()
 		"GetMoveSpeed", &FLuaActorProxy::GetMoveSpeed,
 		"GetDamage", &FLuaActorProxy::GetDamage,
 		"SetDamage", &FLuaActorProxy::SetDamage,
+		"PlayCameraModifier", [](FLuaActorProxy& ActorProxy, const FString& ScriptPath, sol::optional<sol::table> ParamsTable)
+		{
+			AActor* Actor = ActorProxy.GetActor();
+			APlayerController* PlayerController = Cast<APlayerController>(Actor);
+			if (!PlayerController && Actor && Actor->GetWorld())
+			{
+				AGameModeBase* GameMode = Actor->GetWorld()->GetAuthGameMode();
+				PlayerController = GameMode ? GameMode->GetSpawnedController() : nullptr;
+			}
+
+			if (!PlayerController)
+			{
+				return false;
+			}
+
+			TMap<FString, float> Params;
+			if (ParamsTable)
+			{
+				for (auto& Pair : *ParamsTable)
+				{
+					sol::object Key = Pair.first.as<sol::object>();
+					sol::object Value = Pair.second.as<sol::object>();
+					if (Key.get_type() != sol::type::string || Value.get_type() != sol::type::number)
+					{
+						continue;
+					}
+
+					Params[Key.as<FString>()] = Value.as<float>();
+				}
+			}
+
+			PlayerController->PlayCameraModifier(ScriptPath, Params);
+			return true;
+		},
 		"PrintLocation", &FLuaActorProxy::PrintLocation,
 		"Destroy", &FLuaActorProxy::Destroy);
 }

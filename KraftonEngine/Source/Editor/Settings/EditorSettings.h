@@ -54,6 +54,7 @@ public:
 	// UI 위젯 표시 여부
 	struct FUIVisibility
 	{
+		bool bViewport = true;
 		bool bConsole = true;
 		bool bProperty = true;
 		bool bScene = true;

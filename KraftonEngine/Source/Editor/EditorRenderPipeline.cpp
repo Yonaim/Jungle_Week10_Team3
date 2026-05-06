@@ -5,6 +5,8 @@
 #include "Render/Scene/FScene.h"
 #include "Viewport/Viewport.h"
 #include "Component/CameraComponent.h"
+#include "Engine/Camera/PlayerCameraManager.h"
+#include "GameFramework/GameModeBase.h"
 #include "GameFramework/World.h"
 #include "Profiling/Stats.h"
 #include "Profiling/GPUProfiler.h"
@@ -177,7 +179,29 @@ void FEditorRenderPipeline::PrepareViewport(FViewport* VP, UCameraComponent* Cam
 void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient* VC, UCameraComponent* Camera, FViewport* VP, UWorld* World)
 {
 	Frame.ClearViewportResources();
-	Frame.SetCameraInfo(Camera);
+	if (World && Camera == World->GetActiveCamera())
+	{
+		if (AGameModeBase* GameMode = World->GetAuthGameMode())
+		{
+			if (APlayerCameraManager* CameraManager = GameMode->GetPlayerCameraManager();
+				CameraManager && CameraManager->HasValidCameraCachePOV())
+			{
+				Frame.SetCameraInfo(CameraManager->GetCameraCachePOV());
+			}
+			else
+			{
+				Frame.SetCameraInfo(Camera);
+			}
+		}
+		else
+		{
+			Frame.SetCameraInfo(Camera);
+		}
+	}
+	else
+	{
+		Frame.SetCameraInfo(Camera);
+	}
 
 	// Light View Override — 라이트 시점으로 View/Proj 교체
 	if (VC->IsViewingFromLight())

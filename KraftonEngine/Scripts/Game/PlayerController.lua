@@ -16,6 +16,16 @@ local Engine = require("Common.Engine")
 local Math = require("Common.Math")
 local UI = require("Common.UI")
 local HitEffects = require_env("Game.HitEffect")
+local Vector = require("Common.Vector")
+local HitFeedback = require("Game.Camera.HitFeedback")
+
+if HitEffects and HitEffects.SetRuntime then
+    HitEffects.SetRuntime({
+        set_global_time_dilation = set_global_time_dilation,
+        wait_real = wait_real,
+        raw_delta_time = raw_delta_time,
+    })
+end
 
 local is_input_locked = false;
 
@@ -49,8 +59,6 @@ local ground_snap_distance = PlayerConfig.ground_snap_distance              -- �
 local skin_width = PlayerConfig.skin_width                                  -- 바닥/충돌 판정 여유값
 local fallback_half_height = PlayerConfig.fallback_half_height              -- collision shape를 못 찾았을 때 쓰는 반높이
 local fall_dead_z = PlayerConfig.fall_dead_z                                -- 이 높이 아래로 떨어지면 낙사 처리하는 기준
-local hit_camera_shake_intensity = PlayerConfig.hit_camera_shake_intensity  
-local hit_camera_shake_duration = PlayerConfig.hit_camera_shake_duration     
 local DIALOGUE_DATA_PATH = PlayerConfig.dialogue_data_path                  -- Player dialogue 경로
 
 local camera = nil
@@ -528,9 +536,8 @@ local function handle_obstacle_collision(event_name, other_actor)
         end
     end
     log("[PlayerController] Obstacle collision damage=" .. tostring(damage))
-    if PlayerStatus.DamageStability(damage) and Engine.IsValidObject(camera) then
-        camera:StartCameraShake(hit_camera_shake_intensity, hit_camera_shake_duration)
-        camera:AddHitEffect(2.0, 0.7)
+    if PlayerStatus.DamageStability(damage) then
+        HitFeedback.Play(obj)
     end
 end
 

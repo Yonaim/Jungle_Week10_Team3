@@ -1,59 +1,136 @@
-﻿#include "CameraShakePattern.h"
+#include "CameraShakePattern.h"
+
+#include <cmath>
 
 IMPLEMENT_CLASS(UCameraShakePattern, UObject)
+IMPLEMENT_CLASS(USinWaveCameraShakePattern, UCameraShakePattern)
+IMPLEMENT_CLASS(UCurveCameraShakePattern, UCameraShakePattern)
 
-UCameraShakePattern::~UCameraShakePattern() {
-	if (TransitionCurveX) {
+float UCameraShakePattern::EvalTransitionX(float Alpha) const
+{
+	return 0.0f;
+}
+
+float UCameraShakePattern::EvalTransitionY(float Alpha) const
+{
+	return 0.0f;
+}
+
+float UCameraShakePattern::EvalTransitionZ(float Alpha) const
+{
+	return 0.0f;
+}
+
+float UCameraShakePattern::EvalRotationX(float Alpha) const
+{
+	return 0.0f;
+}
+
+float UCameraShakePattern::EvalRotationY(float Alpha) const
+{
+	return 0.0f;
+}
+
+float UCameraShakePattern::EvalRotationZ(float Alpha) const
+{
+	return 0.0f;
+}
+
+float USinWaveCameraShakePattern::EvalTransitionX(float Alpha) const
+{
+	return sinf(Alpha * Frequency) * TransitionAmplitudeX;
+}
+
+float USinWaveCameraShakePattern::EvalTransitionY(float Alpha) const
+{
+	return sinf(Alpha * Frequency) * TransitionAmplitudeY;
+}
+
+float USinWaveCameraShakePattern::EvalTransitionZ(float Alpha) const
+{
+	return sinf(Alpha * Frequency) * TransitionAmplitudeZ;
+}
+
+float USinWaveCameraShakePattern::EvalRotationX(float Alpha) const
+{
+	return sinf(Alpha * Frequency) * RotationAmplitudeX;
+}
+
+float USinWaveCameraShakePattern::EvalRotationY(float Alpha) const
+{
+	return sinf(Alpha * Frequency) * RotationAmplitudeY;
+}
+
+float USinWaveCameraShakePattern::EvalRotationZ(float Alpha) const
+{
+	return sinf(Alpha * Frequency) * RotationAmplitudeZ;
+}
+
+UCurveCameraShakePattern::~UCurveCameraShakePattern()
+{
+	if (TransitionCurveX)
+	{
 		UObjectManager::Get().DestroyObject(TransitionCurveX);
 		TransitionCurveX = nullptr;
 	}
 
-	if (TransitionCurveY) {
+	if (TransitionCurveY)
+	{
 		UObjectManager::Get().DestroyObject(TransitionCurveY);
 		TransitionCurveY = nullptr;
 	}
 
-	if (TransitionCurveZ) {
+	if (TransitionCurveZ)
+	{
 		UObjectManager::Get().DestroyObject(TransitionCurveZ);
 		TransitionCurveZ = nullptr;
 	}
 
-	if (RotationCurveX) {
+	if (RotationCurveX)
+	{
 		UObjectManager::Get().DestroyObject(RotationCurveX);
 		RotationCurveX = nullptr;
 	}
 
-	if (RotationCurveY) {
+	if (RotationCurveY)
+	{
 		UObjectManager::Get().DestroyObject(RotationCurveY);
 		RotationCurveY = nullptr;
 	}
 
-	if (RotationCurveZ) {
+	if (RotationCurveZ)
+	{
 		UObjectManager::Get().DestroyObject(RotationCurveZ);
 		RotationCurveZ = nullptr;
 	}
 }
 
-float UCameraShakePattern::EvalTransitionX(float Alpha) const {
-	return TransitionCurveX != nullptr ? TransitionCurveX->Evaluate(Alpha) : 0.f;
+float UCurveCameraShakePattern::EvalTransitionX(float Alpha) const
+{
+	return TransitionCurveX ? TransitionCurveX->Evaluate(Alpha) : 0.0f;
 }
 
-float UCameraShakePattern::EvalTransitionY(float Alpha) const {
-	return TransitionCurveY != nullptr ? TransitionCurveY->Evaluate(Alpha) : 0.f;
+float UCurveCameraShakePattern::EvalTransitionY(float Alpha) const
+{
+	return TransitionCurveY ? TransitionCurveY->Evaluate(Alpha) : 0.0f;
 }
 
-float UCameraShakePattern::EvalTransitionZ(float Alpha) const {
-	return TransitionCurveZ != nullptr ? TransitionCurveZ->Evaluate(Alpha) : 0.f;
+float UCurveCameraShakePattern::EvalTransitionZ(float Alpha) const
+{
+	return TransitionCurveZ ? TransitionCurveZ->Evaluate(Alpha) : 0.0f;
 }
 
-float UCameraShakePattern::EvalRotationX(float Alpha) const {
-	return RotationCurveX != nullptr ? RotationCurveX->Evaluate(Alpha) : 0.f;
+float UCurveCameraShakePattern::EvalRotationX(float Alpha) const
+{
+	return RotationCurveX ? RotationCurveX->Evaluate(Alpha) : 0.0f;
 }
 
-float UCameraShakePattern::EvalRotationY(float Alpha) const {
-	return RotationCurveY != nullptr ? RotationCurveY->Evaluate(Alpha) : 0.f;
+float UCurveCameraShakePattern::EvalRotationY(float Alpha) const
+{
+	return RotationCurveY ? RotationCurveY->Evaluate(Alpha) : 0.0f;
 }
 
-float UCameraShakePattern::EvalRotationZ(float Alpha) const {
-	return RotationCurveZ != nullptr ? RotationCurveZ->Evaluate(Alpha) : 0.f;
+float UCurveCameraShakePattern::EvalRotationZ(float Alpha) const
+{
+	return RotationCurveZ ? RotationCurveZ->Evaluate(Alpha) : 0.0f;
 }

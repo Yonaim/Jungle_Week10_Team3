@@ -117,6 +117,11 @@ std::filesystem::path FScriptPaths::ResolveScriptPath(const FString& ScriptPath)
 	return Path.lexically_normal();
 }
 
+// Function : Read Lua script file from normalized Scripts path
+// input : ScriptPath, OutScriptText, OutError
+// ScriptPath : script path under Scripts, .lua extension is optional
+// OutScriptText : loaded script source
+// OutError : failure reason when script cannot be loaded
 bool FScriptPaths::ReadScriptFile(const FString& ScriptPath, FString& OutScriptText, FString& OutError)
 {
 	if (ScriptPath.empty())
@@ -125,7 +130,12 @@ bool FScriptPaths::ReadScriptFile(const FString& ScriptPath, FString& OutScriptT
 		return false;
 	}
 
-	const std::filesystem::path ResolvedPath = ResolveScriptPath(ScriptPath);
+	std::filesystem::path ResolvedPath = ResolveScriptPath(ScriptPath);
+	if (!std::filesystem::exists(ResolvedPath) && ResolvedPath.extension().empty())
+	{
+		ResolvedPath += L".lua";
+	}
+
 	if (!std::filesystem::exists(ResolvedPath))
 	{
 		// 호출부는 경로 정책을 모르게 하고, 사용자에게 보여줄 에러 문자열만 받는다.

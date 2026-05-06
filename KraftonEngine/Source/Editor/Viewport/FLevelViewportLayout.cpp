@@ -1714,6 +1714,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Viewport", PanelIconKey);
 	const bool bIsOpen = ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_None);
 	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Viewport", FEditorSettings::Get().UI.bViewport, "x##CloseViewport");
 	if (!bIsOpen)
 	{
 		ImGui::End();
@@ -1721,7 +1722,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 		return;
 	}
 
-	EditorPanelTitleUtils::ApplyPanelContentTopInset();
+	EditorPanelTitleUtils::ApplyPanelContentTopInset(false, false);
 
 	ImVec2 ContentPos = ImGui::GetCursorScreenPos();
 	ImVec2 ContentSize = ImGui::GetContentRegionAvail();
@@ -3457,7 +3458,7 @@ void FLevelViewportLayout::SaveToSettings()
 		{
 			S.PerspCamLocation = Cam->GetWorldLocation();
 			S.PerspCamRotation = Cam->GetRelativeRotation();
-			const FCameraState& CS = Cam->GetCameraState();
+			const FMinimalViewInfo& CS = Cam->GetCameraState();
 			S.PerspCamFOV = CS.FOV * (180.0f / 3.14159265358979f); // rad ??deg
 			S.PerspCamNearClip = CS.NearZ;
 			S.PerspCamFarClip = CS.FarZ;
@@ -3521,7 +3522,7 @@ void FLevelViewportLayout::LoadFromSettings()
 			Cam->SetRelativeLocation(S.PerspCamLocation);
 			Cam->SetRelativeRotation(S.PerspCamRotation);
 
-			FCameraState CS = Cam->GetCameraState();
+			FMinimalViewInfo CS = Cam->GetCameraState();
 			CS.FOV = S.PerspCamFOV * (3.14159265358979f / 180.0f); // deg ??rad
 			CS.NearZ = S.PerspCamNearClip;
 			CS.FarZ = S.PerspCamFarClip;

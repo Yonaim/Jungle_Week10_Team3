@@ -466,3 +466,7 @@ Asset/Editor/Original/*
 /Scripts/GenerateProjectFiles.py
 DemoBuild/
 _font_preview/
+
+# Generated/local build artifacts
+Saved/
+ShippingBuild/
