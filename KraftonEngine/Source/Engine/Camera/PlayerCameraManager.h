@@ -26,6 +26,7 @@ class APlayerCameraManager : public AActor
 {
 public:
 	DECLARE_CLASS(APlayerCameraManager, AActor)
+	void AddCameraModifier(UCameraModifier* InModifier);
 	void ApplyCameraModifiers(float DeltaTime, UCameraComponent* InOutPOV);
 
 public:
