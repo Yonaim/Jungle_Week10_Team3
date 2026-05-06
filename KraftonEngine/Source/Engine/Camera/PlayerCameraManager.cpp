@@ -57,8 +57,10 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime) {
 	ApplyCameraModifiers(DeltaTime, ViewTarget.POV);
 
 	// Fade
-	if (bEnableFading) {
+	if (bEnableFading && FadeTimeRemaining) {
+		FadeTimeRemaining = FadeTimeRemaining < 0.f ? 0.f : FadeTimeRemaining;	// Non-negative
 		FadeAmount = FadeAlpha.X + (FadeAlpha.Y - FadeAlpha.X) * (FadeTime - FadeTimeRemaining) / FadeTime;
+		FadeTimeRemaining -= DeltaTime;
 	}
 }
 
@@ -139,6 +141,7 @@ void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float
 	FadeColor		  = Color;
 	FadeAlpha		  = FVector2(FromAlpha, ToAlpha);
 	FadeTimeRemaining = Duration;
+	FadeTime		  = Duration;
 	bEnableFading	  = true;
 }
 
