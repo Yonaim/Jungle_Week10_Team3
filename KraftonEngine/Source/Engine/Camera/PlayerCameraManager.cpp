@@ -135,7 +135,6 @@ void APlayerCameraManager::Tick(float DeltaTime)
 {
 	AActor::Tick(DeltaTime);
 	UpdateCamera(DeltaTime);
-	// StartLetterBoxing(10.f, 10.f);
 }
 
 // Function : Bind camera manager to controller and initialize view target from pawn
@@ -266,19 +265,13 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime)
 
 	if (bEnableFading && FadeTime > 0.0f)
 	{
-		if (FadeTimeRemaining < 0.0f)
-		{
-			// Keep remaining fade time non-negative before evaluating the blend.
-			FadeTimeRemaining = 0.0f;
-		}
-
+		FadeTimeRemaining = std::max(0.0f, FadeTimeRemaining - DeltaTime);
 		const float Elapsed = FadeTime - FadeTimeRemaining;
 		FadeAmount = FadeAlpha.X + (FadeAlpha.Y - FadeAlpha.X) * (Elapsed / FadeTime);
-		FadeTimeRemaining -= DeltaTime;
 	}
 
-	NewPOV.PostPorcessSettings.FadeColor = FadeColor;
-	NewPOV.PostPorcessSettings.FadeAmount = FadeAmount;
+	NewPOV.PostProcessSettings.FadeColor = FadeColor;
+	NewPOV.PostProcessSettings.FadeAmount = FadeAmount;
 	NewPOV.bConstrainAspectRatio = bEnableLetterBoxing;
 	if (bEnableLetterBoxing)
 	{
@@ -356,9 +349,18 @@ void APlayerCameraManager::StartCameraFade(float FromAlpha, float ToAlpha, float
 	// Initialize fade state immediately from call parameters.
 	FadeColor = Color;
 	FadeAlpha = FVector2(FromAlpha, ToAlpha);
-	FadeTimeRemaining = Duration;
-	FadeTime = Duration;
+	FadeTime = std::max(0.0f, Duration);
+	FadeTimeRemaining = FadeTime;
+	FadeAmount = FadeTime > 0.0f ? FromAlpha : ToAlpha;
 	bEnableFading = true;
+
+	ViewTarget.POV.PostProcessSettings.FadeColor = FadeColor;
+	ViewTarget.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	if (bHasValidCameraCachePOV)
+	{
+		CameraCache.POV.PostProcessSettings.FadeColor = FadeColor;
+		CameraCache.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	}
 }
 
 void APlayerCameraManager::EndCameraFade()
@@ -367,6 +369,13 @@ void APlayerCameraManager::EndCameraFade()
 	bEnableFading = false;
 	FadeAmount = 0.0f;
 	FadeTimeRemaining = 0.0f;
+	ViewTarget.POV.PostProcessSettings.FadeColor = FadeColor;
+	ViewTarget.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	if (bHasValidCameraCachePOV)
+	{
+		CameraCache.POV.PostProcessSettings.FadeColor = FadeColor;
+		CameraCache.POV.PostProcessSettings.FadeAmount = FadeAmount;
+	}
 }
 
 void APlayerCameraManager::LoadCameraModifierStackAsset(const std::filesystem::path& AssetPath)

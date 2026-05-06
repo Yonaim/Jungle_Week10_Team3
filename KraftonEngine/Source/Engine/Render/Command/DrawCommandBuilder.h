@@ -85,6 +85,7 @@ private:
 
 	// PostProcess CBs (Fog, Outline, SceneDepth, FXAA)
 	FConstantBuffer FogCB;
+	FConstantBuffer FadeCB;
 	FConstantBuffer OutlineCB;
 	FConstantBuffer SceneDepthCB;
 	FConstantBuffer FXAACB;

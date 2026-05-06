@@ -14,7 +14,6 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialManager.h"
 #include "Texture/Texture2D.h"
-#include "Engine/Runtime/Engine.h"
 
 #include <algorithm>
 
@@ -67,6 +66,7 @@ void FDrawCommandBuilder::Create(ID3D11Device* InDevice, ID3D11DeviceContext* In
 	ScreenQuads.Create(InDevice);
 
 	FogCB.Create(InDevice, sizeof(FFogConstants));
+	FadeCB.Create(InDevice, sizeof(FFadeConstants));
 	OutlineCB.Create(InDevice, sizeof(FOutlinePostProcessConstants));
 	SceneDepthCB.Create(InDevice, sizeof(FSceneDepthPConstants));
 	FXAACB.Create(InDevice, sizeof(FFXAAConstants));
@@ -87,6 +87,7 @@ void FDrawCommandBuilder::Release()
 	PerObjectCBPool.clear();
 
 	FogCB.Release();
+	FadeCB.Release();
 	OutlineCB.Release();
 	SceneDepthCB.Release();
 	FXAACB.Release();
@@ -641,6 +642,24 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 		}
 
 		Cmd.SortKey = MakePostProcessSortKey(PostProcessMaterialSort++);
+	}
+
+	const float CameraFadeAmount = std::clamp(Frame.PostProcessSettings.FadeAmount, 0.0f, 1.0f);
+	if (CameraFadeAmount > 0.0f)
+	{
+		FShader* FadeShader = FShaderManager::Get().GetOrCreate(EShaderPath::Fade);
+		if (FadeShader)
+		{
+			FFadeConstants fadeConstants = {};
+			fadeConstants.FadeColor = Frame.PostProcessSettings.FadeColor.ToVector4();
+			fadeConstants.FadeAmount = CameraFadeAmount;
+			FadeCB.Update(Ctx, &fadeConstants, sizeof(FFadeConstants));
+
+			FDrawCommand& Cmd = DrawCommandList.AddCommand();
+			Cmd.InitFullscreenTriangle(FadeShader, ERenderPass::PostProcess, PPRS);
+			Cmd.Bindings.PerShaderCB[0] = &FadeCB;
+			Cmd.SortKey = MakePostProcessSortKey(PostProcessMaterialSort++);
+		}
 	}
 
 	// FXAA

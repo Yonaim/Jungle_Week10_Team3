@@ -237,6 +237,15 @@ struct FFogConstants
 	float _pad[2];              // 8B  — 16B boundary
 };
 
+// Camera fade post-process CB (b2) - HLSL FadeBuffer와 1:1 대응
+struct FFadeConstants
+{
+	FVector4 FadeColor = FVector4(0.0f, 0.0f, 0.0f, 1.0f);
+	float FadeAmount = 0.0f;
+	float Padding[3] = {};
+};
+static_assert(sizeof(FFadeConstants) % 16 == 0, "FFadeConstants must be 16-byte aligned");
+
 struct FFXAAConstants
 {
 	float EdgeThreshold;

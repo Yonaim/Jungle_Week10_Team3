@@ -180,7 +180,7 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient* VC, UCameraCo
 {
 	Frame.ClearViewportResources();
 	const FMinimalViewInfo* ActivePOV = nullptr;
-	if (World && Camera == World->GetActiveCamera())
+	if (World)
 	{
 		if (AGameModeBase* GameMode = World->GetAuthGameMode())
 		{
@@ -188,17 +188,13 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient* VC, UCameraCo
 				CameraManager && CameraManager->HasValidCameraCachePOV())
 			{
 				ActivePOV = &CameraManager->GetCameraCachePOV();
-				Frame.SetCameraInfo(*ActivePOV);
-			}
-			else
-			{
-				Frame.SetCameraInfo(Camera);
 			}
 		}
-		else
-		{
-			Frame.SetCameraInfo(Camera);
-		}
+	}
+
+	if (ActivePOV)
+	{
+		Frame.SetCameraInfo(*ActivePOV);
 	}
 	else
 	{
