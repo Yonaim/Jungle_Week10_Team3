@@ -12,7 +12,6 @@ class UCameraModifier : public UObject
 public:
 	DECLARE_CLASS(UCameraModifier, UObject)
 	UCameraModifier();
-	~UCameraModifier();
 
 	virtual void AddedToCamera(APlayerCameraManager* Camera);
 
