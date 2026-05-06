@@ -527,7 +527,7 @@ local function handle_obstacle_collision(event_name, other_actor)
         if obstacle_damage and obstacle_damage > 0 then
             damage = obstacle_damage
             log("Start Coroutine")
-            StartCoroutine(function() HitEffects.HitStopAndSlomo(0.2, 0.7, 1.0) end)
+            StartCoroutine(function() HitEffects.HitStopAndSlomo(0.1, 0.7, 1.0) end)
             -- StartCoroutine(function() HitEffects.HitStop(0.1) end)
             -- StartCoroutine(function() HitEffects.Slomo(0.1, 1.0) end)
             if HitEffects and HitEffects.PlayHitSquash then
