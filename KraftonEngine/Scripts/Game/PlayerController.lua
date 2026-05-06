@@ -5,7 +5,6 @@
 
 local DebugConfig = require("Game.Config.Debug")
 local PlayerConfig = require("Game.Config.PlayerController")
-local ObstacleConfig = require("Game.Config.Obstacle")
 local GameManager = require("Game.GameManager")
 local PlayerStatus = require("Game.PlayerStatus")
 local AudioManager = require("Game.AudioManager")
@@ -16,10 +15,12 @@ local Log = require("Common.Log")
 local Engine = require("Common.Engine")
 local Math = require("Common.Math")
 local UI = require("Common.UI")
-local Vector = require("Common.Vector")
 local HitEffects = require_env("Game.HitEffect")
 
 local is_input_locked = false;
+
+-- 무한 overlap 방지용 weakptr 테이블
+local hit_obstacles = setmetatable({}, { __mode = "k" })
 
 -- =========================================================
 -- 런타임 상태
@@ -511,15 +512,16 @@ local function handle_obstacle_collision(event_name, other_actor)
         return
     end
 
-    local damage = ObstacleConfig.default_damage
+    local damage = 1 -- 데미지 하드코딩
     -- 장애물별 피해량을 다르게 줄 수 있게 C++ Damage 값을 Lua에서 읽는다.
-    -- 바인딩 안 된 장애물은 ObstacleConfig.default_damage를 사용합니다.
     if other_actor and other_actor.GetDamage then
         local obstacle_damage = other_actor:GetDamage()
         if obstacle_damage and obstacle_damage > 0 then
             damage = obstacle_damage
             log("Start Coroutine")
-            start_hit_stop_then_slomo(1.0, 0.1, 1.0)
+            StartCoroutine(function() HitEffects.HitStopAndSlomo(0.2, 0.7, 1.0) end)
+            -- StartCoroutine(function() HitEffects.HitStop(0.1) end)
+            -- StartCoroutine(function() HitEffects.Slomo(0.1, 1.0) end)
             if HitEffects and HitEffects.PlayHitSquash then
                 StartCoroutine(function() HitEffects.PlayHitSquash(obj, 0.8, 0.8, 0.8, 0.1, 1.0) end)
             end
@@ -542,6 +544,8 @@ end
 -- PlayerController가 한 런에 필요한 이동/충돌/슬라이드/오디오 상태를 초기화합니다.
 -- Map 생성 순서가 늦을 수 있어 첫 바닥 판정은 실패해도 Tick에서 다시 복구되게 둡니다.
 function BeginPlay()
+    -- 장애물 초기화
+    hit_obstacles = setmetatable({}, { __mode = "k" })
     local loc = obj:GetWorldLocation()
 
     current_lane = Math.Clamp(Math.Round(loc.y / lane_width), lane_min(), lane_max())
@@ -728,6 +732,19 @@ end
 ------------------------------------------------
 
 function OnBeginOverlap(otherActor, otherComp, selfComp)
+    if not otherActor then
+        return
+    end
+
+    if hit_obstacles[otherActor] then
+        return
+    end
+
+    if PlayerStatus:IsInvincible() then
+        return
+    end
+    hit_obstacles[otherActor] = true
+
     handle_obstacle_collision("BeginOverlap", otherActor)
 end
 

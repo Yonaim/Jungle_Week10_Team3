@@ -1,3 +1,7 @@
+---------------------------
+-- Play 중 코치 대화 Dialogue
+---------------------------
+
 local DialogueConfig = {
     -- play_path: 플레이 중 코치 대화 JSON 경로입니다.
     play_path = "Asset/Content/Data/Dialogues/play.dialogue.json",

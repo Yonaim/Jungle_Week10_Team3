@@ -1,3 +1,7 @@
+---------------------------
+-- Debug 관련 계수
+---------------------------
+
 local DebugConfig = {
     -- enable_log: Lua 디버그 로그 출력 여부입니다.
     enable_log = true,

@@ -1,5 +1,7 @@
 local CollectibleConfig = require("Game.Config.Collectible")
-
+---------------------------
+-- 2 종류 item 설정값
+---------------------------
 local ItemsConfig = {
     required_interactor_tag = "Player", -- 기본 아이템을 획득할 수 있는 actor tag
 

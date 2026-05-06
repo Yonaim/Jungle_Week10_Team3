@@ -1,5 +1,9 @@
+------------------------------------------------------------------------------
+-- Actor 와 Component 관련 함수
+------------------------------------------------------------------------------
 local Engine = {}
 
+-- Object, Actor, Component Valid 체크 함수
 function Engine.IsValidObject(value)
     return value ~= nil and value.IsValid ~= nil and value:IsValid()
 end
@@ -12,6 +16,7 @@ function Engine.IsValidComponent(component)
     return Engine.IsValidObject(component)
 end
 
+-- Component 가져오는 함수
 function Engine.GetComponent(owner, ...)
     if not owner or not owner.GetComponent then
         return nil
@@ -31,6 +36,7 @@ function Engine.GetComponent(owner, ...)
     return nil
 end
 
+-- 요청된 Component를 가져오는 함수
 function Engine.GetRequiredComponent(owner, missing_message, ...)
     local component = Engine.GetComponent(owner, ...)
     if component then
@@ -42,6 +48,7 @@ function Engine.GetRequiredComponent(owner, missing_message, ...)
     return nil
 end
 
+-- type으로 component를 가져오는 함수
 function Engine.GetComponentByType(owner, type_name)
     if not Engine.IsValidObject(owner) or not owner.GetComponentByType then
         return nil
@@ -55,6 +62,7 @@ function Engine.GetComponentByType(owner, type_name)
     return nil
 end
 
+-- static mesh component를 가져오는 함수 (sliding 시 크기 조절)
 function Engine.GetStaticMeshComponent(actor)
     if not Engine.IsValidActor(actor) or not actor.GetStaticMeshComponent then
         return nil
@@ -68,6 +76,7 @@ function Engine.GetStaticMeshComponent(actor)
     return nil
 end
 
+-- ShapeComponent 가져오는 함수
 function Engine.FindCollisionShape(actor)
     local shape = Engine.GetComponentByType(actor, "UBoxComponent")
     if shape then

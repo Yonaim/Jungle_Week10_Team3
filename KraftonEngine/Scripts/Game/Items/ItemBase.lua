@@ -2,7 +2,7 @@ local GameManager = require("Game.GameManager")
 local Engine = require("Common.Engine")
 
 ------------------------------------------------
--- ItemBase는 아이템 Lua 스크립트들이 공통으로 쓰는 pickup 처리 스크립트
+-- ItemBase는 아이템 Lua 스크립트들이 공통으로 쓰는
 -- OnPickedUp/GrantLogFragment/GrantCrashDump
 ------------------------------------------------
 local ItemBase = {}

@@ -264,12 +264,6 @@ function GameManager.OnLogCollected()
     queue_dialogue_trigger("onCollectLog")
 end
 
-function GameManager.OnObstacleAvoided()
-    -- TODO: 장애물을 실제로 지나쳤는지 판정하는 지점이 생기면 여기서 호출하면 됨.
-    -- 지금 마감 전에는 장애물 회피 판정까지 새로 만들지 않고, 이벤트 함수만 먼저 준비합니다.
-    GameManager.AddCoachApproval(CoachConfig.obstacle_avoided_delta or 1, "ObstacleAvoided")
-end
-
 function GameManager.OnSpeedUp()
     queue_dialogue_trigger("onSpeedUp")
 end

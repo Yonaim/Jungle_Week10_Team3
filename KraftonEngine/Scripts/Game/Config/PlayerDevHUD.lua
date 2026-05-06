@@ -1,5 +1,9 @@
 local DialogueConfig = require("Game.Config.Dialogue")
 
+---------------------------
+-- Play 도중 필요한 Sound 및 각종 계수값 모음
+---------------------------
+
 local PlayerDevHUDConfig = {
     -- dialogue_path: 플레이 중 HUD 대화 데이터 경로입니다.
     dialogue_path = DialogueConfig.play_path,

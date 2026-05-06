@@ -7,7 +7,7 @@ local item = ItemBase.New({
 })
 
 ------------------------------------------------
--- Crash Dump 충돌 콜백 함수들
+-- Crash Dump 충돌 콜백 함수
 ------------------------------------------------
 
 function OnBeginOverlap(otherActor, otherComp, selfComp)

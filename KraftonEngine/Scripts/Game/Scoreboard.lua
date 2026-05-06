@@ -1,10 +1,10 @@
 local Scoreboard = {}
 
 local ScoreboardSettings = {
-    -- path: 스코어보드 저장 파일 경로입니다.
+    -- path: 스코어보드 저장 파일 경로
     path = "Saves/scoreboard.json",
 
-    -- limit: 스코어보드에 유지할 최대 항목 수입니다.
+    -- limit: 스코어보드에 유지할 최대 항목 수
     limit = 20,
 }
 
@@ -15,6 +15,7 @@ local SCOREBOARD_LIMIT = ScoreboardSettings.limit
 -- Scoreboard 내부 헬퍼 함수들
 ------------------------------------------------
 
+-- 닉네임에서 영어 알파벳만 뽑아서 대문자로 만드는 함수
 local function sanitize_nickname(nickname)
     local source = tostring(nickname or "")
     local result = {}
@@ -32,6 +33,7 @@ local function sanitize_nickname(nickname)
     return table.concat(result)
 end
 
+-- board json 파일 로드하는 함수
 local function load_board()
     local data = load_json_file(SCOREBOARD_PATH)
     if type(data) ~= "table" then
@@ -59,6 +61,8 @@ local function load_board()
     return data
 end
 
+
+-- 리스트 길이 제한
 local function trim_entries(entries)
     while #entries > SCOREBOARD_LIMIT do
         table.remove(entries)
@@ -66,7 +70,7 @@ local function trim_entries(entries)
 end
 
 ------------------------------------------------
--- Scoreboard 저장 / 조회 함수들
+-- Scoreboard 저장 / 조회 함수
 ------------------------------------------------
 
 function Scoreboard.SaveResult(nickname, result_data)

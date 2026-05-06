@@ -7,7 +7,7 @@ local HitEffects = {}
 local active_time_token = 0
 local active_squash_token = 0
 
--- GlobalTimeDilation을 조절하는 함수.
+-- GlobalTimeDilation 설정 함수
 local function set_time_dilation(scale)
     if set_global_time_dilation then
         set_global_time_dilation(scale)
@@ -45,15 +45,16 @@ local function apply_scale(use_component, component, actor, scale)
 end
 
 ------------------------------------------------
--- 시간 제어 함수들 (Hit Stop, Slomo)
+-- 특수효과 모음
 ------------------------------------------------
 
+-- 안전하게 값을 복구해주는 함수
 function HitEffects.StopTimeEffects()
     active_time_token = active_time_token + 1
     set_time_dilation(1.0)
 end
 
--- HitStop 함수
+-- HitStop
 function HitEffects.HitStop(duration)
     duration = Math.SafeNumber(duration, 0.055)
 
@@ -70,7 +71,7 @@ function HitEffects.HitStop(duration)
     end
 end
 
--- Slomo 함수
+-- Slomo
 function HitEffects.Slomo(scale, duration)
     scale = Math.Clamp(Math.SafeNumber(scale, 0.25), 0.05, 1.0)
     duration = Math.SafeNumber(duration, 0.18)
@@ -87,9 +88,36 @@ function HitEffects.Slomo(scale, duration)
         set_time_dilation(1.0)
     end
 end
+-- Hit stop 이후 Slomo 진행 함수
+function HitEffects.HitStopAndSlomo(hit_stop_duration, slomo_scale, slomo_duration)
+    hit_stop_duration = Math.SafeNumber(hit_stop_duration, 0.055)
+    slomo_scale = Math.Clamp(Math.SafeNumber(slomo_scale, 0.25), 0.05, 1.0)
+    slomo_duration = Math.SafeNumber(slomo_duration, 0.18)
+
+    active_time_token = active_time_token + 1
+    local token = active_time_token
+
+    if hit_stop_duration > 0.0 then
+        set_time_dilation(0.0)
+        wait_real_seconds(hit_stop_duration)
+    end
+
+    if token ~= active_time_token then
+        return
+    end
+
+    if slomo_duration > 0.0 then
+        set_time_dilation(slomo_scale)
+        wait_real_seconds(slomo_duration)
+    end
+
+    if token == active_time_token then
+        set_time_dilation(1.0)
+    end
+end
 
 ------------------------------------------------
--- Hit Squash 함수들
+-- Hit Squash
 ------------------------------------------------
 
 -- 피격 순간 actor 또는 mesh scale을 squash 목표값으로 보간한 뒤,
@@ -99,6 +127,7 @@ function HitEffects.PlayHitSquash(actor, squash_x, squash_y, squash_z, squash_du
         return
     end
 
+    -- Default값과 같이 넣기
     squash_x = Math.SafeNumber(squash_x, 1.25)
     squash_y = Math.SafeNumber(squash_y, 0.75)
     squash_z = Math.SafeNumber(squash_z, 1.0)
