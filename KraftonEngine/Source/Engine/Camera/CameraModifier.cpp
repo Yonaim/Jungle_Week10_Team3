@@ -59,6 +59,8 @@ bool UCameraModifier::ModifyCamera(float DeltaTime, UCameraComponent* InOutPOV)
 	//InOutPOV->AddLocalRotation(FRotator(Wave * 0.05f, Wave * 0.1f, Wave * 0.2f));
 	//return false;
 
+	if (!ShakePattern) return false;
+
 	float TOffsetX = ShakePattern->EvalTransitionX(Alpha);
 	float TOffsetY = ShakePattern->EvalTransitionY(Alpha);
 	float TOffsetZ = ShakePattern->EvalTransitionZ(Alpha);
