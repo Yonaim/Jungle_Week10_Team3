@@ -31,6 +31,130 @@
 #endif
 #pragma endregion
 
+namespace
+{
+	EViewTargetBlendFunction ParseBlendFunction(const FString& Name)
+	{
+		if (Name == "EaseIn")
+		{
+			return EViewTargetBlendFunction::EaseIn;
+		}
+		if (Name == "EaseOut")
+		{
+			return EViewTargetBlendFunction::EaseOut;
+		}
+		if (Name == "EaseInOut")
+		{
+			return EViewTargetBlendFunction::EaseInOut;
+		}
+
+		return EViewTargetBlendFunction::Linear;
+	}
+
+	APlayerCameraManager* ResolvePlayerCameraManager(FLuaActorProxy& ActorProxy)
+	{
+		AActor* Actor = ActorProxy.GetActor();
+		if (!Actor || !Actor->GetWorld())
+		{
+			return nullptr;
+		}
+
+		AGameModeBase* GameMode = Actor->GetWorld()->GetAuthGameMode();
+		return GameMode ? GameMode->GetPlayerCameraManager() : nullptr;
+	}
+
+	APlayerController* ResolvePlayerController(FLuaActorProxy& ActorProxy)
+	{
+		AActor* Actor = ActorProxy.GetActor();
+		if (!Actor || !Actor->GetWorld())
+		{
+			return nullptr;
+		}
+
+		APlayerController* PlayerController = Cast<APlayerController>(Actor);
+		if (PlayerController)
+		{
+			return PlayerController;
+		}
+
+		AGameModeBase* GameMode = Actor->GetWorld()->GetAuthGameMode();
+		return GameMode ? GameMode->GetSpawnedController() : nullptr;
+	}
+
+	bool LuaStartCameraFade(
+		FLuaActorProxy& ActorProxy,
+		float FromAlpha,
+		float ToAlpha,
+		float Duration,
+		float R,
+		float G,
+		float B,
+		float A)
+	{
+		APlayerCameraManager* CameraManager = ResolvePlayerCameraManager(ActorProxy);
+		if (!CameraManager)
+		{
+			return false;
+		}
+
+		CameraManager->StartCameraFade(
+			FromAlpha,
+			ToAlpha,
+			Duration,
+			FLinearColor(R, G, B, A));
+		return true;
+	}
+
+	bool LuaEndCameraFade(FLuaActorProxy& ActorProxy)
+	{
+		APlayerCameraManager* CameraManager = ResolvePlayerCameraManager(ActorProxy);
+		if (!CameraManager)
+		{
+			return false;
+		}
+
+		CameraManager->EndCameraFade();
+		return true;
+	}
+
+	bool LuaSetViewTarget(FLuaActorProxy& ActorProxy, FLuaActorProxy& TargetProxy)
+	{
+		APlayerController* PlayerController = ResolvePlayerController(ActorProxy);
+		AActor* TargetActor = TargetProxy.GetActor();
+		if (!PlayerController || !TargetActor || !TargetActor->GetWorld())
+		{
+			return false;
+		}
+
+		PlayerController->SetViewTarget(TargetActor);
+		return true;
+	}
+
+	bool LuaSetViewTargetWithBlend(
+		FLuaActorProxy& ActorProxy,
+		FLuaActorProxy& TargetProxy,
+		float BlendTime,
+		const FString& BlendFunctionName,
+		float BlendExp,
+		bool bLockOutgoing)
+	{
+		APlayerController* PlayerController = ResolvePlayerController(ActorProxy);
+		AActor* TargetActor = TargetProxy.GetActor();
+		if (!PlayerController || !TargetActor || !TargetActor->GetWorld())
+		{
+			return false;
+		}
+
+		PlayerController->SetViewTargetWithBlend(
+			TargetActor,
+			BlendTime,
+			ParseBlendFunction(BlendFunctionName),
+			BlendExp,
+			bLockOutgoing);
+		return true;
+	}
+}
+
 void FLuaScriptRuntime::BindComponentProxyType()
 {
 	sol::state& Lua = GetLuaState();
@@ -286,6 +410,11 @@ void FLuaScriptRuntime::BindActorProxyType()
 			CM->EndLetterBoxing();
 			return true;
 		},
+		"StartCameraFade", &LuaStartCameraFade,
+		"EndCameraFade", &LuaEndCameraFade,
+		"SetViewTarget", &LuaSetViewTarget,
+		"SetViewTargetWithBlend", &LuaSetViewTargetWithBlend,
+		// TODO: Bind SetGammaCorrection once gameplay code has a public render-pipeline runtime-options access path.
 		"PrintLocation", &FLuaActorProxy::PrintLocation,
 		"Destroy", &FLuaActorProxy::Destroy);
 }

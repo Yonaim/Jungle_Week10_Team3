@@ -9,6 +9,8 @@
 #include "Viewport/Viewport.h"
 #include "Viewport/GameViewportClient.h"
 
+#include <algorithm>
+
 FDefaultRenderPipeline::FDefaultRenderPipeline(UEngine* InEngine, FRenderer& InRenderer)
 	: Engine(InEngine)
 {
@@ -16,6 +18,14 @@ FDefaultRenderPipeline::FDefaultRenderPipeline(UEngine* InEngine, FRenderer& InR
 
 FDefaultRenderPipeline::~FDefaultRenderPipeline()
 {
+}
+
+void FDefaultRenderPipeline::SetGammaCorrection(bool bEnable, float DisplayGamma, float BlendWeight, bool bUseSRGBCurve)
+{
+	RuntimeRenderOptions.ShowFlags.bGammaCorrection = bEnable;
+	RuntimeRenderOptions.DisplayGamma = (std::max)(DisplayGamma, 0.001f);
+	RuntimeRenderOptions.GammaCorrectionBlend = (std::clamp)(BlendWeight, 0.0f, 1.0f);
+	RuntimeRenderOptions.bUseSRGBCurve = bUseSRGBCurve;
 }
 
 // Function : Execute default render pipeline for current frame
@@ -88,9 +98,8 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 			: CameraState.AspectRatio;
 		Frame.ApplyConstrainedAR(AR);
 
-		FViewportRenderOptions Opts;
-		Opts.ViewMode = EViewMode::Lit_Phong;
-		Frame.SetRenderOptions(Opts);
+		RuntimeRenderOptions.ViewMode = EViewMode::Lit_Phong;
+		Frame.SetRenderOptions(RuntimeRenderOptions);
 
 		Scene = &World->GetScene();
 		Scene->ClearFrameData();

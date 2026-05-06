@@ -19,6 +19,8 @@ local HitEffects = require_env("Game.HitEffect")
 local Vector = require("Common.Vector")
 local HitFeedback = require("Game.Camera.HitFeedback")
 local letterBox = require("Game.Camera.LetterBox")
+local CameraFade = require("Game.Camera.CameraFade")
+local CameraTransition = require("Game.Camera.CameraTransition")
 
 if HitEffects and HitEffects.SetRuntime then
     HitEffects.SetRuntime({
@@ -611,6 +613,21 @@ end
 ------------------------------------------------
 -- PlayerController 생명주기 함수들
 ------------------------------------------------
+
+function TestCameraFadeIn()
+    return CameraFade.FadeIn(obj, 0.8, 0.0, 0.0, 0.0, 1.0)
+end
+
+function TestCameraFadeOut()
+    return CameraFade.FadeOut(obj, 0.8, 0.0, 0.0, 0.0, 1.0)
+end
+
+function TestCameraTransitionTo(target)
+    return CameraTransition.To(obj, target, 1.0, "EaseInOut", 2.0, true)
+end
+
+-- BeginPlay example:
+-- CameraFade.FadeIn(obj, 0.8, 0.0, 0.0, 0.0, 1.0)
 
 -- Runner C++ 생성자에서 시작 위치를 바닥보다 약간 높은 Z로 둔다.
 -- MapManager가 Player BeginPlay 이후에 Chunk를 만들 수 있으므로,
