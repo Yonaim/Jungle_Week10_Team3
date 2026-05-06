@@ -29,6 +29,8 @@ class APlayerCameraManager : public AActor
 {
 public:
 	DECLARE_CLASS(APlayerCameraManager, AActor)
+	void AddCameraModifier(UCameraModifier* InModifier);
+
 	void ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV);
 	void UpdateCamera(float deltaTime);
 	// Find CameraComponent to actor

@@ -5,6 +5,8 @@
 #include "Component/ActorComponent.h"
 #include "Component/CameraComponent.h"
 
+#include <algorithm>
+
 IMPLEMENT_CLASS(APlayerCameraManager, AActor)
 
 void FViewTarget::SetNewTarget(AActor* NewTarget)
@@ -92,3 +94,12 @@ FMinimalViewInfo APlayerCameraManager::BuildFallbackCameraView(AActor* Target) c
 
 	return ViewInfo;
 }
+
+void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier) {
+	if (!InModifier) return;
+	ModifierList.push_back(InModifier);
+	std::sort(ModifierList.begin(), ModifierList.end(), [](const UCameraModifier* A, const UCameraModifier* B) {
+		return A->Priority >= B->Priority;	
+	});
+}
+
