@@ -12,6 +12,7 @@
 class UCameraComponent;
 class FViewport;
 class FGPUOcclusionCulling;
+struct FMinimalViewInfo;
 
 /*
 	FFrameContext - per-frame/per-viewport read-only state.
@@ -88,6 +89,7 @@ struct FFrameContext
 
 	// Batch setters - populate multiple fields at once
 	void SetCameraInfo(const UCameraComponent* Camera);
+	void SetCameraInfo(const FMinimalViewInfo& POV);
 	void SetViewportInfo(const FViewport* VP);
 
 	void SetViewportSize(float InWidth, float InHeight)

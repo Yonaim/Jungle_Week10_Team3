@@ -64,6 +64,6 @@ protected:
 
 	float Alpha				= 0.f;
 	uint32 bPendingDisable	= false;
-	uint32 bDisabled		= false;
+	uint32 bDisabled		= true;
 };
 

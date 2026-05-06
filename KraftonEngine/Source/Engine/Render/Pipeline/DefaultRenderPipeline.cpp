@@ -2,7 +2,9 @@
 
 #include "Renderer.h"
 #include "Engine/Runtime/Engine.h"
+#include "Engine/Camera/PlayerCameraManager.h"
 #include "Component/CameraComponent.h"
+#include "GameFramework/GameModeBase.h"
 #include "GameFramework/World.h"
 #include "Viewport/Viewport.h"
 #include "Viewport/GameViewportClient.h"
@@ -62,7 +64,22 @@ void FDefaultRenderPipeline::Execute(float DeltaTime, FRenderer& Renderer)
 		const float ClearColor[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
 		VP->BeginRender(Ctx, ClearColor);
 
-		Frame.SetCameraInfo(Camera);
+		if (AGameModeBase* GameMode = World->GetAuthGameMode())
+		{
+			if (APlayerCameraManager* CameraManager = GameMode->GetPlayerCameraManager();
+				CameraManager && CameraManager->HasValidCameraCachePOV())
+			{
+				Frame.SetCameraInfo(CameraManager->GetCameraCachePOV());
+			}
+			else
+			{
+				Frame.SetCameraInfo(Camera);
+			}
+		}
+		else
+		{
+			Frame.SetCameraInfo(Camera);
+		}
 		Frame.SetViewportInfo(VP);
 
 		FViewportRenderOptions Opts;

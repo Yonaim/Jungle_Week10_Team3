@@ -53,6 +53,8 @@ public:
 	void StartCameraFade(float FromAlpha, float ToAlpha, float Duration, FLinearColor Color);
 	void EndCameraFade();
 	void LoadCameraModifierStackAsset(const std::filesystem::path& AssetPath);
+	const FMinimalViewInfo& GetCameraCachePOV() const { return ViewTarget.POV; }
+	bool HasValidCameraCachePOV() const { return bHasValidCameraCachePOV; }
 
 	//void StartCameraShake();
 	//void EndCameraShake();
@@ -76,4 +78,5 @@ public:
 private:
 	APlayerController* Owner = nullptr;
 	TArray<UCameraModifier*> ModifierList;
+	bool bHasValidCameraCachePOV = false;
 };

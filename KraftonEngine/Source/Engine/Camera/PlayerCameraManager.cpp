@@ -94,6 +94,7 @@ void APlayerCameraManager::Tick(float DeltaTime)
 
 void APlayerCameraManager::UpdateCamera(float DeltaTime) {
 	// Reset Camera Snapshot
+	bHasValidCameraCachePOV = false;
 	if (ViewTarget.GetTargetPawn()) {
 		APawnActor* Pawn = ViewTarget.GetTargetPawn();
 		for (UActorComponent* Comp : Pawn->GetComponents())
@@ -101,8 +102,15 @@ void APlayerCameraManager::UpdateCamera(float DeltaTime) {
 			if (UCameraComponent* Cam = Cast<UCameraComponent>(Comp))
 			{
 				ViewTarget.POV = Cam->GetCameraState();
+				bHasValidCameraCachePOV = true;
+				break;
 			}
 		}
+	}
+
+	if (!bHasValidCameraCachePOV)
+	{
+		return;
 	}
 
 	ApplyCameraModifiers(DeltaTime, ViewTarget.POV);

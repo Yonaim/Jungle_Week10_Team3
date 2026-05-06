@@ -104,6 +104,6 @@ void UCameraModifier::UpdateAlpha(float DeltaTime)
 	Alpha += DeltaTime / AlphaInTime;
 	if (Alpha > 1.0f)
 	{
-		Alpha = 1.0f;
+		Alpha = 0.0f;
 	}
 }

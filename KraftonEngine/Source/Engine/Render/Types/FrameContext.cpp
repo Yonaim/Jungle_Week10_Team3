@@ -19,6 +19,39 @@ void FFrameContext::SetCameraInfo(const UCameraComponent* Camera)
 	FrustumVolume.UpdateFromMatrix(View * Proj);
 }
 
+void FFrameContext::SetCameraInfo(const FMinimalViewInfo& POV)
+{
+	const FRotator Rotation = POV.Rotation;
+
+	View = FMatrix::MakeViewMatrix(
+		Rotation.GetRightVector(),
+		Rotation.GetUpVector(),
+		Rotation.GetForwardVector(),
+		POV.Location);
+
+	if (!POV.bIsOrthogonal)
+	{
+		Proj = FMatrix::PerspectiveFovLH(POV.FOV, POV.AspectRatio, POV.NearZ, POV.FarZ);
+	}
+	else
+	{
+		const float HalfW = POV.OrthoWidth * 0.5f;
+		const float HalfH = HalfW / POV.AspectRatio;
+		Proj = FMatrix::OrthoLH(HalfW * 2.0f, HalfH * 2.0f, POV.NearZ, POV.FarZ);
+	}
+
+	CameraPosition = POV.Location;
+	CameraForward = Rotation.GetForwardVector();
+	CameraRight = Rotation.GetRightVector();
+	CameraUp = Rotation.GetUpVector();
+	bIsOrtho = POV.bIsOrthogonal;
+	OrthoWidth = POV.OrthoWidth;
+	NearClip = POV.NearZ;
+	FarClip = POV.FarZ;
+
+	FrustumVolume.UpdateFromMatrix(View * Proj);
+}
+
 void FFrameContext::SetViewportInfo(const FViewport* VP)
 {
 	ViewportWidth    = static_cast<float>(VP->GetWidth());
