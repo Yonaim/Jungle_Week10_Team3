@@ -134,7 +134,7 @@ void APlayerCameraManager::Tick(float DeltaTime)
 {
 	AActor::Tick(DeltaTime);
 	UpdateCamera(DeltaTime);
-	StartLetterBoxing(10.f, 10.f);
+	// StartLetterBoxing(10.f, 10.f);
 }
 
 // Function : Bind camera manager to controller and initialize view target from pawn

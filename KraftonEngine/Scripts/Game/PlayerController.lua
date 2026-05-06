@@ -18,6 +18,7 @@ local UI = require("Common.UI")
 local HitEffects = require_env("Game.HitEffect")
 local Vector = require("Common.Vector")
 local HitFeedback = require("Game.Camera.HitFeedback")
+local letterBox = require("Game.Camera.LetterBox")
 
 if HitEffects and HitEffects.SetRuntime then
     HitEffects.SetRuntime({
@@ -649,6 +650,8 @@ function BeginPlay()
     log("[PlayerController] PlayerStatus.ResetForStart")
 
     update_ground_state(0.0, true)
+
+    -- LetterBox
 end
 
 -- 매 프레임 입력, 레인 이동, 점프/슬라이드, 중력, 점수 갱신을 순서대로 처리합니다.
@@ -657,7 +660,6 @@ function Tick(dt)
     if GameManager.IsPaused and GameManager.IsPaused() then
         return
     end
-
     -- GameOver 이후에는 이동, 입력, 중력, score 갱신을 모두 멈춘다.
     -- 로그는 최초 1회만 남겨 Tick마다 콘솔이 도배되지 않게 한다.
     if GameManager.IsGameOver() then
@@ -750,9 +752,14 @@ function Tick(dt)
     end
 
     GameManager.Tick(dt, actual_moved_distance)
+    -- LetterBox 처리
+    letterBox.Start(obj, 10, 10);
 end
 
 function EndPlay()
+
+    letterBox.End(obj)
+
     if HitEffects and HitEffects.StopTimeEffects then
         HitEffects.StopTimeEffects()
     end

@@ -4,6 +4,7 @@
 #include "GameFramework/World.h"
 #include "Math/Rotator.h"
 
+#pragma region SolInclude
 #ifdef check
 #pragma push_macro("check")
 #undef check
@@ -17,6 +18,7 @@
 #endif
 
 #include <sol/sol.hpp>
+#include "Camera/PlayerCameraManager.h"
 
 #ifdef LUA_PROXY_BINDINGS_RESTORE_CHECKF_MACRO
 #pragma pop_macro("checkf")
@@ -27,6 +29,7 @@
 #pragma pop_macro("check")
 #undef LUA_PROXY_BINDINGS_RESTORE_CHECK_MACRO
 #endif
+#pragma endregion
 
 void FLuaScriptRuntime::BindComponentProxyType()
 {
@@ -252,6 +255,35 @@ void FLuaScriptRuntime::BindActorProxyType()
 			}
 
 			PlayerController->PlayCameraModifier(ScriptPath, Params);
+			return true;
+		},
+		"StartLetterBoxing", [](FLuaActorProxy& ActorProxy, float AspectW, float AspectH) 
+		{
+				AActor* Actor = ActorProxy.GetActor();
+				if (!Actor || !Actor->GetWorld())
+				{
+					return false;
+				}
+				AGameModeBase* GameMode = Actor->GetWorld()->GetAuthGameMode();
+				APlayerCameraManager* CM = GameMode ? GameMode->GetPlayerCameraManager() : nullptr;
+				if (!CM) return false;
+
+				CM->StartLetterBoxing(AspectW, AspectH);
+				return true;
+
+		},
+		"EndLetterBoxing", [](FLuaActorProxy& ActorProxy) 
+		{
+			AActor* Actor = ActorProxy.GetActor();
+			if (!Actor || !Actor->GetWorld())
+			{
+				return false;
+			}
+			AGameModeBase* GameMode = Actor->GetWorld()->GetAuthGameMode();
+			APlayerCameraManager* CM = GameMode ? GameMode->GetPlayerCameraManager() : nullptr;
+			if (!CM) return false;
+
+			CM->EndLetterBoxing();
 			return true;
 		},
 		"PrintLocation", &FLuaActorProxy::PrintLocation,
