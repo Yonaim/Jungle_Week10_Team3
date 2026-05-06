@@ -1714,6 +1714,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Viewport", PanelIconKey);
 	const bool bIsOpen = ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_None);
 	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Viewport", FEditorSettings::Get().UI.bViewport, "x##CloseViewport");
 	if (!bIsOpen)
 	{
 		ImGui::End();
@@ -1721,7 +1722,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 		return;
 	}
 
-	EditorPanelTitleUtils::ApplyPanelContentTopInset();
+	EditorPanelTitleUtils::ApplyPanelContentTopInset(false, false);
 
 	ImVec2 ContentPos = ImGui::GetCursorScreenPos();
 	ImVec2 ContentSize = ImGui::GetContentRegionAvail();

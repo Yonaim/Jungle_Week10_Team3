@@ -27,8 +27,15 @@ void FEditorViewportWidget::Render(float DeltaTime)
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 1.0f));
 	constexpr const char* PanelIconKey = "Editor.Icon.Panel.Viewport";
 	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle(WindowName.c_str(), PanelIconKey);
-	ImGui::Begin(WindowTitle.c_str(), nullptr);
+	const bool bIsOpen = ImGui::Begin(WindowTitle.c_str(), nullptr);
 	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	if (!bIsOpen)
+	{
+		ImGui::End();
+		ImGui::PopStyleVar(2);
+		return;
+	}
+	EditorPanelTitleUtils::ApplyPanelContentTopInset(false, false);
 
 	const float ToolbarHeight = ImGui::GetFrameHeight() + 2.0f;
 	if (ImGui::BeginChild("##ViewportToolbar", ImVec2(0.0f, ToolbarHeight), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
