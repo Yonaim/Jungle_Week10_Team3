@@ -310,8 +310,8 @@
     <ClCompile Include="Source\Editor\Viewport\FLevelViewportLayout.cpp" />
     <ClCompile Include="Source\Engine\Audio\AudioManager.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraModifier.cpp" />
-    <ClCompile Include="Source\Engine\Camera\CameraModifier_CameraShake.cpp" />
     <ClCompile Include="Source\Engine\Camera\CameraShake.cpp" />
+    <ClCompile Include="Source\Engine\Camera\CameraShakePattern.cpp" />
     <ClCompile Include="Source\Engine\Camera\PlayerCameraManager.cpp" />
     <ClCompile Include="Source\Engine\Collision\CollisionDispatcher.cpp" />
     <ClCompile Include="Source\Engine\Collision\ConvexVolume.cpp" />
@@ -388,6 +388,7 @@
     <ClCompile Include="Source\Engine\Input\InputMappingContext.cpp" />
     <ClCompile Include="Source\Engine\Materials\Material.cpp" />
     <ClCompile Include="Source\Engine\Materials\MaterialManager.cpp" />
+    <ClCompile Include="Source\Engine\Math\CurveFloat.cpp" />
     <ClCompile Include="Source\Engine\Math\Matrix.cpp" />
     <ClCompile Include="Source\Engine\Math\Quat.cpp" />
     <ClCompile Include="Source\Engine\Math\Rotator.cpp" />
@@ -529,6 +530,7 @@
     <ClInclude Include="Source\Editor\Selection\SelectionManager.h" />
     <ClInclude Include="Source\Editor\Settings\EditorSettings.h" />
     <ClInclude Include="Source\Editor\Subsystem\OverlayStatSystem.h" />
+    <ClInclude Include="Source\Editor\UI\CurveEditor.h" />
     <ClInclude Include="Source\Editor\UI\EditorAccentColor.h" />
     <ClInclude Include="Source\Editor\UI\EditorConsoleWidget.h" />
     <ClInclude Include="Source\Editor\UI\EditorControlWidget.h" />
@@ -560,8 +562,8 @@
     <ClInclude Include="Source\Engine\Audio\AudioManager.h" />
     <ClInclude Include="Source\Engine\Audio\AudioTypes.h" />
     <ClInclude Include="Source\Engine\Camera\CameraModifier.h" />
-    <ClInclude Include="Source\Engine\Camera\CameraModifier_CameraShake.h" />
     <ClInclude Include="Source\Engine\Camera\CameraShake.h" />
+    <ClInclude Include="Source\Engine\Camera\CameraShakePattern.h" />
     <ClInclude Include="Source\Engine\Camera\PlayerCameraManager.h" />
     <ClInclude Include="Source\Engine\Collision\CollisionDispatcher.h" />
     <ClInclude Include="Source\Engine\Collision\ConvexVolume.h" />
@@ -655,6 +657,7 @@
     <ClInclude Include="Source\Engine\Input\inputTrigger.h" />
     <ClInclude Include="Source\Engine\Materials\Material.h" />
     <ClInclude Include="Source\Engine\Materials\MaterialManager.h" />
+    <ClInclude Include="Source\Engine\Math\CurveFloat.h" />
     <ClInclude Include="Source\Engine\Math\MathUtils.h" />
     <ClInclude Include="Source\Engine\Math\Matrix.h" />
     <ClInclude Include="Source\Engine\Math\Quat.h" />

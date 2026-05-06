@@ -1050,7 +1050,9 @@
     <ClCompile Include="Source\Engine\Camera\CameraModifier_CameraShake.cpp">
       <Filter>Source\Engine\Camera</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\GameFramework\GamePlayStatics.cpp" />
+    <ClCompile Include="Source\Engine\Math\CurveFloat.cpp">
+      <Filter>Source\Engine\Math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -2285,6 +2287,12 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Camera\CameraModifier_CameraShake.h">
       <Filter>Source\Engine\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Math\CurveFloat.h">
+      <Filter>Source\Engine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\UI\CurveEditor.h">
+      <Filter>Source\Editor\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\GameFramework\GamePlayStatics.h" />
   </ItemGroup>

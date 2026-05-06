@@ -1712,8 +1712,16 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	constexpr const char* PanelIconKey = "Editor.Icon.Panel.Viewport";
 	const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Viewport", PanelIconKey);
-	ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_None);
+	const bool bIsOpen = ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_None);
 	EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+	if (!bIsOpen)
+	{
+		ImGui::End();
+		ImGui::PopStyleVar();
+		return;
+	}
+
+	EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
 	ImVec2 ContentPos = ImGui::GetCursorScreenPos();
 	ImVec2 ContentSize = ImGui::GetContentRegionAvail();

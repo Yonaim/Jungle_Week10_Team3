@@ -18,6 +18,7 @@ IMPLEMENT_CLASS(UTexture2D, UObject)
 std::map<FString, UTexture2D*> UTexture2D::TextureCache;
 TArray<FTextureAssetListItem> UTexture2D::AvailableTextureFiles;
 bool UTexture2D::bTextureAssetListDirty = true;
+TSet<FString> UTexture2D::PendingTextureRefreshPaths;
 FWatchID UTexture2D::TextureAssetWatchID = 0;
 FSubscriptionID UTexture2D::TextureAssetWatchSub = 0;
 bool UTexture2D::bTextureAssetWatcherInitialized = false;
@@ -273,18 +274,35 @@ void UTexture2D::ReleaseAllGPU()
 	TextureCache.clear();
 }
 
+bool UTexture2D::HasPendingTextureRefresh()
+{
+	EnsureTextureAssetWatcher();
+	return !PendingTextureRefreshPaths.empty();
+}
+
 void UTexture2D::RefreshChangedTextures(ID3D11Device* Device)
 {
+	EnsureTextureAssetWatcher();
+
 	if (!Device)
 	{
 		return;
 	}
 
-	for (auto& [Path, Texture] : TextureCache)
+	if (PendingTextureRefreshPaths.empty())
 	{
-		if (Texture && Texture->HasSourceFileChanged())
+		return;
+	}
+
+	TSet<FString> ChangedPaths;
+	std::swap(ChangedPaths, PendingTextureRefreshPaths);
+
+	for (const FString& ChangedPath : ChangedPaths)
+	{
+		auto It = TextureCache.find(NormalizeTexturePath(ChangedPath));
+		if (It != TextureCache.end() && It->second && It->second->HasSourceFileChanged())
 		{
-			Texture->LoadInternal(Path, Device);
+			It->second->LoadInternal(It->first, Device);
 		}
 	}
 }
@@ -576,7 +594,7 @@ void UTexture2D::EnsureTextureAssetWatcher()
 				if (IsSupportedTexturePathString(Path))
 				{
 					MarkTextureAssetListDirty();
-					return;
+					QueueTextureRefresh(Path);
 				}
 			}
 		});
@@ -585,6 +603,16 @@ void UTexture2D::EnsureTextureAssetWatcher()
 void UTexture2D::MarkTextureAssetListDirty()
 {
 	bTextureAssetListDirty = true;
+}
+
+void UTexture2D::QueueTextureRefresh(const FString& TexturePath)
+{
+	if (TexturePath.empty())
+	{
+		return;
+	}
+
+	PendingTextureRefreshPaths.insert(NormalizeTexturePath(TexturePath));
 }
 
 bool UTexture2D::SampleAlpha(float U, float V, float& OutAlpha) const

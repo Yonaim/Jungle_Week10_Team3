@@ -35,6 +35,7 @@ public:
 
 	// 캐시된 모든 텍스처의 GPU 리소스 해제 (Shutdown 시 Device 해제 전 호출)
 	static void ReleaseAllGPU();
+	static bool HasPendingTextureRefresh();
 	static void RefreshChangedTextures(ID3D11Device* Device);
 	static void ScanTextureAssets();
 	static const TArray<FTextureAssetListItem>& GetAvailableTextureFiles();
@@ -64,10 +65,12 @@ private:
 	static std::map<FString, UTexture2D*> TextureCache;
 	static TArray<FTextureAssetListItem> AvailableTextureFiles;
 	static bool bTextureAssetListDirty;
+	static TSet<FString> PendingTextureRefreshPaths;
 	static FWatchID TextureAssetWatchID;
 	static FSubscriptionID TextureAssetWatchSub;
 	static bool bTextureAssetWatcherInitialized;
 
 	static void EnsureTextureAssetWatcher();
 	static void MarkTextureAssetListDirty();
+	static void QueueTextureRefresh(const FString& TexturePath);
 };
