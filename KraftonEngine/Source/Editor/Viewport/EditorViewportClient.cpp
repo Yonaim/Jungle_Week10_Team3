@@ -1252,7 +1252,7 @@ void FEditorViewportClient::TickInput(float DeltaTime)
 	EditorZoomAccumulator = 0.0f;
 	bool bForceInput = bIsHovered || bIsActive || Input.IsMouseButtonDown(VK_RBUTTON);
 	EnhancedInputManager.ProcessInput(&Input, DeltaTime, bForceInput);
-	const FCameraState& CameraState = Camera->GetCameraState();
+	const FMinimalViewInfo& CameraState = Camera->GetCameraState();
 	const bool bIsOrtho = CameraState.bIsOrthogonal;
 	const float MoveSensitivity = RenderOptions.CameraMoveSensitivity;
 	const float CameraSpeed = (Settings ? Settings->CameraSpeed : 10.f) * MoveSensitivity;

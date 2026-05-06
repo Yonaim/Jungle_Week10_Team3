@@ -1332,7 +1332,7 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData& CamData)
 	{
 		Camera->SetWorldLocation(CamData.Location);
 		Camera->SetRelativeRotation(CamData.Rotation);
-		FCameraState CameraState = Camera->GetCameraState();
+		FMinimalViewInfo CameraState = Camera->GetCameraState();
 		CameraState.FOV = CamData.FOV;
 		CameraState.NearZ = CamData.NearClip;
 		CameraState.FarZ = CamData.FarClip;

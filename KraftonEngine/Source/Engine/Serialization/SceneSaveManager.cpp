@@ -751,7 +751,7 @@ json::JSON FSceneSaveManager::SerializeCamera(UCameraComponent* Cam)
 	WriteVec3(cam, "Location", M.GetLocation());
 	WriteVec3(cam, "Rotation", M.GetEuler());
 
-	const FCameraState& S = Cam->GetCameraState();
+	const FMinimalViewInfo& S = Cam->GetCameraState();
 	cam["FOV"] = static_cast<double>(S.FOV);
 	cam["NearClip"] = static_cast<double>(S.NearZ);
 	cam["FarClip"] = static_cast<double>(S.FarZ);

@@ -3449,7 +3449,7 @@ void FLevelViewportLayout::SaveToSettings()
 		{
 			S.PerspCamLocation = Cam->GetWorldLocation();
 			S.PerspCamRotation = Cam->GetRelativeRotation();
-			const FCameraState& CS = Cam->GetCameraState();
+			const FMinimalViewInfo& CS = Cam->GetCameraState();
 			S.PerspCamFOV = CS.FOV * (180.0f / 3.14159265358979f); // rad ??deg
 			S.PerspCamNearClip = CS.NearZ;
 			S.PerspCamFarClip = CS.FarZ;
@@ -3513,7 +3513,7 @@ void FLevelViewportLayout::LoadFromSettings()
 			Cam->SetRelativeLocation(S.PerspCamLocation);
 			Cam->SetRelativeRotation(S.PerspCamRotation);
 
-			FCameraState CS = Cam->GetCameraState();
+			FMinimalViewInfo CS = Cam->GetCameraState();
 			CS.FOV = S.PerspCamFOV * (3.14159265358979f / 180.0f); // deg ??rad
 			CS.NearZ = S.PerspCamNearClip;
 			CS.FarZ = S.PerspCamFarClip;

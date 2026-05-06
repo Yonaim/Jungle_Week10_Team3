@@ -31,7 +31,7 @@ FTrackedSceneSnapshot FSceneHistoryBuilder::CaptureSnapshot(const UEditorEngine&
 		Snapshot.CameraData.Location = Camera->GetWorldLocation();
 		const FRotator Rotation = Camera->GetRelativeRotation();
 		Snapshot.CameraData.Rotation = FVector(Rotation.Roll, Rotation.Pitch, Rotation.Yaw);
-		const FCameraState CameraState = Camera->GetCameraState();
+		const FMinimalViewInfo CameraState = Camera->GetCameraState();
 		Snapshot.CameraData.FOV = CameraState.FOV;
 		Snapshot.CameraData.NearClip = CameraState.NearZ;
 		Snapshot.CameraData.FarClip = CameraState.FarZ;

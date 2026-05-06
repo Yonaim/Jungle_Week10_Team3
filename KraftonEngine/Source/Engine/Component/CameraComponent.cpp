@@ -66,7 +66,7 @@ void UCameraComponent::OnResize(int32 Width, int32 Height)
 	CameraState.AspectRatio = static_cast<float>(Width) / static_cast<float>(Height);
 }
 
-void UCameraComponent::SetCameraState(const FCameraState& NewState)
+void UCameraComponent::SetCameraState(const FMinimalViewInfo& NewState)
 {
 	CameraState = NewState;
 }
