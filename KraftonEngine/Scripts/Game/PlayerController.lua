@@ -17,7 +17,7 @@ local Engine = require("Common.Engine")
 local Math = require("Common.Math")
 local UI = require("Common.UI")
 local Vector = require("Common.Vector")
-local HitEffects = require("Game.HitEffect")
+local HitEffects = require_env("Game.HitEffect")
 
 if HitEffects and HitEffects.SetRuntime then
     HitEffects.SetRuntime({
@@ -736,6 +736,9 @@ function Tick(dt)
 end
 
 function EndPlay()
+    if HitEffects and HitEffects.StopTimeEffects then
+        HitEffects.StopTimeEffects()
+    end
     if slide then
         slide:Restore()
     end

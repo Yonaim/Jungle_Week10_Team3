@@ -516,6 +516,15 @@ void UScriptComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		return;
 	}
 	ScriptInstance.TickCoroutines(DeltaTime);
+
+	if (ScriptInstance.HasError())
+	{
+		RefreshScriptErrorState();
+		ScriptInstance.StopAllCoroutines();
+		bLoaded = false;
+		return;
+	}
+
 	RefreshScriptErrorState();
 }
 

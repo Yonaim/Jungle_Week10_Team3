@@ -167,6 +167,7 @@ function HitEffects.PlayHitSquash(actor, squash_x, squash_y, squash_z, squash_du
 
     while elapsed < squash_duration do
         if token ~= active_squash_token then
+            apply_scale(use_component, comp, actor, original_scale)
             return
         end
 
@@ -183,6 +184,7 @@ function HitEffects.PlayHitSquash(actor, squash_x, squash_y, squash_z, squash_du
 
     while elapsed < recover_duration do
         if token ~= active_squash_token then
+            apply_scale(use_component, comp, actor, original_scale)
             return
         end
 

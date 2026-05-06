@@ -17,6 +17,7 @@
 #include "SimpleJSON/json.hpp"
 #include "Engine/Viewport/GameViewportClient.h"
 #include "GameFramework/GamePlayStatics.h"
+#include "Scripting/LuaCoroutineScheduler.h"
 
 // Sol.hpp에 있는 Check 매크로 겹침 방지 목적 제거
 #pragma region SolInclude
@@ -65,37 +66,6 @@ namespace
 // ====================================================================
 struct FLuaScriptInstance::FInstanceImpl
 {
-	enum class ELuaWaitKind
-	{
-		None,
-		Time,
-		RealTime,
-		Frames,
-		MoveDone,
-		KeyDown,
-		Signal
-	};
-
-	struct FLuaWaitCondition
-	{
-		ELuaWaitKind Kind = ELuaWaitKind::None;
-		float TimeRemaining = 0.0f;
-		int FramesRemaining = 0;
-		FString Name;
-		FString KeyName;
-	};
-
-	// 실행 중이거나 다음 프레임에 다시 resume될 coroutine 상태를 묶는다.
-	struct FRunningCoroutine
-	{
-		FString FunctionName;			// 코루틴 시작된 함수 이름
-		// sol::thread는 OS thread가 아니라 Lua coroutine이 사용할 별도 Lua stack/context이다.
-		// sol::coroutine만 보관하면 그 coroutine이 의존하는 Lua thread 수명이 끊길 수 있으므로 둘을 함께 보관한다.
-		sol::thread Thread;
-		sol::coroutine Coroutine;
-		FLuaWaitCondition Wait;
-	};
-
 	UScriptComponent* OwnerComponent = nullptr;
 	FString ScriptPath;
 
@@ -106,7 +76,6 @@ struct FLuaScriptInstance::FInstanceImpl
 
 	FLuaActorProxy OwnerProxy;
 	TArray<FLuaActorProxy> ManagedProxies;
-	TSet<FString> PendingSignals;
 	float LastDeltaTime = 0.0f;
 	float ElapsedTime = 0.0f;
 
@@ -116,9 +85,7 @@ struct FLuaScriptInstance::FInstanceImpl
 	sol::protected_function FnTick;
 	sol::protected_function FnEndPlay;
 
-	TArray<FRunningCoroutine> Coroutines;
-	TArray<FRunningCoroutine> PendingCoroutines;
-	bool bTickingCoroutines = false;
+	FLuaCoroutineScheduler CoroutineScheduler;
 
 	void ClearFunctionCache()
 	{
@@ -144,33 +111,6 @@ struct FLuaScriptInstance::FInstanceImpl
 		Env["__env_loaded_modules"] = Lua.create_table();
 
 		ClearFunctionCache();
-	}
-
-	void EnqueueCoroutine(FRunningCoroutine&& CoroutineEntry)
-	{
-		// Tick 중 새 coroutine이 시작되면 현재 순회 중인 배열을 건드리지 않도록 지연 추가한다.
-		if (bTickingCoroutines)
-		{
-			PendingCoroutines.push_back(std::move(CoroutineEntry));
-			return;
-		}
-
-		Coroutines.push_back(std::move(CoroutineEntry));
-	}
-
-	void FlushPendingCoroutines()
-	{
-		// Tick 도중 밀어둔 coroutine을 순회 종료 후 한 번에 합친다.
-		if (PendingCoroutines.empty())
-		{
-			return;
-		}
-
-		Coroutines.insert(
-			Coroutines.end(),
-			std::make_move_iterator(PendingCoroutines.begin()),
-			std::make_move_iterator(PendingCoroutines.end()));
-		PendingCoroutines.clear();
 	}
 
 	FLuaActorProxy TrackProxy(const FLuaActorProxy& Proxy)
@@ -205,113 +145,6 @@ struct FLuaScriptInstance::FInstanceImpl
 		}
 	}
 
-	bool ApplyYieldResult(FLuaScriptInstance* OwnerInstance, FRunningCoroutine& Entry, sol::protected_function_result& Result)
-	{
-		// 코루틴이 yield한 값은 Lua 실행을 실제로 잠들게 하는 것이 아니라,
-		// C++ Scheduler가 다음 resume 시점을 판단할 수 있는 WaitCondition 명령으로 변환된다.
-		Entry.Wait = FLuaWaitCondition();
-
-		if (Result.return_count() <= 0)
-		{
-			Entry.Wait.Kind = ELuaWaitKind::None;
-			return true;
-		}
-
-		const sol::type YieldType = Result.get_type(0);
-		if (YieldType == sol::type::number)
-		{
-			// 기존 호환을 위해 coroutine.yield(1.0) 또는 과거 Wait 구현의 숫자 yield도 시간 대기로 해석한다.
-			Entry.Wait.Kind = ELuaWaitKind::Time;
-			Entry.Wait.TimeRemaining = (std::max)(0.0f, Result.get<float>());
-			return true;
-		}
-
-		if (YieldType != sol::type::table)
-		{
-			OwnerInstance->SetError("Coroutine '" + Entry.FunctionName + "' yielded unsupported value.");
-			return false;
-		}
-
-		sol::table Command = Result.get<sol::table>();
-		const FString Type = Command["type"].get_or(FString());
-
-		if (Type == "time")
-		{
-			Entry.Wait.Kind = ELuaWaitKind::Time;
-			Entry.Wait.TimeRemaining = (std::max)(0.0f, Command["seconds"].get_or(0.0f));
-			return true;
-		}
-
-		if (Type == "real_time")
-		{
-			Entry.Wait.Kind = ELuaWaitKind::RealTime;
-			Entry.Wait.TimeRemaining = (std::max)(0.f, Command["seconds"].get_or(0.0f));
-			return true;
-		}
-
-		if (Type == "frames")
-		{
-			Entry.Wait.Kind = ELuaWaitKind::Frames;
-			Entry.Wait.FramesRemaining = (std::max)(0, Command["frames"].get_or(0));
-			return true;
-		}
-
-		if (Type == "move_done")
-		{
-			Entry.Wait.Kind = ELuaWaitKind::MoveDone;
-			return true;
-		}
-
-		if (Type == "key_down")
-		{
-			Entry.Wait.Kind = ELuaWaitKind::KeyDown;
-			Entry.Wait.KeyName = Command["key"].get_or(FString());
-			return true;
-		}
-
-		if (Type == "signal")
-		{
-			Entry.Wait.Kind = ELuaWaitKind::Signal;
-			Entry.Wait.Name = Command["name"].get_or(FString());
-			return true;
-		}
-
-		OwnerInstance->SetError("Coroutine '" + Entry.FunctionName + "' yielded unknown wait command: " + Type);
-		return false;
-	}
-
-	bool ShouldResumeCoroutine(FRunningCoroutine& Entry, float DeltaTime, float RawDeltaTime)
-	{
-		// WaitCondition마다 resume 가능 조건이 다르므로 한 곳에서 판단한다.
-		// 이 함수가 false를 반환하면 해당 coroutine만 대기하고 게임 전체 Tick은 계속 진행된다.
-		switch (Entry.Wait.Kind)
-		{
-		case ELuaWaitKind::None:
-			return true;
-
-		case ELuaWaitKind::Time:
-			Entry.Wait.TimeRemaining -= DeltaTime;
-			return Entry.Wait.TimeRemaining <= 0.0f;
-
-		case ELuaWaitKind::RealTime:
-			Entry.Wait.TimeRemaining -= RawDeltaTime;
-			return Entry.Wait.TimeRemaining <= 0.0f;
-
-		case ELuaWaitKind::Frames:
-			--Entry.Wait.FramesRemaining;
-			return Entry.Wait.FramesRemaining <= 0;
-
-		case ELuaWaitKind::MoveDone:
-			return OwnerProxy.IsMoveDone();
-
-		case ELuaWaitKind::Signal:
-			return PendingSignals.find(Entry.Wait.Name) != PendingSignals.end();
-
-		default:
-			return true;
-		}
-	}
-
 	bool HandleProtectedResult(FLuaScriptInstance* OwnerInstance, const FString& Context, sol::protected_function_result&& Result)
 	{
 		// 일반 BeginPlay/Tick/EndPlay 호출 경로에서는 yield를 허용하지 않는다.
@@ -319,7 +152,7 @@ struct FLuaScriptInstance::FInstanceImpl
 		// 대기가 필요하면 반드시 StartCoroutine/start_coroutine으로 시작한 coroutine 안에서 wait 계열 함수를 호출해야 한다.
 		if (Result.status() == sol::call_status::yielded)
 		{
-			OwnerInstance->SetError(Context + ": unexpected yield. Use wait/Wait only inside StartCoroutine coroutines.");
+			OwnerInstance->SetError(Context + " unexpectedly yielded. Use StartCoroutine(...) for wait/yield APIs.");
 			return false;
 		}
 
@@ -743,7 +576,6 @@ void FLuaScriptInstance::Shutdown()
 	Impl->Env = sol::environment();
 	Impl->OwnerProxy = FLuaActorProxy();
 	Impl->ManagedProxies.clear();
-	Impl->PendingSignals.clear();
 	Impl->OwnerComponent = nullptr;
 	Impl->ScriptPath.clear();
 	Impl->bLoaded = false;
@@ -767,7 +599,6 @@ bool FLuaScriptInstance::LoadFromFile(const FString& InScriptPath)
 	ClearError();
 	StopAllCoroutines();
 	Impl->ManagedProxies.clear();
-	Impl->PendingSignals.clear();
 	Impl->bLoaded = false;
 
 	// Instance는 더 이상 Scripts/ prefix 규칙이나 파일 위치 정책을 직접 알지 않는다.
@@ -811,6 +642,7 @@ bool FLuaScriptInstance::LoadFromFile(const FString& InScriptPath)
 
 	if (!Impl->HandleProtectedResult(this, "LoadScript(" + Impl->ScriptPath + ")", std::move(LoadResult)))
 	{
+		StopAllCoroutines();
 		return false;
 	}
 
@@ -898,15 +730,7 @@ bool FLuaScriptInstance::CallLuaFunction(const FString& FunctionName)
 	}
 	sol::protected_function Function = FunctionObject.as<sol::protected_function>();
 	sol::protected_function_result Result = Function();
-	
-	if (!Result.valid())
-	{
-		sol::error Error = Result;
-		SetError(Error.what());
-		return false;
-	}
-
-	return true;
+	return Impl->HandleProtectedResult(this, FunctionName, std::move(Result));
 }
 
 bool FLuaScriptInstance::CallLuaOverlapEvent(const FString& FunctionName, AActor* OtherActor, UActorComponent* OtherComponent, UActorComponent* SelfComponent)
@@ -935,15 +759,7 @@ bool FLuaScriptInstance::CallLuaOverlapEvent(const FString& FunctionName, AActor
 	sol::protected_function Function = FunctionObject.as<sol::protected_function>();
 	sol::protected_function_result Result =
 		Function(OtherActorProxy, OtherComponentProxy, SelfComponentProxy);
-
-	if (!Result.valid())
-	{
-		sol::error Error = Result;
-		SetError(Error.what());
-		return false;
-	}
-
-	return true;
+	return Impl->HandleProtectedResult(this, FunctionName, std::move(Result));
 }
 
 bool FLuaScriptInstance::CallLuaHitEvent(const FString& FunctionName, AActor* OtherActor, UActorComponent* OtherComponent, UActorComponent* SelfComponent, const FVector& ImpactLocation, const FVector& ImpactNormal)
@@ -977,15 +793,7 @@ bool FLuaScriptInstance::CallLuaHitEvent(const FString& FunctionName, AActor* Ot
 			SelfComponentProxy,
 			ImpactLocation,
 			ImpactNormal);
-
-	if (!Result.valid())
-	{
-		sol::error Error = Result;
-		SetError(Error.what());
-		return false;
-	}
-
-	return true;
+	return Impl->HandleProtectedResult(this, FunctionName, std::move(Result));
 }
 
 bool FLuaScriptInstance::CallLuaInputAction(const FString& FunctionName, const FString& ActionName, const FInputActionValue& Value)
@@ -1007,15 +815,7 @@ bool FLuaScriptInstance::CallLuaInputAction(const FString& FunctionName, const F
 	sol::protected_function Function = FunctionObject.as<sol::protected_function>();
 	sol::protected_function_result Result =
 		Function(ActionName, Value.GetVector(), Value.Get());
-
-	if (!Result.valid())
-	{
-		sol::error Error = Result;
-		SetError(Error.what());
-		return false;
-	}
-
-	return true;
+	return Impl->HandleProtectedResult(this, FunctionName, std::move(Result));
 }
 #pragma endregion
 
@@ -1035,44 +835,18 @@ bool FLuaScriptInstance::StartCoroutine(const FString& FunctionName)
 	}
 
 	sol::protected_function Function = FunctionObject.as<sol::protected_function>();
-	sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
+	return Impl->CoroutineScheduler.StartCoroutine(FunctionName, std::move(Function));
+}
 
-	// coroutine마다 별도 Lua thread를 만들어 서로의 yield/resume 상태를 분리한다.
-	// sol::thread는 OS thread가 아니라 Lua coroutine 실행을 위한 별도 Lua stack/context이며,
-	// FRunningCoroutine에 thread와 coroutine을 함께 보관해야 Lua thread lifetime 문제가 생기지 않는다.
-	sol::thread Thread = sol::thread::create(Lua.lua_state());
-	sol::state_view ThreadState = Thread.state();
-	constexpr const char* CoroutineEntryName = "__script_coroutine_entry";
-	ThreadState[CoroutineEntryName] = Function;
-
-	FInstanceImpl::FRunningCoroutine CoroutineEntry;
-	CoroutineEntry.FunctionName = FunctionName;
-	CoroutineEntry.Thread = std::move(Thread);
-	CoroutineEntry.Coroutine = ThreadState[CoroutineEntryName];
-	ThreadState[CoroutineEntryName] = sol::lua_nil;
-
-	sol::protected_function_result StartResult = CoroutineEntry.Coroutine();
-	if (!StartResult.valid() && StartResult.status() != sol::call_status::yielded)
+bool FLuaScriptInstance::StartCoroutineFunction(const FString& DebugName, sol::protected_function Function)
+{
+	if (!Impl || !Impl->bLoaded)
 	{
-		return Impl->HandleProtectedResult(this, "Coroutine(" + FunctionName + ")", std::move(StartResult));
+		SetError("StartCoroutine failed: script is not loaded.");
+		return false;
 	}
 
-	if (StartResult.status() == sol::call_status::yielded)
-	{
-		// wait 계열 함수는 실제로 C++를 대기시키지 않고 yield command만 반환한다.
-		// 여기서 command를 WaitCondition으로 바꿔 저장해야 이후 Tick에서 resume 가능 여부를 판단할 수 있다.
-		if (!Impl->ApplyYieldResult(this, CoroutineEntry, StartResult))
-		{
-			return false;
-		}
-
-		if (CoroutineEntry.Coroutine.runnable())
-		{
-			Impl->EnqueueCoroutine(std::move(CoroutineEntry));
-		}
-	}
-
-	return true;
+	return Impl->CoroutineScheduler.StartCoroutine(DebugName, std::move(Function));
 }
 
 void FLuaScriptInstance::TickCoroutines(float DeltaTime)
@@ -1095,49 +869,7 @@ void FLuaScriptInstance::TickCoroutines(float DeltaTime)
 
 	Impl->LastDeltaTime = DeltaTime;
 	Impl->TickLuaProxyTasks(DeltaTime);
-	Impl->bTickingCoroutines = true;
-
-	// coroutine 배열을 직접 순회하면서 완료/실패한 항목은 즉시 제거한다
-	for (size_t Index = 0; Index < Impl->Coroutines.size();)
-	{
-		FInstanceImpl::FRunningCoroutine& CoroutineEntry = Impl->Coroutines[Index];
-
-		if (!Impl->ShouldResumeCoroutine(CoroutineEntry, DeltaTime, RawDeltaTime))
-		{
-			++Index;
-			continue;
-		}
-
-		sol::protected_function_result ResumeResult = CoroutineEntry.Coroutine();
-		if (!ResumeResult.valid() && ResumeResult.status() != sol::call_status::yielded)
-		{
-			Impl->HandleProtectedResult(this, "Coroutine(" + CoroutineEntry.FunctionName + ")", std::move(ResumeResult));
-			Impl->Coroutines.erase(Impl->Coroutines.begin() + Index);
-			continue;
-		}
-
-		if (ResumeResult.status() == sol::call_status::yielded)
-		{
-			// resume된 coroutine이 다시 yield하면 다음 대기 조건을 새로 저장한다.
-			// table command를 쓰면 시간뿐 아니라 입력, signal, 이동 완료 같은 게임 조건도 같은 scheduler에서 처리할 수 있다.
-			if (!Impl->ApplyYieldResult(this, CoroutineEntry, ResumeResult))
-			{
-				Impl->Coroutines.erase(Impl->Coroutines.begin() + Index);
-				continue;
-			}
-
-			++Index;
-			continue;
-		}
-
-		Impl->Coroutines.erase(Impl->Coroutines.begin() + Index);
-	}
-
-	Impl->bTickingCoroutines = false;
-	Impl->FlushPendingCoroutines();
-	// signal은 한 프레임짜리 이벤트로 처리한다.
-	// clear를 늦추면 다음 프레임 코루틴이 과거 signal을 잘못 소비할 수 있다.
-	Impl->PendingSignals.clear();
+	Impl->CoroutineScheduler.Tick(DeltaTime, RawDeltaTime);
 }
 
 void FLuaScriptInstance::StopAllCoroutines()
@@ -1147,10 +879,7 @@ void FLuaScriptInstance::StopAllCoroutines()
 		return;
 	}
 
-	Impl->Coroutines.clear();
-	Impl->PendingCoroutines.clear();
-	Impl->PendingSignals.clear();
-	Impl->bTickingCoroutines = false;
+	Impl->CoroutineScheduler.StopAll();
 }
 
 bool FLuaScriptInstance::HasError() const
@@ -1210,100 +939,9 @@ void FLuaScriptInstance::BindCoroutineFunctions()
 		return;
 	}
 
-	Impl->Env.set_function("StartCoroutine", [this](const FString& FunctionName)
-	{
-		return StartCoroutine(FunctionName);
-	});
-
-	Impl->Env.set_function("start_coroutine", [this](const FString& FunctionName)
-	{
-		return StartCoroutine(FunctionName);
-	});
-
-	// wait 함수들은 실제로 C++ thread를 sleep하지 않는다.
-	// Lua coroutine에서 table command를 yield하고, 
-	// C++ Scheduler가 그 command를 WaitCondition으로 바꿔 다음 resume 시점을 결정한다.
-	// table 자체는 Lua VM에 생성하고 environment를 통해 yield한다.
-	// sol::environment는 lookup 범위일 뿐 table factory가 아니므로 Runtime의 state를 사용한다.
-	auto MakeWaitCommand = [this](const FString& Type)
-	{
-		sol::table Command = FLuaScriptRuntime::Get().GetLuaState().create_table();
-		Command["type"] = Type;
-		return Command;
-	};
-
-	Impl->Env.set_function("wait", sol::yielding([MakeWaitCommand](float Seconds)
-	{
-		sol::table Command = MakeWaitCommand("time");
-		Command["seconds"] = (std::max)(0.0f, Seconds);
-		return Command;
-	}));
-
-	Impl->Env.set_function("Wait", sol::yielding([MakeWaitCommand](float Seconds)
-	{
-		sol::table Command = MakeWaitCommand("time");
-		Command["seconds"] = (std::max)(0.0f, Seconds);
-		return Command;
-	}));
-
-	Impl->Env.set_function("wait_real", sol::yielding([MakeWaitCommand](float Seconds)
-	{
-		sol::table Command = MakeWaitCommand("real_time");
-		Command["seconds"] = (std::max)(0.0f, Seconds);
-		return Command;
-		
-	}));
-
-	Impl->Env.set_function("WaitReal", sol::yielding([MakeWaitCommand](float Seconds)
-	{
-		sol::table Command = MakeWaitCommand("real_time");
-		Command["seconds"] = (std::max)(0.0f, Seconds);
-		return Command;
-
-	}));
-
-	Impl->Env.set_function("wait_frames", sol::yielding([MakeWaitCommand](int Frames)
-	{
-		sol::table Command = MakeWaitCommand("frames");
-		Command["frames"] = (std::max)(0, Frames);
-		return Command;
-	}));
-
-	Impl->Env.set_function("wait_until_move_done", sol::yielding([MakeWaitCommand]()
-	{
-		return MakeWaitCommand("move_done");
-	}));
-
-	Impl->Env.set_function("wait_key_down", sol::yielding([MakeWaitCommand](const FString& KeyName)
-	{
-		sol::table Command = MakeWaitCommand("key_down");
-		Command["key"] = KeyName;
-		return Command;
-	}));
-
-	constexpr bool bExposeLegacyCoroutineSignals = false;
-	if (bExposeLegacyCoroutineSignals)
-	{
-		// 템플런 MVP에서는 signal 대기 API를 공개하지 않는다.
-		// 기존 구현은 보존해 두되, 명시적으로 다시 켤 때만 environment에 바인딩한다.
-		Impl->Env.set_function("wait_signal", sol::yielding([MakeWaitCommand](const FString& SignalName)
-		{
-			sol::table Command = MakeWaitCommand("signal");
-			Command["name"] = SignalName;
-			return Command;
-		}));
-
-		Impl->Env.set_function("signal", [this](const FString& SignalName)
-		{
-			if (!Impl || SignalName.empty())
-			{
-				return;
-			}
-
-			// signal은 코루틴 사이의 한 프레임 이벤트이므로 PendingSignals에 잠시 기록하고 TickCoroutines 끝에서 제거한다.
-			Impl->PendingSignals.insert(SignalName);
-		});
-	}
+	sol::state& Lua = FLuaScriptRuntime::Get().GetLuaState();
+	Impl->CoroutineScheduler.Initialize(this, &Lua, &Impl->Env, &Impl->OwnerProxy);
+	Impl->CoroutineScheduler.BindToEnvironment();
 }
 
 void FLuaScriptInstance::BindInputFunctions()
