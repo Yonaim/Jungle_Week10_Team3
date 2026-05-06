@@ -32,15 +32,28 @@ public:
 	virtual void ToggleModifier();
 	virtual void DisableModifier(bool bImmediate = false);
 
-	UCurveFloat* GetCurve() const { return CameraCurve != nullptr ? CameraCurve : nullptr; }
-	virtual void SetCurve(UCurveFloat* InCurve) { CameraCurve = InCurve; }
 	float GetAlpha() const { return Alpha; }
-	float GetCurveAlpha() const;
 	bool IsPendingDisable() const { return bPendingDisable != 0; }
 	void SetAlphaInTime(float InAlphaInTime) { AlphaInTime = InAlphaInTime > 0.0f ? InAlphaInTime : 0.0f; }
 	void SetAlphaOutTime(float InAlphaOutTime) { AlphaOutTime = InAlphaOutTime > 0.0f ? InAlphaOutTime : 0.0f; }
 	float GetAlphaInTime() const { return AlphaInTime; }
 	float GetAlphaOutTime() const { return AlphaOutTime; }
+
+
+	// Curve Accessors
+	UCurveFloat* GetTransitionCurveX() const { return TransitionCurveX != nullptr ? TransitionCurveX : nullptr; }
+	virtual void SetTransitionCurveX(UCurveFloat* InCurve) { TransitionCurveX = InCurve; }
+	UCurveFloat* GetTransitionCurveY() const { return TransitionCurveY != nullptr ? TransitionCurveY : nullptr; }
+	virtual void SetTransitionCurveY(UCurveFloat* InCurve) { TransitionCurveY = InCurve; }
+	UCurveFloat* GetTransitionCurveZ() const { return TransitionCurveZ != nullptr ? TransitionCurveZ : nullptr; }
+	virtual void SetTransitionCurveZ(UCurveFloat* InCurve) { TransitionCurveZ = InCurve; }
+
+	UCurveFloat* GetRotationCurveX() const { return RotationCurveX != nullptr ? RotationCurveX : nullptr; }
+	virtual void SetRotationCurveX(UCurveFloat* InCurve) { RotationCurveX = InCurve; }
+	UCurveFloat* GetRotationCurveY() const { return RotationCurveY != nullptr ? RotationCurveY : nullptr; }
+	virtual void SetRotationCurveY(UCurveFloat* InCurve) { RotationCurveY = InCurve; }
+	UCurveFloat* GetRotationCurveZ() const { return RotationCurveZ != nullptr ? RotationCurveZ : nullptr; }
+	virtual void SetRotationCurveZ(UCurveFloat* InCurve) { RotationCurveZ = InCurve; }
 
 protected:
 	virtual ~UCameraModifier() = default;
@@ -52,7 +65,13 @@ public:
 
 protected:
 	APlayerCameraManager* CameraOwner = nullptr;
-	UCurveFloat*		  CameraCurve = nullptr;
+
+	UCurveFloat* TransitionCurveX = nullptr;
+	UCurveFloat* TransitionCurveY = nullptr;
+	UCurveFloat* TransitionCurveZ = nullptr;
+	UCurveFloat* RotationCurveX   = nullptr;
+	UCurveFloat* RotationCurveY   = nullptr;
+	UCurveFloat* RotationCurveZ   = nullptr;
 
 	// Time it takes for Alpha to go from 0.0 to 1.0
 	float AlphaInTime		= 0.f;

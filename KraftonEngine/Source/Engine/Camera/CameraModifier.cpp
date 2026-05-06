@@ -47,15 +47,21 @@ void UCameraModifier::DisableModifier(bool bImmediate)
 
 bool UCameraModifier::ModifyCamera(float DeltaTime, UCameraComponent* InOutPOV)
 {
-	float Wave = Intensity * CameraCurve->Evaluate(Alpha);
-	InOutPOV->AddWorldOffset(FVector(0.0f, Wave, Wave * 0.5f));
-	InOutPOV->AddLocalRotation(FRotator(Wave * 0.05f, Wave * 0.1f, Wave * 0.2f));
-	return false;
-}
+	//float Wave = Intensity * CameraCurve->Evaluate(Alpha);
+	//InOutPOV->AddWorldOffset(FVector(0.0f, Wave, Wave * 0.5f));
+	//InOutPOV->AddLocalRotation(FRotator(Wave * 0.05f, Wave * 0.1f, Wave * 0.2f));
+	//return false;
 
-float UCameraModifier::GetCurveAlpha() const
-{
-	return CameraCurve ? CameraCurve->Evaluate(Alpha) : Alpha;
+	float TOffsetX = TransitionCurveX != nullptr ? TransitionCurveX->Evaluate(Alpha) : 0;
+	float TOffsetY = TransitionCurveY != nullptr ? TransitionCurveY->Evaluate(Alpha) : 0;
+	float TOffsetZ = TransitionCurveZ != nullptr ? TransitionCurveZ->Evaluate(Alpha) : 0;
+	InOutPOV->AddWorldOffset(FVector(TOffsetX, TOffsetY, TOffsetZ));
+	
+	float ROffsetX = RotationCurveX != nullptr ? RotationCurveX->Evaluate(Alpha) : 0;
+	float ROffsetY = RotationCurveY != nullptr ? RotationCurveY->Evaluate(Alpha) : 0;
+	float ROffsetZ = RotationCurveZ != nullptr ? RotationCurveZ->Evaluate(Alpha) : 0;
+	InOutPOV->AddLocalRotation(FRotator(ROffsetX, ROffsetY, ROffsetZ));
+	return false;
 }
 
 void UCameraModifier::UpdateAlpha(float DeltaTime)

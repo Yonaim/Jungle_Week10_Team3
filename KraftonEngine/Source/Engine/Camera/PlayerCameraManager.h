@@ -38,6 +38,8 @@ public:
 	// PlayerManager는 모디파이어 리스트를 상시 순회함
 	void Tick(float DeltaTime) override;
 
+	void SetOwner(APlayerController* InPlayerController) { Owner = InPlayerController; }
+
 	// 카메라 모디파이어 추가 후 중요도에 따라 정렬
 	void AddCameraModifier(UCameraModifier* InModifier);
 
