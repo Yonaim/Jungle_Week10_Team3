@@ -5,6 +5,7 @@
 class UCurveFloat :public UObject {
 public:
 	DECLARE_CLASS(UCurveFloat, UObject)
+	UCurveFloat();
 	TArray<FVector2> Curve;
 
 public:
