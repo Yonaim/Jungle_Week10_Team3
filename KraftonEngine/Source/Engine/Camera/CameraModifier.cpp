@@ -9,10 +9,22 @@ UCameraModifier::UCameraModifier()
 }
 
 void UCameraModifier::AddedToCamera(APlayerCameraManager* InCameraManager) {
-	if (!InCameraManager) CameraOwner = InCameraManager;
+	if (InCameraManager) 
+		CameraOwner = InCameraManager;
+}
+
+bool UCameraModifier::IsFinished() const
+{
+	return !bPendingDisable && bDisabled;
 }
 
 void UCameraModifier::DisableModifier(bool bImmediate) {
-	if (bImmediate) bDisabled = true; return;
+	if (bImmediate)
+	{
+		bDisabled = true;
+		bPendingDisable = false;
+		return;
+	}
+
 	bPendingDisable = true;
 }

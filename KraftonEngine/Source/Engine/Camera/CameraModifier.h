@@ -25,7 +25,7 @@ public:
 
 
 	virtual void UpdateAlpha(float DeltaTime)								= 0;
-
+	virtual bool IsFinished() const;
 	virtual bool IsDisabled() const { return bDisabled; }
 	virtual void EnableModifier()	{ bDisabled = true; }
 	virtual void ToggleModifier()	{ bDisabled = ~bDisabled; }

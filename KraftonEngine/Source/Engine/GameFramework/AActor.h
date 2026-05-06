@@ -4,7 +4,7 @@
 #include "Component/SceneComponent.h"
 #include "Core/TickFunction.h"
 #include "Collision/OverlapInfo.h"
-
+#include "Camera/MinimalViewInfo.h"
 
 class FArchive;
 
@@ -91,8 +91,12 @@ public:
 	// Direction
 	FVector GetActorForward() const;
 
+	void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult);
+
+
 	UWorld* GetWorld() const;
 	ULevel* GetLevel() const;
+
 
 	bool IsVisible() const { return bVisible; }
 	void SetVisible(bool Visible);
@@ -125,7 +129,6 @@ public:
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) {}
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) {}
 	virtual void NotifyActorHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, const FHitResult& Hit) {}
-
 protected:
 	virtual void TickActor( float DeltaSeconds, ELevelTick TickType, FActorTickFunction& ThisTickFunction );
 	

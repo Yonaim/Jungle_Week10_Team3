@@ -36,7 +36,19 @@ void FViewTarget::CheckViewTarget(APlayerController* OwningController)
 
 void APlayerCameraManager::ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
-
+	RemoveFinishedModifiers();
+	for (UCameraModifier* CameraModifier : ModifierList)
+	{
+		if (!CameraModifier || CameraModifier->IsDisabled())
+			continue;
+		CameraModifier->UpdateAlpha(DeltaTime);
+		const bool bStop = CameraModifier->ModifyCamera(DeltaTime, InOutPOV);
+		if (bStop)
+		{
+			break;
+		}	
+	}
+	RemoveFinishedModifiers();
 }
 
 void APlayerCameraManager::UpdateCamera(float deltaTime)
@@ -45,9 +57,9 @@ void APlayerCameraManager::UpdateCamera(float deltaTime)
 
 	ViewTarget.CheckViewTarget(Owner);
 	FMinimalViewInfo NewPOV;
-	if (UCameraComponent* Camera = FindCameraComponent(ViewTarget.Target))
+	if (ViewTarget.Target)
 	{
-		Camera->GetCameraView(deltaTime, NewPOV);
+		ViewTarget.Target->CalcCamera(deltaTime, NewPOV);
 	}
 	else
 	{
@@ -61,7 +73,25 @@ void APlayerCameraManager::UpdateCamera(float deltaTime)
 	CameraCache.TimeStamp += deltaTime;
 	CameraCache.POV = NewPOV;
 }
-//
+void APlayerCameraManager::SortModifiersByPriority()
+{
+	std::sort(ModifierList.begin(), ModifierList.end(),
+		[](const UCameraModifier* A, const UCameraModifier* B)
+	{
+		if (!A) return false;
+		if (!B) return true;
+		return A->Priority > B->Priority;
+	});
+}
+void APlayerCameraManager::RemoveFinishedModifiers()
+{
+	ModifierList.erase(std::remove_if(ModifierList.begin(), ModifierList.end()
+		, [](UCameraModifier* Modifier)
+	{
+		return !Modifier || Modifier->IsFinished();
+	}),
+	ModifierList.end());
+}
 UCameraComponent* APlayerCameraManager::FindCameraComponent(AActor* Target)
 {
 	if (!Target)
@@ -96,10 +126,13 @@ FMinimalViewInfo APlayerCameraManager::BuildFallbackCameraView(AActor* Target) c
 }
 
 void APlayerCameraManager::AddCameraModifier(UCameraModifier* InModifier) {
-	if (!InModifier) return;
+	if (!InModifier)
+	{
+		return;
+	}
+
+	InModifier->AddedToCamera(this);
 	ModifierList.push_back(InModifier);
-	std::sort(ModifierList.begin(), ModifierList.end(), [](const UCameraModifier* A, const UCameraModifier* B) {
-		return A->Priority >= B->Priority;	
-	});
+	SortModifiersByPriority();
 }
 

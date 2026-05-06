@@ -33,6 +33,8 @@ public:
 
 	void ApplyCameraModifiers(float DeltaTime, FMinimalViewInfo& InOutPOV);
 	void UpdateCamera(float deltaTime);
+	void SortModifiersByPriority();
+	void RemoveFinishedModifiers();
 	// Find CameraComponent to actor
 public:
 	FViewTarget		ViewTarget;
