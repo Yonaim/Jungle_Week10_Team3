@@ -46,8 +46,12 @@ protected:
 	APlayerCameraManager* CameraOwner = nullptr;
 	UCurveFloat*		  CameraCurve = nullptr;
 
+	// Time it takes for Alpha to go from 0.0 to 1.0
 	float AlphaInTime		= 0.f;
+
+	// Time it takes for Alpha to go from 1.0 to 0.0
 	float AlphaOutTime		= 0.f;
+
 	float Alpha				= 0.f;
 	uint32 bPendingDisable	= false;
 	uint32 bDisabled		= false;

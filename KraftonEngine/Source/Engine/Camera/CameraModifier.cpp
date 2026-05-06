@@ -15,15 +15,20 @@ void UCameraModifier::DisableModifier(bool bImmediate) {
 }
 
 bool UCameraModifier::ModifyCamera(float DeltaTime, UCameraComponent& InOutPOV) {
-	float Dx = CameraCurve != nullptr ? CameraCurve->Evaluate(Alpha) : 0;
+	float Dx = 0;
+	if (CameraCurve) {
+		Dx = CameraCurve->Evaluate(Alpha);
+	}
 
 
 	UpdateAlpha(DeltaTime);
 }
 
 void UCameraModifier::UpdateAlpha(float DeltaTime) {
-	Alpha += DeltaTime;
-	if (Alpha >= 1.f) {
+	float Delta = bPendingDisable ? DeltaTime / AlphaOutTime * -1 : DeltaTime / AlphaInTime;
+	Alpha += Delta;
+
+	if (Alpha < 0.f || Alpha >= 1.0f) {
 		Alpha = 0.f;
 		if (bPendingDisable) {
 			bPendingDisable = false;
