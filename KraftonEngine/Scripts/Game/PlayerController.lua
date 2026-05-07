@@ -742,11 +742,18 @@ function Tick(dt)
         return
     end
 
-    local move_left_pressed = key_pressed_once("A") or key_pressed_once("LEFT") or key_pressed_once("Left")
+    local a_pressed = key_pressed_once("A")
+    local d_pressed = key_pressed_once("D")
+    local move_left_pressed = a_pressed or key_pressed_once("LEFT") or key_pressed_once("Left")
     local move_right_pressed = key_pressed_once("D") or key_pressed_once("RIGHT") or key_pressed_once("Right")
     local jump_pressed = key_pressed_once("SPACE") or key_pressed_once("Space")
+    local barrel_rolling_sound_pressed = a_pressed or d_pressed
     local wants_slide = slide_key_pressed()
     finish_input_frame()
+
+    if barrel_rolling_sound_pressed then
+        AudioManager.PlayBarrelRolling()
+    end
 
     if move_left_pressed then
         move_lane(-1)

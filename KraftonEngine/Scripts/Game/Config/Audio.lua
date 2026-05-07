@@ -20,6 +20,7 @@ local AudioConfig = {
     hit_sfx = "",
     jump_sfx = "",
     slide_sfx = "",
+    barrel_rolling_sfx = "Asset/Content/Sound/SFX/Barrel_rolling.mp3",
     game_over_sfx = "",
 }
 

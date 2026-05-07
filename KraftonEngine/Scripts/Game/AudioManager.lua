@@ -129,6 +129,29 @@ function AudioManager.PlaySFX(sound_key)
     return ok == true
 end
 
+function AudioManager.PlayOneShotSFX(sound_key)
+    if not AudioManager.enabled then
+        log("[AudioManager] PlayOneShotSFX skip: audio disabled key=" .. tostring(sound_key))
+        return false
+    end
+
+    local path_or_name = AudioConfig[sound_key]
+    if path_or_name == nil or path_or_name == "" then
+        log("[AudioManager] PlayOneShotSFX skip: AudioConfig." .. tostring(sound_key) .. " is empty")
+        return false
+    end
+
+    if type(play_sfx) == "function" then
+        log("[AudioManager] PlayOneShotSFX attempt key=" .. tostring(sound_key) .. " sound=" .. tostring(path_or_name))
+        local handle = play_sfx(path_or_name, false)
+        local ok = type(handle) == "string" and handle ~= ""
+        log("[AudioManager] PlayOneShotSFX result key=" .. tostring(sound_key) .. " ok=" .. tostring(ok))
+        return ok
+    end
+
+    return AudioManager.PlaySFX(sound_key)
+end
+
 ------------------------------------------------
 -- 게임 이벤트 SFX Shortcut 함수들
 ------------------------------------------------
@@ -143,6 +166,10 @@ end
 
 function AudioManager.PlaySlide()
     return AudioManager.PlaySFX("slide_sfx")
+end
+
+function AudioManager.PlayBarrelRolling()
+    return AudioManager.PlayOneShotSFX("barrel_rolling_sfx")
 end
 
 function AudioManager.PlayGameOver()
