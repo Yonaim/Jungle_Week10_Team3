@@ -13,6 +13,7 @@
 #include "Platform/Paths.h"
 
 #include "ImGui/imgui.h"
+#include "ImGui/imgui_internal.h"
 
 #include <algorithm>
 #include <cstring>
@@ -69,6 +70,48 @@ namespace
 			return "Untitled";
 		}
 		return FPaths::ToUtf8(Path.filename().wstring());
+	}
+
+	bool IsWindowInHierarchy(const ImGuiWindow* Window, const ImGuiWindow* ExpectedRoot)
+	{
+		const ImGuiWindow* Current = Window;
+		while (Current)
+		{
+			if (Current == ExpectedRoot)
+			{
+				return true;
+			}
+			Current = Current->ParentWindow;
+		}
+		return false;
+	}
+
+	bool IsCurrentAssetEditorCapturingInput()
+	{
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
+		{
+			return true;
+		}
+
+		ImGuiContext& Context = *GImGui;
+		ImGuiWindow* CurrentWindow = Context.CurrentWindow;
+		if (!CurrentWindow)
+		{
+			return false;
+		}
+
+		ImGuiWindow* RootWindow = CurrentWindow->RootWindow ? CurrentWindow->RootWindow : CurrentWindow;
+		if (ImGui::GetIO().WantTextInput && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+		{
+			return true;
+		}
+
+		if (Context.ActiveIdWindow && IsWindowInHierarchy(Context.ActiveIdWindow, RootWindow))
+		{
+			return true;
+		}
+
+		return false;
 	}
 
 	void DrawStringInput(const char* Label, FString& Value, size_t BufferSize = 256)
@@ -327,9 +370,7 @@ void FAssetEditorWidget::Render(float DeltaTime)
 		return;
 	}
 	bOpen = bWindowOpen;
-	bCapturingInput =
-		ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)
-		|| ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+	bCapturingInput = IsCurrentAssetEditorCapturingInput();
 
 	DrawToolbar();
 	ImGui::Separator();
