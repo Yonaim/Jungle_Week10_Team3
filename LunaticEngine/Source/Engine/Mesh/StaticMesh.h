@@ -2,7 +2,7 @@
 
 #include "Object/Object.h"
 #include "Collision/MeshTriangleBVH.h"
-#include "Mesh/StaticMeshAsset.h"
+#include "Mesh/StaticMeshCommon.h"
 #include "Serialization/Archive.h"
 
 #include <memory>
