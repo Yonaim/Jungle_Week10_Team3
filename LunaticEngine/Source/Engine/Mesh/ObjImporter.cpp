@@ -1,5 +1,5 @@
 #include "Mesh/ObjImporter.h"
-#include "Mesh/StaticMeshAsset.h"
+#include "Mesh/StaticMeshCommon.h"
 #include "Materials/Material.h"
 #include "Core/Log.h"
 #include "Engine/Platform/Paths.h"

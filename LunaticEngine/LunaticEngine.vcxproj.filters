@@ -1586,7 +1586,7 @@
     <ClInclude Include="Source\Engine\Mesh\StaticMesh.h">
       <Filter>Source\Engine\Mesh</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Mesh\StaticMeshAsset.h">
+    <ClInclude Include="Source\Engine\Mesh\StaticMeshCommon.h">
       <Filter>Source\Engine\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Object\FName.h">
