@@ -3,9 +3,9 @@
 
 class USkeletalMeshComponent : public USkinnedMeshComponent
 {
+public:
 	DECLARE_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 
-public:
 	USkeletalMeshComponent() = default;
 	~USkeletalMeshComponent() override = default;
 

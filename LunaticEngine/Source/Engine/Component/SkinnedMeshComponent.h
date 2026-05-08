@@ -8,9 +8,9 @@ class FPrimitiveSceneProxy;
 
 class USkinnedMeshComponent : public UMeshComponent
 {
+public:
 	DECLARE_CLASS(USkinnedMeshComponent, UMeshComponent)
 
-public:
 	USkinnedMeshComponent() = default;
 	~USkinnedMeshComponent() override = default;
 
