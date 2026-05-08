@@ -1,6 +1,7 @@
 ﻿#include "Mesh/ObjManager.h"
 #include "Mesh/StaticMesh.h"
 #include "Mesh/ObjImporter.h"
+#include "Mesh/FbxImporter.h"
 #include "Materials/Material.h"
 #include "Core/Log.h"
 #include "Serialization/WindowsArchive.h"
@@ -94,7 +95,7 @@ void FObjManager::ScanObjSourceFiles()
 
 		// 대소문자 무시
 		std::transform(Ext.begin(), Ext.end(), Ext.begin(), ::towlower);
-		if (Ext != L".obj") continue;
+		if (Ext != L".obj" && Ext != L".fbx") continue;
 
 		FMeshAssetListItem Item;
 		Item.DisplayName = FPaths::ToUtf8(Path.filename().wstring());
@@ -231,7 +232,11 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11D
 		FStaticMesh* NewMeshAsset = new FStaticMesh();
 		TArray<FStaticMaterial> ParsedMaterials;
 
-		if (FObjImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials))
+		const bool bImported = RequestedExt == L".fbx"
+			? FFbxImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials)
+			: FObjImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials);
+
+		if (bImported)
 		{
 			// MaterialIndex 캐싱을 위해 Materials를 먼저 설정
 			StaticMesh->SetStaticMaterials(std::move(ParsedMaterials));
