@@ -126,6 +126,7 @@ void USkeletalMeshComponent::PerformCPUSkinning()
 
 		FVector SkinnedPos(0.0f, 0.0f, 0.0f);
 		FVector SkinnedNormal(0.0f, 0.0f, 0.0f);
+		float TotalWeight = 0.0f;
 
 		for (int32 Inf = 0; Inf < MaxBoneInfluences; ++Inf)
 		{
@@ -139,11 +140,15 @@ void USkeletalMeshComponent::PerformCPUSkinning()
 
 			SkinnedPos += SkinningMatrix.TransformPositionWithW(BindVertex.pos) * W;
 			SkinnedNormal += SkinningMatrix.TransformVector(BindVertex.normal) * W;
+			TotalWeight += W;
 		}
 
 		SkinBuffer[VertexIndex] = BindVertex;
-		SkinBuffer[VertexIndex].pos = SkinnedPos;
-		SkinBuffer[VertexIndex].normal = SkinnedNormal;
+		if (TotalWeight > 0.0f)
+		{
+			SkinBuffer[VertexIndex].pos = SkinnedPos;
+			SkinBuffer[VertexIndex].normal = SkinnedNormal.Normalized();
+		}
 	}
 }
 
