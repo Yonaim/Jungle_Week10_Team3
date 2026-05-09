@@ -10,13 +10,13 @@ DirectX 11 3D scene editor engine built with C++ and ImGui. Actor/Component arch
 
 ```bash
 # Build (x64 Debug) via MSBuild
-msbuild KraftonEngine.sln /p:Configuration=Debug /p:Platform=x64
+msbuild LunaticEngine.sln /p:Configuration=Debug /p:Platform=x64
 
 # Build (x64 Release)
-msbuild KraftonEngine.sln /p:Configuration=Release /p:Platform=x64
+msbuild LunaticEngine.sln /p:Configuration=Release /p:Platform=x64
 
 # Build OBJ Viewer (x64) — standalone mesh preview tool
-msbuild KraftonEngine.sln /p:Configuration=ObjViewDebug /p:Platform=x64
+msbuild LunaticEngine.sln /p:Configuration=ObjViewDebug /p:Platform=x64
 
 # Regenerate project files after adding/removing source files
 python Scripts/GenerateProjectFiles.py
@@ -28,7 +28,7 @@ python Scripts/GenerateProjectFiles.py
 ./DemoBuild.bat
 ```
 
-Output: `KraftonEngine/Bin/<Configuration>/KraftonEngine.exe`
+Output: `LunaticEngine/Bin/<Configuration>/LunaticEngine.exe`
 
 Build configurations: `Debug`, `Release`, `ObjViewDebug` (x64/x86). ObjViewDebug defines `IS_OBJ_VIEWER=1` and excludes most Editor sources, launching `UObjViewerEngine` instead of `UEditorEngine`.
 
@@ -88,11 +88,11 @@ Standalone mesh preview mode (`Source/ObjViewer/`). `UObjViewerEngine` subclasse
 - Include paths root at: `Source/Engine`, `Source`, `Source/Editor`, `Source/ObjViewer`, `ThirdParty`, `ThirdParty/ImGui`
 - Headers use relative paths from these roots: `#include "Engine/Core/InputSystem.h"`
 - Naming: `F` prefix for structs/data types (FVector, FName), `U` for UObject derivatives, `A` for Actors, `E` for enums
-- HLSL shaders in `KraftonEngine/Shaders/` are compiled at runtime with hot-reload support
+- HLSL shaders in `LunaticEngine/Shaders/` are compiled at runtime with hot-reload support
 
 ## Key Source Layout
 
-- `KraftonEngine/Source/Engine/` — core engine
+- `LunaticEngine/Source/Engine/` — core engine
   - `Collision/` — Octree, BVH, ray utilities (SIMD), OBB, spatial partitioning
   - `Component/` — PrimitiveComponent, StaticMeshComponent, Billboard, SubUV, Text, Pendulum/Projectile movement
   - `Component/Light/` — LightComponentBase, Directional, Point, Spot, Ambient light components
@@ -126,7 +126,7 @@ Standalone mesh preview mode (`Source/ObjViewer/`). `UObjViewerEngine` subclasse
   - `Texture/` — texture loading/management
   - `UI/` — UI utilities
   - `Viewport/` — viewport management
-- `KraftonEngine/Source/Editor/` — editor layer
+- `LunaticEngine/Source/Editor/` — editor layer
   - `EditorEngine`, `EditorRenderPipeline`
   - `PIE/` — Play-In-Editor
   - `Selection/` — actor selection
@@ -134,14 +134,14 @@ Standalone mesh preview mode (`Source/ObjViewer/`). `UObjViewerEngine` subclasse
   - `Subsystem/` — editor subsystems
   - `UI/` — ImGui widgets (Viewport, Stat, PlayToolbar, MaterialInspector, ContentBrowser, DragSource, NotificationToast, ImGuiSetting)
   - `Viewport/` — LevelEditorViewportClient
-- `KraftonEngine/Source/ObjViewer/` — standalone mesh viewer
-- `KraftonEngine/Shaders/` — HLSL shader files
+- `LunaticEngine/Source/ObjViewer/` — standalone mesh viewer
+- `LunaticEngine/Shaders/` — HLSL shader files
   - `Common/` — shared includes (`ConstantBuffers.hlsli`, `Functions.hlsli`, `VertexLayouts.hlsli`, `ForwardLighting.hlsli`, `ForwardLightData.hlsli`, `ShadowSampling.hlsli`, `SystemResources.hlsli`, `SystemSamplers.hlsli`)
   - `Editor/` — Editor.hlsl, Gizmo.hlsl
   - `Geometry/` — Primitive.hlsl, Decal.hlsl, UberLit.hlsl
   - `Lighting/` — HiZGenerate.hlsl, OcclusionTest.hlsl, TileLightCulling.hlsl, ShadowDepth.hlsl, ClusterConstructCS.hlsl, LightCullingCS.hlsl, ClusterHeatMap.hlsl
   - `PostProcess/` — FXAA.hlsl, HeightFog.hlsl, Outline.hlsl, SceneDepth.hlsl, SceneNormal.hlsl, NormalView.hlsl, LightCulling.hlsl
   - `UI/` — Billboard.hlsl, Font.hlsl, OverlayFont.hlsl, SubUV.hlsl
-- `KraftonEngine/ThirdParty/` — ImGui and SimpleJSON (vendored)
-- `KraftonEngine/Asset/` — font atlas, particle textures, default scene, MeshCache (prebuilt .bin meshes), StaticMesh
-- `KraftonEngine/Data/` — mesh source files (.obj, .mtl, textures) organized by model name
+- `LunaticEngine/ThirdParty/` — ImGui and SimpleJSON (vendored)
+- `LunaticEngine/Asset/` — font atlas, particle textures, default scene, MeshCache (prebuilt .bin meshes), StaticMesh
+- `LunaticEngine/Data/` — mesh source files (.obj, .mtl, textures) organized by model name

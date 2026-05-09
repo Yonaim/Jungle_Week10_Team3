@@ -1,6 +1,9 @@
 ﻿#include "Mesh/ObjManager.h"
 #include "Mesh/StaticMesh.h"
+#include "Mesh/SkeletalMesh.h"
 #include "Mesh/ObjImporter.h"
+#include "Mesh/FbxImporter.h"
+#include "Mesh/FbxCommon.h"
 #include "Materials/Material.h"
 #include "Core/Log.h"
 #include "Serialization/WindowsArchive.h"
@@ -10,6 +13,7 @@
 #include <algorithm>
 
 TMap<FString, UStaticMesh*> FObjManager::StaticMeshCache;
+TMap<FString, USkeletalMesh*> FObjManager::SkeletalMeshCache;
 TArray<FMeshAssetListItem> FObjManager::AvailableMeshFiles;
 TArray<FMeshAssetListItem> FObjManager::AvailableObjFiles;
 
@@ -24,6 +28,68 @@ namespace
 	void EnsureMeshCacheDirExists(const FString& OriginalPath)
 	{
 		FPaths::CreateDir(GetMeshCacheDirectory(OriginalPath).wstring());
+	}
+
+	std::wstring GetLowerExtension(const FString& Path)
+	{
+		std::filesystem::path PathW(FPaths::ToWide(Path));
+		std::wstring Ext = PathW.extension().wstring();
+		std::transform(Ext.begin(), Ext.end(), Ext.begin(), ::towlower);
+		return Ext;
+	}
+
+	FString GetSkeletalBinaryFilePath(const FString& OriginalPath)
+	{
+		if (GetLowerExtension(OriginalPath) == L".bin")
+		{
+			return OriginalPath;
+		}
+
+		std::filesystem::path SrcPath(FPaths::ToWide(OriginalPath));
+		std::filesystem::path BinPath = GetMeshCacheDirectory(OriginalPath) / (SrcPath.stem().wstring() + L"_Skeletal");
+		BinPath += L".bin";
+		return FPaths::ToUtf8(BinPath.lexically_normal().generic_wstring());
+	}
+
+	bool HasSkinDeformer(FbxNode* Node)
+	{
+		if (!Node)
+		{
+			return false;
+		}
+
+		if (FbxMesh* Mesh = Node->GetMesh())
+		{
+			if (Mesh->GetDeformerCount(FbxDeformer::eSkin) > 0)
+			{
+				return true;
+			}
+		}
+
+		const int32 ChildCount = Node->GetChildCount();
+		for (int32 ChildIndex = 0; ChildIndex < ChildCount; ++ChildIndex)
+		{
+			if (HasSkinDeformer(Node->GetChild(ChildIndex)))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool IsFbxSkeletalMesh(const FString& FbxPath)
+	{
+		if (GetLowerExtension(FbxPath) != L".fbx")
+		{
+			return false;
+		}
+
+		FFbxInfo Context;
+		const bool bParsed = FFbxCommon::ParseFbx(FbxPath, Context);
+		const bool bHasSkin = bParsed && HasSkinDeformer(Context.Scene ? Context.Scene->GetRootNode() : nullptr);
+		FFbxCommon::Destroy(Context);
+		return bHasSkin;
 	}
 }
 
@@ -94,7 +160,7 @@ void FObjManager::ScanObjSourceFiles()
 
 		// 대소문자 무시
 		std::transform(Ext.begin(), Ext.end(), Ext.begin(), ::towlower);
-		if (Ext != L".obj") continue;
+		if (Ext != L".obj" && Ext != L".fbx") continue;
 
 		FMeshAssetListItem Item;
 		Item.DisplayName = FPaths::ToUtf8(Path.filename().wstring());
@@ -115,6 +181,12 @@ const TArray<FMeshAssetListItem>& FObjManager::GetAvailableObjFiles()
 
 UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, const FImportOptions& Options, ID3D11Device* InDevice)
 {
+	if (IsFbxSkeletalMesh(PathFileName))
+	{
+		LoadObjSkeletalMesh(PathFileName, InDevice);
+		return nullptr;
+	}
+
 	FString CacheKey = GetBinaryFilePath(PathFileName);
 
 	// 옵션이 다를 수 있으므로 기존 캐시 무효화
@@ -155,6 +227,104 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, const F
 	return StaticMesh;
 }
 
+USkeletalMesh* FObjManager::LoadObjSkeletalMesh(const std::string& PathFileName, ID3D11Device* InDevice)
+{
+	(void)InDevice;
+	FString CacheKey = GetSkeletalBinaryFilePath(PathFileName);
+
+	// BinPath 기반 캐시 확인
+	auto It = SkeletalMeshCache.find(CacheKey);
+	if (It != SkeletalMeshCache.end())
+	{
+		return It->second;
+	}
+
+	// USkeletalMesh 생성 + FSkeletalMesh 소유권 이전 + 머티리얼 설정
+	USkeletalMesh* SkeletalMesh = UObjectManager::Get().CreateObject<USkeletalMesh>();
+
+	FString BinPath = CacheKey;
+	bool bNeedRebuild = true;
+	FString FbxPath = PathFileName;
+	std::wstring RequestedExt = GetLowerExtension(PathFileName);
+
+	if (RequestedExt == L".bin")
+	{
+		FWindowsBinReader Reader(BinPath);
+		if (Reader.IsValid())
+		{
+			SkeletalMesh->Serialize(Reader);
+			bNeedRebuild = false;
+
+			if (SkeletalMesh->GetSkeletalMeshAsset() && !SkeletalMesh->GetSkeletalMeshAsset()->PathFileName.empty())
+			{
+				FbxPath = SkeletalMesh->GetSkeletalMeshAsset()->PathFileName;
+				const std::filesystem::path FbxPathW(FPaths::ToWide(FbxPath));
+				const std::filesystem::path BinPathW(FPaths::ToWide(BinPath));
+				if (std::filesystem::exists(FbxPathW) &&
+					std::filesystem::last_write_time(FbxPathW) > std::filesystem::last_write_time(BinPathW))
+				{
+					bNeedRebuild = true;
+				}
+			}
+		}
+	}
+
+	const std::filesystem::path BinPathW(FPaths::ToWide(BinPath));
+	const std::filesystem::path PathFileNameW(FPaths::ToWide(PathFileName));
+	if (RequestedExt != L".bin" && std::filesystem::exists(BinPathW))
+	{
+		if (!std::filesystem::exists(PathFileNameW) ||
+			std::filesystem::last_write_time(BinPathW) >= std::filesystem::last_write_time(PathFileNameW))
+		{
+			bNeedRebuild = false;
+		}
+	}
+
+	if (!bNeedRebuild && RequestedExt != L".bin")
+	{
+		FWindowsBinReader Reader(BinPath);
+		if (Reader.IsValid())
+		{
+			SkeletalMesh->Serialize(Reader);
+		}
+		else
+		{
+			bNeedRebuild = true;
+		}
+	}
+
+	if (bNeedRebuild)
+	{
+		FSkeletalMesh* NewMeshAsset = new FSkeletalMesh();
+		TArray<FStaticMaterial> ParsedMaterials;
+
+		if (GetLowerExtension(FbxPath) == L".fbx" && FFbxSkeletalMeshImporter::Import(FbxPath, *NewMeshAsset, ParsedMaterials))
+		{
+			SkeletalMesh->SetStaticMaterials(std::move(ParsedMaterials));
+			SkeletalMesh->SetSkeletalMeshAsset(NewMeshAsset);
+
+			EnsureMeshCacheDirExists(FbxPath);
+			FWindowsBinWriter Writer(BinPath);
+			if (Writer.IsValid())
+			{
+				SkeletalMesh->Serialize(Writer);
+			}
+		}
+		else
+		{
+			delete NewMeshAsset;
+			return nullptr;
+		}
+	}
+
+	SkeletalMeshCache[CacheKey] = SkeletalMesh;
+
+	ScanMeshAssets();
+	FMaterialManager::Get().ScanMaterialAssets();
+
+	return SkeletalMesh;
+}
+
 UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11Device* InDevice)
 {
 	FString CacheKey = GetBinaryFilePath(PathFileName);
@@ -166,15 +336,19 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11D
 		return It->second;
 	}
 
-	// UStaticMesh 생성 + FStaticMesh 소유권 이전 + 머티리얼 설정
-	UStaticMesh* StaticMesh = UObjectManager::Get().CreateObject<UStaticMesh>();
-
 	FString BinPath = CacheKey;
 	bool bNeedRebuild = true;
 	FString ObjPath = PathFileName;
-	const std::filesystem::path RequestedPathW(FPaths::ToWide(PathFileName));
-	std::wstring RequestedExt = RequestedPathW.extension().wstring();
-	std::transform(RequestedExt.begin(), RequestedExt.end(), RequestedExt.begin(), ::towlower);
+	std::wstring RequestedExt = GetLowerExtension(PathFileName);
+
+	if (IsFbxSkeletalMesh(PathFileName))
+	{
+		LoadObjSkeletalMesh(PathFileName, InDevice);
+		return nullptr;
+	}
+
+	// UStaticMesh 생성 + FStaticMesh 소유권 이전 + 머티리얼 설정
+	UStaticMesh* StaticMesh = UObjectManager::Get().CreateObject<UStaticMesh>();
 
 	// .bin 직접 선택된 경우에는 먼저 로드해서 원본 OBJ 경로를 확인한다.
 	if (RequestedExt == L".bin")
@@ -231,7 +405,11 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11D
 		FStaticMesh* NewMeshAsset = new FStaticMesh();
 		TArray<FStaticMaterial> ParsedMaterials;
 
-		if (FObjImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials))
+		const bool bImported = RequestedExt == L".fbx"
+			? FFbxStaticMeshImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials)
+			: FObjImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials);
+
+		if (bImported)
 		{
 			// MaterialIndex 캐싱을 위해 Materials를 먼저 설정
 			StaticMesh->SetStaticMaterials(std::move(ParsedMaterials));
