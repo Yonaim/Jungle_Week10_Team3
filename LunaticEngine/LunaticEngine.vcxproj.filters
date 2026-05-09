@@ -1107,11 +1107,14 @@
       <Filter>ThirdParty\miniaudio</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="SkinnedMeshComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\SkeletalMeshComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
-    <ClCompile Include="SkeletalMeshComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\SkinnedMeshComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="SkeletalMeshProxy.cpp">
+      <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2399,11 +2402,14 @@
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
     </ClInclude>
-    <ClInclude Include="SkinnedMeshComponent.h">
+    <ClInclude Include="Source\Engine\Component\SkeletalMeshComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
-    <ClInclude Include="SkeletalMeshComponent.h">
+    <ClInclude Include="Source\Engine\Component\SkinnedMeshComponent.h">
       <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="SkeletalMeshProxy.h">
+      <Filter>Source\Engine\Render\Proxy</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

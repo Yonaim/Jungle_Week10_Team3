@@ -1,13 +1,10 @@
 ﻿#pragma once
 #include "Component/MeshComponent.h"
+#include "Mesh/StaticMeshCommon.h"
 
-//임시 더미
 class USkeletalMesh {};
 struct FSkeleton {};
-struct FSkeletalMeshVertex {
-	FVector Position;
-	FVector Normal;
-};
+
 class FPrimitiveSceneProxy;
 
 class USkinnedMeshComponent : public UMeshComponent
@@ -29,7 +26,7 @@ public:
 
 	int32 GetBoneCount() const;
 
-	virtual TArray<FSkeletalMeshVertex>* GetCPUSkinnedVertices() { return nullptr; }
+	virtual TArray<FNormalVertex>* GetCPUSkinnedVertices() { return nullptr; }
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 	void UpdateWorldAABB() const override;

@@ -11,6 +11,9 @@ public:
 
 	FSkeletalMeshProxy(USkinnedMeshComponent* InComponent);
 
+	bool HasValidGeometry() const override;
+	void FillDrawCommandBuffer(FDrawCommandBuffer& OutBuffer) const override;
+
 	void UpdateMesh() override;
 	void UpdateMaterial() override;
 	void UpdateLOD(uint32 LODLevel) override;
