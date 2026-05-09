@@ -62,22 +62,7 @@ struct FBoneInfo
 	FMatrix InverseBindPose;
 };
 
-class USkeleton
-{
-public:
-	std::vector<FBoneInfo> Bones;
-
-public:
-	int32 GetBoneCount() const;
-	int32 FindBoneIndex(const std::string& BoneName) const;
-
-	const FBoneInfo* GetBoneInfo(int32 BoneIndex) const;
-	int32 GetParentBoneIndex(int32 BoneIndex) const;
-
-	bool IsValidBoneIndex(int32 BoneIndex) const;
-};
-
-struct FSkeletalMeshRenderSection
+struct FSkeletalMeshSection
 {
 	int32 MaterialIndex = 0;
 
@@ -88,11 +73,21 @@ struct FSkeletalMeshRenderSection
 	uint32 VertexCount = 0;
 };
 
-struct FSkeletalMeshLOD
+// Cooked Data
+struct FSkeletalMesh
 {
-	std::vector<FSkeletalMeshVertex> Vertices;
-	std::vector<uint32> Indices;
-	std::vector<FSkinWeight> SkinWeights;
+	FString PathFileName;
+	TArray<FSkeletalMeshVertex> Vertices;
+	TArray<uint32> Indices;
+	TArray<FSkinWeight> SkinWeights;
 
-	std::vector<FSkeletalMeshRenderSection> Sections;
+	TArray<FSkeletalMeshSection> Sections;
+
+	void Serialize(FArchive& Ar)
+	{
+		Ar << PathFileName;
+		Ar << Vertices;
+		Ar << Indices;
+		Ar << Sections;
+	}
 };
