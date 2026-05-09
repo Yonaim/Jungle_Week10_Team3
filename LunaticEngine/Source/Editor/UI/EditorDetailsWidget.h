@@ -35,6 +35,7 @@ private:
 	void PropagatePropertyChange(const FString& PropName, const TArray<AActor*>& SelectedActors);
 
 	static FString OpenObjFileDialog();
+	static FString OpenFbxFileDialog();
 	static FString GetDisplayPropertyLabel(const FString& RawName);
 	static bool DrawColoredFloat2(const char* Label, float Values[3], float Speed, bool bShowReset = false, const float* ResetValues = nullptr);
 	static bool DrawColoredFloat3(const char* Label, float Values[3], float Speed, bool bShowReset = false, const float* ResetValues = nullptr);

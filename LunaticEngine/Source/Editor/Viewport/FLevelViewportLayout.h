@@ -78,6 +78,7 @@ public:
 		Runner,
 		Character,
 		StaticMeshActor,
+		SkeletalMeshActor,
 		WorldText,
 		ScreenText,
 		UIRoot,

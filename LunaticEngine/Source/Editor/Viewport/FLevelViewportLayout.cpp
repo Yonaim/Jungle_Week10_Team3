@@ -35,6 +35,7 @@
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "GameFramework/StaticMeshActor.h"
+#include "GameFramework/SkeletalMeshActor.h"
 
 #include <algorithm>
 #include <string>
@@ -3222,6 +3223,16 @@ AActor* FLevelViewportLayout::SpawnActorFromViewportMenu(EViewportPlaceActorType
 	case EViewportPlaceActorType::StaticMeshActor:
 	{
 		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>();
+		if (Actor)
+		{
+			Actor->InitDefaultComponents();
+			SpawnedActor = Actor;
+		}
+		break;
+	}
+	case EViewportPlaceActorType::SkeletalMeshActor:
+	{
+		ASkeletalMeshActor* Actor = World->SpawnActor<ASkeletalMeshActor>();
 		if (Actor)
 		{
 			Actor->InitDefaultComponents();

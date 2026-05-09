@@ -11,6 +11,7 @@ class FMeshBuffer;
 class FScene;
 class UMaterial;
 struct FFrameContext;
+struct FDrawCommandBuffer;
 
 // ============================================================
 // EPrimitiveProxyFlags — Owner 역참조 없이 프록시 타입/특성 식별
@@ -80,6 +81,12 @@ public:
 	uint32 GetCurrentLOD()         const { return CurrentLOD; }
 	uint32 GetLastLODUpdateFrame() const { return LastLODUpdateFrame; }
 	void   SetLastLODUpdateFrame(uint32 Frame) { LastLODUpdateFrame = Frame; }
+
+	// ================================================================
+	// 버퍼 접근 인터페이스 (Static/Dynamic 구분 없이 동일하게 사용)
+	// ================================================================
+	virtual bool HasValidGeometry() const;
+	virtual void FillDrawCommandBuffer(FDrawCommandBuffer& OutBuffer) const;
 
 	// ================================================================
 	// 가상 갱신 인터페이스 (서브클래스가 오버라이드)

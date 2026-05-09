@@ -1,13 +1,7 @@
-﻿#pragma once
+#pragma once
 #include "Component/MeshComponent.h"
+#include "Mesh/SkeletalMesh.h"
 
-//임시 더미
-class USkeletalMesh {};
-struct FSkeleton {};
-struct FSkeletalMeshVertex {
-	FVector Position;
-	FVector Normal;
-};
 class FPrimitiveSceneProxy;
 
 class USkinnedMeshComponent : public UMeshComponent
@@ -18,7 +12,7 @@ public:
 	USkinnedMeshComponent() = default;
 	~USkinnedMeshComponent() override = default;
 
-	void SetSkeletalMesh(USkeletalMesh* Mesh);
+	virtual void SetSkeletalMesh(USkeletalMesh* Mesh);
 	USkeletalMesh* GetSkeletalMesh() const;
 
 	const TArray<FTransform>& GetBoneSpaceTransforms() const { return BoneSpaceTransforms; }
@@ -29,13 +23,19 @@ public:
 
 	int32 GetBoneCount() const;
 
-	virtual TArray<FSkeletalMeshVertex>* GetCPUSkinnedVertices() { return nullptr; }
+	virtual TArray<FNormalVertex>* GetCPUSkinnedVertices() { return nullptr; }
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 	void UpdateWorldAABB() const override;
 
+	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
+	void PostEditProperty(const char* PropertyName) override;
+	void Serialize(FArchive& Ar) override;
+	void PostDuplicate() override;
+
 protected:
 	USkeletalMesh* SkeletalMesh = nullptr;
+	FString SkeletalMeshPath = "None";
 
 	TArray<FTransform> BoneSpaceTransforms;
 	TArray<FMatrix> ComponentSpaceTransforms;

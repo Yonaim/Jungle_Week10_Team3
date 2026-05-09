@@ -12,16 +12,19 @@ public:
 	void SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform);
 	void SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform);
 
-	TArray<FSkeletalMeshVertex>* GetCPUSkinnedVertices() override { return &SkinBuffer; }
+	TArray<FNormalVertex>* GetCPUSkinnedVertices() override { return &SkinBuffer; }
+
+	void SetSkeletalMesh(USkeletalMesh* Mesh);
 
 	void BeginPlay() override;
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
 
 protected:
+	void InitializeSkeleton();
 	virtual void EvaluatePose(float DeltaTime);
 	void FillComponentSpaceTransforms();
 	void PerformCPUSkinning();
 	void FinalizeBoneTransforms();
 
-	TArray<FSkeletalMeshVertex> SkinBuffer;
+	TArray<FNormalVertex> SkinBuffer;
 };
