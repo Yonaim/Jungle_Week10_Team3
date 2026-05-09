@@ -5,16 +5,70 @@
 #include "Mesh/SkeletalMeshCommon.h"
 #include "Mesh/StaticMeshCommon.h"
 
+#include <algorithm>
+
 #if defined(_WIN64)
 namespace
 {
-	void ConvertMeshNode(const FString& FbxFilePath, FbxNode* Node, FFbxInfo& Context, FSkeletalMesh& OutMesh)
+	using FControlPointVertexMap = std::unordered_map<FbxMesh*, std::unordered_map<int32, TArray<uint32>>>;
+
+	bool IsSkeletonNode(FbxNode* Node)
+	{
+		if (!Node || !Node->GetNodeAttribute())
+		{
+			return false;
+		}
+
+		return Node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton;
+	}
+
+	FMatrix ConvertFbxAMatrixToFMatrix(const FbxAMatrix& Matrix)
+	{
+		const FVector Origin = FFbxCommon::RemapVector(Matrix.MultT(FbxVector4(0.0, 0.0, 0.0, 1.0)));
+		const FVector AxisX = FFbxCommon::RemapVector(Matrix.MultT(FbxVector4(1.0, 0.0, 0.0, 1.0))) - Origin;
+		const FVector AxisY = FFbxCommon::RemapVector(Matrix.MultT(FbxVector4(0.0, 1.0, 0.0, 1.0))) - Origin;
+		const FVector AxisZ = FFbxCommon::RemapVector(Matrix.MultT(FbxVector4(0.0, 0.0, 1.0, 1.0))) - Origin;
+
+		return FMatrix(
+			AxisX.X, AxisX.Y, AxisX.Z, 0.0f,
+			AxisY.X, AxisY.Y, AxisY.Z, 0.0f,
+			AxisZ.X, AxisZ.Y, AxisZ.Z, 0.0f,
+			Origin.X, Origin.Y, Origin.Z, 1.0f);
+	}
+
+	FTransform ConvertFbxAMatrixToFTransform(const FbxAMatrix& Matrix)
+	{
+		const FMatrix EngineMatrix = ConvertFbxAMatrixToFMatrix(Matrix);
+		return FTransform(
+			EngineMatrix.GetLocation(),
+			FQuat::FromMatrix(EngineMatrix),
+			EngineMatrix.GetScale());
+	}
+
+	void AddControlPointVertex(FControlPointVertexMap& ControlPointToVertices, FbxMesh* Mesh, int32 ControlPointIndex, uint32 VertexIndex)
+	{
+		TArray<uint32>& Vertices = ControlPointToVertices[Mesh][ControlPointIndex];
+		if (std::find(Vertices.begin(), Vertices.end(), VertexIndex) == Vertices.end())
+		{
+			Vertices.push_back(VertexIndex);
+		}
+	}
+
+	void ConvertMeshNode(
+		const FString& FbxFilePath,
+		FbxNode* Node,
+		FFbxInfo& Context,
+		FSkeletalMesh& OutMesh,
+		TArray<FbxNode*>& OutMeshNodes,
+		FControlPointVertexMap& ControlPointToVertices)
 	{
 		FbxMesh* Mesh = Node ? Node->GetMesh() : nullptr;
 		if (!Mesh)
 		{
 			return;
 		}
+
+		OutMeshNodes.push_back(Node);
 
 		const char* UVSetName = nullptr;
 		FbxStringList UVSetNames;
@@ -57,6 +111,7 @@ namespace
 				if (It != VertexMap.end())
 				{
 					TriangleIndices[CornerIndex] = It->second;
+					AddControlPointVertex(ControlPointToVertices, Mesh, ControlPointIndex, It->second);
 					continue;
 				}
 
@@ -78,6 +133,7 @@ namespace
 				OutMesh.Vertices.push_back(Vertex);
 				VertexMap.emplace(Key, NewVertexIndex);
 				TriangleIndices[CornerIndex] = NewVertexIndex;
+				AddControlPointVertex(ControlPointToVertices, Mesh, ControlPointIndex, NewVertexIndex);
 			}
 
 			const uint32 FaceStart = static_cast<uint32>(OutMesh.Indices.size());
@@ -88,20 +144,211 @@ namespace
 		}
 	}
 
-	void TraverseNodes(const FString& FbxFilePath, FbxNode* Node, FFbxInfo& Context, FSkeletalMesh& OutMesh)
+	void TraverseNodes(
+		const FString& FbxFilePath,
+		FbxNode* Node,
+		FFbxInfo& Context,
+		FSkeletalMesh& OutMesh,
+		TArray<FbxNode*>& OutMeshNodes,
+		FControlPointVertexMap& ControlPointToVertices)
 	{
 		if (!Node)
 		{
 			return;
 		}
 
-		ConvertMeshNode(FbxFilePath, Node, Context, OutMesh);
+		ConvertMeshNode(FbxFilePath, Node, Context, OutMesh, OutMeshNodes, ControlPointToVertices);
 
 		const int32 ChildCount = Node->GetChildCount();
 		for (int32 ChildIndex = 0; ChildIndex < ChildCount; ++ChildIndex)
 		{
-			TraverseNodes(FbxFilePath, Node->GetChild(ChildIndex), Context, OutMesh);
+			TraverseNodes(FbxFilePath, Node->GetChild(ChildIndex), Context, OutMesh, OutMeshNodes, ControlPointToVertices);
 		}
+	}
+
+	int32 FindOrAddBone(FSkeletalMesh& OutMesh, FbxNode* BoneNode, FbxCluster* Cluster)
+	{
+		if (!BoneNode)
+		{
+			return InvalidBoneIndex;
+		}
+
+		std::string BoneName = BoneNode->GetName();
+
+		// 이미 등록된 뼈인지 확인
+		for (int32 i = 0; i < (int32)OutMesh.Bones.size(); ++i)
+		{
+			if (OutMesh.Bones[i].Name == BoneName) return i;
+		}
+
+		FBoneInfo NewBone;
+		NewBone.Name = BoneName;
+
+		FbxNode* ParentNode = BoneNode->GetParent();
+		if (IsSkeletonNode(ParentNode))
+		{
+			NewBone.ParentIndex = FindOrAddBone(OutMesh, ParentNode, nullptr);
+		}
+		else
+		{
+			NewBone.ParentIndex = InvalidBoneIndex;
+		}
+
+		NewBone.LocalBindTransform = ConvertFbxAMatrixToFTransform(BoneNode->EvaluateLocalTransform());
+
+		if (Cluster)
+		{
+			FbxAMatrix TransformMatrix;      // 메쉬가 바인드 될 때의 월드 행렬
+			FbxAMatrix TransformLinkMatrix;  // 뼈의 바인드 시점 월드 행렬
+
+			Cluster->GetTransformMatrix(TransformMatrix);
+			Cluster->GetTransformLinkMatrix(TransformLinkMatrix);
+
+			// Inverse Bind Pose = (BoneWorldMatrix)^-1 * MeshWorldMatrix
+			FbxAMatrix BindPoseInverse = TransformLinkMatrix.Inverse() * TransformMatrix;
+			NewBone.InverseBindPose = ConvertFbxAMatrixToFMatrix(BindPoseInverse);
+		}
+		else
+		{
+			NewBone.InverseBindPose = ConvertFbxAMatrixToFMatrix(BoneNode->EvaluateGlobalTransform().Inverse());
+		}
+
+		OutMesh.Bones.push_back(NewBone);
+		return static_cast<int32>(OutMesh.Bones.size() - 1);
+	}
+
+	void AddBoneInfluence(FSkinWeight& SkinWeight, int32 BoneIndex, float Weight)
+	{
+		if (Weight <= 0.0f || BoneIndex == InvalidBoneIndex)
+		{
+			return;
+		}
+
+		for (int32 InfluenceIndex = 0; InfluenceIndex < MaxBoneInfluences; ++InfluenceIndex)
+		{
+			if (SkinWeight.BoneIndices[InfluenceIndex] == BoneIndex)
+			{
+				SkinWeight.BoneWeights[InfluenceIndex] += Weight;
+				return;
+			}
+		}
+
+		for (int32 InfluenceIndex = 0; InfluenceIndex < MaxBoneInfluences; ++InfluenceIndex)
+		{
+			if (SkinWeight.BoneIndices[InfluenceIndex] == InvalidBoneIndex)
+			{
+				SkinWeight.BoneIndices[InfluenceIndex] = BoneIndex;
+				SkinWeight.BoneWeights[InfluenceIndex] = Weight;
+				return;
+			}
+		}
+
+		int32 SmallestInfluenceIndex = 0;
+		for (int32 InfluenceIndex = 1; InfluenceIndex < MaxBoneInfluences; ++InfluenceIndex)
+		{
+			if (SkinWeight.BoneWeights[InfluenceIndex] < SkinWeight.BoneWeights[SmallestInfluenceIndex])
+			{
+				SmallestInfluenceIndex = InfluenceIndex;
+			}
+		}
+
+		if (Weight > SkinWeight.BoneWeights[SmallestInfluenceIndex])
+		{
+			SkinWeight.BoneIndices[SmallestInfluenceIndex] = BoneIndex;
+			SkinWeight.BoneWeights[SmallestInfluenceIndex] = Weight;
+		}
+	}
+
+	void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
+	{
+		for (FSkinWeight& SkinWeight : OutMesh.SkinWeights)
+		{
+			float TotalWeight = 0.0f;
+			for (int32 InfluenceIndex = 0; InfluenceIndex < MaxBoneInfluences; ++InfluenceIndex)
+			{
+				TotalWeight += SkinWeight.BoneWeights[InfluenceIndex];
+			}
+
+			if (TotalWeight <= 0.0f)
+			{
+				continue;
+			}
+
+			const float InvTotalWeight = 1.0f / TotalWeight;
+			for (int32 InfluenceIndex = 0; InfluenceIndex < MaxBoneInfluences; ++InfluenceIndex)
+			{
+				SkinWeight.BoneWeights[InfluenceIndex] *= InvTotalWeight;
+			}
+		}
+	}
+
+	void FillSkinWeights(FFbxInfo& Context, TArray<FbxNode*>& MeshNodes, const FControlPointVertexMap& ControlPointToVertices, FSkeletalMesh& OutMesh)
+	{
+		(void)Context;
+		OutMesh.SkinWeights.resize(OutMesh.Vertices.size());
+
+		for (FbxNode* Node : MeshNodes)
+		{
+			FbxMesh* Mesh = Node->GetMesh();
+			if (!Mesh)
+			{
+				continue;
+			}
+
+			auto MeshMapIt = ControlPointToVertices.find(Mesh);
+			if (MeshMapIt == ControlPointToVertices.end())
+			{
+				continue;
+			}
+
+			int DeformerCount = Mesh->GetDeformerCount(FbxDeformer::eSkin);
+
+			for (int DeformerIndex = 0; DeformerIndex < DeformerCount; ++DeformerIndex)
+			{
+				FbxSkin* Skin = (FbxSkin*)Mesh->GetDeformer(DeformerIndex, FbxDeformer::eSkin);
+				int ClusterCount = Skin->GetClusterCount();
+
+				for (int ClusterIndex = 0; ClusterIndex < ClusterCount; ++ClusterIndex)
+				{
+					FbxCluster* Cluster = Skin->GetCluster(ClusterIndex);
+					FbxNode* BoneNode = Cluster->GetLink();
+					if (!BoneNode) continue;
+
+					// 2. Bone 리스트에 추가 (또는 기존 인덱스 찾기)
+					int32 BoneIndex = FindOrAddBone(OutMesh, BoneNode, Cluster);
+
+					// 3. 이 뼈가 영향을 주는 점들(Control Points) 순회
+					int CPCount = Cluster->GetControlPointIndicesCount();
+					int* CPIndices = Cluster->GetControlPointIndices();
+					double* CPWeights = Cluster->GetControlPointWeights();
+
+					for (int i = 0; i < CPCount; ++i)
+					{
+						int32 ControlPointIndex = CPIndices[i];
+						float Weight = static_cast<float>(CPWeights[i]);
+						if (Weight <= 0.0f)
+						{
+							continue;
+						}
+
+						// 4. 매핑 데이터를 이용해 이 CP를 사용하는 모든 엔진 정점에 가중치 배달
+						auto VertexListIt = MeshMapIt->second.find(ControlPointIndex);
+						if (VertexListIt != MeshMapIt->second.end())
+						{
+							for (uint32 VertexIndex : VertexListIt->second)
+							{
+								if (VertexIndex < OutMesh.SkinWeights.size())
+								{
+									AddBoneInfluence(OutMesh.SkinWeights[VertexIndex], BoneIndex, Weight);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		NormalizeSkinWeights(OutMesh);
 	}
 
 	void BuildSections(FSkeletalMesh& OutMesh, const TArray<FStaticMaterial>& OutMaterials, const TArray<TArray<uint32>>& FacesPerMaterial)
@@ -118,11 +365,12 @@ namespace
 				continue;
 			}
 
-			FStaticMeshSection Section;
+			FSkeletalMeshSection Section;
 			Section.MaterialIndex = static_cast<int32>(MaterialIndex);
-			Section.MaterialSlotName = OutMaterials[MaterialIndex].MaterialSlotName;
-			Section.FirstIndex = static_cast<uint32>(OutMesh.Indices.size());
-			Section.NumTriangles = static_cast<uint32>(FaceStarts.size());
+			Section.IndexStart = static_cast<uint32>(OutMesh.Indices.size());
+			Section.IndexCount = static_cast<uint32>(FaceStarts.size() * 3);
+			Section.VertexStart = 0;
+			Section.VertexCount = static_cast<uint32>(OutMesh.Vertices.size());
 
 			for (uint32 FaceStart : FaceStarts)
 			{
@@ -131,7 +379,7 @@ namespace
 				OutMesh.Indices.push_back(OldIndices[FaceStart + 2]);
 			}
 
-			//OutMesh.Sections.push_back(Section);
+			OutMesh.Sections.push_back(Section);
 		}
 	}
 
@@ -194,8 +442,15 @@ namespace
 		OutMesh = FSkeletalMesh();
 		OutMaterials.clear();
 
-		TraverseNodes(FbxFilePath, Context.Scene ? Context.Scene->GetRootNode() : nullptr, Context, OutMesh);
+		// 1. Vertex, Index Data
+		TArray<FbxNode*> FoundMeshNodes;	// Mesh Node 미리 캐싱
+		FControlPointVertexMap ControlPointToVertices;
+		TraverseNodes(FbxFilePath, Context.Scene ? Context.Scene->GetRootNode() : nullptr, Context, OutMesh, FoundMeshNodes, ControlPointToVertices);
 
+		// 2. Skin Weights, Bone Data
+		FillSkinWeights(Context, FoundMeshNodes, ControlPointToVertices, OutMesh);
+
+		// 3. Materials & Sections
 		if (Context.Materials.empty() && !OutMesh.Indices.empty())
 		{
 			FFbxMaterialInfo DefaultMaterial;

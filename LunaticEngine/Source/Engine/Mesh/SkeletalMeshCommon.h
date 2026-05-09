@@ -21,6 +21,29 @@
 constexpr int32 MaxBoneInfluences = 4;
 constexpr int32 InvalidBoneIndex = -1;
 
+inline FArchive& SerializeSkeletalTransform(FArchive& Ar, FTransform& Transform)
+{
+	Ar << Transform.Location;
+	Ar << Transform.Rotation.X;
+	Ar << Transform.Rotation.Y;
+	Ar << Transform.Rotation.Z;
+	Ar << Transform.Rotation.W;
+	Ar << Transform.Scale;
+	return Ar;
+}
+
+inline FArchive& SerializeSkeletalMatrix(FArchive& Ar, FMatrix& Matrix)
+{
+	for (int32 Row = 0; Row < 4; ++Row)
+	{
+		for (int32 Column = 0; Column < 4; ++Column)
+		{
+			Ar << Matrix.M[Row][Column];
+		}
+	}
+	return Ar;
+}
+
 struct FSkinWeight
 {
 	int32 BoneIndices[MaxBoneInfluences] =
@@ -53,6 +76,15 @@ struct FBoneInfo
 	// Bind Pose에서 Mesh Space 기준 Inverse Matrix
 	// SkinningMatrix = CurrentBoneMatrix * InverseBindPose
 	FMatrix InverseBindPose;
+
+	friend FArchive& operator<<(FArchive& Ar, FBoneInfo& Bone)
+	{
+		Ar << Bone.Name;
+		Ar << Bone.ParentIndex;
+		SerializeSkeletalTransform(Ar, Bone.LocalBindTransform);
+		SerializeSkeletalMatrix(Ar, Bone.InverseBindPose);
+		return Ar;
+	}
 };
 
 struct FSkeletalMeshSection
@@ -73,6 +105,7 @@ struct FSkeletalMesh
 	TArray<FNormalVertex> Vertices;
 	TArray<uint32> Indices;
 	TArray<FSkinWeight> SkinWeights;
+	TArray<FBoneInfo> Bones;
 
 	TArray<FSkeletalMeshSection> Sections;
 
@@ -81,6 +114,8 @@ struct FSkeletalMesh
 		Ar << PathFileName;
 		Ar << Vertices;
 		Ar << Indices;
+		Ar << SkinWeights;
+		Ar << Bones;
 		Ar << Sections;
 	}
 };
