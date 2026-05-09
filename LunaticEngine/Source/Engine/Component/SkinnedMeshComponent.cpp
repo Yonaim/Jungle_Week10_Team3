@@ -1,5 +1,8 @@
-﻿#include "SkinnedMeshComponent.h"
+#include "SkinnedMeshComponent.h"
 #include "SkeletalMeshProxy.h"
+#include "Mesh/ObjManager.h"
+#include "Engine/Runtime/Engine.h"
+#include "Serialization/Archive.h"
 #include <algorithm>
 
 IMPLEMENT_CLASS(USkinnedMeshComponent, UMeshComponent)
@@ -7,6 +10,16 @@ IMPLEMENT_CLASS(USkinnedMeshComponent, UMeshComponent)
 void USkinnedMeshComponent::SetSkeletalMesh(USkeletalMesh* Mesh)
 {
 	SkeletalMesh = Mesh;
+	if (Mesh && Mesh->GetSkeletalMeshAsset())
+	{
+		SkeletalMeshPath = Mesh->GetSkeletalMeshAsset()->PathFileName;
+	}
+	else
+	{
+		SkeletalMeshPath = "None";
+	}
+	MarkRenderStateDirty();
+	MarkWorldBoundsDirty();
 }
 
 USkeletalMesh* USkinnedMeshComponent::GetSkeletalMesh() const
@@ -29,7 +42,6 @@ FTransform USkinnedMeshComponent::GetBoneWorldTransform(int32 BoneIndex) const
 
 FTransform USkinnedMeshComponent::GetBoneWorldTransformByName(const FString& BoneName) const
 {
-	// Skeleton이 bone name->index 매핑을 제공하면
 	return FTransform();
 }
 
@@ -82,5 +94,47 @@ void USkinnedMeshComponent::UpdateWorldAABB() const
 
 void USkinnedMeshComponent::InitBoneTransform()
 {
+}
 
+void USkinnedMeshComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
+{
+	UPrimitiveComponent::GetEditableProperties(OutProps);
+	OutProps.push_back({ "Skeletal Mesh", EPropertyType::SkeletalMeshRef, &SkeletalMeshPath });
+}
+
+void USkinnedMeshComponent::PostEditProperty(const char* PropertyName)
+{
+	UPrimitiveComponent::PostEditProperty(PropertyName);
+
+	if (strcmp(PropertyName, "Skeletal Mesh") == 0)
+	{
+		if (SkeletalMeshPath.empty() || SkeletalMeshPath == "None")
+		{
+			SetSkeletalMesh(nullptr);
+		}
+		else
+		{
+			ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+			USkeletalMesh* Loaded = FObjManager::LoadObjSkeletalMesh(SkeletalMeshPath, Device);
+			SetSkeletalMesh(Loaded);
+		}
+	}
+}
+
+void USkinnedMeshComponent::Serialize(FArchive& Ar)
+{
+	UMeshComponent::Serialize(Ar);
+	Ar << SkeletalMeshPath;
+}
+
+void USkinnedMeshComponent::PostDuplicate()
+{
+	UMeshComponent::PostDuplicate();
+
+	if (!SkeletalMeshPath.empty() && SkeletalMeshPath != "None")
+	{
+		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+		USkeletalMesh* Loaded = FObjManager::LoadObjSkeletalMesh(SkeletalMeshPath, Device);
+		SetSkeletalMesh(Loaded);
+	}
 }

@@ -108,6 +108,7 @@ namespace
 		{ "Runner", "runner player pawn pod basic", "Editor.Icon.Pawn", EPlaceType::Runner, ECategory::Basic },
 		{ "Character", "character actor basic", "Editor.Icon.Character", EPlaceType::Character, ECategory::Basic },
 		{ "Static Mesh", "static mesh actor mesh basic", "Editor.Icon.StaticMeshActor", EPlaceType::StaticMeshActor, ECategory::Basic },
+		{ "Skeletal Mesh", "skeletal mesh actor skeleton animation", "Editor.Icon.Character", EPlaceType::SkeletalMeshActor, ECategory::Basic },
 		{ "Ambient Light", "ambient light", "Editor.Icon.AmbientLight", EPlaceType::AmbientLight, ECategory::Lights },
 		{ "Directional Light", "directional light sun", "Editor.Icon.DirectionalLight", EPlaceType::DirectionalLight, ECategory::Lights },
 		{ "Point Light", "point light bulb", "Editor.Icon.PointLight", EPlaceType::PointLight, ECategory::Lights },

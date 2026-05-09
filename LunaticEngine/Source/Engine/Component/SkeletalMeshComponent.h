@@ -14,10 +14,13 @@ public:
 
 	TArray<FNormalVertex>* GetCPUSkinnedVertices() override { return &SkinBuffer; }
 
+	void SetSkeletalMesh(USkeletalMesh* Mesh);
+
 	void BeginPlay() override;
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;
 
 protected:
+	void InitializeSkeleton();
 	virtual void EvaluatePose(float DeltaTime);
 	void FillComponentSpaceTransforms();
 	void PerformCPUSkinning();

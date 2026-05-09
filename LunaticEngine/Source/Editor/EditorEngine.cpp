@@ -202,6 +202,7 @@ void UEditorEngine::Init(FWindowsWindow* InWindow)
 	{
 		SCOPE_STARTUP_STAT("ObjManager::ScanMeshAssets");
 		FObjManager::ScanMeshAssets();
+		FObjManager::ScanObjSourceFiles();
 	}
 
 	{

@@ -1,10 +1,12 @@
-#include "SkeletalMeshProxy.h"
+﻿#include "SkeletalMeshProxy.h"
 #include "Component/SkinnedMeshComponent.h"
+#include "Mesh/SkeletalMesh.h"
 #include "Mesh/StaticMeshCommon.h"
 #include "Render/Types/FrameContext.h"
 #include "Render/Command/DrawCommand.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialManager.h"
 #include "Engine/Runtime/Engine.h"
 
 FSkeletalMeshProxy::FSkeletalMeshProxy(USkinnedMeshComponent* InComponent)
@@ -44,11 +46,27 @@ void FSkeletalMeshProxy::UpdateMesh()
 	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
 	if (!Device) return;
 
+	USkinnedMeshComponent* Comp = GetSkinnedMeshComponent();
+	USkeletalMesh* SkelMesh = Comp ? Comp->GetSkeletalMesh() : nullptr;
+	FSkeletalMesh* Asset = SkelMesh ? SkelMesh->GetSkeletalMeshAsset() : nullptr;
+
 	for (uint32 lod = 0; lod < LODCount; ++lod)
 	{
 		FSkeletalLODDrawData& LOD = LODData[lod];
+
 		if (LOD.DynamicVB.GetBuffer() == nullptr)
-			LOD.DynamicVB.Create(Device, 256, sizeof(FNormalVertex));
+		{
+			uint32 InitialCount = Asset ? (uint32)Asset->Vertices.size() : 256;
+			LOD.DynamicVB.Create(Device, InitialCount, sizeof(FNormalVertex));
+		}
+
+		if (Asset && !Asset->Indices.empty() && LOD.StaticIB.GetBuffer() == nullptr)
+		{
+			uint32 IdxCount = (uint32)Asset->Indices.size();
+			LOD.StaticIB.Create(Device, Asset->Indices.data(), IdxCount, IdxCount * sizeof(uint32));
+			LOD.IndexCount  = IdxCount;
+			LOD.VertexCount = (uint32)Asset->Vertices.size();
+		}
 	}
 
 	RebuildSectionDraws();
@@ -83,20 +101,43 @@ void FSkeletalMeshProxy::UpdatePerViewport(const FFrameContext& Frame)
 
 void FSkeletalMeshProxy::RebuildSectionDraws()
 {
-	if (!DefaultMaterial)
-	{
-		DefaultMaterial = UMaterial::CreateTransient(
-			ERenderPass::Opaque,
-			EBlendState::Opaque,
-			EDepthStencilState::Default,
-			ERasterizerState::SolidBackCull,
-			FShaderManager::Get().GetOrCreate(EShaderPath::UberLit));
-	}
+	USkinnedMeshComponent* Comp = GetSkinnedMeshComponent();
+	USkeletalMesh* SkelMesh = Comp ? Comp->GetSkeletalMesh() : nullptr;
+	FSkeletalMesh* Asset = SkelMesh ? SkelMesh->GetSkeletalMeshAsset() : nullptr;
 
 	SectionDraws.clear();
-	if (!DefaultMaterial) return;
 
-	const FSkeletalLODDrawData& LOD = LODData[CurrentLOD];
-	uint32 DrawCount = LOD.IndexCount > 0 ? LOD.IndexCount : LOD.VertexCount;
-	SectionDraws.push_back({ DefaultMaterial, 0, DrawCount });
+	if (!Asset || Asset->Sections.empty())
+	{
+		if (!DefaultMaterial)
+		{
+			DefaultMaterial = UMaterial::CreateTransient(
+				ERenderPass::Opaque,
+				EBlendState::Opaque,
+				EDepthStencilState::Default,
+				ERasterizerState::SolidBackCull,
+				FShaderManager::Get().GetOrCreate(EShaderPath::UberLit));
+		}
+		if (!DefaultMaterial) return;
+
+		const FSkeletalLODDrawData& LOD = LODData[CurrentLOD];
+		uint32 DrawCount = LOD.IndexCount > 0 ? LOD.IndexCount : LOD.VertexCount;
+		SectionDraws.push_back({ DefaultMaterial, 0, DrawCount });
+		return;
+	}
+
+	const TArray<FStaticMaterial>& Slots = SkelMesh->GetStaticMaterials();
+
+	for (const FSkeletalMeshSection& Section : Asset->Sections)
+	{
+		UMaterial* Mat = nullptr;
+
+		if (Section.MaterialIndex >= 0 && Section.MaterialIndex < (int32)Slots.size())
+			Mat = Slots[Section.MaterialIndex].MaterialInterface;
+
+		if (!Mat)
+			Mat = FMaterialManager::Get().GetOrCreateMaterial("None");
+
+		SectionDraws.push_back({ Mat, Section.IndexStart, Section.IndexCount });
+	}
 }
