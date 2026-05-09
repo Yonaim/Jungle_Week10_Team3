@@ -45,6 +45,57 @@ namespace
 			EngineMatrix.GetScale());
 	}
 
+	FMatrix GetBoneBindGlobalMatrix(FbxNode* BoneNode, FbxCluster* Cluster)
+	{
+		if (Cluster)
+		{
+			FbxAMatrix TransformLinkMatrix;
+			Cluster->GetTransformLinkMatrix(TransformLinkMatrix);
+			return ConvertFbxAMatrixToFMatrix(TransformLinkMatrix);
+		}
+
+		return ConvertFbxAMatrixToFMatrix(BoneNode->EvaluateGlobalTransform());
+	}
+
+	FTransform MakeTransformFromMatrix(const FMatrix& Matrix)
+	{
+		return FTransform(
+			Matrix.GetLocation(),
+			Matrix.ToQuat(),
+			Matrix.GetScale());
+	}
+
+	void ApplyBoneBindGlobal(FBoneInfo& Bone, const FMatrix& BindGlobalMatrix)
+	{
+		Bone.InverseBindPose = BindGlobalMatrix.GetInverse();
+		Bone.LocalBindTransform = MakeTransformFromMatrix(BindGlobalMatrix);
+	}
+
+	void RebuildLocalBindTransforms(FSkeletalMesh& OutMesh, const TArray<FMatrix>& BindGlobalMatrices)
+	{
+		for (int32 BoneIndex = 0; BoneIndex < static_cast<int32>(OutMesh.Bones.size()); ++BoneIndex)
+		{
+			if (BoneIndex >= static_cast<int32>(BindGlobalMatrices.size()))
+			{
+				continue;
+			}
+
+			FBoneInfo& Bone = OutMesh.Bones[BoneIndex];
+			const FMatrix& BindGlobalMatrix = BindGlobalMatrices[BoneIndex];
+			Bone.InverseBindPose = BindGlobalMatrix.GetInverse();
+
+			if (Bone.ParentIndex != InvalidBoneIndex && Bone.ParentIndex < static_cast<int32>(BindGlobalMatrices.size()))
+			{
+				const FMatrix LocalBindMatrix = BindGlobalMatrix * BindGlobalMatrices[Bone.ParentIndex].GetInverse();
+				Bone.LocalBindTransform = MakeTransformFromMatrix(LocalBindMatrix);
+			}
+			else
+			{
+				Bone.LocalBindTransform = MakeTransformFromMatrix(BindGlobalMatrix);
+			}
+		}
+	}
+
 	void AddControlPointVertex(FControlPointVertexMap& ControlPointToVertices, FbxMesh* Mesh, int32 ControlPointIndex, uint32 VertexIndex)
 	{
 		TArray<uint32>& Vertices = ControlPointToVertices[Mesh][ControlPointIndex];
@@ -166,7 +217,7 @@ namespace
 		}
 	}
 
-	int32 FindOrAddBone(FSkeletalMesh& OutMesh, FbxNode* BoneNode, FbxCluster* Cluster)
+	int32 FindOrAddBone(FSkeletalMesh& OutMesh, FbxNode* BoneNode, FbxCluster* Cluster, TArray<FMatrix>& BindGlobalMatrices)
 	{
 		if (!BoneNode)
 		{
@@ -178,7 +229,19 @@ namespace
 		// 이미 등록된 뼈인지 확인
 		for (int32 i = 0; i < (int32)OutMesh.Bones.size(); ++i)
 		{
-			if (OutMesh.Bones[i].Name == BoneName) return i;
+			if (OutMesh.Bones[i].Name == BoneName)
+			{
+				if (Cluster)
+				{
+					const FMatrix BindGlobalMatrix = GetBoneBindGlobalMatrix(BoneNode, Cluster);
+					ApplyBoneBindGlobal(OutMesh.Bones[i], BindGlobalMatrix);
+					if (i < static_cast<int32>(BindGlobalMatrices.size()))
+					{
+						BindGlobalMatrices[i] = BindGlobalMatrix;
+					}
+				}
+				return i;
+			}
 		}
 
 		FBoneInfo NewBone;
@@ -187,33 +250,18 @@ namespace
 		FbxNode* ParentNode = BoneNode->GetParent();
 		if (IsSkeletonNode(ParentNode))
 		{
-			NewBone.ParentIndex = FindOrAddBone(OutMesh, ParentNode, nullptr);
+			NewBone.ParentIndex = FindOrAddBone(OutMesh, ParentNode, nullptr, BindGlobalMatrices);
 		}
 		else
 		{
 			NewBone.ParentIndex = InvalidBoneIndex;
 		}
 
-		NewBone.LocalBindTransform = ConvertFbxAMatrixToFTransform(BoneNode->EvaluateLocalTransform());
-
-		if (Cluster)
-		{
-			FbxAMatrix TransformMatrix;      // 메쉬가 바인드 될 때의 월드 행렬
-			FbxAMatrix TransformLinkMatrix;  // 뼈의 바인드 시점 월드 행렬
-
-			Cluster->GetTransformMatrix(TransformMatrix);
-			Cluster->GetTransformLinkMatrix(TransformLinkMatrix);
-
-			// Inverse Bind Pose = (BoneWorldMatrix)^-1 * MeshWorldMatrix
-			FbxAMatrix BindPoseInverse = TransformLinkMatrix.Inverse() * TransformMatrix;
-			NewBone.InverseBindPose = ConvertFbxAMatrixToFMatrix(BindPoseInverse);
-		}
-		else
-		{
-			NewBone.InverseBindPose = ConvertFbxAMatrixToFMatrix(BoneNode->EvaluateGlobalTransform().Inverse());
-		}
+		const FMatrix BindGlobalMatrix = GetBoneBindGlobalMatrix(BoneNode, Cluster);
+		ApplyBoneBindGlobal(NewBone, BindGlobalMatrix);
 
 		OutMesh.Bones.push_back(NewBone);
+		BindGlobalMatrices.push_back(BindGlobalMatrix);
 		return static_cast<int32>(OutMesh.Bones.size() - 1);
 	}
 
@@ -286,6 +334,7 @@ namespace
 	{
 		(void)Context;
 		OutMesh.SkinWeights.resize(OutMesh.Vertices.size());
+		TArray<FMatrix> BindGlobalMatrices;
 
 		for (FbxNode* Node : MeshNodes)
 		{
@@ -315,7 +364,7 @@ namespace
 					if (!BoneNode) continue;
 
 					// 2. Bone 리스트에 추가 (또는 기존 인덱스 찾기)
-					int32 BoneIndex = FindOrAddBone(OutMesh, BoneNode, Cluster);
+					int32 BoneIndex = FindOrAddBone(OutMesh, BoneNode, Cluster, BindGlobalMatrices);
 
 					// 3. 이 뼈가 영향을 주는 점들(Control Points) 순회
 					int CPCount = Cluster->GetControlPointIndicesCount();
@@ -348,6 +397,7 @@ namespace
 			}
 		}
 
+		RebuildLocalBindTransforms(OutMesh, BindGlobalMatrices);
 		NormalizeSkinWeights(OutMesh);
 	}
 
