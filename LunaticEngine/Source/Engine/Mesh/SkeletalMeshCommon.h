@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Core/CoreTypes.h"
+#include "Mesh/StaticMeshCommon.h"
 #include "Math/Transform.h"
 #include "Math/Vector.h"
 
@@ -19,14 +20,6 @@
 
 constexpr int32 MaxBoneInfluences = 4;
 constexpr int32 InvalidBoneIndex = -1;
-
-struct FSkeletalMeshVertex
-{
-	FVector Position;
-	FVector Normal;
-	FVector Tangent;
-	FVector2 UV;
-};
 
 struct FSkinWeight
 {
@@ -77,7 +70,7 @@ struct FSkeletalMeshSection
 struct FSkeletalMesh
 {
 	FString PathFileName;
-	TArray<FSkeletalMeshVertex> Vertices;
+	TArray<FNormalVertex> Vertices;
 	TArray<uint32> Indices;
 	TArray<FSkinWeight> SkinWeights;
 

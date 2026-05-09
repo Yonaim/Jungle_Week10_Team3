@@ -1,5 +1,6 @@
 ﻿#include "Mesh/ObjManager.h"
 #include "Mesh/StaticMesh.h"
+#include "Mesh/SkeletalMesh.h"
 #include "Mesh/ObjImporter.h"
 #include "Mesh/FbxImporter.h"
 #include "Materials/Material.h"
@@ -11,6 +12,7 @@
 #include <algorithm>
 
 TMap<FString, UStaticMesh*> FObjManager::StaticMeshCache;
+TMap<FString, USkeletalMesh*> FObjManager::SkeletalMeshCache;
 TArray<FMeshAssetListItem> FObjManager::AvailableMeshFiles;
 TArray<FMeshAssetListItem> FObjManager::AvailableObjFiles;
 
@@ -156,6 +158,51 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, const F
 	return StaticMesh;
 }
 
+USkeletalMesh* FObjManager::LoadObjSkeletalMesh(const std::string& PathFileName, ID3D11Device* InDevice)
+{
+	FString CacheKey = GetBinaryFilePath(PathFileName);
+
+	// BinPath 기반 캐시 확인
+	auto It = SkeletalMeshCache.find(CacheKey);
+	if (It != SkeletalMeshCache.end())
+	{
+		return It->second;
+	}
+
+	// USkeletalMesh 생성 + FSkeletalMesh 소유권 이전 + 머티리얼 설정
+	USkeletalMesh* SkeletalMesh = UObjectManager::Get().CreateObject<USkeletalMesh>();
+
+	FString BinPath = CacheKey;
+	bool bNeedRebuild = true;
+	FString ObjPath = PathFileName;
+	const std::filesystem::path RequestedPathW(FPaths::ToWide(PathFileName));
+	std::wstring RequestedExt = RequestedPathW.extension().wstring();
+	std::transform(RequestedExt.begin(), RequestedExt.end(), RequestedExt.begin(), ::towlower);
+
+	// TODO: Bin 파일 먼저 읽기
+
+	// Import
+	FSkeletalMesh* NewMeshAsset = new FSkeletalMesh();
+	TArray<FStaticMaterial> ParsedMaterials;
+
+	if (RequestedExt == L".fbx")
+	{
+		if (!FFbxSkeletalMeshImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials))
+		{
+			delete NewMeshAsset;
+			return nullptr;
+		}
+	}
+	else
+	{
+		delete NewMeshAsset;
+		return nullptr;
+	}
+
+	delete NewMeshAsset;
+	return nullptr;
+}
+
 UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11Device* InDevice)
 {
 	FString CacheKey = GetBinaryFilePath(PathFileName);
@@ -233,7 +280,7 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11D
 		TArray<FStaticMaterial> ParsedMaterials;
 
 		const bool bImported = RequestedExt == L".fbx"
-			? FFbxImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials)
+			? FFbxStaticMeshImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials)
 			: FObjImporter::Import(ObjPath, *NewMeshAsset, ParsedMaterials);
 
 		if (bImported)
