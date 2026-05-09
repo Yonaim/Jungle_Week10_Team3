@@ -4,6 +4,7 @@
 #include "Render/Shader/ShaderManager.h"
 #include "Materials/Material.h"
 #include "Object/ObjectFactory.h"
+#include "Render/Command/DrawCommand.h"
 
 // ============================================================
 // FPrimitiveSceneProxy — 기본 구현
@@ -22,6 +23,19 @@ FPrimitiveSceneProxy::~FPrimitiveSceneProxy()
 		UObjectManager::Get().DestroyObject(DefaultMaterial);
 		DefaultMaterial = nullptr;
 	}
+}
+
+bool FPrimitiveSceneProxy::HasValidGeometry() const
+{
+	return MeshBuffer && MeshBuffer->IsValid();
+}
+
+void FPrimitiveSceneProxy::FillDrawCommandBuffer(FDrawCommandBuffer& OutBuffer) const
+{
+	OutBuffer.VB         = MeshBuffer->GetVertexBuffer().GetBuffer();
+	OutBuffer.VBStride   = MeshBuffer->GetVertexBuffer().GetStride();
+	OutBuffer.IB         = MeshBuffer->GetIndexBuffer().GetBuffer();
+	OutBuffer.IndexCount = MeshBuffer->GetIndexBuffer().GetIndexCount();
 }
 
 ERenderPass FPrimitiveSceneProxy::GetRenderPass() const

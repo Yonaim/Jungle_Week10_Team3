@@ -4,15 +4,18 @@ IMPLEMENT_CLASS(USkinnedMeshComponent, UMeshComponent)
 
 void USkinnedMeshComponent::SetSkeletalMesh(USkeletalMesh* Mesh)
 {
+	SkeletalMesh = Mesh;
 }
 
 USkeletalMesh* USkinnedMeshComponent::GetSkeletalMesh() const
 {
-	return nullptr;
+	return SkeletalMesh;
 }
 
 FTransform USkinnedMeshComponent::GetBoneWorldTransform(int32 BoneIndex) const
 {
+
+
 	return FTransform();
 }
 
