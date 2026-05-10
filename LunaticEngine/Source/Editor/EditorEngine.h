@@ -8,8 +8,8 @@
 #include "LevelEditor/History/SceneHistoryTypes.h"
 #include "LevelEditor/History/LevelEditorHistoryManager.h"
 #include "LevelEditor/LevelEditor.h"
+#include "LevelEditor/PIE/LevelPIETypes.h"
 #include "MainFrame/EditorMainFrame.h"
-#include "PIE/PIETypes.h"
 #include "Scene/EditorSceneManager.h"
 #include "Settings/EditorSettings.h"
 #include <optional>
@@ -139,30 +139,22 @@ class UEditorEngine : public UEngine
     const FOverlayStatSystem &GetOverlayStatSystem() const { return LevelEditor.GetOverlayStatSystem(); }
 
     // --- PIE (Play In Editor) ---
-    // UE의 FRequestPlaySessionParams 대응. 요청은 단일 슬롯에 저장되고
-    // 다음 Tick에서 StartQueuedPlaySessionRequest가 실제 StartPIE를 수행한다.
     void RequestPlaySession(const FRequestPlaySessionParams &InParams);
     void CancelRequestPlaySession();
-    bool HasPlaySessionRequest() const { return PlaySessionRequest.has_value(); }
+    bool HasPlaySessionRequest() const { return LevelEditor.GetPIEManager().HasPlaySessionRequest(); }
 
     void RequestEndPlayMap();
-    bool IsPlayingInEditor() const { return PlayInEditorSessionInfo.has_value(); }
-    enum class EPIEControlMode : uint8
-    {
-        Possessed,
-        Ejected
-    };
-    EPIEControlMode GetPIEControlMode() const { return PIEControlMode; }
-    bool            IsPIEPossessedMode() const { return IsPlayingInEditor() && PIEControlMode == EPIEControlMode::Possessed; }
-    bool            IsPIEEjectedMode() const { return IsPlayingInEditor() && PIEControlMode == EPIEControlMode::Ejected; }
+    bool IsPlayingInEditor() const { return LevelEditor.GetPIEManager().IsPlayingInEditor(); }
+    EPIEControlMode GetPIEControlMode() const { return LevelEditor.GetPIEManager().GetPIEControlMode(); }
+    bool            IsPIEPossessedMode() const { return LevelEditor.GetPIEManager().IsPIEPossessedMode(); }
+    bool            IsPIEEjectedMode() const { return LevelEditor.GetPIEManager().IsPIEEjectedMode(); }
     bool            TogglePIEControlMode();
 
     // 즉시 동기 종료 — Save / NewScene / Load 등 에디터 월드를 만지는 작업 직전에 호출.
     // PIE 중이 아니면 no-op.
     void StopPlayInEditorImmediate()
     {
-        if (IsPlayingInEditor())
-            EndPlayMap();
+        LevelEditor.GetPIEManager().StopPlayInEditorImmediate();
     }
 
     bool OpenAssetFromPath(const std::filesystem::path &AssetPath)
@@ -175,14 +167,8 @@ class UEditorEngine : public UEngine
   private:
     friend class FEditorSceneManager;
     friend class FLevelEditorHistoryManager;
+    friend class FLevelPIEManager;
 
-    // Tick 내에서 호출 — 큐에 요청이 있으면 StartPlayInEditorSession 실행
-    void              StartQueuedPlaySessionRequest();
-    void              StartPlayInEditorSession(const FRequestPlaySessionParams &Params);
-    void              EndPlayMap();
-    bool              EnterPIEPossessedMode();
-    bool              EnterPIEEjectedMode();
-    void              SyncGameViewportPIEControlState(bool bPossessedMode);
     UCameraComponent *FindSceneViewportCamera() const;
     void              RestoreViewportCamera(const FPerspectiveCameraData &CamData);
     void              ClearTrackedTransformHistory();
@@ -198,13 +184,4 @@ class UEditorEngine : public UEngine
     FEditorSceneManager SceneManager;
     FLevelEditorHistoryManager HistoryManager;
     FAssetImportManager AssetImportManager;
-
-    // PIE 요청 단일 슬롯 (UE TOptional<FRequestPlaySessionParams>).
-    std::optional<FRequestPlaySessionParams> PlaySessionRequest;
-    // 활성 PIE 세션 정보. has_value() == IsPlayingInEditor().
-    std::optional<FPlayInEditorSessionInfo> PlayInEditorSessionInfo;
-    // 종료 요청 지연 플래그. Tick 선두에서 확인 후 EndPlayMap 호출.
-    bool                                 bRequestEndPlayMapQueued = false;
-    EPIEControlMode                      PIEControlMode = EPIEControlMode::Possessed;
-    FGameImGuiOverlay                    PIEOverlay;
 };

@@ -70,6 +70,9 @@
     <Filter Include="Source\Editor\LevelEditor\History">
       <UniqueIdentifier>{bd94c4e1-10e0-61fb-c13d-e94f7c3bf435}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\LevelEditor\PIE">
+      <UniqueIdentifier>{5c34014d-c1c5-2ee3-623e-60aa2e305910}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\LevelEditor\Render">
       <UniqueIdentifier>{6be4be08-cdec-b0f4-b092-47491cfd0a82}</UniqueIdentifier>
     </Filter>
@@ -102,9 +105,6 @@
     </Filter>
     <Filter Include="Source\Editor\MainFrame">
       <UniqueIdentifier>{a22e312b-6905-0adf-9b01-d4fad0c0f77a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Editor\PIE">
-      <UniqueIdentifier>{14522082-49ca-bb79-7a95-d909655be310}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\Scene">
       <UniqueIdentifier>{a2ebef06-505d-a90e-e65e-01ae037da974}</UniqueIdentifier>
@@ -526,6 +526,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.cpp">
       <Filter>Source\Editor\LevelEditor\History</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\PIE\LevelPIEManager.cpp">
+      <Filter>Source\Editor\LevelEditor\PIE</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
@@ -1370,6 +1373,12 @@
     <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryTypes.h">
       <Filter>Source\Editor\LevelEditor\History</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\PIE\LevelPIEManager.h">
+      <Filter>Source\Editor\LevelEditor\PIE</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\PIE\LevelPIETypes.h">
+      <Filter>Source\Editor\LevelEditor\PIE</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
     </ClInclude>
@@ -1441,9 +1450,6 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h">
       <Filter>Source\Editor\MainFrame</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\PIE\PIETypes.h">
-      <Filter>Source\Editor\PIE</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Scene\EditorSceneManager.h">
       <Filter>Source\Editor\Scene</Filter>

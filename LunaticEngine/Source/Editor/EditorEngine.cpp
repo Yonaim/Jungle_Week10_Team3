@@ -4,17 +4,15 @@
 #include "Common/File/EditorFileUtils.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
-#include "Core/AsciiUtils.h"
 #include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Platform/DirectoryWatcher.h"
-#include "Engine/Platform/Paths.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/AActor.h"
-#include "GameFramework/World.h"
 #include "LevelEditor/History/SceneHistoryBuilder.h"
+#include "LevelEditor/PIE/LevelPIEManager.h"
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Materials/MaterialManager.h"
@@ -23,7 +21,6 @@
 #include "Object/ObjectFactory.h"
 #include "Profiling/StartupProfiler.h"
 #include "Texture/Texture2D.h"
-#include "Viewport/GameViewportClient.h"
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -32,117 +29,6 @@ IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
 namespace
 {
-    bool EndsWithIgnoreCase(const FString &Value, const char *Suffix)
-    {
-        if (!Suffix)
-        {
-            return false;
-        }
-
-        const FString SuffixString = Suffix;
-        if (Value.size() < SuffixString.size())
-        {
-            return false;
-        }
-
-        for (size_t Index = 0; Index < SuffixString.size(); ++Index)
-        {
-            const char Left = AsciiUtils::ToLower(Value[Value.size() - SuffixString.size() + Index]);
-            const char Right = AsciiUtils::ToLower(SuffixString[Index]);
-            if (Left != Right)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    FString BuildScenePathFromStem(const FString &InStem)
-    {
-        std::filesystem::path ScenePath =
-            std::filesystem::path(FSceneSaveManager::GetSceneDirectory()) / (FPaths::ToWide(InStem) + FSceneSaveManager::SceneExtension);
-        return FPaths::ToUtf8(ScenePath.wstring());
-    }
-
-    FString GetFileStem(const FString &InPath)
-    {
-        const std::filesystem::path Path(FPaths::ToWide(InPath));
-        return FPaths::ToUtf8(Path.stem().wstring());
-    }
-
-    UCameraComponent *FindFirstCameraComponent(UWorld *World)
-    {
-        if (!World)
-        {
-            return nullptr;
-        }
-
-        for (AActor *Actor : World->GetActors())
-        {
-            if (!Actor)
-            {
-                continue;
-            }
-
-            for (UActorComponent *Comp : Actor->GetComponents())
-            {
-                if (UCameraComponent *Camera = Cast<UCameraComponent>(Comp))
-                {
-                    return Camera;
-                }
-            }
-        }
-
-        return nullptr;
-    }
-
-    UCameraComponent *EnsurePIEActiveCamera(UWorld *World, const FPerspectiveCameraData &CameraData)
-    {
-        if (!World)
-        {
-            return nullptr;
-        }
-
-        if (UCameraComponent *ActiveCamera = World->GetActiveCamera())
-        {
-            if (IsAliveObject(ActiveCamera) && ActiveCamera->GetWorld() == World)
-            {
-                return ActiveCamera;
-            }
-            World->SetActiveCamera(nullptr);
-        }
-
-        if (UCameraComponent *SceneCamera = FindFirstCameraComponent(World))
-        {
-            World->SetActiveCamera(SceneCamera);
-            return SceneCamera;
-        }
-
-        AActor *CamActor = World->SpawnActor<AActor>();
-        if (!CamActor)
-        {
-            return nullptr;
-        }
-
-        CamActor->SetFName(FName("DefaultPIECamera"));
-        UCameraComponent *Cam = CamActor->AddComponent<UCameraComponent>();
-        CamActor->SetRootComponent(Cam);
-        if (CameraData.bValid)
-        {
-            Cam->SetRelativeLocation(CameraData.Location);
-            Cam->SetRelativeRotation(CameraData.Rotation);
-        }
-        else
-        {
-            Cam->SetRelativeLocation(FVector(0.0f, -10.0f, 5.0f));
-            Cam->SetRelativeRotation(FVector(0.0f, -25.0f, 90.0f));
-        }
-
-        World->SetActiveCamera(Cam);
-        return Cam;
-    }
-
 } // namespace
 
 void UEditorEngine::Init(FWindowsWindow *InWindow)
@@ -237,16 +123,7 @@ void UEditorEngine::Tick(float DeltaTime)
         PendingSceneLoadReference.clear();
         LoadScene(SceneToLoad);
     }
-    // --- PIE 요청 처리 (프레임 경계에서 처리되도록 Tick 선두에서 소비) ---
-    if (bRequestEndPlayMapQueued)
-    {
-        bRequestEndPlayMapQueued = false;
-        EndPlayMap();
-    }
-    if (PlaySessionRequest.has_value())
-    {
-        StartQueuedPlaySessionRequest();
-    }
+    LevelEditor.GetPIEManager().Tick(DeltaTime);
     SceneManager.Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
@@ -275,155 +152,7 @@ void UEditorEngine::Tick(float DeltaTime)
 
 bool UEditorEngine::LoadScene(const FString &InSceneReference)
 {
-    if (!IsPlayingInEditor() || InSceneReference.empty())
-    {
-        UE_LOG_CATEGORY(EditorEngine, Warning, "[SceneLoad] Ignored PIE load request. IsPlayingInEditor=%d Scene=%s",
-                        IsPlayingInEditor() ? 1 : 0, InSceneReference.c_str());
-        return false;
-    }
-
-    std::filesystem::path       ChosenPath;
-    const std::filesystem::path RawPath = FPaths::ToWide(InSceneReference);
-    const std::filesystem::path SceneDir = FSceneSaveManager::GetSceneDirectory();
-
-    auto TrySetChosenPath = [&ChosenPath](const std::filesystem::path &Candidate)
-    {
-        if (!Candidate.empty() && std::filesystem::exists(Candidate))
-        {
-            ChosenPath = Candidate;
-            return true;
-        }
-        return false;
-    };
-
-    if (RawPath.is_absolute())
-    {
-        TrySetChosenPath(RawPath);
-    }
-    else
-    {
-        TrySetChosenPath(RawPath);
-        if (ChosenPath.empty())
-        {
-            TrySetChosenPath(SceneDir / RawPath);
-        }
-    }
-
-    if (ChosenPath.empty())
-    {
-        const bool bHasSceneExtension = EndsWithIgnoreCase(InSceneReference, ".scene");
-        const bool bHasUmapExtension = EndsWithIgnoreCase(InSceneReference, ".umap");
-        if (bHasSceneExtension || bHasUmapExtension)
-        {
-            const std::filesystem::path FileName = RawPath.filename();
-            if (!TrySetChosenPath(SceneDir / FileName))
-            {
-                UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] Failed to resolve scene path from reference: %s",
-                                InSceneReference.c_str());
-                FNotificationManager::Get().AddNotification("Scene load failed: " + InSceneReference, ENotificationType::Error, 3.0f);
-                return false;
-            }
-        }
-        else
-        {
-            const std::wstring StemW = FPaths::ToWide(InSceneReference);
-            if (!TrySetChosenPath(SceneDir / (StemW + L".umap")))
-            {
-                if (!TrySetChosenPath(SceneDir / (StemW + FSceneSaveManager::SceneExtension)))
-                {
-                    UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] Failed to find scene file for reference: %s",
-                                    InSceneReference.c_str());
-                    FNotificationManager::Get().AddNotification("Scene not found: " + InSceneReference, ENotificationType::Error, 3.0f);
-                    return false;
-                }
-            }
-        }
-    }
-
-    FWorldContext *Context = GetWorldContextFromHandle(GetActiveWorldHandle());
-    if (!Context)
-    {
-        UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] No active world context for handle: %s",
-                        GetActiveWorldHandle().ToString().c_str());
-        return false;
-    }
-
-    UE_LOG_CATEGORY(EditorEngine, Info, "[SceneLoad] Loading PIE scene '%s' from '%s'", InSceneReference.c_str(),
-                    FPaths::ToUtf8(ChosenPath.wstring()).c_str());
-
-    if (IRenderPipeline *Pipeline = GetRenderPipeline())
-    {
-        Pipeline->OnSceneCleared();
-    }
-
-    GetSelectionManager().ClearSelection();
-    GetSelectionManager().SetWorld(nullptr);
-
-    if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
-    {
-        PIEViewportClient->UnPossess();
-    }
-
-    if (Context->World)
-    {
-        Context->World->EndPlay();
-        UObjectManager::Get().DestroyObject(Context->World);
-        Context->World = nullptr;
-    }
-
-    FPerspectiveCameraData DummyCamera;
-    const FString          FilePath = FPaths::ToUtf8(ChosenPath.wstring());
-    if (EndsWithIgnoreCase(FilePath, ".umap"))
-    {
-        Context->World = UObjectManager::Get().CreateObject<UWorld>();
-        FSceneSaveManager::LoadWorldFromBinary(FilePath, Context->World);
-        Context->WorldType = EWorldType::PIE;
-        Context->ContextName = RawPath.stem().empty() ? "PIE" : FPaths::ToUtf8(RawPath.stem().wstring());
-        Context->ContextHandle = GetActiveWorldHandle();
-    }
-    else
-    {
-        FSceneSaveManager::LoadSceneFromJSON(FilePath, *Context, DummyCamera);
-        Context->WorldType = EWorldType::PIE;
-        Context->ContextHandle = GetActiveWorldHandle();
-    }
-
-    SetActiveWorld(Context->ContextHandle);
-
-    if (!Context->World)
-    {
-        UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] Context world is null after loading '%s'", InSceneReference.c_str());
-        FNotificationManager::Get().AddNotification("Scene load failed: " + InSceneReference, ENotificationType::Error, 3.0f);
-        return false;
-    }
-
-    Context->World->SetWorldType(EWorldType::PIE);
-    GetSelectionManager().SetWorld(Context->World);
-    Context->World->WarmupPickingData();
-    EnsurePIEActiveCamera(Context->World, DummyCamera);
-    if (!Context->World->HasBegunPlay())
-    {
-        Context->World->BeginPlay();
-    }
-    EnsurePIEActiveCamera(Context->World, DummyCamera);
-
-    if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
-    {
-        if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-        {
-            PIEViewportClient->SetViewport(ActiveVC->GetViewport());
-            PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
-        }
-
-        if (UCameraComponent *GameCamera = EnsurePIEActiveCamera(Context->World, DummyCamera))
-        {
-            PIEViewportClient->Possess(GameCamera);
-        }
-    }
-
-    FNotificationManager::Get().AddNotification("Loaded scene: " + InSceneReference, ENotificationType::Success, 2.0f);
-    UE_LOG_CATEGORY(EditorEngine, Info, "[SceneLoad] Loaded PIE scene successfully: %s", InSceneReference.c_str());
-    return true;
+    return LevelEditor.GetPIEManager().LoadScene(InSceneReference);
 }
 
 UCameraComponent *UEditorEngine::GetCamera() const
@@ -446,37 +175,23 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 
 void UEditorEngine::RenderUI(float DeltaTime) { MainFrame.Render(DeltaTime); }
 
-void UEditorEngine::RenderPIEOverlayPopups()
-{
-    if (!IsPlayingInEditor())
-    {
-        return;
-    }
+void UEditorEngine::RenderPIEOverlayPopups() { LevelEditor.GetPIEManager().RenderOverlayPopups(); }
 
-    const FRect *AnchorRect = nullptr;
-    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-    {
-        AnchorRect = &ActiveVC->GetViewportScreenRect();
-    }
+void UEditorEngine::OpenScoreSavePopup(int32 InScore) { LevelEditor.GetPIEManager().OpenScoreSavePopup(InScore); }
 
-    PIEOverlay.RenderWithinCurrentFrame(AnchorRect);
-}
+bool UEditorEngine::ConsumeScoreSavePopupResult(FString &OutNickname) { return LevelEditor.GetPIEManager().ConsumeScoreSavePopupResult(OutNickname); }
 
-void UEditorEngine::OpenScoreSavePopup(int32 InScore) { PIEOverlay.OpenScoreSavePopup(InScore); }
+void UEditorEngine::OpenMessagePopup(const FString &InMessage) { LevelEditor.GetPIEManager().OpenMessagePopup(InMessage); }
 
-bool UEditorEngine::ConsumeScoreSavePopupResult(FString &OutNickname) { return PIEOverlay.ConsumeScoreSavePopupResult(OutNickname); }
+bool UEditorEngine::ConsumeMessagePopupConfirmed() { return LevelEditor.GetPIEManager().ConsumeMessagePopupConfirmed(); }
 
-void UEditorEngine::OpenMessagePopup(const FString &InMessage) { PIEOverlay.OpenMessagePopup(InMessage); }
+void UEditorEngine::OpenScoreboardPopup(const FString &InFilePath) { LevelEditor.GetPIEManager().OpenScoreboardPopup(InFilePath); }
 
-bool UEditorEngine::ConsumeMessagePopupConfirmed() { return PIEOverlay.ConsumeMessagePopupConfirmed(); }
+void UEditorEngine::OpenTitleOptionsPopup() { LevelEditor.GetPIEManager().OpenTitleOptionsPopup(); }
 
-void UEditorEngine::OpenScoreboardPopup(const FString &InFilePath) { PIEOverlay.OpenScoreboardPopup(InFilePath); }
+void UEditorEngine::OpenTitleCreditsPopup() { LevelEditor.GetPIEManager().OpenTitleCreditsPopup(); }
 
-void UEditorEngine::OpenTitleOptionsPopup() { PIEOverlay.OpenTitleOptionsPopup(); }
-
-void UEditorEngine::OpenTitleCreditsPopup() { PIEOverlay.OpenTitleCreditsPopup(); }
-
-bool UEditorEngine::IsScoreSavePopupOpen() const { return PIEOverlay.IsScoreSavePopupOpen(); }
+bool UEditorEngine::IsScoreSavePopupOpen() const { return LevelEditor.GetPIEManager().IsScoreSavePopupOpen(); }
 
 void UEditorEngine::ToggleCoordSystem()
 {
@@ -501,353 +216,16 @@ void UEditorEngine::ApplyTransformSettingsToGizmo()
                            Settings.RotationSnapSize, Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
 }
 
-// ─── PIE (Play In Editor) ────────────────────────────────
-// UE 패턴 요약: Request는 단일 슬롯(std::optional)에 저장만 하고 즉시 실행하지 않는다.
-// 실제 StartPIE는 다음 Tick 선두의 StartQueuedPlaySessionRequest에서 일어난다.
-// 이유는 UI 콜백/트랜잭션 도중 같은 불안정한 타이밍을 피하기 위함.
-
 void UEditorEngine::RequestPlaySession(const FRequestPlaySessionParams &InParams)
 {
-    // 동시 요청은 UE와 동일하게 덮어쓴다 (진짜 큐 아님 — 단일 슬롯).
-    PlaySessionRequest = InParams;
+    LevelEditor.GetPIEManager().RequestPlaySession(InParams);
 }
 
-void UEditorEngine::CancelRequestPlaySession() { PlaySessionRequest.reset(); }
+void UEditorEngine::CancelRequestPlaySession() { LevelEditor.GetPIEManager().CancelRequestPlaySession(); }
 
-void UEditorEngine::RequestEndPlayMap()
-{
-    if (!PlayInEditorSessionInfo.has_value())
-    {
-        return;
-    }
-    bRequestEndPlayMapQueued = true;
-}
+void UEditorEngine::RequestEndPlayMap() { LevelEditor.GetPIEManager().RequestEndPlayMap(); }
 
-void UEditorEngine::StartQueuedPlaySessionRequest()
-{
-    if (!PlaySessionRequest.has_value())
-    {
-        return;
-    }
-
-    const FRequestPlaySessionParams Params = *PlaySessionRequest;
-    PlaySessionRequest.reset();
-
-    // 이미 PIE 중이면 기존 세션을 정리 후 새로 시작 (단순화).
-    if (PlayInEditorSessionInfo.has_value())
-    {
-        EndPlayMap();
-    }
-
-    switch (Params.SessionDestination)
-    {
-    case EPIESessionDestination::InProcess:
-        StartPlayInEditorSession(Params);
-        break;
-    }
-}
-
-void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Params)
-{
-    SetGamePaused(false);
-    FInputManager::Get().ResetAllKeyStates();
-    FAudioManager::Get().StopAll();
-
-    // 1) 현재 에디터 월드를 복제해 PIE 월드 생성 (UE의 CreatePIEWorldByDuplication 대응).
-    UWorld *EditorWorld = GetWorld();
-    if (!EditorWorld)
-    {
-        return;
-    }
-    // DuplicateAs(PIE)로 복제하면 Actor 복제 전에 WorldType이 설정되어
-    // EditorOnly 컴포넌트의 프록시가 아예 생성되지 않음.
-    UWorld *PIEWorld = EditorWorld->DuplicateAs(EWorldType::PIE);
-    if (!PIEWorld)
-    {
-        return;
-    }
-
-    // 2) PIE WorldContext를 WorldList에 등록.
-    FWorldContext Ctx;
-    Ctx.WorldType = EWorldType::PIE;
-    Ctx.ContextHandle = FName("PIE");
-    Ctx.ContextName = "PIE";
-    Ctx.World = PIEWorld;
-    WorldList.push_back(Ctx);
-
-    // 3) 세션 정보 기록 (이전 활성 핸들 포함 — EndPlayMap에서 복원).
-    FPlayInEditorSessionInfo Info;
-    Info.OriginalRequestParams = Params;
-    Info.PIEStartTime = 0.0;
-    Info.PreviousActiveWorldHandle = GetActiveWorldHandle();
-    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-    {
-        if (UCameraComponent *VCCamera = ActiveVC->GetCamera())
-        {
-            Info.SavedViewportCamera.Location = VCCamera->GetWorldLocation();
-            Info.SavedViewportCamera.Rotation = VCCamera->GetRelativeRotation();
-            Info.SavedViewportCamera.CameraState = VCCamera->GetCameraState();
-            Info.SavedViewportCamera.bValid = true;
-        }
-    }
-    PlayInEditorSessionInfo = Info;
-
-    // 4) ActiveWorldHandle을 PIE로 전환 — 이후 GetWorld()는 PIE 월드를 반환.
-    SetActiveWorld(FName("PIE"));
-
-    // GPU Occlusion readback은 ProxyId 기반이라 월드가 갈리면 stale.
-    // 이전 프레임 결과를 무효화해야 wrong-proxy hit 방지.
-    if (IRenderPipeline *Pipeline = GetRenderPipeline())
-    {
-        Pipeline->OnSceneCleared();
-    }
-
-    // 활성 뷰포트 카메라를 PIE 월드의 ActiveCamera로  설정 —
-    //    LOD 갱신 등에서 ActiveCamera를 참조하므로 BeginPlay 전 placeholder가 필요.
-    //    BeginPlay 이후에는 GameMode/PlayerController가 possess한 카메라가 있으면
-    //    그 쪽으로 교체되고, 없으면 씬 안의 첫 CameraComponent로 교체된다
-    UCameraComponent *PlaceholderCamera = nullptr;
-    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-    {
-        if (UCameraComponent *VCCamera = ActiveVC->GetCamera())
-        {
-            PlaceholderCamera = VCCamera;
-            PIEWorld->SetActiveCamera(VCCamera);
-        }
-    }
-
-    // 6) Selection을 PIE 월드 기준으로 재바인딩 — 에디터 액터를 가리킨 채로 두면
-    //    픽킹(=PIE 월드) / outliner / outline 렌더가 모두 어긋난다.
-    GetSelectionManager().ClearSelection();
-    GetSelectionManager().SetGizmoEnabled(false); // PIE 중에는 에디터 gizmo를 숨긴다.
-    GetSelectionManager().SetWorld(PIEWorld);
-
-    if (!GetGameViewportClient())
-    {
-        UGameViewportClient *PIEViewportClient = UObjectManager::Get().CreateObject<UGameViewportClient>();
-        SetGameViewportClient(PIEViewportClient);
-    }
-    if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
-    {
-        if (Window)
-        {
-            PIEViewportClient->SetOwnerWindow(Window->GetHWND());
-        }
-        UCameraComponent *InitialTargetCamera = PIEWorld->GetActiveCamera();
-        FViewport        *InitialViewport = nullptr;
-        if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-        {
-            InitialTargetCamera = ActiveVC->GetCamera() ? ActiveVC->GetCamera() : InitialTargetCamera;
-            InitialViewport = ActiveVC->GetViewport();
-            PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
-        }
-        PIEViewportClient->OnBeginPIE(InitialTargetCamera, InitialViewport);
-    }
-    EnterPIEPossessedMode();
-
-    // 이 코드와 대응되는 게 아래 EndPlayMap()에 있음.
-    // MainFrame.HideEditorWindowsForPIE(); //PIE 중에는 에디터 패널을 숨김.
-    // GetViewportLayout().DisableWorldAxisForPIE(); //PIE 중에는 월드 축 렌더링을 비활성화.
-
-    // 7) BeginPlay 트리거 — 모든 등록/바인딩이 끝난 다음 첫 Tick 이전에 호출.
-    //    UWorld::BeginPlay가 bHasBegunPlay를 먼저 세팅하므로 BeginPlay 도중
-    //    SpawnActor로 만든 신규 액터도 자동으로 BeginPlay된다.
-    PIEWorld->BeginPlay();
-
-    // GameMode/PlayerController가 ActiveCamera를 갱신하지 않은 경우
-    //    (레벨에 GameMode가 지정되지 않은 Playground) 씬 안에 미리 배치된
-    //    첫 CameraComponent를 찾아 ActiveCamera로 사용한다. GameEngine::LoadLevel과
-    //    동일한 폴백 — Editor VC 카메라가 PIE에서 그대로 보이는 버그를 막기 위한 것
-    if (PIEWorld->GetActiveCamera() == PlaceholderCamera)
-    {
-        UCameraComponent *SceneCamera = nullptr;
-        for (AActor *Actor : PIEWorld->GetActors())
-        {
-            if (!Actor)
-                continue;
-            for (UActorComponent *Comp : Actor->GetComponents())
-            {
-                if (UCameraComponent *Cam = Cast<UCameraComponent>(Comp))
-                {
-                    SceneCamera = Cam;
-                    break;
-                }
-            }
-            if (SceneCamera)
-                break;
-        }
-        if (SceneCamera)
-        {
-            PIEWorld->SetActiveCamera(SceneCamera);
-        }
-    }
-
-    if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
-    {
-        if (UCameraComponent *GameCamera = PIEWorld->GetActiveCamera())
-        {
-            PIEViewportClient->Possess(GameCamera);
-        }
-    }
-}
-
-void UEditorEngine::EndPlayMap()
-{
-    SetGamePaused(false);
-    FAudioManager::Get().StopAll();
-    if (!PlayInEditorSessionInfo.has_value())
-    {
-        return;
-    }
-
-    // 활성 월드를 PIE 시작 전 핸들로 복원.
-    const FName PrevHandle = PlayInEditorSessionInfo->PreviousActiveWorldHandle;
-    SetActiveWorld(PrevHandle);
-
-    // 복귀한 Editor 월드의 VisibleProxies/캐시된 카메라 상태를 강제 무효화.
-    // PIE 중 Editor WorldTick이 skip되어 캐시가 PIE 시작 전 시점 그대로 남아 있고,
-    // NeedsVisibleProxyRebuild()가 카메라 변화 기반이라 false를 반환하면 stale
-    // VisibleProxies가 그대로 재사용되어 dangling proxy 참조로 크래시가 날 수 있다.
-    //
-    // 또한 Renderer::PerObjectCBPool은 ProxyId로 인덱싱되는 월드 간 공유 풀이라,
-    // PIE 중 PIE 프록시가 덮어쓴 슬롯이 그대로 남아 있으면 Editor 프록시의
-    // bPerObjectCBDirty=false 상태로 인해 업로드가 skip되어 PIE 마지막 transform으로
-    // 렌더된다. 모든 Editor 프록시를 PerObjectCB dirty로 마킹해 재업로드 강제.
-    if (UWorld *EditorWorld = GetWorld())
-    {
-        EditorWorld->GetScene().MarkAllPerObjectCBDirty();
-
-        // ActiveCamera는 PIE 시작 시 PIE 월드로 옮겨졌고 PIE 월드와 함께 파괴됐다.
-        // Editor 월드의 ActiveCamera는 여전히 그 dangling 포인터를 가리킬 수 있으므로
-        // 활성 뷰포트의 카메라로 다시 바인딩해 줘야 frustum culling이 정상 동작한다.
-        if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-        {
-            if (UCameraComponent *VCCamera = ActiveVC->GetCamera())
-            {
-                if (PlayInEditorSessionInfo->SavedViewportCamera.bValid)
-                {
-                    const FPIEViewportCameraSnapshot &SavedCamera = PlayInEditorSessionInfo->SavedViewportCamera;
-                    VCCamera->SetWorldLocation(SavedCamera.Location);
-                    VCCamera->SetRelativeRotation(SavedCamera.Rotation);
-                    VCCamera->SetCameraState(SavedCamera.CameraState);
-                }
-
-                EditorWorld->SetActiveCamera(VCCamera);
-            }
-        }
-    }
-
-    // Selection을 에디터 월드로 복원 — PIE 액터는 곧 파괴되므로 먼저 비운다.
-    GetSelectionManager().ClearSelection();
-    GetSelectionManager().SetGizmoEnabled(true); // PIE 종료 후 에디터 gizmo 복원
-    GetSelectionManager().SetWorld(GetWorld());
-
-    // 이 코드와 대응되는 게 위의 StartPlayInEditorSession()에 있음.
-    // MainFrame.RestoreEditorWindowsAfterPIE();
-    // GetViewportLayout().RestoreWorldAxisAfterPIE();
-
-    if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
-    {
-        PIEViewportClient->OnEndPIE();
-        UObjectManager::Get().DestroyObject(PIEViewportClient);
-        SetGameViewportClient(nullptr);
-    }
-
-    // PIE WorldContext 제거 (DestroyWorldContext가 EndPlay + DestroyObject 수행).
-    DestroyWorldContext(FName("PIE"));
-
-    // PIE 월드의 프록시가 모두 파괴됐으므로 GPU Occlusion readback 무효화.
-    if (IRenderPipeline *Pipeline = GetRenderPipeline())
-    {
-        Pipeline->OnSceneCleared();
-    }
-
-    PlayInEditorSessionInfo.reset();
-    PIEControlMode = EPIEControlMode::Possessed;
-    // InputSystem::Get().ResetCaptureStateForPIEEnd();
-}
-
-bool UEditorEngine::TogglePIEControlMode()
-{
-    if (!IsPlayingInEditor())
-    {
-        return false;
-    }
-
-    if (PIEControlMode == EPIEControlMode::Possessed)
-    {
-        return EnterPIEEjectedMode();
-    }
-    return EnterPIEPossessedMode();
-}
-
-bool UEditorEngine::EnterPIEPossessedMode()
-{
-    if (!IsPlayingInEditor())
-    {
-        return false;
-    }
-
-    PIEControlMode = EPIEControlMode::Possessed;
-    SyncGameViewportPIEControlState(true);
-    FInputManager::Get().ResetAllKeyStates();
-    return true;
-}
-
-bool UEditorEngine::EnterPIEEjectedMode()
-{
-    if (!IsPlayingInEditor())
-    {
-        return false;
-    }
-
-    PIEControlMode = EPIEControlMode::Ejected;
-    SyncGameViewportPIEControlState(false);
-    FInputManager::Get().ResetAllKeyStates();
-    return true;
-}
-
-void UEditorEngine::SyncGameViewportPIEControlState(bool bPossessedMode)
-{
-    UGameViewportClient *PIEViewportClient = GetGameViewportClient();
-    if (!PIEViewportClient)
-    {
-        return;
-    }
-
-    PIEViewportClient->SetPIEPossessedInputEnabled(bPossessedMode);
-    if (!bPossessedMode)
-    {
-        return;
-    }
-
-    if (Window)
-    {
-        PIEViewportClient->SetOwnerWindow(Window->GetHWND());
-    }
-
-    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-    {
-        // PIEViewportClient->Possess(ActiveVC->GetCamera());
-        PIEViewportClient->SetViewport(ActiveVC->GetViewport());
-        PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
-        // return;
-    }
-    // CameraComponent 우선 Possess 시도
-    if (UWorld *World = GetWorld())
-    {
-        if (UCameraComponent *GameCamera = World->GetActiveCamera())
-        {
-            PIEViewportClient->Possess(GameCamera);
-            return;
-        }
-    }
-    // 이후 ViewportClient Possess 시도
-    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
-    {
-        PIEViewportClient->Possess(ActiveVC->GetCamera());
-    }
-}
+bool UEditorEngine::TogglePIEControlMode() { return LevelEditor.GetPIEManager().TogglePIEControlMode(); }
 
 // ─── 기존 메서드 ──────────────────────────────────────────
 

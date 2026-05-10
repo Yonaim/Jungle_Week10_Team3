@@ -339,6 +339,7 @@
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\PIE\LevelPIEManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Selection\SelectionManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.cpp" />
@@ -622,6 +623,8 @@
     <ClInclude Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.h" />
     <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryTypes.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\PIE\LevelPIEManager.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\PIE\LevelPIETypes.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Selection\SelectionManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.h" />
@@ -646,7 +649,6 @@
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h" />
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h" />
-    <ClInclude Include="Source\Editor\PIE\PIETypes.h" />
     <ClInclude Include="Source\Editor\Scene\EditorSceneManager.h" />
     <ClInclude Include="Source\Editor\Settings\EditorSettings.h" />
     <ClInclude Include="Source\Engine\Asset\AssetCurveUtils.h" />

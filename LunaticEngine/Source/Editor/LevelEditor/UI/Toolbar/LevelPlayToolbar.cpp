@@ -2,7 +2,7 @@
 
 #include "Common/UI/EditorAccentColor.h"
 #include "EditorEngine.h"
-#include "Editor/PIE/PIETypes.h"
+#include "LevelEditor/PIE/LevelPIETypes.h"
 #include "ImGui/imgui.h"
 #include "Resource/ResourceManager.h"
 #include "WICTextureLoader.h"

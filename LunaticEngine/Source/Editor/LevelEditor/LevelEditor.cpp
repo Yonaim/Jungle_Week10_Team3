@@ -12,10 +12,12 @@ void FLevelEditor::Init(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow,
     ViewportLayout.Init(EditorEngine, InWindow, InRenderer, &SelectionManager);
 
     ViewportLayout.LoadFromSettings();
+    PIEManager.Init(EditorEngine);
 }
 
 void FLevelEditor::Shutdown()
 {
+    PIEManager.Shutdown();
     SelectionManager.Shutdown();
     ViewportLayout.Release();
     EditorEngine = nullptr;

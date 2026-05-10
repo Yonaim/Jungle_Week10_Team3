@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LevelEditor/Selection/SelectionManager.h"
+#include "LevelEditor/PIE/LevelPIEManager.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 
@@ -28,9 +29,14 @@ class FLevelEditor
 
     const FOverlayStatSystem &GetOverlayStatSystem() const { return OverlayStatSystem; }
 
+    FLevelPIEManager& GetPIEManager() { return PIEManager; }
+
+    const FLevelPIEManager& GetPIEManager() const { return PIEManager; }
+
   private:
     UEditorEngine       *EditorEngine = nullptr;
     FSelectionManager    SelectionManager;
     FLevelViewportLayout ViewportLayout;
     FOverlayStatSystem   OverlayStatSystem;
+    FLevelPIEManager     PIEManager;
 };
