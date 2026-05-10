@@ -267,6 +267,9 @@
     <FxCompile Include="Shaders\Editor\Editor.hlsl">
       <Filter>Shaders\Editor</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\Editor\Grid.hlsl">
+      <Filter>Shaders\Editor</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\Editor\Gizmo.hlsl">
       <Filter>Shaders\Editor</Filter>
     </FxCompile>
@@ -788,6 +791,9 @@
     <ClCompile Include="Source\Engine\Render\Command\DrawCommandBuilder.cpp">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Command\EditorGridRenderer.cpp">
+      <Filter>Source\Engine\Render\Command</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Command\DrawCommandList.cpp">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClCompile>
@@ -852,6 +858,9 @@
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\DecalPass.cpp">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\RenderPass\EditorGridPass.cpp">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderPass\EditorLinesPass.cpp">
@@ -1669,6 +1678,9 @@
     <ClInclude Include="Source\Engine\Render\Command\DrawCommandBuilder.h">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Command\EditorGridRenderer.h">
+      <Filter>Source\Engine\Render\Command</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Render\Command\DrawCommandList.h">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClInclude>
@@ -1739,6 +1751,9 @@
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\DecalPass.h">
+      <Filter>Source\Engine\Render\RenderPass</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\RenderPass\EditorGridPass.h">
       <Filter>Source\Engine\Render\RenderPass</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderPass\EditorLinesPass.h">

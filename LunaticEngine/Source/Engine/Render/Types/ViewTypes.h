@@ -44,6 +44,30 @@ struct FShowFlags
 	bool bGammaCorrection = true;
 };
 
+struct FGridRenderSettings
+{
+	float LineThickness = 1.0f;
+	float MajorLineThickness = 1.25f;
+	int32 MajorLineInterval = 10;
+	float MinorIntensity = 0.45f;
+	float MajorIntensity = 0.9f;
+	float AxisThickness = 1.5f;
+	float AxisIntensity = 1.0f;
+};
+
+constexpr FGridRenderSettings MakeDefaultGridRenderSettings()
+{
+	return {
+		1.0f,
+		1.25f,
+		10,
+		0.45f,
+		0.9f,
+		1.5f,
+		1.0f,
+	};
+}
+
 // 뷰포트 카메라 프리셋 (Perspective / 6방향 Orthographic)
 enum class ELevelViewportType : uint8
 {
@@ -65,6 +89,7 @@ struct FViewportRenderOptions
 
 	float GridSpacing = 1.0f;
 	int32 GridHalfLineCount = 100;
+	FGridRenderSettings GridRenderSettings = MakeDefaultGridRenderSettings();
 
 	float CameraMoveSensitivity = 1.0f;
 	float CameraRotateSensitivity = 1.0f;

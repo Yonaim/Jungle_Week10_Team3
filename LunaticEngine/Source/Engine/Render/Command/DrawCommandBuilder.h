@@ -53,6 +53,7 @@ private:
 	void BuildDynamicDrawCommands(const FFrameContext& Frame, const FScene* Scene);
 
 	// BuildDynamicDrawCommands 서브 메서드
+	void BuildEditorGridCommand(const FFrameContext& Frame, const FScene* Scene);
 	void BuildEditorLineCommands(EViewMode ViewMode);
 	void BuildPostProcessCommands(const FFrameContext& Frame, const FScene* Scene);
 	void BuildUICommands(EViewMode ViewMode);
@@ -84,6 +85,8 @@ private:
 	TArray<FConstantBuffer> PerObjectCBPool;
 
 	// PostProcess CBs (Fog, Outline, SceneDepth, FXAA)
+	FConstantBuffer GridCB;
+	FConstantBuffer GridAxisCB;
 	FConstantBuffer FogCB;
 	FConstantBuffer FadeCB;
 	FConstantBuffer OutlineCB;

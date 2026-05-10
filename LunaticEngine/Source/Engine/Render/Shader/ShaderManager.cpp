@@ -34,6 +34,8 @@ void FShaderManager::Initialize(ID3D11Device* InDevice)
 	GetOrCreate(EShaderPath::Primitive, StartupError);
 	GetOrCreate(EShaderPath::Gizmo, StartupError);
 	GetOrCreate(EShaderPath::Editor, StartupError);
+	// Grid 토글 시 첫 프레임 hitch를 줄이기 위해 시작 단계에서 미리 컴파일.
+	GetOrCreate(EShaderPath::Grid, StartupError);
 	GetOrCreate(EShaderPath::Decal, StartupError);
 	GetOrCreate(EShaderPath::Outline, StartupError);
 	GetOrCreate(EShaderPath::SceneDepth, StartupError);

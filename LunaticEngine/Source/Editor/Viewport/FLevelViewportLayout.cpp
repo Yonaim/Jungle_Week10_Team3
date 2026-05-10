@@ -285,13 +285,32 @@ void DrawShowFlagsPopupContent(FViewportRenderOptions& Opts)
 		ImGui::Checkbox("Grid", &Opts.ShowFlags.bGrid);
 		if (Opts.ShowFlags.bGrid)
 		{
+			// 아래 값들은 그대로 Frame.RenderOptions -> BuildEditorGridCommand -> GridBuffer(b2)로 전달된다.
 			ImGui::SetNextItemWidth(CompactSliderWidth);
 			ImGui::SliderFloat("Spacing", &Opts.GridSpacing, 0.1f, 10.0f, "%.1f");
 			ImGui::SetNextItemWidth(CompactSliderWidth);
 			ImGui::SliderInt("Half Line Count", &Opts.GridHalfLineCount, 10, 500);
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderFloat("Grid Line", &Opts.GridRenderSettings.LineThickness, 0.0f, 4.0f, "%.2f");
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderFloat("Major Line", &Opts.GridRenderSettings.MajorLineThickness, 0.0f, 6.0f, "%.2f");
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderInt("Major Interval", &Opts.GridRenderSettings.MajorLineInterval, 1, 50);
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderFloat("Minor Intensity", &Opts.GridRenderSettings.MinorIntensity, 0.0f, 2.0f, "%.2f");
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderFloat("Major Intensity", &Opts.GridRenderSettings.MajorIntensity, 0.0f, 2.0f, "%.2f");
 		}
 
 		ImGui::Checkbox("World Axis", &Opts.ShowFlags.bWorldAxis);
+		if (Opts.ShowFlags.bWorldAxis)
+		{
+			// World Axis는 동일 Grid 셰이더의 Axis 전용 DrawPass를 활성화한다.
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderFloat("Axis Thickness", &Opts.GridRenderSettings.AxisThickness, 0.0f, 8.0f, "%.2f");
+			ImGui::SetNextItemWidth(CompactSliderWidth);
+			ImGui::SliderFloat("Axis Intensity", &Opts.GridRenderSettings.AxisIntensity, 0.0f, 2.0f, "%.2f");
+		}
 		ImGui::Checkbox("Gizmo", &Opts.ShowFlags.bGizmo);
 		ImGui::SetNextItemWidth(CompactSliderWidth);
 		ImGui::SliderFloat("Billboard Icon Scale", &Opts.ActorHelperBillboardScale, 0.1f, 5.0f, "%.2f");
