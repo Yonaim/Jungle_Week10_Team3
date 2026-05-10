@@ -54,6 +54,9 @@ void FStaticMeshSceneProxy::UpdateMaterial()
 // ============================================================
 void FStaticMeshSceneProxy::UpdateMesh()
 {
+	// 컴포넌트 -> 프록시 렌더 경계:
+	// GetMeshBuffer()/섹션 데이터를 프록시 캐시로 옮긴 뒤
+	// DrawCommandBuilder는 프록시 캐시를 읽어 커맨드를 만든다.
 	MeshBuffer = GetOwner()->GetMeshBuffer();
 	RebuildSectionDraws();
 }
@@ -137,7 +140,8 @@ void FStaticMeshSceneProxy::RebuildSectionDraws()
 
 	LODCount = Mesh->GetLODCount();
 
-	// 각 LOD별 SectionDraws + MeshBuffer 구축
+	// 각 LOD별로 "렌더 제출 단위(SectionDraw)"를 완성한다.
+	// 이후 DrawCommandBuilder는 여기의 FirstIndex/IndexCount/Material만 소비한다.
 	for (uint32 lod = 0; lod < LODCount; ++lod)
 	{
 		const auto& Sections = Mesh->GetLODSections(lod);

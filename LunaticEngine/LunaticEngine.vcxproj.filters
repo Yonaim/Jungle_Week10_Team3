@@ -731,9 +731,6 @@
     <ClCompile Include="Source\Engine\Mesh\FbxCommon.cpp">
       <Filter>Source\Engine\Mesh</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Mesh\FbxImporter.cpp">
-      <Filter>Source\Engine\Mesh</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Mesh\FbxSkeletalMeshImporter.cpp">
       <Filter>Source\Engine\Mesh</Filter>
     </ClCompile>
@@ -1129,6 +1126,7 @@
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Mesh\SkeletalMesh.cpp" />
+    <ClCompile Include="Source\Engine\GameFramework\SkeletalMeshActor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -2436,6 +2434,7 @@
     <ClInclude Include="Source\Engine\Mesh\SkeletalMeshCommon.h">
       <Filter>Source\Engine\Mesh</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\GameFramework\SkeletalMeshActor.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LunaticEngine.rc" />

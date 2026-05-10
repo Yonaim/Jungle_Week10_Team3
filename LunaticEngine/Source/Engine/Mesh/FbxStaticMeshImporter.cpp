@@ -10,6 +10,9 @@
 #if defined(_WIN64)
 namespace
 {
+	// FBX StaticMesh 변환:
+	// FbxMesh의 polygon vertex를 엔진 FNormalVertex/Index로 변환하고
+	// 머티리얼 기준 섹션을 재구성한다.
 	void ConvertMeshNode(const FString& FbxFilePath, FbxNode* Node, FFbxInfo& Context, FStaticMesh& OutMesh)
 	{
 		FbxMesh* Mesh = Node ? Node->GetMesh() : nullptr;
@@ -52,6 +55,8 @@ namespace
 			uint32 TriangleIndices[3] = {};
 			for (int32 CornerIndex = 0; CornerIndex < 3; ++CornerIndex)
 			{
+				// Control Point(공유 위치)와 Polygon Vertex(코너 단위 속성)는 다르다.
+				// 엔진 정점은 폴리곤 코너 기준으로 확정해 노멀/UV 분리를 보존한다.
 				const int32 ControlPointIndex = Mesh->GetPolygonVertex(PolygonIndex, CornerIndex);
 				const FFbxVertexKey Key{ ControlPointIndex, PolygonIndex, CornerIndex, MaterialIndex };
 
@@ -108,6 +113,8 @@ namespace
 
 	void BuildSections(FStaticMesh& OutMesh, const TArray<FStaticMaterial>& OutMaterials, const TArray<TArray<uint32>>& FacesPerMaterial)
 	{
+		// 임포트 중 수집한 "머티리얼별 face 시작 인덱스"를 이용해
+		// 인덱스 버퍼를 섹션 순서로 재배치한다.
 		TArray<uint32> OldIndices = std::move(OutMesh.Indices);
 		OutMesh.Indices.clear();
 		OutMesh.Sections.clear();

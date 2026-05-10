@@ -5,11 +5,11 @@
 class UStaticMeshComponent;
 
 // ============================================================
-// FStaticMeshSceneProxy — UStaticMeshComponent 전용 프록시
-// ============================================================
-// StaticMesh의 섹션별 머티리얼, 메시 버퍼, 셰이더를 캐싱.
-// Mesh/Material dirty 시 SectionDraws를 재구축한다.
-// LOD: 거리 기반으로 MeshBuffer + SectionDraws를 스왑.
+// FStaticMeshSceneProxy:
+// UStaticMeshComponent의 렌더 전용 미러.
+// - 컴포넌트/애셋에서 섹션별 Draw 단위를 추출해 SectionDraws를 구성
+// - DrawCommandBuilder는 이 프록시만 읽어 렌더 커맨드를 생성
+// - LOD 전환 시 활성 MeshBuffer/SectionDraws를 스왑
 class FStaticMeshSceneProxy : public FPrimitiveSceneProxy
 {
 public:

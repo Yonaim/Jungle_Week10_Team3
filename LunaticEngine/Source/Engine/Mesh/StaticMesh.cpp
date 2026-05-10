@@ -11,6 +11,32 @@ IMPLEMENT_CLASS(UStaticMesh, UObject)
 
 static const FString EmptyPath;
 
+namespace
+{
+	// 섹션 슬롯 이름을 머티리얼 배열 인덱스로 매핑한다.
+	// 렌더 루프에서 문자열 비교를 피하기 위한 전처리 캐시다.
+	void RemapSectionMaterialIndices(FStaticMesh* StaticMeshAsset, const TArray<FStaticMaterial>& StaticMaterials)
+	{
+		if (!StaticMeshAsset)
+		{
+			return;
+		}
+
+		for (FStaticMeshSection& Section : StaticMeshAsset->Sections)
+		{
+			Section.MaterialIndex = -1;
+			for (int32 i = 0; i < static_cast<int32>(StaticMaterials.size()); ++i)
+			{
+				if (StaticMaterials[i].MaterialSlotName == Section.MaterialSlotName)
+				{
+					Section.MaterialIndex = i;
+					break;
+				}
+			}
+		}
+	}
+}
+
 UStaticMesh::~UStaticMesh()
 {
 	if (StaticMeshAsset)
@@ -37,21 +63,10 @@ void UStaticMesh::Serialize(FArchive& Ar)
 	// 2. 머티리얼 데이터 직렬화 (필수!)
 	Ar << StaticMaterials;
 
-	// 3. 로딩 시 Section → MaterialIndex 매핑 캐싱 (매 프레임 문자열 비교 방지)
+	// 3. 로딩 시 Section -> MaterialIndex 매핑 캐싱
 	if (Ar.IsLoading())
 	{
-		for (FStaticMeshSection& Section : StaticMeshAsset->Sections)
-		{
-			Section.MaterialIndex = -1;
-			for (int32 i = 0; i < (int32)StaticMaterials.size(); ++i)
-			{
-				if (StaticMaterials[i].MaterialSlotName == Section.MaterialSlotName)
-				{
-					Section.MaterialIndex = i;
-					break;
-				}
-			}
-		}
+		RefreshSectionMaterialIndices();
 	}
 }
 
@@ -65,7 +80,8 @@ void UStaticMesh::InitResources(ID3D11Device* InDevice)
 		static_cast<uint32>(StaticMeshAsset->Indices.size() * sizeof(uint32));
 	MemoryStats::AddStaticMeshCPUMemory(CPUSize);
 
-	// CPU → GPU 정점 버퍼 변환
+	// StaticMesh는 본 변형이 없으므로,
+	// import된/baked된 정점을 그대로 렌더 정점 포맷으로 변환해 GPU 버퍼를 만든다.
 	TMeshData<FVertexPNCTT> RenderMeshData;
 	RenderMeshData.Vertices.reserve(StaticMeshAsset->Vertices.size());
 
@@ -84,7 +100,8 @@ void UStaticMesh::InitResources(ID3D11Device* InDevice)
 	StaticMeshAsset->RenderBuffer = std::make_unique<FMeshBuffer>();
 	StaticMeshAsset->RenderBuffer->Create(InDevice, RenderMeshData);
 
-	// ── LOD 생성 (LOD1: 90%, LOD2: 55%, LOD3: 15%) ──
+	// TODO: 자동 LOD 생성 경로는 현재 비활성화 상태.
+	// Week 10 범위에서는 원본 LOD0 렌더링만 사용한다.
 	/*if (StaticMeshAsset->Vertices.size() >= 100)
 	{
 		static const float LODRatios[] = { 0.9f, 0.55f, 0.15f };
@@ -131,21 +148,9 @@ void UStaticMesh::SetStaticMeshAsset(FStaticMesh* InMesh)
 	// 현재는 static mesh asset이 로드 후 고정된다고 보고, 메시 변경 dirty 갱신은 비활성화합니다.
 	// MarkMeshTrianglePickingBVHDirty();
 
-	// Section → MaterialIndex 캐싱 갱신
 	if (StaticMeshAsset)
 	{
-		for (FStaticMeshSection& Section : StaticMeshAsset->Sections)
-		{
-			Section.MaterialIndex = -1;
-			for (int32 i = 0; i < (int32)StaticMaterials.size(); ++i)
-			{
-				if (StaticMaterials[i].MaterialSlotName == Section.MaterialSlotName)
-				{
-					Section.MaterialIndex = i;
-					break;
-				}
-			}
-		}
+		RefreshSectionMaterialIndices();
 		EnsureMeshTrianglePickingBVHBuilt();
 	}
 }
@@ -158,6 +163,7 @@ FStaticMesh* UStaticMesh::GetStaticMeshAsset() const
 void UStaticMesh::SetStaticMaterials(TArray<FStaticMaterial>&& InMaterials)
 {
 	StaticMaterials = InMaterials;
+	RefreshSectionMaterialIndices();
 }
 
 const TArray<FStaticMaterial>& UStaticMesh::GetStaticMaterials() const
@@ -204,4 +210,9 @@ const TArray<FStaticMeshSection>& UStaticMesh::GetLODSections(uint32 LODLevel) c
 	if (LODLevel >= 1 && LODLevel <= 3 && bHasLOD)
 		return AdditionalLODs[LODLevel - 1].Sections;
 	return StaticMeshAsset ? StaticMeshAsset->Sections : EmptySections;
+}
+
+void UStaticMesh::RefreshSectionMaterialIndices()
+{
+	RemapSectionMaterialIndices(StaticMeshAsset, StaticMaterials);
 }

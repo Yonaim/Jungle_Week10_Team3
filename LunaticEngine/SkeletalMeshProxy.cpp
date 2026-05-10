@@ -9,9 +9,33 @@
 #include "Materials/MaterialManager.h"
 #include "Engine/Runtime/Engine.h"
 
+namespace
+{
+	UMaterial* ResolveSkeletalSectionMaterial(
+		const TArray<FStaticMaterial>& Slots,
+		int32 MaterialIndex,
+		UMaterial*& InOutFallbackMaterial)
+	{
+		if (MaterialIndex >= 0 && MaterialIndex < static_cast<int32>(Slots.size()))
+		{
+			if (Slots[MaterialIndex].MaterialInterface)
+			{
+				return Slots[MaterialIndex].MaterialInterface;
+			}
+		}
+
+		if (!InOutFallbackMaterial)
+		{
+			InOutFallbackMaterial = FMaterialManager::Get().GetOrCreateMaterial("None");
+		}
+		return InOutFallbackMaterial;
+	}
+}
+
 FSkeletalMeshProxy::FSkeletalMeshProxy(USkinnedMeshComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent)
 {
+	// CPU Skinning 결과는 매 프레임 뷰포트 기준으로 갱신될 수 있어 플래그를 활성화한다.
 	ProxyFlags |= EPrimitiveProxyFlags::PerViewportUpdate;
 }
 
@@ -43,6 +67,9 @@ void FSkeletalMeshProxy::UpdateMaterial()
 
 void FSkeletalMeshProxy::UpdateMesh()
 {
+	// 렌더 제출 경계:
+	// 컴포넌트/애셋 데이터를 프록시 전용 버퍼로 변환해 캐시한다.
+	// DrawCommandBuilder는 이 프록시 캐시만 읽어 커맨드를 만든다.
 	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
 	if (!Device) return;
 
@@ -50,6 +77,7 @@ void FSkeletalMeshProxy::UpdateMesh()
 	USkeletalMesh* SkelMesh = Comp ? Comp->GetSkeletalMesh() : nullptr;
 	FSkeletalMesh* Asset = SkelMesh ? SkelMesh->GetSkeletalMeshAsset() : nullptr;
 
+	// 현재 SkeletalMesh는 LOD0만 사용한다.
 	for (uint32 lod = 0; lod < LODCount; ++lod)
 	{
 		FSkeletalLODDrawData& LOD = LODData[lod];
@@ -80,6 +108,10 @@ void FSkeletalMeshProxy::UpdateLOD(uint32 LODLevel)
 
 void FSkeletalMeshProxy::UpdatePerViewport(const FFrameContext& Frame)
 {
+	(void)Frame;
+
+	// CPU Skinning 결과 정점을 동적 VB로 업로드한다.
+	// 원본 애셋 정점은 변경하지 않고 컴포넌트 런타임 버퍼만 소비한다.
 	USkinnedMeshComponent* Comp = GetSkinnedMeshComponent();
 	TArray<FNormalVertex>* Verts = Comp ? Comp->GetCPUSkinnedVertices() : nullptr;
 	if (!Verts || Verts->empty()) return;
@@ -109,6 +141,7 @@ void FSkeletalMeshProxy::RebuildSectionDraws()
 
 	if (!Asset || Asset->Sections.empty())
 	{
+		// 섹션 정보가 없는 임시/예외 경로는 단일 fallback draw를 사용한다.
 		if (!DefaultMaterial)
 		{
 			DefaultMaterial = UMaterial::CreateTransient(
@@ -127,17 +160,13 @@ void FSkeletalMeshProxy::RebuildSectionDraws()
 	}
 
 	const TArray<FStaticMaterial>& Slots = SkelMesh->GetStaticMaterials();
+	UMaterial* FallbackMaterial = nullptr;
 
 	for (const FSkeletalMeshSection& Section : Asset->Sections)
 	{
-		UMaterial* Mat = nullptr;
+		UMaterial* Mat = ResolveSkeletalSectionMaterial(Slots, Section.MaterialIndex, FallbackMaterial);
 
-		if (Section.MaterialIndex >= 0 && Section.MaterialIndex < (int32)Slots.size())
-			Mat = Slots[Section.MaterialIndex].MaterialInterface;
-
-		if (!Mat)
-			Mat = FMaterialManager::Get().GetOrCreateMaterial("None");
-
+		// Section.IndexStart/IndexCount는 임포트 시 확정된 제출 단위다.
 		SectionDraws.push_back({ Mat, Section.IndexStart, Section.IndexCount });
 	}
 }

@@ -85,6 +85,8 @@ namespace
 
 FPrimitiveSceneProxy* UStaticMeshComponent::CreateSceneProxy()
 {
+	// 렌더 제출 경계:
+	// 이후 드로우 커맨드는 컴포넌트가 아니라 FStaticMeshSceneProxy를 통해 수집된다.
 	return new FStaticMeshSceneProxy(this);
 }
 
@@ -269,7 +271,8 @@ bool UStaticMeshComponent::LineTraceStaticMeshFast(
 	FVector LocalDirection = WorldInverse.TransformVector(Ray.Direction);
 	LocalDirection.Normalize();
 
-	// Mesh BVH만 사용하는 전용 경로입니다. 월드 BVH는 이 함수를 직접 호출해 가상 호출 비용을 피합니다.
+	// 월드 BVH가 후보 Primitive를 추린 뒤,
+	// 여기서는 메시 로컬 BVH로 삼각형 정밀 판정만 수행한다.
 	if (StaticMesh->RaycastMeshTrianglesWithBVHLocal(LocalOrigin, LocalDirection, OutHitResult))
 	{
 		const FVector LocalHitPoint = LocalOrigin + LocalDirection * OutHitResult.Distance;
@@ -279,30 +282,7 @@ bool UStaticMeshComponent::LineTraceStaticMeshFast(
 		return true;
 	}
 
-	// 실패하면 기존 방식하던 걸 주석 처리. 성능개선이 일단 확인됨.
-	//bool bHit = FRayUtils::RaycastTriangles(
-	//	Ray, GetWorldMatrix(),
-	//	GetWorldInverseMatrix(),
-	//	&Asset->Vertices[0].pos,
-	//	sizeof(FNormalVertex),
-	//	Asset->Indices,
-	//	OutHitResult);
-
-	//if (bHit)
-	//{
-	//	OutHitResult.HitComponent = this;
-	//}
-	/*codex의 답변
-왜 빨라졌냐면, 주석 처리된 Jungle_Week5_Team3/LunaticEngine/Source/Engine/Collision/RayUtils.cpp:60의
-RaycastTriangles()는 BVH 없이 Indices를 처음부터 끝까지 3개씩 돌면서 모든 triangle에 IntersectTriangle()를 합니다.
-즉 후보 메시에 대해 매번 풀 스캔입니다.
-월드 단계에서 이미 Jungle_Week5_Team3/LunaticEngine/Source/Engine/Collision/WorldPrimitivePickingBVH.cpp:87가
-primitive AABB 기준으로 후보만 추립니다.
-그런데 AABB는 보수적이라 “박스는 맞았지만 실제 삼각형은 안 맞는” 후보가 꽤 나옵니다.
-예전 코드에서는 이런 BVH miss 후보마다 fallback 전체 triangle 스캔이 한 번 더 돌았습니다.
-즉 “안 맞은 객체”를 확인하는 비용이 너무 컸던 겁니다.
-	*/
-	return false; // bHit;
+	return false;
 }
 
 // FArchive 기반 직렬화 — 복제 왕복용. 자산은 경로로만 들고, 실제 로드는 PostDuplicate에서.
