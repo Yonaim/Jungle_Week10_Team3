@@ -992,6 +992,9 @@
     <ClCompile Include="Source\Engine\Render\Proxy\PrimitiveSceneProxy.cpp">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Proxy\SkeletalMeshProxy.cpp">
+      <Filter>Source\Engine\Render\Proxy</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Proxy\StaticMeshSceneProxy.cpp">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClCompile>
@@ -1275,8 +1278,6 @@
       <Filter>ThirdParty\miniaudio</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="SkeletalMeshProxy.cpp" />
-    <ClCompile Include="SkeletalMeshProxy.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1934,6 +1935,9 @@
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Proxy\PrimitiveSceneProxy.h">
+      <Filter>Source\Engine\Render\Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Proxy\SkeletalMeshProxy.h">
       <Filter>Source\Engine\Render\Proxy</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Proxy\StaticMeshSceneProxy.h">

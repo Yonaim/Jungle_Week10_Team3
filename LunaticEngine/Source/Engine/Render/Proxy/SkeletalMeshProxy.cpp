@@ -1,4 +1,4 @@
-﻿#include "SkeletalMeshProxy.h"
+#include "SkeletalMeshProxy.h"
 #include "Component/SkinnedMeshComponent.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/StaticMeshCommon.h"

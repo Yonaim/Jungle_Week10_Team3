@@ -495,6 +495,7 @@
     <ClCompile Include="Source\Engine\Render\Proxy\DecalSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\GizmoSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\PrimitiveSceneProxy.cpp" />
+    <ClCompile Include="Source\Engine\Render\Proxy\SkeletalMeshProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\StaticMeshSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\SubUVSceneProxy.cpp" />
     <ClCompile Include="Source\Engine\Render\Proxy\TextRenderSceneProxy.cpp" />
@@ -590,8 +591,6 @@
     <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="ThirdParty\miniaudio\miniaudio.c" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="SkeletalMeshProxy.cpp" />
-    <ClCompile Include="SkeletalMeshProxy.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h" />
@@ -813,6 +812,7 @@
     <ClInclude Include="Source\Engine\Render\Proxy\DirtyFlag.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\GizmoSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\PrimitiveSceneProxy.h" />
+    <ClInclude Include="Source\Engine\Render\Proxy\SkeletalMeshProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\StaticMeshSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\SubUVSceneProxy.h" />
     <ClInclude Include="Source\Engine\Render\Proxy\TextRenderSceneProxy.h" />

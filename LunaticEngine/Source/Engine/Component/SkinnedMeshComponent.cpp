@@ -1,5 +1,5 @@
 ﻿#include "SkinnedMeshComponent.h"
-#include "SkeletalMeshProxy.h"
+#include "Render/Proxy/SkeletalMeshProxy.h"
 #include "Mesh/ObjManager.h"
 #include "Engine/Runtime/Engine.h"
 #include "Serialization/Archive.h"

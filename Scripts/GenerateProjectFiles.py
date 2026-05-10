@@ -69,7 +69,7 @@ NONE_EXTS = {".natstepfilter", ".config"}
 RC_EXTS = {".rc"}
 
 # Root-level files to include (relative to project dir)
-ROOT_FILES = ["main.cpp", "SkeletalMeshProxy.cpp", "SkeletalMeshProxy.h"]
+ROOT_FILES = ["main.cpp"]
 
 # Include paths (relative to project dir)
 INCLUDE_PATHS = [
