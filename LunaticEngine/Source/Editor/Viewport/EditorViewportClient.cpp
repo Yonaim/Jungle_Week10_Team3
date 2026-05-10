@@ -383,6 +383,166 @@ namespace
 		OutCorners[7] = FVector(Max.X, Max.Y, Max.Z);
 	}
 
+	bool ConvertScreenPointToViewportPixelClamped(
+		float ScreenX,
+		float ScreenY,
+		const FRect& ViewportScreenRect,
+		const FViewport* Viewport,
+		float FallbackWidth,
+		float FallbackHeight,
+		float& OutViewportX,
+		float& OutViewportY)
+	{
+		if (ViewportScreenRect.Width <= 0.0f || ViewportScreenRect.Height <= 0.0f)
+		{
+			return false;
+		}
+
+		const float TargetWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : FallbackWidth;
+		const float TargetHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : FallbackHeight;
+		if (TargetWidth <= 0.0f || TargetHeight <= 0.0f)
+		{
+			return false;
+		}
+
+		const float LocalX = (std::max)(0.0f, (std::min)(ScreenX - ViewportScreenRect.X, ViewportScreenRect.Width));
+		const float LocalY = (std::max)(0.0f, (std::min)(ScreenY - ViewportScreenRect.Y, ViewportScreenRect.Height));
+		OutViewportX = LocalX * (TargetWidth / ViewportScreenRect.Width);
+		OutViewportY = LocalY * (TargetHeight / ViewportScreenRect.Height);
+		return true;
+	}
+
+	bool RectsOverlap(float AMinX, float AMinY, float AMaxX, float AMaxY, float BMinX, float BMinY, float BMaxX, float BMaxY)
+	{
+		return AMinX <= BMaxX && AMaxX >= BMinX && AMinY <= BMaxY && AMaxY >= BMinY;
+	}
+
+	bool PointInRect(float X, float Y, float MinX, float MinY, float MaxX, float MaxY)
+	{
+		return X >= MinX && X <= MaxX && Y >= MinY && Y <= MaxY;
+	}
+
+	bool ProjectBoundsToViewportRect(
+		const FMatrix& ViewProjection,
+		const FBoundingBox& Bounds,
+		float ViewportWidth,
+		float ViewportHeight,
+		float& OutMinX,
+		float& OutMinY,
+		float& OutMaxX,
+		float& OutMaxY)
+	{
+		if (!Bounds.IsValid())
+		{
+			return false;
+		}
+
+		FVector Corners[8];
+		BuildBoundingBoxCorners(Bounds, Corners);
+
+		OutMinX = FLT_MAX;
+		OutMinY = FLT_MAX;
+		OutMaxX = -FLT_MAX;
+		OutMaxY = -FLT_MAX;
+		bool bProjectedAny = false;
+
+		for (const FVector& Corner : Corners)
+		{
+			float ScreenX = 0.0f;
+			float ScreenY = 0.0f;
+			float Depth = 0.0f;
+			if (!ProjectWorldToViewport(ViewProjection, Corner, ViewportWidth, ViewportHeight, ScreenX, ScreenY, Depth))
+			{
+				continue;
+			}
+
+			OutMinX = (std::min)(OutMinX, ScreenX);
+			OutMinY = (std::min)(OutMinY, ScreenY);
+			OutMaxX = (std::max)(OutMaxX, ScreenX);
+			OutMaxY = (std::max)(OutMaxY, ScreenY);
+			bProjectedAny = true;
+		}
+
+		return bProjectedAny;
+	}
+
+	bool ShouldActorBeSelectedByMarquee(
+		AActor* Actor,
+		const FMatrix& ViewProjection,
+		float ViewportWidth,
+		float ViewportHeight,
+		float MarqueeViewportMinX,
+		float MarqueeViewportMinY,
+		float MarqueeViewportMaxX,
+		float MarqueeViewportMaxY,
+		float MarqueeScreenMinX,
+		float MarqueeScreenMinY,
+		float MarqueeScreenMaxX,
+		float MarqueeScreenMaxY)
+	{
+		if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoComponent>())
+		{
+			return false;
+		}
+
+		bool bHadSelectableBounds = false;
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (!Component)
+			{
+				continue;
+			}
+
+			if (UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Component))
+			{
+				if (!Primitive->IsVisible())
+				{
+					continue;
+				}
+
+				float BoundsMinX = 0.0f;
+				float BoundsMinY = 0.0f;
+				float BoundsMaxX = 0.0f;
+				float BoundsMaxY = 0.0f;
+				if (ProjectBoundsToViewportRect(ViewProjection, Primitive->GetWorldBoundingBox(), ViewportWidth, ViewportHeight, BoundsMinX, BoundsMinY, BoundsMaxX, BoundsMaxY))
+				{
+					bHadSelectableBounds = true;
+					if (RectsOverlap(MarqueeViewportMinX, MarqueeViewportMinY, MarqueeViewportMaxX, MarqueeViewportMaxY, BoundsMinX, BoundsMinY, BoundsMaxX, BoundsMaxY))
+					{
+						return true;
+					}
+				}
+			}
+
+			USceneComponent* SceneComponent = Cast<USceneComponent>(Component);
+			float UIX = 0.0f;
+			float UIY = 0.0f;
+			float UIWidth = 0.0f;
+			float UIHeight = 0.0f;
+			if (SceneComponent && GetUIScreenComponentBounds(SceneComponent, UIX, UIY, UIWidth, UIHeight))
+			{
+				bHadSelectableBounds = true;
+				if (RectsOverlap(MarqueeScreenMinX, MarqueeScreenMinY, MarqueeScreenMaxX, MarqueeScreenMaxY, UIX, UIY, UIX + UIWidth, UIY + UIHeight))
+				{
+					return true;
+				}
+			}
+		}
+
+		if (!bHadSelectableBounds)
+		{
+			float ActorX = 0.0f;
+			float ActorY = 0.0f;
+			float Depth = 0.0f;
+			if (ProjectWorldToViewport(ViewProjection, Actor->GetActorLocation(), ViewportWidth, ViewportHeight, ActorX, ActorY, Depth))
+			{
+				return PointInRect(ActorX, ActorY, MarqueeViewportMinX, MarqueeViewportMinY, MarqueeViewportMaxX, MarqueeViewportMaxY);
+			}
+		}
+
+		return false;
+	}
+
 	AActor* FindScreenSpacePrimitiveAt(
 		UWorld* World,
 		const UCameraComponent* Camera,
@@ -640,8 +800,8 @@ void FEditorViewportClient::SetupInput()
 	EditorMappingContext->AddMapping(ActionEditorRotate, VK_RIGHT);
 	
 	// Mouse Rotate 
-	EditorMappingContext->AddMapping(ActionEditorRotate, static_cast<int32>(EInputKey::MouseX));
-	EditorMappingContext->AddMapping(ActionEditorRotate, static_cast<int32>(EInputKey::MouseY)).Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
+	EditorMappingContext->AddMapping(ActionEditorRotate, static_cast<int32>(EInputKey::MouseX)).BlockAlt();
+	EditorMappingContext->AddMapping(ActionEditorRotate, static_cast<int32>(EInputKey::MouseY)).BlockAlt().Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
 
 	// Pan: Middle Mouse
 	EditorMappingContext->AddMapping(ActionEditorPan, static_cast<int32>(EInputKey::MouseX));
@@ -650,16 +810,16 @@ void FEditorViewportClient::SetupInput()
 	// Zoom: Wheel
 	EditorMappingContext->AddMapping(ActionEditorZoom, static_cast<int32>(EInputKey::MouseWheel));
 
-	// Orbit: Alt + Left Mouse
-	EditorMappingContext->AddMapping(ActionEditorOrbit, static_cast<int32>(EInputKey::MouseX));
-	EditorMappingContext->AddMapping(ActionEditorOrbit, static_cast<int32>(EInputKey::MouseY)).Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
+	// Orbit: Alt + Left Mouse only. Ctrl+Alt is reserved for marquee/select interactions.
+	EditorMappingContext->AddMapping(ActionEditorOrbit, static_cast<int32>(EInputKey::MouseX)).RequireAlt().BlockCtrl();
+	EditorMappingContext->AddMapping(ActionEditorOrbit, static_cast<int32>(EInputKey::MouseY)).RequireAlt().BlockCtrl().Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
 
 	// --- Shortcuts ---
-	EditorMappingContext->AddMapping(ActionEditorFocus, 'F');
-	EditorMappingContext->AddMapping(ActionEditorDelete, VK_DELETE);
-	EditorMappingContext->AddMapping(ActionEditorDuplicate, 'D');
-	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, VK_SPACE);
-	EditorMappingContext->AddMapping(ActionEditorToggleCoordSystem, 'X');
+	EditorMappingContext->AddMapping(ActionEditorFocus, 'F').BlockCtrl().BlockAlt().BlockShift();
+	EditorMappingContext->AddMapping(ActionEditorDelete, VK_DELETE).BlockCtrl().BlockAlt().BlockShift();
+	EditorMappingContext->AddMapping(ActionEditorDuplicate, 'D').RequireCtrl().BlockAlt().BlockShift();
+	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, VK_SPACE).BlockCtrl().BlockAlt().BlockShift();
+	EditorMappingContext->AddMapping(ActionEditorToggleCoordSystem, 'X').BlockCtrl().BlockAlt().BlockShift();
 	EditorMappingContext->AddMapping(ActionEditorEscape, VK_ESCAPE);
 	EditorMappingContext->AddMapping(ActionEditorTogglePIE, VK_F8);
 	
@@ -669,33 +829,33 @@ void FEditorViewportClient::SetupInput()
 	EditorMappingContext->AddMapping(ActionEditorSnapToFloor, VK_END);
 
 	// Viewport Type Shortcuts
-	EditorMappingContext->AddMapping(ActionEditorSetViewportPerspective, 'G'); // Alt+G
-	EditorMappingContext->AddMapping(ActionEditorSetViewportTop, 'J');		   // Alt+J
-	EditorMappingContext->AddMapping(ActionEditorSetViewportFront, 'H');	   // Alt+H
-	EditorMappingContext->AddMapping(ActionEditorSetViewportRight, 'K');	   // Alt+K
+	EditorMappingContext->AddMapping(ActionEditorSetViewportPerspective, 'G').RequireAlt().BlockCtrl().BlockShift(); // Alt+G
+	EditorMappingContext->AddMapping(ActionEditorSetViewportTop, 'J').RequireAlt().BlockCtrl().BlockShift(); // Alt+J
+	EditorMappingContext->AddMapping(ActionEditorSetViewportFront, 'H').RequireAlt().BlockCtrl().BlockShift(); // Alt+H
+	EditorMappingContext->AddMapping(ActionEditorSetViewportRight, 'K').RequireAlt().BlockCtrl().BlockShift(); // Alt+K
 
 	// Snap Toggles
-	EditorMappingContext->AddMapping(ActionEditorToggleGridSnap, 'G');		// Shift+G
-	EditorMappingContext->AddMapping(ActionEditorToggleRotationSnap, 'R');	// Shift+R
-	EditorMappingContext->AddMapping(ActionEditorToggleScaleSnap, 'S');		// Shift+S
+	EditorMappingContext->AddMapping(ActionEditorToggleGridSnap, 'G').RequireShift().BlockCtrl().BlockAlt(); // Shift+G
+	EditorMappingContext->AddMapping(ActionEditorToggleRotationSnap, 'R').RequireShift().BlockCtrl().BlockAlt(); // Shift+R
+	EditorMappingContext->AddMapping(ActionEditorToggleScaleSnap, 'S').RequireShift().BlockCtrl().BlockAlt(); // Shift+S
 
 	// Bookmarks 0-9
 	for (int32 i = 0; i < 10; ++i)
 	{
 		int32 Key = '0' + i;
-		EditorMappingContext->AddMapping(ActionEditorSetBookmark, Key).Modifiers.push_back(new FModifierScale(FVector(static_cast<float>(i), 0, 0)));
-		EditorMappingContext->AddMapping(ActionEditorJumpToBookmark, Key).Modifiers.push_back(new FModifierScale(FVector(static_cast<float>(i), 0, 0)));
+		EditorMappingContext->AddMapping(ActionEditorSetBookmark, Key).RequireCtrl().BlockAlt().BlockShift().Modifiers.push_back(new FModifierScale(FVector(static_cast<float>(i), 0, 0)));
+		EditorMappingContext->AddMapping(ActionEditorJumpToBookmark, Key).BlockCtrl().BlockAlt().BlockShift().Modifiers.push_back(new FModifierScale(FVector(static_cast<float>(i), 0, 0)));
 	}
 
 	// UE Style Gizmo Shortcuts (QWER)
-	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'Q'); // Select
-	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'W'); // Translate
-	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'E'); // Rotate
-	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'R'); // Scale
+	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'Q').BlockCtrl().BlockAlt().BlockShift(); // Select
+	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'W').BlockCtrl().BlockAlt().BlockShift(); // Translate
+	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'E').BlockCtrl().BlockAlt().BlockShift(); // Rotate
+	EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'R').BlockCtrl().BlockAlt().BlockShift(); // Scale
 
 	// Game View Toggle (G)
 	FInputAction* ActionEditorToggleGameView = new FInputAction("IA_EditorToggleGameView", EInputActionValueType::Bool);
-	EditorMappingContext->AddMapping(ActionEditorToggleGameView, 'G');
+	EditorMappingContext->AddMapping(ActionEditorToggleGameView, 'G').BlockCtrl().BlockAlt().BlockShift();
 	EnhancedInputManager.BindAction(ActionEditorToggleGameView, ETriggerEvent::Started, [this](const FInputActionValue& V) {
 		if (!FInputManager::Get().IsKeyDown(VK_MENU) && !FInputManager::Get().IsKeyDown(VK_SHIFT)) RenderOptions.bGameView = !RenderOptions.bGameView;
 	});
@@ -844,6 +1004,10 @@ void FEditorViewportClient::OnEditorZoom(const FInputActionValue& Value)
 void FEditorViewportClient::OnEditorOrbit(const FInputActionValue& Value)
 {
 	FInputManager& Input = FInputManager::Get();
+	if (Input.IsKeyDown(VK_CONTROL))
+	{
+		return;
+	}
 	if (Input.IsKeyDown(VK_MENU))
 	{
 		// Alt + LMB = Selection Orbit
@@ -1194,7 +1358,12 @@ void FEditorViewportClient::TickEditorShortcuts()
 		return;
 	}
 
-	if (SelectionManager && FInputManager::Get().IsKeyPressed(VK_DELETE))
+	FInputManager& Input = FInputManager::Get();
+	const bool bCtrl = Input.IsKeyDown(VK_CONTROL);
+	const bool bAlt = Input.IsKeyDown(VK_MENU);
+	const bool bShift = Input.IsKeyDown(VK_SHIFT);
+
+	if (SelectionManager && !bCtrl && !bAlt && !bShift && Input.IsKeyPressed(VK_DELETE))
 	{
 		EditorEngine->BeginTrackedSceneChange();
 		SelectionManager->DeleteSelectedActors();
@@ -1202,19 +1371,19 @@ void FEditorViewportClient::TickEditorShortcuts()
 		return;
 	}
 
-	if (!FInputManager::Get().IsKeyDown(VK_CONTROL) && FInputManager::Get().IsKeyPressed('X'))
+	if (!bCtrl && !bAlt && !bShift && Input.IsKeyPressed('X'))
 	{
 		EditorEngine->ToggleCoordSystem();
 		return;
 	}
 
-	if (SelectionManager && FInputManager::Get().IsKeyPressed('F'))
+	if (SelectionManager && !bCtrl && !bAlt && !bShift && Input.IsKeyPressed('F'))
 	{
 		AActor* Selected = SelectionManager->GetPrimarySelection();
 		FocusActor(Selected);
 	}
 
-	if (SelectionManager && FInputManager::Get().IsKeyDown(VK_CONTROL) && FInputManager::Get().IsKeyPressed('D'))
+	if (SelectionManager && bCtrl && !bAlt && !bShift && Input.IsKeyPressed('D'))
 	{
 		const TArray<AActor*> ToDuplicate = SelectionManager->GetSelectedActors();
 		if (!ToDuplicate.empty())
@@ -1366,7 +1535,12 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	bool bGizmoHit = bCanInteractWithGizmo && FRayUtils::RaycastComponent(Gizmo, Ray, HitResult);
 	if (Input.IsKeyPressed(FInputManager::MOUSE_LEFT) && bIsHovered)
 	{
-		if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyDown(VK_MENU)) { bIsMarqueeSelecting = true; MarqueeStartPos = FVector(MousePos.x, MousePos.y, 0); MarqueeCurrentPos = FVector(MousePos.x, MousePos.y, 0); }
+		if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyDown(VK_MENU))
+		{
+			bIsMarqueeSelecting = true;
+			MarqueeStartPos = FVector(MousePos.x, MousePos.y, 0);
+			MarqueeCurrentPos = FVector(MousePos.x, MousePos.y, 0);
+		}
 		else 
 		{ 
 			if (Input.IsKeyDown(VK_MENU) && bGizmoHit && SelectionManager && !SelectionManager->IsEmpty())
@@ -1405,22 +1579,42 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 		}
 		else if (bIsMarqueeSelecting)
 		{
+			MarqueeCurrentPos = FVector(MousePos.x, MousePos.y, 0);
 			bIsMarqueeSelecting = false;
-			float MinX = (std::min)(MarqueeStartPos.X, MarqueeCurrentPos.X); float MaxX = (std::max)(MarqueeStartPos.X, MarqueeCurrentPos.X);
-			float MinY = (std::min)(MarqueeStartPos.Y, MarqueeCurrentPos.Y); float MaxY = (std::max)(MarqueeStartPos.Y, MarqueeCurrentPos.Y);
-			if (std::abs(MaxX - MinX) > 2.0f || std::abs(MaxY - MinY) > 2.0f)
+
+			const float ScreenMinX = (std::min)(MarqueeStartPos.X, MarqueeCurrentPos.X);
+			const float ScreenMaxX = (std::max)(MarqueeStartPos.X, MarqueeCurrentPos.X);
+			const float ScreenMinY = (std::min)(MarqueeStartPos.Y, MarqueeCurrentPos.Y);
+			const float ScreenMaxY = (std::max)(MarqueeStartPos.Y, MarqueeCurrentPos.Y);
+			if (std::abs(ScreenMaxX - ScreenMinX) > 2.0f || std::abs(ScreenMaxY - ScreenMinY) > 2.0f)
 			{
 				UWorld* World = GetWorld();
 				if (World && SelectionManager)
 				{
-					if (!Input.IsKeyDown(VK_CONTROL)) SelectionManager->ClearSelection();
-					FMatrix VP = Camera->GetViewProjectionMatrix();
-					for (AActor* Actor : World->GetActors())
+					float StartViewportX = 0.0f;
+					float StartViewportY = 0.0f;
+					float EndViewportX = 0.0f;
+					float EndViewportY = 0.0f;
+					if (ConvertScreenPointToViewportPixelClamped(MarqueeStartPos.X, MarqueeStartPos.Y, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, StartViewportX, StartViewportY)
+						&& ConvertScreenPointToViewportPixelClamped(MarqueeCurrentPos.X, MarqueeCurrentPos.Y, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, EndViewportX, EndViewportY))
 					{
-						if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoComponent>()) continue;
-						FVector WorldPos = Actor->GetActorLocation(); FVector ClipSpace = VP.TransformPositionWithW(WorldPos);
-						float ScreenX = (ClipSpace.X * 0.5f + 0.5f) * VPWidth + ViewportScreenRect.X; float ScreenY = (1.0f - (ClipSpace.Y * 0.5f + 0.5f)) * VPHeight + ViewportScreenRect.Y;
-						if (ScreenX >= MinX && ScreenX <= MaxX && ScreenY >= MinY && ScreenY <= MaxY) SelectionManager->ToggleSelect(Actor);
+						const float ViewportMinX = (std::min)(StartViewportX, EndViewportX);
+						const float ViewportMaxX = (std::max)(StartViewportX, EndViewportX);
+						const float ViewportMinY = (std::min)(StartViewportY, EndViewportY);
+						const float ViewportMaxY = (std::max)(StartViewportY, EndViewportY);
+						const FMatrix ViewProjection = Camera->GetViewProjectionMatrix();
+						TArray<AActor*> ActorsToSelect;
+
+						for (AActor* Actor : World->GetActors())
+						{
+							if (ShouldActorBeSelectedByMarquee(Actor, ViewProjection, VPWidth, VPHeight, ViewportMinX, ViewportMinY, ViewportMaxX, ViewportMaxY, ScreenMinX, ScreenMinY, ScreenMaxX, ScreenMaxY))
+							{
+								ActorsToSelect.push_back(Actor);
+							}
+						}
+
+						// Ctrl+Alt marquee is a replacement selection, not an additive selection.
+						SelectionManager->SelectActors(ActorsToSelect);
 					}
 				}
 			}

@@ -49,6 +49,26 @@ float ComputeSingleAxisAlpha(float coord, float derivative, float lineThickness)
 	return saturate(lineThickness - abs(coord) / max(derivative, 0.0001f));
 }
 
+float3 NormalizeSafe(float3 v, float3 fallbackDir)
+{
+	const float len2 = dot(v, v);
+	if (len2 <= 1.0e-8f)
+	{
+		return fallbackDir;
+	}
+	return v * rsqrt(len2);
+}
+
+float3 ReconstructViewForwardWS()
+{
+	// InvViewProj로 NDC 중심 near/far를 역투영해 카메라 전방 벡터를 얻는다.
+	float4 nearWS = mul(float4(0.0f, 0.0f, 0.0f, 1.0f), InvViewProj);
+	float4 farWS = mul(float4(0.0f, 0.0f, 1.0f, 1.0f), InvViewProj);
+	nearWS.xyz /= max(nearWS.w, 1.0e-6f);
+	farWS.xyz /= max(farWS.w, 1.0e-6f);
+	return NormalizeSafe(farWS.xyz - nearWS.xyz, float3(0.0f, 0.0f, 1.0f));
+}
+
 VSOutput VS(uint VertexID : SV_VertexID)
 {
 	// VB 없이 SV_VertexID로 사각형(2 triangles)을 생성한다.
@@ -77,29 +97,34 @@ VSOutput VS(uint VertexID : SV_VertexID)
 	const float2 q = Positions[localID];
 	const float axisT = q.x;
 	const float stripHalfWidth = max(GridSize * 0.1f * max(AxisThickness, 1.0f), 0.01f);
+	const float3 viewForwardWS = ReconstructViewForwardWS();
 
 	float3 worldPos = 0.0f.xxx;
 	float axisCoord = 0.0f;
 	float3 axisColor = 0.0f.xxx;
 	if (axisID == 0)
 	{
-		// X축 (빨강): Y 방향 폭을 가진 리본
-		worldPos = float3(axisT * AxisLength, q.y * stripHalfWidth, 0.0f);
-		axisCoord = worldPos.y;
+		// 카메라와 축 방향에 수직인 방향으로 리본 폭을 잡아, 정투영 축 정렬에서도 두께가 사라지지 않게 한다.
+		const float3 axisDir = float3(1.0f, 0.0f, 0.0f);
+		float3 widthDir = NormalizeSafe(cross(viewForwardWS, axisDir), float3(0.0f, 1.0f, 0.0f));
+		worldPos = axisDir * (axisT * AxisLength) + widthDir * (q.y * stripHalfWidth);
+		axisCoord = q.y * stripHalfWidth;
 		axisColor = AxisColorA.rgb;
 	}
 	else if (axisID == 1)
 	{
-		// Y축 (초록): X 방향 폭을 가진 리본
-		worldPos = float3(q.y * stripHalfWidth, axisT * AxisLength, 0.0f);
-		axisCoord = worldPos.x;
+		const float3 axisDir = float3(0.0f, 1.0f, 0.0f);
+		float3 widthDir = NormalizeSafe(cross(viewForwardWS, axisDir), float3(1.0f, 0.0f, 0.0f));
+		worldPos = axisDir * (axisT * AxisLength) + widthDir * (q.y * stripHalfWidth);
+		axisCoord = q.y * stripHalfWidth;
 		axisColor = AxisColorB.rgb;
 	}
 	else
 	{
-		// Z축 (파랑): X 방향 폭을 가진 리본
-		worldPos = float3(q.y * stripHalfWidth, 0.0f, axisT * AxisLength);
-		axisCoord = worldPos.x;
+		const float3 axisDir = float3(0.0f, 0.0f, 1.0f);
+		float3 widthDir = NormalizeSafe(cross(viewForwardWS, axisDir), float3(1.0f, 0.0f, 0.0f));
+		worldPos = axisDir * (axisT * AxisLength) + widthDir * (q.y * stripHalfWidth);
+		axisCoord = q.y * stripHalfWidth;
 		axisColor = AxisColorN.rgb;
 	}
 

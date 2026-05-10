@@ -1772,16 +1772,64 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 		ImGui::SetCursorScreenPos(ContentPos);
 		ImGui::Selectable("##ViewportArea", false, 0, ContentSize);
 		if (ImGui::BeginDragDropTarget())
-		{			
+		{
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ObjectContentItem"))
 			{
 				FContentItem ContentItem = *reinterpret_cast<const FContentItem*>(payload->Data);
 
-				Editor->BeginTrackedSceneChange();
-				AStaticMeshActor* NewActor = Cast<AStaticMeshActor>(FObjectFactory::Get().Create(AStaticMeshActor::StaticClass()->GetName(), Editor->GetWorld()));
-				NewActor->InitDefaultComponents(FPaths::ToUtf8(ContentItem.Path));
-				Editor->GetWorld()->AddActor(NewActor);
-				Editor->CommitTrackedSceneChange();
+				const ImVec2 DropMousePos = ImGui::GetIO().MousePos;
+				const FPoint DropClientPos = { DropMousePos.x, DropMousePos.y };
+
+				int32 DropSlot = -1;
+				for (int32 i = 0; i < ActiveSlotCount; ++i)
+				{
+					if (i >= static_cast<int32>(LevelViewportClients.size()) ||
+						i < 0 ||
+						i >= MaxViewportSlots ||
+						!ViewportWindows[i])
+					{
+						continue;
+					}
+
+					const FRect& SlotRect = ViewportWindows[i]->GetRect();
+					if (SlotRect.Width > 1.0f &&
+						SlotRect.Height > 1.0f &&
+						ViewportWindows[i]->IsHover(DropClientPos))
+					{
+						DropSlot = i;
+						break;
+					}
+				}
+
+				if (DropSlot >= 0 &&
+					DropSlot < static_cast<int32>(LevelViewportClients.size()) &&
+					Editor)
+				{
+					FVector SpawnLocation(0.0f, 0.0f, 0.0f);
+					UWorld* World = Editor->GetWorld();
+					if (World && TryComputePlacementLocation(DropSlot, DropClientPos, SpawnLocation))
+					{
+						SetActiveViewport(LevelViewportClients[DropSlot]);
+
+						Editor->BeginTrackedSceneChange();
+						AStaticMeshActor* NewActor = World->SpawnActor<AStaticMeshActor>();
+						if (NewActor)
+						{
+							NewActor->InitDefaultComponents(FPaths::ToUtf8(ContentItem.Path));
+							NewActor->SetActorLocation(SpawnLocation);
+							NewActor->EnsureEditorBillboardForActor();
+							if (SelectionManager)
+							{
+								SelectionManager->Select(NewActor);
+							}
+							Editor->CommitTrackedSceneChange();
+						}
+						else
+						{
+							Editor->CancelTrackedSceneChange();
+						}
+					}
+				}
 			}
 			ImGui::EndDragDropTarget();
 		}
@@ -3162,9 +3210,18 @@ bool FLevelViewportLayout::TryComputePlacementLocation(int32 SlotIndex, const FP
 		return false;
 	}
 
-	const float LocalX = Clamp(ClientPos.X - ViewRect.X, 0.0f, VPWidth - 1.0f);
-	const float LocalY = Clamp(ClientPos.Y - ViewRect.Y, 0.0f, VPHeight - 1.0f);
-	// 클릭 좌표를 월드 레이로 바꿔 카메라 앞 기본 배치 위치를 계산합니다.
+	if (ViewRect.Width <= 0.0f || ViewRect.Height <= 0.0f)
+	{
+		return false;
+	}
+
+	const float NormalizedX = Clamp((ClientPos.X - ViewRect.X) / ViewRect.Width, 0.0f, 1.0f);
+	const float NormalizedY = Clamp((ClientPos.Y - ViewRect.Y) / ViewRect.Height, 0.0f, 1.0f);
+	const float LocalX = Clamp(NormalizedX * VPWidth, 0.0f, VPWidth - 1.0f);
+	const float LocalY = Clamp(NormalizedY * VPHeight, 0.0f, VPHeight - 1.0f);
+	// Convert the ImGui screen-space mouse position into the render-target pixel space
+	// used by DeprojectScreenToWorld. The viewport widget can be a different size
+	// from the render target, so subtracting X/Y alone is not enough.
 	const FRay Ray = ViewportClient->GetCamera()->DeprojectScreenToWorld(LocalX, LocalY, VPWidth, VPHeight);
 	const FVector RayDirection = Ray.Direction.Normalized();
 

@@ -12,13 +12,74 @@ void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LP
 	switch (Msg)
 	{
 	case WM_KEYDOWN:
-		if (WParam < MAX_KEYS)
-			EventQueue.push_back({ EInputEventType::KeyDown, static_cast<int32>(WParam) });
+	case WM_SYSKEYDOWN:
+	{
+		const int32 Key = static_cast<int32>(WParam);
+		if (Key >= 0 && Key < MAX_KEYS)
+		{
+			EventQueue.push_back({ EInputEventType::KeyDown, Key });
+		}
+
+		const int32 SpecificKey = GetSpecificModifierKey(WParam, LParam);
+		if (SpecificKey != Key && SpecificKey >= 0 && SpecificKey < MAX_KEYS)
+		{
+			EventQueue.push_back({ EInputEventType::KeyDown, SpecificKey });
+		}
 		break;
+	}
 
 	case WM_KEYUP:
-		if (WParam < MAX_KEYS)
-			EventQueue.push_back({ EInputEventType::KeyUp, static_cast<int32>(WParam) });
+	case WM_SYSKEYUP:
+	{
+		const int32 Key = static_cast<int32>(WParam);
+		if (Key >= 0 && Key < MAX_KEYS)
+		{
+			EventQueue.push_back({ EInputEventType::KeyUp, Key });
+		}
+
+		const int32 SpecificKey = GetSpecificModifierKey(WParam, LParam);
+		if (SpecificKey != Key && SpecificKey >= 0 && SpecificKey < MAX_KEYS)
+		{
+			EventQueue.push_back({ EInputEventType::KeyUp, SpecificKey });
+		}
+		break;
+	}
+
+	case WM_SETFOCUS:
+		bWindowFocused = true;
+		break;
+
+	case WM_KILLFOCUS:
+		bWindowFocused = false;
+		ResetAllStates();
+		if (GetCapture() == Hwnd)
+		{
+			ReleaseCapture();
+		}
+		break;
+
+	case WM_ACTIVATEAPP:
+		if (WParam == FALSE)
+		{
+			bWindowFocused = false;
+			ResetAllStates();
+			if (GetCapture() == Hwnd)
+			{
+				ReleaseCapture();
+			}
+		}
+		else
+		{
+			bWindowFocused = true;
+		}
+		break;
+
+	case WM_CANCELMODE:
+		ResetAllStates();
+		if (GetCapture() == Hwnd)
+		{
+			ReleaseCapture();
+		}
 		break;
 
 	case WM_LBUTTONDOWN:
@@ -58,12 +119,14 @@ void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LP
 	{
 		int32 Btn = (GET_XBUTTON_WPARAM(WParam) == XBUTTON1) ? MOUSE_X1 : MOUSE_X2;
 		EventQueue.push_back({ EInputEventType::MouseButtonDown, Btn });
+		SetCapture(Hwnd);
 		break;
 	}
 	case WM_XBUTTONUP:
 	{
 		int32 Btn = (GET_XBUTTON_WPARAM(WParam) == XBUTTON1) ? MOUSE_X1 : MOUSE_X2;
 		EventQueue.push_back({ EInputEventType::MouseButtonUp, Btn });
+		ReleaseCapture();
 		break;
 	}
 
@@ -112,7 +175,9 @@ void FInputManager::Tick()
 	// Save previous frame state
 	std::memcpy(PrevKeyState, KeyState, sizeof(KeyState));
 
-	// Clear transient drag states
+	// Clear transient states
+	std::memset(PressedState, 0, sizeof(PressedState));
+	std::memset(ReleasedState, 0, sizeof(ReleasedState));
 	for (int i = 0; i < MAX_KEYS; ++i)
 	{
 		bWasDragStarted[i] = false;
@@ -122,36 +187,32 @@ void FInputManager::Tick()
 	// Flush event queue
 	for (const FInputEvent& Event : EventQueue)
 	{
-		int32 Key = Event.KeyOrButton;
+		const int32 Key = Event.KeyOrButton;
 		if (Key < 0 || Key >= MAX_KEYS) continue;
 
 		switch (Event.Type)
 		{
 		case EInputEventType::KeyDown:
+			ApplyKeyState(Key, true, false);
+			break;
 		case EInputEventType::MouseButtonDown:
-			KeyState[Key] = true;
-			if (Event.Type == EInputEventType::MouseButtonDown)
-			{
-				bDragCandidate[Key] = true;
-				MouseDownPos[Key] = LastMousePos;
-			}
+			ApplyKeyState(Key, true, true);
 			break;
 		case EInputEventType::KeyUp:
+			ApplyKeyState(Key, false, false);
+			break;
 		case EInputEventType::MouseButtonUp:
-			KeyState[Key] = false;
-			if (Event.Type == EInputEventType::MouseButtonUp)
-			{
-				if (bIsDragging[Key])
-				{
-					bIsDragging[Key] = false;
-					bWasDragEnded[Key] = true;
-				}
-				bDragCandidate[Key] = false;
-			}
+			ApplyKeyState(Key, false, true);
+			break;
+		default:
 			break;
 		}
 	}
 	EventQueue.clear();
+
+	// If Windows or ImGui swallowed a modifier or mouse-up message, reconcile with the physical state.
+	SynchronizeModifierKeyStates();
+	SynchronizeMouseButtonStates();
 
 	// Mouse Wheel
 	MouseWheelDelta = PendingWheelDelta;
@@ -178,6 +239,109 @@ void FInputManager::Tick()
 	RawMouseDeltaAccumY = 0.0f;
 
 	UpdateDragging();
+}
+
+void FInputManager::ApplyKeyState(int32 Key, bool bDown, bool bIsMouseButton)
+{
+	if (Key < 0 || Key >= MAX_KEYS) return;
+
+	if (bDown)
+	{
+		if (!KeyState[Key])
+		{
+			PressedState[Key] = true;
+		}
+		KeyState[Key] = true;
+
+		if (bIsMouseButton && !bDragCandidate[Key])
+		{
+			bDragCandidate[Key] = true;
+			MouseDownPos[Key] = LastMousePos;
+		}
+	}
+	else
+	{
+		if (KeyState[Key])
+		{
+			ReleasedState[Key] = true;
+		}
+		KeyState[Key] = false;
+
+		if (bIsMouseButton)
+		{
+			if (bIsDragging[Key])
+			{
+				bIsDragging[Key] = false;
+				bWasDragEnded[Key] = true;
+			}
+			bDragCandidate[Key] = false;
+		}
+	}
+}
+
+void FInputManager::SynchronizeModifierKeyStates()
+{
+	const auto IsDown = [](int32 Key) -> bool
+	{
+		return (GetAsyncKeyState(Key) & 0x8000) != 0;
+	};
+
+	const bool bLeftCtrl = IsDown(VK_LCONTROL);
+	const bool bRightCtrl = IsDown(VK_RCONTROL);
+	ApplyKeyState(VK_LCONTROL, bLeftCtrl, false);
+	ApplyKeyState(VK_RCONTROL, bRightCtrl, false);
+	ApplyKeyState(VK_CONTROL, bLeftCtrl || bRightCtrl || IsDown(VK_CONTROL), false);
+
+	const bool bLeftAlt = IsDown(VK_LMENU);
+	const bool bRightAlt = IsDown(VK_RMENU);
+	ApplyKeyState(VK_LMENU, bLeftAlt, false);
+	ApplyKeyState(VK_RMENU, bRightAlt, false);
+	ApplyKeyState(VK_MENU, bLeftAlt || bRightAlt || IsDown(VK_MENU), false);
+
+	const bool bLeftShift = IsDown(VK_LSHIFT);
+	const bool bRightShift = IsDown(VK_RSHIFT);
+	ApplyKeyState(VK_LSHIFT, bLeftShift, false);
+	ApplyKeyState(VK_RSHIFT, bRightShift, false);
+	ApplyKeyState(VK_SHIFT, bLeftShift || bRightShift || IsDown(VK_SHIFT), false);
+}
+
+void FInputManager::SynchronizeMouseButtonStates()
+{
+	const auto IsDown = [](int32 Key) -> bool
+	{
+		return (GetAsyncKeyState(Key) & 0x8000) != 0;
+	};
+
+	ApplyKeyState(MOUSE_LEFT, IsDown(MOUSE_LEFT), true);
+	ApplyKeyState(MOUSE_RIGHT, IsDown(MOUSE_RIGHT), true);
+	ApplyKeyState(MOUSE_MIDDLE, IsDown(MOUSE_MIDDLE), true);
+	ApplyKeyState(MOUSE_X1, IsDown(MOUSE_X1), true);
+	ApplyKeyState(MOUSE_X2, IsDown(MOUSE_X2), true);
+}
+
+int32 FInputManager::GetSpecificModifierKey(WPARAM WParam, LPARAM LParam)
+{
+	const int32 Key = static_cast<int32>(WParam);
+	if (Key == VK_SHIFT)
+	{
+		const UINT ScanCode = static_cast<UINT>((LParam >> 16) & 0xff);
+		const UINT SpecificKey = MapVirtualKey(ScanCode, MAPVK_VSC_TO_VK_EX);
+		return SpecificKey != 0 ? static_cast<int32>(SpecificKey) : VK_SHIFT;
+	}
+	if (Key == VK_CONTROL)
+	{
+		return (LParam & (1 << 24)) ? VK_RCONTROL : VK_LCONTROL;
+	}
+	if (Key == VK_MENU)
+	{
+		return (LParam & (1 << 24)) ? VK_RMENU : VK_LMENU;
+	}
+	return Key;
+}
+
+bool FInputManager::IsMouseButtonKey(int32 Key)
+{
+	return Key == MOUSE_LEFT || Key == MOUSE_RIGHT || Key == MOUSE_MIDDLE || Key == MOUSE_X1 || Key == MOUSE_X2;
 }
 
 void FInputManager::UpdateDragging()
@@ -257,6 +421,8 @@ void FInputManager::ResetAllKeyStates()
 {
 	std::memset(KeyState, 0, sizeof(KeyState));
 	std::memset(PrevKeyState, 0, sizeof(PrevKeyState));
+	std::memset(PressedState, 0, sizeof(PressedState));
+	std::memset(ReleasedState, 0, sizeof(ReleasedState));
 	std::memset(bIsDragging, 0, sizeof(bIsDragging));
 	std::memset(bDragCandidate, 0, sizeof(bDragCandidate));
 	EventQueue.clear();
@@ -271,13 +437,13 @@ bool FInputManager::IsKeyDown(int32 Key) const
 bool FInputManager::IsKeyPressed(int32 Key) const
 {
 	if (Key < 0 || Key >= MAX_KEYS) return false;
-	return KeyState[Key] && !PrevKeyState[Key];
+	return PressedState[Key];
 }
 
 bool FInputManager::IsKeyReleased(int32 Key) const
 {
 	if (Key < 0 || Key >= MAX_KEYS) return false;
-	return !KeyState[Key] && PrevKeyState[Key];
+	return ReleasedState[Key];
 }
 
 bool FInputManager::IsMouseButtonDown(int32 Button) const

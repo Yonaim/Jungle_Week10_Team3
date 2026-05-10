@@ -51,6 +51,7 @@ LRESULT CALLBACK FWindowsApplication::StaticWndProc(HWND hWnd, unsigned int Msg,
 
 LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam)
 {
+	// Keep engine input state coherent even when ImGui consumes the message.
 	FInputManager::Get().ProcessMessage(hWnd, Msg, wParam, lParam);
 
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, Msg, wParam, lParam))
@@ -122,6 +123,16 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 		return HTCLIENT;
 	}
 #endif
+	case WM_SYSKEYDOWN:
+		// Preserve normal Windows close behavior, but do not let Alt shortcuts activate the system menu.
+		if (wParam == VK_F4 && (lParam & (1 << 29)))
+		{
+			break;
+		}
+		return 0;
+	case WM_SYSKEYUP:
+	case WM_SYSCHAR:
+		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;

@@ -52,6 +52,10 @@ public:
 	bool IsKeyPressed(int32 Key) const;
 	bool IsKeyReleased(int32 Key) const;
 
+	bool IsCtrlDown() const { return IsKeyDown(VK_CONTROL); }
+	bool IsAltDown() const { return IsKeyDown(VK_MENU); }
+	bool IsShiftDown() const { return IsKeyDown(VK_SHIFT); }
+
 	// Mouse specific 
 	bool IsMouseButtonDown(int32 Button) const;
 	bool IsMouseButtonPressed(int32 Button) const;
@@ -113,6 +117,8 @@ private:
 
 	bool KeyState[MAX_KEYS] = {};
 	bool PrevKeyState[MAX_KEYS] = {};
+	bool PressedState[MAX_KEYS] = {};
+	bool ReleasedState[MAX_KEYS] = {};
 
 	float MouseDeltaX = 0.0f;
 	float MouseDeltaY = 0.0f;
@@ -140,6 +146,11 @@ private:
 	bool bGuiUsingTextInputOverride = false;
 
 	void UpdateDragging();
+	void ApplyKeyState(int32 Key, bool bDown, bool bIsMouseButton);
+	void SynchronizeModifierKeyStates();
+	void SynchronizeMouseButtonStates();
+	static int32 GetSpecificModifierKey(WPARAM WParam, LPARAM LParam);
+	static bool IsMouseButtonKey(int32 Key);
 	
 
 	static FInputManager* Instance;

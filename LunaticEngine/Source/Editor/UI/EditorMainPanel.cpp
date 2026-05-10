@@ -1156,7 +1156,9 @@ void FEditorMainPanel::HandleGlobalShortcuts()
 		return;
 	}
 
-	if (!Input.IsKeyDown(VK_CONTROL))
+	const bool bCtrl = Input.IsKeyDown(VK_CONTROL);
+	const bool bAlt = Input.IsKeyDown(VK_MENU);
+	if (!bCtrl || bAlt)
 	{
 		return;
 	}

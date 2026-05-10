@@ -7,6 +7,31 @@
 
 #include <algorithm>
 
+namespace
+{
+	bool MatchModifier(bool bIsDown, EInputModifierMatch Match)
+	{
+		switch (Match)
+		{
+		case EInputModifierMatch::Required:
+			return bIsDown;
+		case EInputModifierMatch::Blocked:
+			return !bIsDown;
+		case EInputModifierMatch::DontCare:
+		default:
+			return true;
+		}
+	}
+
+	bool DoesMappingMatchModifiers(FInputManager* Input, const FActionKeyMapping& Mapping)
+	{
+		const FInputModifierRequirements& Req = Mapping.ModifierRequirements;
+		return MatchModifier(Input->IsKeyDown(VK_CONTROL), Req.Ctrl)
+			&& MatchModifier(Input->IsKeyDown(VK_MENU), Req.Alt)
+			&& MatchModifier(Input->IsKeyDown(VK_SHIFT), Req.Shift);
+	}
+}
+
 // Function : Add mapping context to manager and sort by priority
 // input : Priority, Context 
 // Context : mapping context to add
@@ -105,6 +130,7 @@ void FEnhancedInputManager::ProcessInput(FInputManager* RawInput, float DeltaTim
 		for (FActionKeyMapping& Mapping : ContextEntry.Context->Mappings)
 		{
 			if (!Mapping.Action) continue;
+			if (!DoesMappingMatchModifiers(RawInput, Mapping)) continue;
 
 			// ImGui blocking
 			bool bIsMouseKey = (Mapping.Key >= static_cast<int32>(EInputKey::MouseX) && Mapping.Key <= static_cast<int32>(EInputKey::MouseDragM_Y))
