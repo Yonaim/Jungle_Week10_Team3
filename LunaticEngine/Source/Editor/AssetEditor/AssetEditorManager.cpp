@@ -30,9 +30,9 @@ void FAssetEditorManager::Tick(float DeltaTime)
     AssetEditorWindow.Tick(DeltaTime);
 }
 
-void FAssetEditorManager::Render(float DeltaTime)
+void FAssetEditorManager::RenderContent(float DeltaTime)
 {
-    AssetEditorWindow.Render(DeltaTime);
+    AssetEditorWindow.RenderContent(DeltaTime);
 }
 
 bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPath)
@@ -94,7 +94,7 @@ bool FAssetEditorManager::OpenLoadedAsset(UObject *Asset, const std::filesystem:
 
     if (!AssetEditorWindow.IsOpen())
     {
-        if (!AssetEditorWindow.Create(EditorEngine, Renderer))
+        if (!AssetEditorWindow.Create(EditorEngine, Renderer, this))
         {
             Editor->Close();
             return false;
@@ -137,7 +137,7 @@ bool FAssetEditorManager::CreateCameraModifierStackAsset()
         return false;
     }
 
-    if (!AssetEditorWindow.IsOpen() && !AssetEditorWindow.Create(EditorEngine, Renderer))
+    if (!AssetEditorWindow.IsOpen() && !AssetEditorWindow.Create(EditorEngine, Renderer, this))
     {
         Editor->Close();
         return false;

@@ -1,44 +1,51 @@
 #include "AssetEditor/Window/AssetEditorWindow.h"
 
+#include "AssetEditor/AssetEditorManager.h"
 #include "AssetEditor/IAssetEditor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/ImGui/EditorImGuiSystem.h"
 #include "Core/Notification.h"
+#include "EditorEngine.h"
 #include "Engine/Runtime/WindowsWindow.h"
-#include "Platform/Paths.h"
-#include "Resource/ResourceManager.h"
 
 #include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_dx11.h"
-#include "ImGui/imgui_impl_win32.h"
-
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <windowsx.h>
 
-extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam);
+#include <cstdint>
 
 namespace
 {
     constexpr wchar_t AssetEditorWindowClassName[] = L"LunaticAssetEditorWindowClass";
+    constexpr LONG AssetEditorWindowStyle = WS_POPUP | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_VISIBLE;
 
     constexpr ImVec4 AssetEditorSurface = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
     constexpr ImVec4 AssetEditorFrameBg = ImVec4(5.0f / 255.0f, 5.0f / 255.0f, 5.0f / 255.0f, 1.0f);
     constexpr ImVec4 AssetEditorBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
+
+    int GetResizeBorderForWindow(HWND hWnd)
+    {
+        if (!hWnd)
+        {
+            return 0;
+        }
+
+        const UINT Dpi = GetDpiForWindow(hWnd);
+        return GetSystemMetricsForDpi(SM_CXFRAME, Dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, Dpi);
+    }
 } // namespace
 
-bool FAssetEditorWindow::Create(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
+bool FAssetEditorWindow::Create(UEditorEngine *InEditorEngine, FRenderer *InRenderer, FAssetEditorManager *InOwnerManager)
 {
     EditorEngine = InEditorEngine;
     Renderer = InRenderer;
-
-    if (!CreateNativeWindow())
-    {
-        return false;
-    }
+    OwnerManager = InOwnerManager;
+    ImGuiSystem = InEditorEngine ? &InEditorEngine->GetImGuiSystem() : nullptr;
 
     bOpen = true;
-    Show();
+    bVisible = true;
     return true;
 }
 
@@ -50,53 +57,35 @@ void FAssetEditorWindow::Destroy()
     }
 
     bOpen = false;
+    bVisible = false;
     bCapturingInput = false;
-
-    ShutdownImGuiContext();
-    if (WindowDevice.GetDevice())
-    {
-        WindowDevice.Release();
-    }
-    DestroyNativeWindow();
 
     EditorEngine = nullptr;
     Renderer = nullptr;
+    OwnerManager = nullptr;
+    ImGuiSystem = nullptr;
 }
 
 void FAssetEditorWindow::Show()
 {
     bOpen = true;
-    if (NativeWindow && NativeWindow->GetHWND())
-    {
-        ShowWindow(NativeWindow->GetHWND(), SW_SHOW);
-        BringWindowToTop(NativeWindow->GetHWND());
-        SetForegroundWindow(NativeWindow->GetHWND());
-    }
+    bVisible = true;
 }
 
 void FAssetEditorWindow::Hide()
 {
-    bOpen = false;
+    bVisible = false;
     bCapturingInput = false;
-    if (NativeWindow && NativeWindow->GetHWND())
-    {
-        ShowWindow(NativeWindow->GetHWND(), SW_HIDE);
-    }
 }
 
 bool FAssetEditorWindow::IsOpen() const
 {
-    return bOpen && NativeWindow && NativeWindow->GetHWND() && IsWindowVisible(NativeWindow->GetHWND()) != FALSE;
+    return bOpen && bVisible;
 }
 
 bool FAssetEditorWindow::OpenEditorTab(std::unique_ptr<IAssetEditor> Editor)
 {
     if (!Editor)
-    {
-        return false;
-    }
-
-    if (!NativeWindow && !CreateNativeWindow())
     {
         return false;
     }
@@ -139,35 +128,15 @@ void FAssetEditorWindow::Tick(float DeltaTime)
     TabManager.Tick(DeltaTime);
 }
 
-void FAssetEditorWindow::Render(float DeltaTime)
+void FAssetEditorWindow::RenderContent(float DeltaTime)
 {
-    if (!IsOpen() || !WindowImGuiContext || !NativeWindow || !NativeWindow->GetHWND())
+    if (!IsOpen() || !ImGuiSystem)
     {
         bCapturingInput = false;
         return;
     }
-
-    if (NativeWindow->GetWidth() <= 0.0f || NativeWindow->GetHeight() <= 0.0f)
-    {
-        bCapturingInput = false;
-        return;
-    }
-
-    ImGuiContext *PreviousContext = ImGui::GetCurrentContext();
-    MakeCurrentContext();
-
-    WindowDevice.BeginFrame();
-    ImGui_ImplDX11_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
 
     RenderWindowContents(DeltaTime);
-
-    ImGui::Render();
-    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-    WindowDevice.Present();
-
-    ImGui::SetCurrentContext(PreviousContext);
 }
 
 bool FAssetEditorWindow::IsCapturingInput() const
@@ -191,20 +160,80 @@ LRESULT CALLBACK FAssetEditorWindow::StaticWindowProc(HWND hWnd, UINT Msg, WPARA
 
 LRESULT FAssetEditorWindow::WindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
-    if (WindowImGuiContext)
+    if (ImGuiSystem && NativeWindow)
     {
-        ImGuiContext *PreviousContext = ImGui::GetCurrentContext();
-        MakeCurrentContext();
-        if (ImGui_ImplWin32_WndProcHandler(hWnd, Msg, wParam, lParam))
+        if (ImGuiSystem->HandleWindowMessage(NativeWindow.get(), hWnd, Msg, static_cast<std::uintptr_t>(wParam),
+                                             static_cast<std::intptr_t>(lParam)))
         {
-            ImGui::SetCurrentContext(PreviousContext);
             return 1;
         }
-        ImGui::SetCurrentContext(PreviousContext);
     }
 
     switch (Msg)
     {
+    case WM_NCCALCSIZE:
+        return 0;
+    case WM_GETMINMAXINFO:
+    {
+        MONITORINFO MonitorInfo{};
+        MonitorInfo.cbSize = sizeof(MONITORINFO);
+        if (GetMonitorInfoW(MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST), &MonitorInfo))
+        {
+            MINMAXINFO *MinMaxInfo = reinterpret_cast<MINMAXINFO *>(lParam);
+            const RECT &WorkArea = MonitorInfo.rcWork;
+            const RECT &MonitorArea = MonitorInfo.rcMonitor;
+
+            MinMaxInfo->ptMaxPosition.x = WorkArea.left - MonitorArea.left;
+            MinMaxInfo->ptMaxPosition.y = WorkArea.top - MonitorArea.top;
+            MinMaxInfo->ptMaxSize.x = WorkArea.right - WorkArea.left;
+            MinMaxInfo->ptMaxSize.y = WorkArea.bottom - WorkArea.top;
+        }
+        return 0;
+    }
+    case WM_NCHITTEST:
+    {
+        if (!NativeWindow)
+        {
+            return HTCLIENT;
+        }
+
+        POINT Cursor = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+        POINT ClientPoint = Cursor;
+        ScreenToClient(hWnd, &ClientPoint);
+        if (NativeWindow->IsInTitleBarControlRegion(ClientPoint))
+        {
+            return HTCLIENT;
+        }
+
+        RECT WindowRect{};
+        GetWindowRect(hWnd, &WindowRect);
+        const int ResizeBorderThickness = GetResizeBorderForWindow(hWnd);
+        const bool bAllowResize = !NativeWindow->IsResizeLocked() && !IsZoomed(hWnd) && ResizeBorderThickness > 0;
+
+        if (bAllowResize)
+        {
+            const bool bLeft = Cursor.x >= WindowRect.left && Cursor.x < WindowRect.left + ResizeBorderThickness;
+            const bool bRight = Cursor.x < WindowRect.right && Cursor.x >= WindowRect.right - ResizeBorderThickness;
+            const bool bBottom = Cursor.y < WindowRect.bottom && Cursor.y >= WindowRect.bottom - ResizeBorderThickness;
+            const bool bTop = Cursor.y >= WindowRect.top && Cursor.y < WindowRect.top + ResizeBorderThickness;
+
+            if (bTop && bLeft) return HTTOPLEFT;
+            if (bTop && bRight) return HTTOPRIGHT;
+            if (bBottom && bLeft) return HTBOTTOMLEFT;
+            if (bBottom && bRight) return HTBOTTOMRIGHT;
+            if (bTop) return HTTOP;
+            if (bLeft) return HTLEFT;
+            if (bRight) return HTRIGHT;
+            if (bBottom) return HTBOTTOM;
+        }
+
+        if (NativeWindow->IsInTitleBarDragRegion(ClientPoint))
+        {
+            return HTCAPTION;
+        }
+
+        return HTCLIENT;
+    }
     case WM_CLOSE:
         Hide();
         return 0;
@@ -223,10 +252,7 @@ LRESULT FAssetEditorWindow::WindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARA
                 return 0;
             }
 
-            if (WindowDevice.GetDevice())
-            {
-                WindowDevice.OnResizeViewport(static_cast<int>(Width), static_cast<int>(Height));
-            }
+            RenderContext.Resize(Width, Height);
         }
         return 0;
     case WM_DESTROY:
@@ -270,7 +296,7 @@ bool FAssetEditorWindow::CreateNativeWindow()
     }
 
     HWND WindowHandle = CreateWindowExW(0, AssetEditorWindowClassName, L"Lunatic Asset Editor",
-                                        WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 1440, 900, nullptr,
+                                        AssetEditorWindowStyle, CW_USEDEFAULT, CW_USEDEFAULT, 1440, 900, nullptr,
                                         nullptr, GetModuleHandleW(nullptr), this);
     if (!WindowHandle)
     {
@@ -280,9 +306,16 @@ bool FAssetEditorWindow::CreateNativeWindow()
 
     NativeWindow = std::make_unique<FWindowsWindow>();
     NativeWindow->Initialize(WindowHandle);
-    WindowDevice.Create(WindowHandle);
-    SetupImGuiContext();
-    return true;
+    NativeWindow->SetResizeLocked(false);
+    if (Renderer && RenderContext.Create(WindowHandle, Renderer->GetFD3DDevice().GetDevice(),
+                                         Renderer->GetFD3DDevice().GetDeviceContext()))
+    {
+        return true;
+    }
+
+    FNotificationManager::Get().AddNotification("Failed to create asset editor render context.", ENotificationType::Error, 4.0f);
+    DestroyNativeWindow();
+    return false;
 }
 
 void FAssetEditorWindow::DestroyNativeWindow()
@@ -296,131 +329,126 @@ void FAssetEditorWindow::DestroyNativeWindow()
     NativeWindow.reset();
 }
 
-void FAssetEditorWindow::SetupImGuiContext()
-{
-    ImGuiContext* PreviousContext = ImGui::GetCurrentContext();
-    WindowImGuiContext = ImGui::CreateContext();
-    MakeCurrentContext();
-
-    ImGuiIO &IO = ImGui::GetIO();
-    IO.IniFilename = "Settings/imgui_asset_editor.ini";
-    IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-    ImGuiStyle &Style = ImGui::GetStyle();
-    Style.WindowMenuButtonPosition = ImGuiDir_None;
-    Style.CurveTessellationTol = (std::max)(Style.CurveTessellationTol, 0.1f);
-    Style.CircleTessellationMaxError = (std::max)(Style.CircleTessellationMaxError, 0.1f);
-
-    const FString               FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
-    const std::filesystem::path UIFontPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(FontPath);
-    const FString               UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
-    IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
-    WindowTitleFont = IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
-    EditorPanelTitleUtils::EnsurePanelChromeIconFontLoaded();
-
-    ImGui_ImplWin32_Init(reinterpret_cast<void *>(NativeWindow->GetHWND()));
-    ImGui_ImplDX11_Init(WindowDevice.GetDevice(), WindowDevice.GetDeviceContext());
-
-    ImGui::SetCurrentContext(PreviousContext);
-}
-
-void FAssetEditorWindow::ShutdownImGuiContext()
-{
-    if (!WindowImGuiContext)
-    {
-        return;
-    }
-
-    ImGuiContext* PreviousContext = ImGui::GetCurrentContext();
-    MakeCurrentContext();
-    EditorPanelTitleUtils::ReleasePanelChromeIconFontForCurrentContext();
-    ImGui_ImplDX11_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext(WindowImGuiContext);
-    WindowImGuiContext = nullptr;
-    WindowTitleFont = nullptr;
-    ImGui::SetCurrentContext(PreviousContext);
-}
-
 void FAssetEditorWindow::RenderWindowContents(float DeltaTime)
 {
-    ImGuiViewport *MainViewport = ImGui::GetMainViewport();
-    if (!MainViewport || MainViewport->Size.x <= 0.0f || MainViewport->Size.y <= 0.0f)
-    {
-        bCapturingInput = false;
-        return;
-    }
-
-    ImGui::SetNextWindowPos(MainViewport->Pos);
-    ImGui::SetNextWindowSize(MainViewport->Size);
-    ImGui::SetNextWindowViewport(MainViewport->ID);
-
-    ImGuiWindowFlags HostFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-                                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
-                                 ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_MenuBar;
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2(1280.0f, 720.0f), ImGuiCond_FirstUseEver);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, AssetEditorFrameBg);
     ImGui::PushStyleColor(ImGuiCol_MenuBarBg, AssetEditorSurface);
     ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBorder);
 
-    if (ImGui::Begin("##AssetEditorRoot", nullptr, HostFlags))
+    bool bWindowOpen = bOpen;
+    const ImGuiWindowFlags HostFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+    if (ImGui::Begin("Asset Editor##AssetEditorRoot", &bWindowOpen, HostFlags))
     {
+        bCapturingInput = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) ||
+                          ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
         if (ImGui::BeginMenuBar())
         {
-            if (WindowTitleFont)
-            {
-                ImGui::PushFont(WindowTitleFont);
-            }
-            ImGui::TextUnformatted("Asset Editor");
-            if (WindowTitleFont)
-            {
-                ImGui::PopFont();
-            }
-
             if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("Save Active Tab"))
-                {
-                    SaveActiveTab();
-                }
-                if (ImGui::MenuItem("Close Active Tab"))
-                {
-                    CloseActiveTab();
-                }
+                BuildFileMenu();
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Edit"))
+            {
+                BuildEditMenu();
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Window"))
+            {
+                BuildWindowMenu();
+                ImGui::EndMenu();
+            }
+            BuildCustomMenus();
             ImGui::EndMenuBar();
         }
 
-        ImGui::DockSpace(ImGui::GetID("##AssetEditorDockSpace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
-
-        if (ImGui::Begin("Asset Documents", nullptr,
-                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        if (ImGui::BeginTabBar("##AssetEditorTabs", ImGuiTabBarFlags_Reorderable))
         {
-            bCapturingInput = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) ||
-                              ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-
-            if (ImGui::BeginTabBar("##AssetEditorTabs", ImGuiTabBarFlags_Reorderable))
-            {
-                TabManager.Render(DeltaTime);
-                ImGui::EndTabBar();
-            }
+            TabManager.Render(DeltaTime);
+            ImGui::EndTabBar();
         }
-        ImGui::End();
     }
     ImGui::End();
 
     ImGui::PopStyleColor(3);
-    ImGui::PopStyleVar(3);
+    bOpen = bWindowOpen;
+    bVisible = bWindowOpen;
 }
 
-void FAssetEditorWindow::MakeCurrentContext() const
+
+void FAssetEditorWindow::BuildFileMenu()
 {
-    if (WindowImGuiContext)
+    if (ImGui::MenuItem("Open Asset...") && OwnerManager)
     {
-        ImGui::SetCurrentContext(WindowImGuiContext);
+        OwnerManager->OpenAssetWithDialog(NativeWindow ? NativeWindow->GetHWND() : nullptr);
     }
+
+    ImGui::Separator();
+
+    if (ImGui::MenuItem("Save Active Tab", "Ctrl+S"))
+    {
+        SaveActiveTab();
+    }
+
+    if (ImGui::MenuItem("Close Active Tab", "Ctrl+W"))
+    {
+        CloseActiveTab();
+    }
+
+    ImGui::Separator();
+
+    if (ImGui::MenuItem("Close Window"))
+    {
+        Hide();
+    }
+}
+
+void FAssetEditorWindow::BuildEditMenu()
+{
+    if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
+    {
+        ActiveEditor->BuildEditMenu();
+    }
+}
+
+void FAssetEditorWindow::BuildWindowMenu()
+{
+    if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
+    {
+        ActiveEditor->BuildWindowMenu();
+    }
+}
+
+void FAssetEditorWindow::BuildCustomMenus()
+{
+    if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
+    {
+        ActiveEditor->BuildCustomMenus();
+    }
+}
+
+FString FAssetEditorWindow::GetFrameTitle() const
+{
+    if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
+    {
+        return ActiveEditor->GetEditorName();
+    }
+
+    return "Asset Editor";
+}
+
+FString FAssetEditorWindow::GetFrameTitleTooltip() const
+{
+    if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
+    {
+        const std::filesystem::path &AssetPath = ActiveEditor->GetAssetPath();
+        if (!AssetPath.empty())
+        {
+            return FPaths::ToUtf8(AssetPath.wstring());
+        }
+    }
+
+    return GetFrameTitle();
 }

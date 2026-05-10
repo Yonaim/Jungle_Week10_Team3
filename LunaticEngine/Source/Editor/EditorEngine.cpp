@@ -73,8 +73,8 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
         LevelEditor.Initialize(this, Window, Renderer);
     }
 
-    MainFrame.Create(Window, Renderer, this);
-    LevelEditorWindow.Create(Window, Renderer, this, &LevelEditor, &MainFrame);
+    ImGuiSystem.Initialize(Window, &Renderer.GetFD3DDevice());
+    LevelEditorWindow.Create(Window, Renderer, this, &LevelEditor);
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
@@ -102,7 +102,7 @@ void UEditorEngine::Shutdown()
     AssetImportManager.Shutdown();
     LevelEditor.Shutdown();
     LevelEditorWindow.Release();
-    MainFrame.Release();
+    ImGuiSystem.Shutdown();
 
     // 엔진 공통 해제 (Renderer, D3D 등)
     UEngine::Shutdown();
@@ -135,7 +135,7 @@ void UEditorEngine::Tick(float DeltaTime)
     FAudioManager::Get().Update();
     AssetEditorManager.Tick(DeltaTime);
     LevelEditorWindow.Update();
-    MainFrame.UpdateInputState(IsMouseOverViewport(), AssetEditorManager.IsCapturingInput(), IsScoreSavePopupOpen());
+    LevelEditorWindow.UpdateInputState(IsMouseOverViewport(), AssetEditorManager.IsCapturingInput(), IsScoreSavePopupOpen());
 
     for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
     {
@@ -176,14 +176,11 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 
 void UEditorEngine::RenderUI(float DeltaTime)
 {
-    MainFrame.BeginFrame();
-    MainFrame.RenderMainMenuBar(&LevelEditorWindow);
+    ImGuiSystem.BeginFrame();
+    LevelEditorWindow.RenderContent(DeltaTime);
+    AssetEditorManager.RenderContent(DeltaTime);
+    ImGuiSystem.EndFrame();
     LevelEditorWindow.FlushPendingMenuAction();
-    LevelEditorWindow.Render(DeltaTime);
-    MainFrame.RenderCommonOverlays();
-    MainFrame.EndFrame();
-
-    AssetEditorManager.Render(DeltaTime);
 }
 
 void UEditorEngine::RenderPIEOverlayPopups() { LevelEditor.GetPIEManager().RenderOverlayPopups(); }

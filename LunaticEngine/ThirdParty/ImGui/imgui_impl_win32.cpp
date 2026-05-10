@@ -271,6 +271,17 @@ void    ImGui_ImplWin32_Shutdown()
     IM_DELETE(bd);
 }
 
+IMGUI_IMPL_API void ImGui_ImplWin32_SetActiveWindow(void* hwnd)
+{
+    ImGui_ImplWin32_Data* bd = ImGui_ImplWin32_GetBackendData();
+    if (bd == nullptr)
+        return;
+
+    bd->hWnd = (HWND)hwnd;
+    if (ImGuiViewport* main_viewport = ImGui::GetMainViewport())
+        main_viewport->PlatformHandle = main_viewport->PlatformHandleRaw = hwnd;
+}
+
 static bool ImGui_ImplWin32_UpdateMouseCursor(ImGuiIO& io, ImGuiMouseCursor imgui_cursor)
 {
     if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)

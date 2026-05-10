@@ -1,4 +1,4 @@
-﻿#include "MainFrame/EditorMainFrame.h"
+﻿#include "LevelEditor/Window/LevelEditorWindow.h"
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
@@ -20,6 +20,7 @@
 #include "Render/Pipeline/Renderer.h"
 
 #include "Common/File/EditorFileUtils.h"
+#include "Common/ImGui/EditorImGuiSystem.h"
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "Common/UI/NotificationToast.h"
@@ -35,6 +36,7 @@
 #include "Resource/ResourceManager.h"
 
 #include <filesystem>
+#include <imm.h>
 #include <windows.h>
 
 namespace
@@ -194,13 +196,13 @@ namespace
 
 } // namespace
 
-void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine, FLevelEditor *InLevelEditor,
-                                FEditorMainFrame *InMainFrame)
+void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine, FLevelEditor *InLevelEditor)
 {
     Window = InWindow;
+    Renderer = &InRenderer;
     EditorEngine = InEditorEngine;
     LevelEditor = InLevelEditor;
-    MainFrame = InMainFrame;
+    ImGuiSystem = InEditorEngine ? &InEditorEngine->GetImGuiSystem() : nullptr;
 
     ConsolePanel.Init(InEditorEngine);
     DetailsPanel.Init(InEditorEngine);
@@ -301,9 +303,43 @@ void FLevelEditorWindow::FlushPendingMenuAction()
     }
 }
 
-void FLevelEditorWindow::Render(float DeltaTime)
+void FLevelEditorWindow::RenderContent(float DeltaTime)
 {
     EditorPanelTitleUtils::BeginPanelDecorationFrame();
+
+    FEditorMenuBarContext MenuContext{};
+    MenuContext.Id = "##LevelEditorMenuBar";
+    MenuContext.Window = Window;
+    MenuContext.EditorEngine = EditorEngine;
+    MenuContext.MenuProvider = this;
+    MenuContext.TitleBarFont = ImGuiSystem ? ImGuiSystem->GetTitleBarFont() : nullptr;
+    MenuContext.WindowControlIconFont = ImGuiSystem ? ImGuiSystem->GetWindowControlIconFont() : nullptr;
+    MenuContext.bShowProjectSettingsMenu = true;
+    MenuContext.OnMinimizeWindow = [this]()
+    {
+        if (Window)
+        {
+            Window->Minimize();
+        }
+    };
+    MenuContext.OnToggleMaximizeWindow = [this]()
+    {
+        if (Window)
+        {
+            Window->ToggleMaximize();
+        }
+    };
+    MenuContext.OnCloseWindow = [this]()
+    {
+        if (Window)
+        {
+            Window->Close();
+        }
+    };
+    MenuContext.OnOpenProjectSettings = [this]() { bShowProjectSettings = true; };
+    MenuContext.OnToggleShortcutOverlay = [this]() { bShowShortcutOverlay = !bShowShortcutOverlay; };
+    MenuContext.OnOpenCredits = [this]() { bShowCreditsOverlay = !bShowCreditsOverlay; };
+    MenuBar.Render(MenuContext);
 
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
     const float          TitleBarHeight = GetCustomTitleBarHeight();
@@ -406,6 +442,8 @@ void FLevelEditorWindow::Render(float DeltaTime)
     }
 
     EditorPanelTitleUtils::FlushPanelDecorations();
+
+    RenderCommonOverlays();
 
     // 토스트 알림 (항상 최상위에 표시)
     FNotificationToast::Render();
@@ -855,3 +893,296 @@ void FLevelEditorWindow::PackageGameBuild(const char *BatFileName)
 
     FNotificationManager::Get().AddNotification(std::string("Packaging started: ") + BatFileName, ENotificationType::Info);
 }
+
+void FLevelEditorWindow::UpdateInputState(bool bMouseOverViewport, bool bAssetEditorCapturingInput, bool bPIEPopupOpen)
+{
+    MakeCurrentContext();
+    ImGuiIO &IO = ImGui::GetIO();
+
+    bool bWantMouse = IO.WantCaptureMouse;
+    bool bWantKeyboard = IO.WantCaptureKeyboard || HasBlockingOverlayOpen();
+    if (bPIEPopupOpen)
+    {
+        bWantMouse = true;
+        bWantKeyboard = true;
+    }
+
+    if (EditorEngine && bMouseOverViewport && !bAssetEditorCapturingInput)
+    {
+        if (!bPIEPopupOpen)
+        {
+            bWantMouse = false;
+            if (!IO.WantTextInput && !HasBlockingOverlayOpen())
+            {
+                bWantKeyboard = false;
+            }
+        }
+    }
+
+    FInputManager::Get().SetGuiCaptureOverride(bWantMouse, bWantKeyboard, IO.WantTextInput);
+
+    if (Window)
+    {
+        HWND hWnd = Window->GetHWND();
+        if (IO.WantTextInput)
+        {
+            ImmAssociateContextEx(hWnd, NULL, IACE_DEFAULT);
+        }
+        else
+        {
+            ImmAssociateContext(hWnd, NULL);
+        }
+    }
+}
+
+bool FLevelEditorWindow::HasBlockingOverlayOpen() const
+{
+    return bShowProjectSettings || bShowShortcutOverlay || bShowCreditsOverlay;
+}
+
+void FLevelEditorWindow::MakeCurrentContext() const
+{
+    if (ImGuiSystem)
+    {
+        ImGuiSystem->MakeCurrentContext();
+    }
+}
+
+void FLevelEditorWindow::RenderCommonOverlays()
+{
+    RenderProjectSettingsWindow();
+    RenderShortcutOverlay();
+    RenderCreditsOverlay();
+}
+
+
+void FLevelEditorWindow::RenderProjectSettingsWindow()
+{
+    if (!bShowProjectSettings)
+    {
+        return;
+    }
+
+    if (!BeginUtilityPopupWindow("Project Settings", &bShowProjectSettings, ImVec2(560.0f, 460.0f), ImGuiCond_Appearing))
+    {
+        ImGui::End();
+        return;
+    }
+
+    FProjectSettings &ProjectSettings = FProjectSettings::Get();
+
+    auto DrawClassDropdown = [](const char *Label, UClass *BaseClass, FString &InOutValue)
+    {
+        const TArray<UClass *> Candidates = UClass::GetSubclassesOf(BaseClass);
+        const char *Preview = InOutValue.empty() ? "(none)" : InOutValue.c_str();
+        if (ImGui::BeginCombo(Label, Preview))
+        {
+            for (UClass *C : Candidates)
+            {
+                const bool bSelected = (InOutValue == C->GetName());
+                if (ImGui::Selectable(C->GetName(), bSelected))
+                {
+                    InOutValue = C->GetName();
+                }
+                if (bSelected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+    };
+
+    DrawPopupSectionHeader("WINDOW");
+    ImGui::InputScalar("Window Width", ImGuiDataType_U32, &ProjectSettings.Game.WindowWidth);
+    ImGui::InputScalar("Window Height", ImGuiDataType_U32, &ProjectSettings.Game.WindowHeight);
+    ImGui::Checkbox("Lock Resolution", &ProjectSettings.Game.bLockWindowResolution);
+    if (ProjectSettings.Game.WindowWidth < 320)
+        ProjectSettings.Game.WindowWidth = 320;
+    if (ProjectSettings.Game.WindowHeight < 240)
+        ProjectSettings.Game.WindowHeight = 240;
+
+    ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::WithAlpha(0.92f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.97f, 0.98f, 1.0f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 8.0f));
+    if (ImGui::Button("Apply Resolution"))
+    {
+        ProjectSettings.SaveToFile(FProjectSettings::GetDefaultPath());
+        if (Window)
+        {
+            Window->ResizeClientArea(ProjectSettings.Game.WindowWidth, ProjectSettings.Game.WindowHeight);
+        }
+    }
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(4);
+    ImGui::SameLine();
+    ImGui::TextDisabled(ProjectSettings.Game.bLockWindowResolution
+                            ? "Packaged game resize is locked. The editor window stays resizable."
+                            : "The editor stays resizable. Packaged game uses this size on next launch.");
+
+    DrawPopupSectionHeader("PERFORMANCE");
+    bool bPerformanceChanged = false;
+    bPerformanceChanged |= ImGui::Checkbox("Limit FPS", &ProjectSettings.Performance.bLimitFPS);
+    ImGui::BeginDisabled(!ProjectSettings.Performance.bLimitFPS);
+    bPerformanceChanged |= ImGui::InputScalar("Max FPS", ImGuiDataType_U32, &ProjectSettings.Performance.MaxFPS);
+    ImGui::EndDisabled();
+    if (ProjectSettings.Performance.MaxFPS == 0)
+    {
+        ProjectSettings.Performance.MaxFPS = 1;
+    }
+    else if (ProjectSettings.Performance.MaxFPS > 1000)
+    {
+        ProjectSettings.Performance.MaxFPS = 1000;
+    }
+    if (bPerformanceChanged && GEngine && GEngine->GetTimer())
+    {
+        GEngine->GetTimer()->SetMaxFPS(ProjectSettings.Performance.bLimitFPS ? static_cast<float>(ProjectSettings.Performance.MaxFPS)
+                                                                             : 0.0f);
+    }
+
+    DrawPopupSectionHeader("SHADOW");
+    ImGui::Checkbox("Enable Shadows", &ProjectSettings.Shadow.bEnabled);
+    ImGui::InputScalar("CSM Resolution", ImGuiDataType_U32, &ProjectSettings.Shadow.CSMResolution);
+    ImGui::InputScalar("Spot Atlas Resolution", ImGuiDataType_U32, &ProjectSettings.Shadow.SpotAtlasResolution);
+    ImGui::InputScalar("Point Atlas Resolution", ImGuiDataType_U32, &ProjectSettings.Shadow.PointAtlasResolution);
+    ImGui::InputScalar("Max Spot Atlas Pages", ImGuiDataType_U32, &ProjectSettings.Shadow.MaxSpotAtlasPages);
+    ImGui::InputScalar("Max Point Atlas Pages", ImGuiDataType_U32, &ProjectSettings.Shadow.MaxPointAtlasPages);
+
+    DrawPopupSectionHeader("LIGHT CULLING");
+    int32 LightCullingMode = static_cast<int32>(ProjectSettings.LightCulling.Mode);
+    ImGui::RadioButton("Off", &LightCullingMode, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("Tile", &LightCullingMode, 1);
+    ImGui::SameLine();
+    ImGui::RadioButton("Cluster", &LightCullingMode, 2);
+    ProjectSettings.LightCulling.Mode = static_cast<uint32>(LightCullingMode);
+    ImGui::SliderFloat("Heat Map Max", &ProjectSettings.LightCulling.HeatMapMax, 1.0f, 100.0f, "%.0f");
+    ImGui::Checkbox("Enable 2.5D Culling", &ProjectSettings.LightCulling.bEnable25DCulling);
+
+    DrawPopupSectionHeader("SCENE DEPTH");
+    int32 SceneDepthMode = static_cast<int32>(ProjectSettings.SceneDepth.Mode);
+    ImGui::Combo("Mode", &SceneDepthMode, "Power\0Linear\0");
+    ProjectSettings.SceneDepth.Mode = static_cast<uint32>(SceneDepthMode);
+    ImGui::SliderFloat("Exponent", &ProjectSettings.SceneDepth.Exponent, 1.0f, 512.0f, "%.0f");
+
+    DrawPopupSectionHeader("GAME");
+    DrawClassDropdown("GameInstance Class", UGameInstance::StaticClass(), ProjectSettings.Game.GameInstanceClass);
+    DrawClassDropdown("Default GameMode Class", AGameModeBase::StaticClass(), ProjectSettings.Game.DefaultGameModeClass);
+
+    const TArray<FString> Scenes = FSceneSaveManager::GetSceneFileList();
+    const char *Preview = ProjectSettings.Game.DefaultScene.empty() ? "(none)" : ProjectSettings.Game.DefaultScene.c_str();
+    if (ImGui::BeginCombo("Default Map", Preview))
+    {
+        for (const FString &Stem : Scenes)
+        {
+            const bool bSelected = (ProjectSettings.Game.DefaultScene == Stem);
+            if (ImGui::Selectable(Stem.c_str(), bSelected))
+            {
+                ProjectSettings.Game.DefaultScene = Stem;
+            }
+            if (bSelected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::TextDisabled("(GameInstance class change requires restart)");
+
+    if (ImGui::Button("Save"))
+    {
+        ProjectSettings.SaveToFile(FProjectSettings::GetDefaultPath());
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Close"))
+    {
+        bShowProjectSettings = false;
+    }
+
+    ImGui::End();
+}
+
+void FLevelEditorWindow::RenderShortcutOverlay()
+{
+    if (!bShowShortcutOverlay)
+    {
+        return;
+    }
+
+    if (!BeginUtilityPopupWindow("Shortcut Help", &bShowShortcutOverlay, ImVec2(320.0f, 150.0f), ImGuiCond_Appearing,
+                                 ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::TextUnformatted("File");
+    ImGui::Separator();
+    ImGui::TextUnformatted("Ctrl+N : New Scene");
+    ImGui::TextUnformatted("Ctrl+O : Open Scene");
+    ImGui::TextUnformatted("Ctrl+S : Save Scene");
+    ImGui::TextUnformatted("Ctrl+Shift+S : Save Scene As");
+    ImGui::TextUnformatted("Ctrl+Z : Undo Scene Change");
+    ImGui::TextUnformatted("Ctrl+Y : Redo Scene Change");
+    ImGui::TextUnformatted("` : Toggle Console");
+    ImGui::TextUnformatted("Ctrl+Space : Toggle Content Browser");
+    ImGui::Separator();
+    ImGui::TextUnformatted("F : Focus on selection");
+    ImGui::TextUnformatted("Ctrl + LMB : Multi Picking (Toggle)");
+    ImGui::TextUnformatted("Ctrl + Alt + LMB Drag : Area Selection");
+
+    ImGui::End();
+}
+
+void FLevelEditorWindow::RenderCreditsOverlay()
+{
+    if (!bShowCreditsOverlay)
+    {
+        return;
+    }
+
+    if (!BeginUtilityPopupWindow("Credits", &bShowCreditsOverlay, ImVec2(420.0f, 560.0f), ImGuiCond_Appearing,
+                                 ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ID3D11ShaderResourceView *CreditsTexture = FResourceManager::Get().FindLoadedTexture("Asset/Editor/App/lunatic_icon.png").Get();
+    if (!CreditsTexture)
+    {
+        CreditsTexture = FResourceManager::Get().FindLoadedTexture(FResourceManager::Get().ResolvePath(FName("Editor.Icon.AppLogo"))).Get();
+    }
+
+    if (CreditsTexture)
+    {
+        constexpr float ImageSize = 180.0f;
+        const float CursorX = (ImGui::GetContentRegionAvail().x - ImageSize) * 0.5f;
+        ImGui::SetCursorPosX((std::max)(CursorX, 0.0f));
+        ImGui::Image(CreditsTexture, ImVec2(ImageSize, ImageSize));
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    const float TitleWidth = ImGui::CalcTextSize("Developers").x;
+    ImGui::SetCursorPosX((std::max)((ImGui::GetContentRegionAvail().x - TitleWidth) * 0.5f, 0.0f));
+    ImGui::TextUnformatted("Developers");
+    ImGui::Spacing();
+
+    for (const char *Developer : CreditsDevelopers)
+    {
+        const float NameWidth = ImGui::CalcTextSize(Developer).x;
+        ImGui::SetCursorPosX((std::max)((ImGui::GetContentRegionAvail().x - NameWidth) * 0.5f, 0.0f));
+        ImGui::TextUnformatted(Developer);
+    }
+
+    ImGui::End();
+}
+
+
+

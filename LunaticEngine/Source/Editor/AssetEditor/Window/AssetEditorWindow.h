@@ -1,21 +1,23 @@
 #pragma once
 
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
-#include "Render/Device/D3DDevice.h"
+#include "Engine/Render/Window/WindowRenderContext.h"
+#include "Common/Menu/EditorMenuProvider.h"
+#include "Common/Menu/EditorMenuBar.h"
 
 #include <memory>
 
 class UEditorEngine;
 class FRenderer;
+class FAssetEditorManager;
+class FEditorImGuiSystem;
 class IAssetEditor;
 class FWindowsWindow;
-struct ImGuiContext;
-struct ImFont;
 
-class FAssetEditorWindow
+class FAssetEditorWindow : public IEditorMenuProvider
 {
   public:
-    bool Create(UEditorEngine *InEditorEngine, FRenderer *InRenderer);
+    bool Create(UEditorEngine *InEditorEngine, FRenderer *InRenderer, FAssetEditorManager *InOwnerManager);
     void Destroy();
 
     void Show();
@@ -29,9 +31,16 @@ class FAssetEditorWindow
     void CloseActiveTab();
 
     void Tick(float DeltaTime);
-    void Render(float DeltaTime);
+    void RenderContent(float DeltaTime);
 
     bool IsCapturingInput() const;
+
+    void BuildFileMenu() override;
+    void BuildEditMenu() override;
+    void BuildWindowMenu() override;
+    void BuildCustomMenus() override;
+    FString GetFrameTitle() const override;
+    FString GetFrameTitleTooltip() const override;
 
   private:
     static LRESULT CALLBACK StaticWindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -39,23 +48,23 @@ class FAssetEditorWindow
 
     bool CreateNativeWindow();
     void DestroyNativeWindow();
-    void SetupImGuiContext();
-    void ShutdownImGuiContext();
     void RenderWindowContents(float DeltaTime);
-    void MakeCurrentContext() const;
 
   private:
     std::unique_ptr<FWindowsWindow> NativeWindow;
-    FD3DDevice                      WindowDevice;
-    ImGuiContext                   *WindowImGuiContext = nullptr;
-    ImFont                         *WindowTitleFont = nullptr;
+    FWindowRenderContext            RenderContext;
 
-    UEditorEngine *EditorEngine = nullptr;
-    FRenderer     *Renderer = nullptr;
+    UEditorEngine       *EditorEngine = nullptr;
+    FRenderer           *Renderer = nullptr;
+    FAssetEditorManager *OwnerManager = nullptr;
+    FEditorImGuiSystem  *ImGuiSystem = nullptr;
+
+    FEditorMenuBar MenuBar;
 
     FAssetEditorTabManager TabManager;
 
     bool bOpen = false;
+    bool bVisible = false;
     bool bCapturingInput = false;
     bool bWindowClassRegistered = false;
 };

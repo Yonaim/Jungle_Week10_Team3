@@ -363,9 +363,9 @@
     <ClCompile Include="Source\Editor\LevelEditor\UI\Toolbar\LevelPlayToolbar.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelEditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.cpp" />
+    <ClCompile Include="Source\Editor\Common\ImGui\EditorImGuiSystem.cpp" />
+    <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.cpp" />
-    <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp" />
-    <ClCompile Include="Source\Editor\MainFrame\EditorMainMenuBar.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetCurveUtils.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetData.cpp" />
@@ -493,6 +493,7 @@
     <ClCompile Include="Source\Engine\Render\Culling\GPUOcclusionCulling.cpp" />
     <ClCompile Include="Source\Engine\Render\Culling\TileBasedLightCulling.cpp" />
     <ClCompile Include="Source\Engine\Render\Device\D3DDevice.cpp" />
+    <ClCompile Include="Source\Engine\Render\Window\WindowRenderContext.cpp" />
     <ClCompile Include="Source\Engine\Render\Geometry\FontGeometry.cpp" />
     <ClCompile Include="Source\Engine\Render\Geometry\LineGeometry.cpp" />
     <ClCompile Include="Source\Engine\Render\Geometry\ScreenQuadGeometry.cpp" />
@@ -652,10 +653,10 @@
     <ClInclude Include="Source\Editor\LevelEditor\UI\Toolbar\LevelPlayToolbar.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelEditorViewportClient.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.h" />
+    <ClInclude Include="Source\Editor\Common\ImGui\EditorImGuiSystem.h" />
+    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
+    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.h" />
-    <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h" />
-    <ClInclude Include="Source\Editor\MainFrame\EditorMainMenuBar.h" />
-    <ClInclude Include="Source\Editor\MainFrame\EditorMenuProvider.h" />
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h" />
     <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.h" />
     <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.h" />
@@ -815,6 +816,7 @@
     <ClInclude Include="Source\Engine\Render\Culling\GPUOcclusionCulling.h" />
     <ClInclude Include="Source\Engine\Render\Culling\TileBasedLightCulling.h" />
     <ClInclude Include="Source\Engine\Render\Device\D3DDevice.h" />
+    <ClInclude Include="Source\Engine\Render\Window\WindowRenderContext.h" />
     <ClInclude Include="Source\Engine\Render\Geometry\FontGeometry.h" />
     <ClInclude Include="Source\Engine\Render\Geometry\LineGeometry.h" />
     <ClInclude Include="Source\Engine\Render\Geometry\ScreenQuadGeometry.h" />

@@ -5,11 +5,11 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 
 #include "AssetTools/AssetImportManager.h"
+#include "Common/ImGui/EditorImGuiSystem.h"
 #include "LevelEditor/LevelEditor.h"
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "LevelEditor/Window/LevelEditorWindow.h"
-#include "MainFrame/EditorMainFrame.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -159,6 +159,9 @@ class UEditorEngine : public UEngine
         return AssetEditorManager.OpenAssetFromPath(AssetPath);
     }
 
+    FEditorImGuiSystem &GetImGuiSystem() { return ImGuiSystem; }
+    const FEditorImGuiSystem &GetImGuiSystem() const { return ImGuiSystem; }
+
     bool IsAssetEditorCapturingInput() const { return AssetEditorManager.IsCapturingInput(); }
     FAssetEditorManager &GetAssetEditorManager() { return AssetEditorManager; }
     const FAssetEditorManager &GetAssetEditorManager() const { return AssetEditorManager; }
@@ -179,7 +182,7 @@ class UEditorEngine : public UEngine
     void              InvalidateTrackedSceneSnapshotCache();
 
     FLevelEditor       LevelEditor;
-    FEditorMainFrame   MainFrame;
+    FEditorImGuiSystem ImGuiSystem;
     FLevelEditorWindow LevelEditorWindow;
     FAssetEditorManager AssetEditorManager;
     FAssetImportManager AssetImportManager;

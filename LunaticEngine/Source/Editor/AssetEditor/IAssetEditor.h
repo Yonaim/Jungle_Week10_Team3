@@ -19,6 +19,10 @@ class IAssetEditor
 
     virtual void Tick(float DeltaTime) {}
     virtual void RenderContent(float DeltaTime) = 0;
+    virtual void BuildFileMenu() {}
+    virtual void BuildEditMenu() {}
+    virtual void BuildWindowMenu() {}
+    virtual void BuildCustomMenus() {}
 
     virtual bool IsDirty() const = 0;
     virtual bool IsCapturingInput() const = 0;

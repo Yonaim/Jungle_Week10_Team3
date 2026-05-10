@@ -17,7 +17,7 @@ class FAssetEditorManager
     void Shutdown();
 
     void Tick(float DeltaTime);
-    void Render(float DeltaTime);
+    void RenderContent(float DeltaTime);
 
     bool OpenAssetFromPath(const std::filesystem::path &AssetPath);
     bool OpenLoadedAsset(UObject *Asset, const std::filesystem::path &AssetPath);

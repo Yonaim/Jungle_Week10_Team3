@@ -23,6 +23,7 @@ class FAssetEditorTabManager
 
     bool HasOpenTabs() const;
     bool IsCapturingInput() const;
+    IAssetEditor *GetActiveEditor() const;
 
   private:
     TArray<std::unique_ptr<FAssetEditorTab>> Tabs;

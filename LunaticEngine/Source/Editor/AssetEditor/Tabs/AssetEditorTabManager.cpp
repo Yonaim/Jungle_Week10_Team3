@@ -136,3 +136,13 @@ bool FAssetEditorTabManager::IsCapturingInput() const
     IAssetEditor *Editor = Tabs[ActiveTabIndex]->GetEditor();
     return Editor && Editor->IsCapturingInput();
 }
+
+IAssetEditor *FAssetEditorTabManager::GetActiveEditor() const
+{
+    if (ActiveTabIndex < 0 || ActiveTabIndex >= static_cast<int32>(Tabs.size()) || !Tabs[ActiveTabIndex])
+    {
+        return nullptr;
+    }
+
+    return Tabs[ActiveTabIndex]->GetEditor();
+}
