@@ -76,35 +76,35 @@ class UEditorEngine : public UEngine
     }
     void RefreshContentBrowser()
     {
-        MainPanel.RefreshContentBrowser();
+        MainFrame.RefreshContentBrowser();
     }
     void SetContentBrowserIconSize(float Size)
     {
-        MainPanel.SetContentBrowserIconSize(Size);
+        MainFrame.SetContentBrowserIconSize(Size);
     }
     float GetContentBrowserIconSize() const
     {
-        return MainPanel.GetContentBrowserIconSize();
+        return MainFrame.GetContentBrowserIconSize();
     }
     bool IsAssetEditorCapturingInput() const
     {
-        return MainPanel.IsAssetEditorCapturingInput();
+        return MainFrame.IsAssetEditorCapturingInput();
     }
     void HideEditorWindows()
     {
-        MainPanel.HideEditorWindows();
+        MainFrame.HideEditorWindows();
     }
     void ShowEditorWindows()
     {
-        MainPanel.ShowEditorWindows();
+        MainFrame.ShowEditorWindows();
     }
     void SetShowEditorOnlyComponents(bool bEnable)
     {
-        MainPanel.SetShowEditorOnlyComponents(bEnable);
+        MainFrame.SetShowEditorOnlyComponents(bEnable);
     }
     bool IsShowingEditorOnlyComponents() const
     {
-        return MainPanel.IsShowingEditorOnlyComponents();
+        return MainFrame.IsShowingEditorOnlyComponents();
     }
     bool IsWorldCoordSystem() const
     {
@@ -273,7 +273,7 @@ class UEditorEngine : public UEngine
     void InvalidateTrackedSceneSnapshotCache();
 
     FLevelEditor LevelEditor;
-    FEditorMainPanel MainPanel;
+    FEditorMainFrame MainFrame;
 
     // PIE 요청 단일 슬롯 (UE TOptional<FRequestPlaySessionParams>).
     std::optional<FRequestPlaySessionParams> PlaySessionRequest;

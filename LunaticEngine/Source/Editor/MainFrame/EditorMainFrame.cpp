@@ -2,41 +2,37 @@
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
-#include "LevelEditor/Subsystem/OverlayStatSystem.h"
-#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
-#include "Settings/EditorSettings.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
+#include "LevelEditor/Subsystem/OverlayStatSystem.h"
+#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Object/Object.h"
-
+#include "Settings/EditorSettings.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
 #include "ImGui/imgui_internal.h"
 
-
 #include "Engine/Input/InputManager.h"
 #include "Render/Pipeline/Renderer.h"
 
-
-#include "Core/Notification.h"
-#include "Core/ProjectSettings.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "Common/UI/NotificationToast.h"
-#include "MainFrame/ImGuiSetting.h"
+#include "Core/Notification.h"
+#include "Core/ProjectSettings.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/GameInstance.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/Level.h"
+#include "MainFrame/ImGuiSetting.h"
 #include "Object/UClass.h"
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
-
 
 #include <filesystem>
 #include <windows.h>
@@ -219,7 +215,7 @@ const char *GetWindowControlIconClose()
 
 } // namespace
 
-void FEditorMainPanel::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine)
+void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine)
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -272,7 +268,7 @@ void FEditorMainPanel::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
     ShadowMapDebugWidget.Initialize(InEditorEngine);
 }
 
-void FEditorMainPanel::Release()
+void FEditorMainFrame::Release()
 {
     AssetEditorWidget.Shutdown();
     ConsoleWidget.Shutdown();
@@ -281,12 +277,12 @@ void FEditorMainPanel::Release()
     ImGui::DestroyContext();
 }
 
-void FEditorMainPanel::SaveToSettings() const
+void FEditorMainFrame::SaveToSettings() const
 {
     ContentBrowserWidget.SaveToSettings();
 }
 
-void FEditorMainPanel::Render(float DeltaTime)
+void FEditorMainFrame::Render(float DeltaTime)
 {
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -417,7 +413,7 @@ void FEditorMainPanel::Render(float DeltaTime)
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void FEditorMainPanel::RenderMainMenuBar()
+void FEditorMainFrame::RenderMainMenuBar()
 {
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
     const float TitleBarHeight = GetCustomTitleBarHeight();
@@ -851,7 +847,7 @@ void FEditorMainPanel::RenderMainMenuBar()
     ImGui::PopStyleVar(4);
 }
 
-void FEditorMainPanel::RenderProjectSettingsWindow()
+void FEditorMainFrame::RenderProjectSettingsWindow()
 {
     if (!bShowProjectSettings)
     {
@@ -1001,7 +997,7 @@ void FEditorMainPanel::RenderProjectSettingsWindow()
     ImGui::End();
 }
 
-void FEditorMainPanel::RenderShortcutOverlay()
+void FEditorMainFrame::RenderShortcutOverlay()
 {
     if (!bShowShortcutOverlay)
     {
@@ -1033,7 +1029,7 @@ void FEditorMainPanel::RenderShortcutOverlay()
     ImGui::End();
 }
 
-void FEditorMainPanel::RenderCreditsOverlay()
+void FEditorMainFrame::RenderCreditsOverlay()
 {
     if (!bShowCreditsOverlay)
     {
@@ -1083,7 +1079,7 @@ void FEditorMainPanel::RenderCreditsOverlay()
     ImGui::End();
 }
 
-void FEditorMainPanel::Update()
+void FEditorMainFrame::Update()
 {
     HandleGlobalShortcuts();
 
@@ -1128,7 +1124,7 @@ void FEditorMainPanel::Update()
     }
 }
 
-void FEditorMainPanel::HandleGlobalShortcuts()
+void FEditorMainFrame::HandleGlobalShortcuts()
 {
     if (!EditorEngine)
     {
@@ -1195,7 +1191,7 @@ void FEditorMainPanel::HandleGlobalShortcuts()
     }
 }
 
-void FEditorMainPanel::HideEditorWindows()
+void FEditorMainFrame::HideEditorWindows()
 {
     if (bHasSavedUIVisibility)
     {
@@ -1221,7 +1217,7 @@ void FEditorMainPanel::HideEditorWindows()
     Settings.UI.bShadowMapDebug = false;
 }
 
-void FEditorMainPanel::ShowEditorWindows()
+void FEditorMainFrame::ShowEditorWindows()
 {
     if (!bHasSavedUIVisibility)
     {
@@ -1236,17 +1232,17 @@ void FEditorMainPanel::ShowEditorWindows()
     bHasSavedUIVisibility = false;
 }
 
-void FEditorMainPanel::HideEditorWindowsForPIE()
+void FEditorMainFrame::HideEditorWindowsForPIE()
 {
     HideEditorWindows();
 }
 
-void FEditorMainPanel::RestoreEditorWindowsAfterPIE()
+void FEditorMainFrame::RestoreEditorWindowsAfterPIE()
 {
     ShowEditorWindows();
 }
 
-void FEditorMainPanel::CookCurrentScene()
+void FEditorMainFrame::CookCurrentScene()
 {
     if (!EditorEngine || !EditorEngine->HasCurrentLevelFilePath())
     {
@@ -1265,7 +1261,7 @@ void FEditorMainPanel::CookCurrentScene()
                                                 bOk ? ENotificationType::Success : ENotificationType::Error);
 }
 
-void FEditorMainPanel::PackageGameBuild(const char *BatFileName)
+void FEditorMainFrame::PackageGameBuild(const char *BatFileName)
 {
     // 솔루션 루트(.bat 위치)를 찾는다 — 후보 경로를 차례대로 검사.
     // FPaths::RootDir()은 보통 LunaticEngine/ (개발) 또는 exe 디렉터리(배포)를 반환한다.

@@ -1,15 +1,12 @@
 #include "EditorEngine.h"
 
 #include "Audio/AudioManager.h"
+#include "Common/File/EditorFileUtils.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Core/AsciiUtils.h"
 #include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
-#include "Common/File/EditorFileUtils.h"
-#include "LevelEditor/Render/EditorRenderPipeline.h"
-#include "History/SceneHistoryBuilder.h"
-#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Platform/DirectoryWatcher.h"
 #include "Engine/Platform/Paths.h"
@@ -17,6 +14,9 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
+#include "History/SceneHistoryBuilder.h"
+#include "LevelEditor/Render/EditorRenderPipeline.h"
+#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Materials/MaterialManager.h"
 #include "Mesh/ObjManager.h"
 #include "Object/Object.h"
@@ -27,7 +27,6 @@
 #include <filesystem>
 #include <fstream>
 #include <set>
-
 
 IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
@@ -215,8 +214,8 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     FProjectSettings::Get().LoadFromFile(FProjectSettings::GetDefaultPath());
 
     {
-        SCOPE_STARTUP_STAT("EditorMainPanel::Create");
-        MainPanel.Create(Window, Renderer, this);
+        SCOPE_STARTUP_STAT("EditorMainFrame::Create");
+        MainFrame.Create(Window, Renderer, this);
     }
 
     // 기본 월드 생성 — 모든 서브시스템 초기화의 기반
@@ -249,12 +248,12 @@ void UEditorEngine::Shutdown()
 {
     // 에디터 해제 (엔진보다 먼저)
     GetViewportLayout().SaveToSettings();
-    MainPanel.SaveToSettings();
+    MainFrame.SaveToSettings();
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
     FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
     CloseScene();
     GetSelectionManager().Shutdown();
-    MainPanel.Release();
+    MainFrame.Release();
 
     // 뷰포트 레이아웃 해제
     GetViewportLayout().Release();
@@ -298,7 +297,7 @@ void UEditorEngine::Tick(float DeltaTime)
     }
     FNotificationManager::Get().Tick(DeltaTime);
     FAudioManager::Get().Update();
-    MainPanel.Update();
+    MainFrame.Update();
 
     for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
     {
@@ -490,7 +489,7 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 
 void UEditorEngine::RenderUI(float DeltaTime)
 {
-    MainPanel.Render(DeltaTime);
+    MainFrame.Render(DeltaTime);
 }
 
 void UEditorEngine::RenderPIEOverlayPopups()
@@ -721,7 +720,7 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Pa
     EnterPIEPossessedMode();
 
     // 이 코드와 대응되는 게 아래 EndPlayMap()에 있음.
-    // MainPanel.HideEditorWindowsForPIE(); //PIE 중에는 에디터 패널을 숨김.
+    // MainFrame.HideEditorWindowsForPIE(); //PIE 중에는 에디터 패널을 숨김.
     // GetViewportLayout().DisableWorldAxisForPIE(); //PIE 중에는 월드 축 렌더링을 비활성화.
 
     // 7) BeginPlay 트리거 — 모든 등록/바인딩이 끝난 다음 첫 Tick 이전에 호출.
@@ -818,7 +817,7 @@ void UEditorEngine::EndPlayMap()
     GetSelectionManager().SetWorld(GetWorld());
 
     // 이 코드와 대응되는 게 위의 StartPlayInEditorSession()에 있음.
-    // MainPanel.RestoreEditorWindowsAfterPIE();
+    // MainFrame.RestoreEditorWindowsAfterPIE();
     // GetViewportLayout().RestoreWorldAxisAfterPIE();
 
     if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
@@ -1525,7 +1524,7 @@ bool UEditorEngine::ImportMaterialWithDialog()
     }
 
     FMaterialManager::Get().ScanMaterialAssets();
-    MainPanel.RefreshContentBrowser();
+    MainFrame.RefreshContentBrowser();
     return true;
 }
 
@@ -1556,6 +1555,6 @@ bool UEditorEngine::ImportTextureWithDialog()
     ID3D11Device *Device = Renderer.GetFD3DDevice().GetDevice();
     UTexture2D::LoadFromFile(ImportedPath, Device);
     UTexture2D::ScanTextureAssets();
-    MainPanel.RefreshContentBrowser();
+    MainFrame.RefreshContentBrowser();
     return true;
 }

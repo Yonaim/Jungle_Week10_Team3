@@ -10,13 +10,12 @@
 #include "LevelEditor/UI/Panels/LevelStatPanel.h"
 #include "Settings/EditorSettings.h"
 
-
 class FRenderer;
 class UEditorEngine;
 class FWindowsWindow;
 struct ImFont;
 
-class FEditorMainPanel
+class FEditorMainFrame
 {
   public:
     void Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine);
