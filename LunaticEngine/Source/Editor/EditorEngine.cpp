@@ -1,4 +1,4 @@
-#include "EditorEngine.h"
+﻿#include "EditorEngine.h"
 
 #include "Audio/AudioManager.h"
 #include "Common/File/EditorFileUtils.h"
@@ -32,155 +32,154 @@ IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
 namespace
 {
-bool EndsWithIgnoreCase(const FString &Value, const char *Suffix)
-{
-    if (!Suffix)
+    bool EndsWithIgnoreCase(const FString &Value, const char *Suffix)
     {
-        return false;
-    }
-
-    const FString SuffixString = Suffix;
-    if (Value.size() < SuffixString.size())
-    {
-        return false;
-    }
-
-    for (size_t Index = 0; Index < SuffixString.size(); ++Index)
-    {
-        const char Left = AsciiUtils::ToLower(Value[Value.size() - SuffixString.size() + Index]);
-        const char Right = AsciiUtils::ToLower(SuffixString[Index]);
-        if (Left != Right)
+        if (!Suffix)
         {
             return false;
         }
-    }
 
-    return true;
-}
-
-FString BuildScenePathFromStem(const FString &InStem)
-{
-    std::filesystem::path ScenePath = std::filesystem::path(FSceneSaveManager::GetSceneDirectory()) /
-                                      (FPaths::ToWide(InStem) + FSceneSaveManager::SceneExtension);
-    return FPaths::ToUtf8(ScenePath.wstring());
-}
-
-FString GetFileStem(const FString &InPath)
-{
-    const std::filesystem::path Path(FPaths::ToWide(InPath));
-    return FPaths::ToUtf8(Path.stem().wstring());
-}
-
-UCameraComponent *FindFirstCameraComponent(UWorld *World)
-{
-    if (!World)
-    {
-        return nullptr;
-    }
-
-    for (AActor *Actor : World->GetActors())
-    {
-        if (!Actor)
+        const FString SuffixString = Suffix;
+        if (Value.size() < SuffixString.size())
         {
-            continue;
+            return false;
         }
 
-        for (UActorComponent *Comp : Actor->GetComponents())
+        for (size_t Index = 0; Index < SuffixString.size(); ++Index)
         {
-            if (UCameraComponent *Camera = Cast<UCameraComponent>(Comp))
+            const char Left = AsciiUtils::ToLower(Value[Value.size() - SuffixString.size() + Index]);
+            const char Right = AsciiUtils::ToLower(SuffixString[Index]);
+            if (Left != Right)
             {
-                return Camera;
+                return false;
             }
         }
-    }
 
-    return nullptr;
-}
-
-UCameraComponent *EnsurePIEActiveCamera(UWorld *World, const FPerspectiveCameraData &CameraData)
-{
-    if (!World)
-    {
-        return nullptr;
-    }
-
-    if (UCameraComponent *ActiveCamera = World->GetActiveCamera())
-    {
-        if (IsAliveObject(ActiveCamera) && ActiveCamera->GetWorld() == World)
-        {
-            return ActiveCamera;
-        }
-        World->SetActiveCamera(nullptr);
-    }
-
-    if (UCameraComponent *SceneCamera = FindFirstCameraComponent(World))
-    {
-        World->SetActiveCamera(SceneCamera);
-        return SceneCamera;
-    }
-
-    AActor *CamActor = World->SpawnActor<AActor>();
-    if (!CamActor)
-    {
-        return nullptr;
-    }
-
-    CamActor->SetFName(FName("DefaultPIECamera"));
-    UCameraComponent *Cam = CamActor->AddComponent<UCameraComponent>();
-    CamActor->SetRootComponent(Cam);
-    if (CameraData.bValid)
-    {
-        Cam->SetRelativeLocation(CameraData.Location);
-        Cam->SetRelativeRotation(CameraData.Rotation);
-    }
-    else
-    {
-        Cam->SetRelativeLocation(FVector(0.0f, -10.0f, 5.0f));
-        Cam->SetRelativeRotation(FVector(0.0f, -25.0f, 90.0f));
-    }
-
-    World->SetActiveCamera(Cam);
-    return Cam;
-}
-
-bool ImportAssetFile(const FString &SourcePath, const std::wstring &RelativeDestinationDir,
-                     FString &OutImportedRelativePath)
-{
-    if (SourcePath.empty())
-    {
-        return false;
-    }
-
-    const std::filesystem::path ProjectRoot(FPaths::RootDir());
-    const std::filesystem::path SourceAbsolute = std::filesystem::path(FPaths::ToWide(SourcePath)).lexically_normal();
-    if (!std::filesystem::exists(SourceAbsolute))
-    {
-        return false;
-    }
-
-    const std::filesystem::path RelativeToRoot = SourceAbsolute.lexically_relative(ProjectRoot);
-    const bool bAlreadyInProject = !RelativeToRoot.empty() && RelativeToRoot.native().find(L"..") != 0;
-    if (bAlreadyInProject)
-    {
-        OutImportedRelativePath = FPaths::ToUtf8(RelativeToRoot.generic_wstring());
         return true;
     }
 
-    const std::filesystem::path DestinationDir = ProjectRoot / RelativeDestinationDir;
-    FPaths::CreateDir(DestinationDir.wstring());
-
-    std::filesystem::path DestinationPath = DestinationDir / SourceAbsolute.filename();
-    int32 Suffix = 1;
-    while (std::filesystem::exists(DestinationPath))
+    FString BuildScenePathFromStem(const FString &InStem)
     {
-        DestinationPath = DestinationDir / (SourceAbsolute.stem().wstring() + L"_" + std::to_wstring(Suffix++) +
-                                            SourceAbsolute.extension().wstring());
+        std::filesystem::path ScenePath =
+            std::filesystem::path(FSceneSaveManager::GetSceneDirectory()) / (FPaths::ToWide(InStem) + FSceneSaveManager::SceneExtension);
+        return FPaths::ToUtf8(ScenePath.wstring());
     }
 
-    std::filesystem::copy_file(SourceAbsolute, DestinationPath, std::filesystem::copy_options::overwrite_existing);
-    OutImportedRelativePath = FPaths::ToUtf8(DestinationPath.lexically_relative(ProjectRoot).generic_wstring());
-    return true;
-}
+    FString GetFileStem(const FString &InPath)
+    {
+        const std::filesystem::path Path(FPaths::ToWide(InPath));
+        return FPaths::ToUtf8(Path.stem().wstring());
+    }
+
+    UCameraComponent *FindFirstCameraComponent(UWorld *World)
+    {
+        if (!World)
+        {
+            return nullptr;
+        }
+
+        for (AActor *Actor : World->GetActors())
+        {
+            if (!Actor)
+            {
+                continue;
+            }
+
+            for (UActorComponent *Comp : Actor->GetComponents())
+            {
+                if (UCameraComponent *Camera = Cast<UCameraComponent>(Comp))
+                {
+                    return Camera;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    UCameraComponent *EnsurePIEActiveCamera(UWorld *World, const FPerspectiveCameraData &CameraData)
+    {
+        if (!World)
+        {
+            return nullptr;
+        }
+
+        if (UCameraComponent *ActiveCamera = World->GetActiveCamera())
+        {
+            if (IsAliveObject(ActiveCamera) && ActiveCamera->GetWorld() == World)
+            {
+                return ActiveCamera;
+            }
+            World->SetActiveCamera(nullptr);
+        }
+
+        if (UCameraComponent *SceneCamera = FindFirstCameraComponent(World))
+        {
+            World->SetActiveCamera(SceneCamera);
+            return SceneCamera;
+        }
+
+        AActor *CamActor = World->SpawnActor<AActor>();
+        if (!CamActor)
+        {
+            return nullptr;
+        }
+
+        CamActor->SetFName(FName("DefaultPIECamera"));
+        UCameraComponent *Cam = CamActor->AddComponent<UCameraComponent>();
+        CamActor->SetRootComponent(Cam);
+        if (CameraData.bValid)
+        {
+            Cam->SetRelativeLocation(CameraData.Location);
+            Cam->SetRelativeRotation(CameraData.Rotation);
+        }
+        else
+        {
+            Cam->SetRelativeLocation(FVector(0.0f, -10.0f, 5.0f));
+            Cam->SetRelativeRotation(FVector(0.0f, -25.0f, 90.0f));
+        }
+
+        World->SetActiveCamera(Cam);
+        return Cam;
+    }
+
+    bool ImportAssetFile(const FString &SourcePath, const std::wstring &RelativeDestinationDir, FString &OutImportedRelativePath)
+    {
+        if (SourcePath.empty())
+        {
+            return false;
+        }
+
+        const std::filesystem::path ProjectRoot(FPaths::RootDir());
+        const std::filesystem::path SourceAbsolute = std::filesystem::path(FPaths::ToWide(SourcePath)).lexically_normal();
+        if (!std::filesystem::exists(SourceAbsolute))
+        {
+            return false;
+        }
+
+        const std::filesystem::path RelativeToRoot = SourceAbsolute.lexically_relative(ProjectRoot);
+        const bool                  bAlreadyInProject = !RelativeToRoot.empty() && RelativeToRoot.native().find(L"..") != 0;
+        if (bAlreadyInProject)
+        {
+            OutImportedRelativePath = FPaths::ToUtf8(RelativeToRoot.generic_wstring());
+            return true;
+        }
+
+        const std::filesystem::path DestinationDir = ProjectRoot / RelativeDestinationDir;
+        FPaths::CreateDir(DestinationDir.wstring());
+
+        std::filesystem::path DestinationPath = DestinationDir / SourceAbsolute.filename();
+        int32                 Suffix = 1;
+        while (std::filesystem::exists(DestinationPath))
+        {
+            DestinationPath = DestinationDir /
+                              (SourceAbsolute.stem().wstring() + L"_" + std::to_wstring(Suffix++) + SourceAbsolute.extension().wstring());
+        }
+
+        std::filesystem::copy_file(SourceAbsolute, DestinationPath, std::filesystem::copy_options::overwrite_existing);
+        OutImportedRelativePath = FPaths::ToUtf8(DestinationPath.lexically_relative(ProjectRoot).generic_wstring());
+        return true;
+    }
 
 } // namespace
 
@@ -224,12 +223,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     GetWorld()->InitWorld();
 
     // Selection & Gizmo
-    GetSelectionManager().Init();
-    GetSelectionManager().SetWorld(GetWorld());
-
-    // 뷰포트 레이아웃 초기화 + 저장된 설정 복원
-    GetViewportLayout().Initialize(this, Window, Renderer, &GetSelectionManager());
-    GetViewportLayout().LoadFromSettings();
+    LevelEditor.Initialize(this, Window, Renderer);
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
@@ -247,16 +241,13 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
 void UEditorEngine::Shutdown()
 {
     // 에디터 해제 (엔진보다 먼저)
-    GetViewportLayout().SaveToSettings();
+    LevelEditor.GetViewportLayout().SaveToSettings();
     MainFrame.SaveToSettings();
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
     FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
     CloseScene();
-    GetSelectionManager().Shutdown();
+    LevelEditor.Shutdown();
     MainFrame.Release();
-
-    // 뷰포트 레이아웃 해제
-    GetViewportLayout().Release();
 
     // 엔진 공통 해제 (Renderer, D3D 등)
     UEngine::Shutdown();
@@ -322,11 +313,12 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
         return false;
     }
 
-    std::filesystem::path ChosenPath;
+    std::filesystem::path       ChosenPath;
     const std::filesystem::path RawPath = FPaths::ToWide(InSceneReference);
     const std::filesystem::path SceneDir = FSceneSaveManager::GetSceneDirectory();
 
-    auto TrySetChosenPath = [&ChosenPath](const std::filesystem::path &Candidate) {
+    auto TrySetChosenPath = [&ChosenPath](const std::filesystem::path &Candidate)
+    {
         if (!Candidate.empty() && std::filesystem::exists(Candidate))
         {
             ChosenPath = Candidate;
@@ -359,8 +351,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
             {
                 UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] Failed to resolve scene path from reference: %s",
                                 InSceneReference.c_str());
-                FNotificationManager::Get().AddNotification("Scene load failed: " + InSceneReference,
-                                                            ENotificationType::Error, 3.0f);
+                FNotificationManager::Get().AddNotification("Scene load failed: " + InSceneReference, ENotificationType::Error, 3.0f);
                 return false;
             }
         }
@@ -373,8 +364,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
                 {
                     UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] Failed to find scene file for reference: %s",
                                     InSceneReference.c_str());
-                    FNotificationManager::Get().AddNotification("Scene not found: " + InSceneReference,
-                                                                ENotificationType::Error, 3.0f);
+                    FNotificationManager::Get().AddNotification("Scene not found: " + InSceneReference, ENotificationType::Error, 3.0f);
                     return false;
                 }
             }
@@ -413,7 +403,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
     }
 
     FPerspectiveCameraData DummyCamera;
-    const FString FilePath = FPaths::ToUtf8(ChosenPath.wstring());
+    const FString          FilePath = FPaths::ToUtf8(ChosenPath.wstring());
     if (EndsWithIgnoreCase(FilePath, ".umap"))
     {
         Context->World = UObjectManager::Get().CreateObject<UWorld>();
@@ -433,10 +423,8 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
 
     if (!Context->World)
     {
-        UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] Context world is null after loading '%s'",
-                        InSceneReference.c_str());
-        FNotificationManager::Get().AddNotification("Scene load failed: " + InSceneReference, ENotificationType::Error,
-                                                    3.0f);
+        UE_LOG_CATEGORY(EditorEngine, Error, "[SceneLoad] Context world is null after loading '%s'", InSceneReference.c_str());
+        FNotificationManager::Get().AddNotification("Scene load failed: " + InSceneReference, ENotificationType::Error, 3.0f);
         return false;
     }
 
@@ -487,10 +475,7 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
     return false;
 }
 
-void UEditorEngine::RenderUI(float DeltaTime)
-{
-    MainFrame.Render(DeltaTime);
-}
+void UEditorEngine::RenderUI(float DeltaTime) { MainFrame.Render(DeltaTime); }
 
 void UEditorEngine::RenderPIEOverlayPopups()
 {
@@ -508,51 +493,26 @@ void UEditorEngine::RenderPIEOverlayPopups()
     PIEOverlay.RenderWithinCurrentFrame(AnchorRect);
 }
 
-void UEditorEngine::OpenScoreSavePopup(int32 InScore)
-{
-    PIEOverlay.OpenScoreSavePopup(InScore);
-}
+void UEditorEngine::OpenScoreSavePopup(int32 InScore) { PIEOverlay.OpenScoreSavePopup(InScore); }
 
-bool UEditorEngine::ConsumeScoreSavePopupResult(FString &OutNickname)
-{
-    return PIEOverlay.ConsumeScoreSavePopupResult(OutNickname);
-}
+bool UEditorEngine::ConsumeScoreSavePopupResult(FString &OutNickname) { return PIEOverlay.ConsumeScoreSavePopupResult(OutNickname); }
 
-void UEditorEngine::OpenMessagePopup(const FString &InMessage)
-{
-    PIEOverlay.OpenMessagePopup(InMessage);
-}
+void UEditorEngine::OpenMessagePopup(const FString &InMessage) { PIEOverlay.OpenMessagePopup(InMessage); }
 
-bool UEditorEngine::ConsumeMessagePopupConfirmed()
-{
-    return PIEOverlay.ConsumeMessagePopupConfirmed();
-}
+bool UEditorEngine::ConsumeMessagePopupConfirmed() { return PIEOverlay.ConsumeMessagePopupConfirmed(); }
 
-void UEditorEngine::OpenScoreboardPopup(const FString &InFilePath)
-{
-    PIEOverlay.OpenScoreboardPopup(InFilePath);
-}
+void UEditorEngine::OpenScoreboardPopup(const FString &InFilePath) { PIEOverlay.OpenScoreboardPopup(InFilePath); }
 
-void UEditorEngine::OpenTitleOptionsPopup()
-{
-    PIEOverlay.OpenTitleOptionsPopup();
-}
+void UEditorEngine::OpenTitleOptionsPopup() { PIEOverlay.OpenTitleOptionsPopup(); }
 
-void UEditorEngine::OpenTitleCreditsPopup()
-{
-    PIEOverlay.OpenTitleCreditsPopup();
-}
+void UEditorEngine::OpenTitleCreditsPopup() { PIEOverlay.OpenTitleCreditsPopup(); }
 
-bool UEditorEngine::IsScoreSavePopupOpen() const
-{
-    return PIEOverlay.IsScoreSavePopupOpen();
-}
+bool UEditorEngine::IsScoreSavePopupOpen() const { return PIEOverlay.IsScoreSavePopupOpen(); }
 
 void UEditorEngine::ToggleCoordSystem()
 {
     FEditorSettings &Settings = FEditorSettings::Get();
-    Settings.CoordSystem =
-        (Settings.CoordSystem == EEditorCoordSystem::World) ? EEditorCoordSystem::Local : EEditorCoordSystem::World;
+    Settings.CoordSystem = (Settings.CoordSystem == EEditorCoordSystem::World) ? EEditorCoordSystem::Local : EEditorCoordSystem::World;
     ApplyTransformSettingsToGizmo();
 }
 
@@ -565,7 +525,7 @@ void UEditorEngine::ApplyTransformSettingsToGizmo()
     }
 
     const FEditorSettings &Settings = FEditorSettings::Get();
-    const bool bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
+    const bool             bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
     Gizmo->SetWorldSpace(bForceLocalForScale ? false : (Settings.CoordSystem == EEditorCoordSystem::World));
     // 에디터 설정의 좌표계/스냅 값을 매 프레임 Gizmo 상태와 동기화한다.
     Gizmo->SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, Settings.bEnableRotationSnap,
@@ -583,10 +543,7 @@ void UEditorEngine::RequestPlaySession(const FRequestPlaySessionParams &InParams
     PlaySessionRequest = InParams;
 }
 
-void UEditorEngine::CancelRequestPlaySession()
-{
-    PlaySessionRequest.reset();
-}
+void UEditorEngine::CancelRequestPlaySession() { PlaySessionRequest.reset(); }
 
 void UEditorEngine::RequestEndPlayMap()
 {
@@ -708,7 +665,7 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Pa
             PIEViewportClient->SetOwnerWindow(Window->GetHWND());
         }
         UCameraComponent *InitialTargetCamera = PIEWorld->GetActiveCamera();
-        FViewport *InitialViewport = nullptr;
+        FViewport        *InitialViewport = nullptr;
         if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
         {
             InitialTargetCamera = ActiveVC->GetCamera() ? ActiveVC->GetCamera() : InitialTargetCamera;
@@ -925,15 +882,9 @@ void UEditorEngine::SyncGameViewportPIEControlState(bool bPossessedMode)
 
 // ─── 기존 메서드 ──────────────────────────────────────────
 
-void UEditorEngine::ResetViewport()
-{
-    GetViewportLayout().ResetViewport(GetWorld());
-}
+void UEditorEngine::ResetViewport() { GetViewportLayout().ResetViewport(GetWorld()); }
 
-void UEditorEngine::CloseScene()
-{
-    ClearScene();
-}
+void UEditorEngine::CloseScene() { ClearScene(); }
 
 void UEditorEngine::NewScene()
 {
@@ -956,8 +907,8 @@ void UEditorEngine::LoadStartLevel()
         return;
     }
 
-    std::filesystem::path ScenePath = std::filesystem::path(FSceneSaveManager::GetSceneDirectory()) /
-                                      (FPaths::ToWide(StartLevel) + FSceneSaveManager::SceneExtension);
+    std::filesystem::path ScenePath =
+        std::filesystem::path(FSceneSaveManager::GetSceneDirectory()) / (FPaths::ToWide(StartLevel) + FSceneSaveManager::SceneExtension);
     FString FilePath = FPaths::ToUtf8(ScenePath.wstring());
 
     if (!LoadSceneFromPath(FilePath))
@@ -1070,10 +1021,7 @@ bool UEditorEngine::CanUndoSceneChange() const
     return SceneHistoryCursor >= 0 && SceneHistoryCursor < static_cast<int32>(SceneHistory.size());
 }
 
-bool UEditorEngine::CanRedoSceneChange() const
-{
-    return SceneHistoryCursor + 1 < static_cast<int32>(SceneHistory.size());
-}
+bool UEditorEngine::CanRedoSceneChange() const { return SceneHistoryCursor + 1 < static_cast<int32>(SceneHistory.size()); }
 
 void UEditorEngine::UndoTrackedSceneChange()
 {
@@ -1094,7 +1042,7 @@ void UEditorEngine::RedoTrackedSceneChange()
         return;
     }
 
-    const int32 RedoIndex = SceneHistoryCursor + 1;
+    const int32                RedoIndex = SceneHistoryCursor + 1;
     const FTrackedSceneChange &Change = SceneHistory[RedoIndex];
     ApplyTrackedSceneChange(Change, true);
     SceneHistoryCursor = RedoIndex;
@@ -1109,35 +1057,17 @@ void UEditorEngine::ClearTrackedTransformHistory()
     bTrackingSceneChange = false;
 }
 
-void UEditorEngine::BeginTrackedTransformChange()
-{
-    BeginTrackedSceneChange();
-}
+void UEditorEngine::BeginTrackedTransformChange() { BeginTrackedSceneChange(); }
 
-void UEditorEngine::CommitTrackedTransformChange()
-{
-    CommitTrackedSceneChange();
-}
+void UEditorEngine::CommitTrackedTransformChange() { CommitTrackedSceneChange(); }
 
-bool UEditorEngine::CanUndoTransformChange() const
-{
-    return CanUndoSceneChange();
-}
+bool UEditorEngine::CanUndoTransformChange() const { return CanUndoSceneChange(); }
 
-bool UEditorEngine::CanRedoTransformChange() const
-{
-    return CanRedoSceneChange();
-}
+bool UEditorEngine::CanRedoTransformChange() const { return CanRedoSceneChange(); }
 
-void UEditorEngine::UndoTrackedTransformChange()
-{
-    UndoTrackedSceneChange();
-}
+void UEditorEngine::UndoTrackedTransformChange() { UndoTrackedSceneChange(); }
 
-void UEditorEngine::RedoTrackedTransformChange()
-{
-    RedoTrackedSceneChange();
-}
+void UEditorEngine::RedoTrackedTransformChange() { RedoTrackedSceneChange(); }
 
 void UEditorEngine::ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo)
 {
@@ -1253,7 +1183,7 @@ void UEditorEngine::RestoreTrackedActorOrder(const TArray<uint32> &OrderedUUIDs)
     }
 
     std::set<uint32> OrderedUUIDSet(OrderedUUIDs.begin(), OrderedUUIDs.end());
-    size_t PrefixCount = 0;
+    size_t           PrefixCount = 0;
     for (AActor *Actor : PersistentLevel->GetActors())
     {
         if (!Actor || OrderedUUIDSet.find(Actor->GetUUID()) != OrderedUUIDSet.end())
@@ -1313,10 +1243,7 @@ void UEditorEngine::RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs)
     }
 }
 
-void UEditorEngine::InvalidateTrackedSceneSnapshotCache()
-{
-    CachedTrackedSceneSnapshot.reset();
-}
+void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { CachedTrackedSceneSnapshot.reset(); }
 
 UCameraComponent *UEditorEngine::FindSceneViewportCamera() const
 {
@@ -1406,8 +1333,7 @@ bool UEditorEngine::SaveSceneAsWithDialog()
     const std::wstring DefaultFile =
         HasCurrentLevelFilePath()
             ? std::filesystem::path(FPaths::ToWide(CurrentLevelFilePath)).filename().wstring()
-            : std::wstring(
-                  L"Untitled"); // Removed the forced extension so the dialog uses the selected filter's default
+            : std::wstring(L"Untitled"); // Removed the forced extension so the dialog uses the selected filter's default
     const FString SelectedPath = FEditorFileUtils::SaveFileDialog({
         .Filter = L"Binary Scene (*.umap)\0*.umap\0JSON Scene (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
         .Title = L"Save Scene As",
@@ -1448,7 +1374,7 @@ bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath)
     StopPlayInEditorImmediate();
     ClearScene();
 
-    FWorldContext LoadContext;
+    FWorldContext          LoadContext;
     FPerspectiveCameraData CameraData;
 
     if (FSceneSaveManager::IsJsonFile(InScenePath))
@@ -1482,15 +1408,15 @@ bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath)
 bool UEditorEngine::LoadSceneWithDialog()
 {
     const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
-    const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
-        .Filter = L"Scene Files (*.Scene;*.umap)\0*.Scene;*.umap\0All Files (*.*)\0*.*\0",
-        .Title = L"Load Scene",
-        .InitialDirectory = InitialDir.c_str(),
-        .OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
-        .bFileMustExist = true,
-        .bPathMustExist = true,
-        .bPromptOverwrite = false,
-        .bReturnRelativeToProjectRoot = false,
+    const FString      SelectedPath = FEditorFileUtils::OpenFileDialog({
+             .Filter = L"Scene Files (*.Scene;*.umap)\0*.Scene;*.umap\0All Files (*.*)\0*.*\0",
+             .Title = L"Load Scene",
+             .InitialDirectory = InitialDir.c_str(),
+             .OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
+             .bFileMustExist = true,
+             .bPathMustExist = true,
+             .bPromptOverwrite = false,
+             .bReturnRelativeToProjectRoot = false,
     });
     if (SelectedPath.empty())
     {

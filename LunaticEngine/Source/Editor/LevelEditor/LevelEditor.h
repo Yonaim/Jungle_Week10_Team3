@@ -1,8 +1,8 @@
 #pragma once
 
 #include "LevelEditor/Selection/SelectionManager.h"
-#include "LevelEditor/Viewport/LevelViewportLayout.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 class UEditorEngine;
 class FWindowsWindow;
@@ -12,39 +12,25 @@ class FLevelEditorViewportClient;
 
 class FLevelEditor
 {
-public:
-    FSelectionManager& GetSelectionManager()
-    {
-        return SelectionManager;
-    }
+  public:
+    void Initialize(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow, FRenderer &InRenderer);
+    void Shutdown();
 
-    const FSelectionManager& GetSelectionManager() const
-    {
-        return SelectionManager;
-    }
+    FSelectionManager &GetSelectionManager() { return SelectionManager; }
 
-    FLevelViewportLayout& GetViewportLayout()
-    {
-        return ViewportLayout;
-    }
+    const FSelectionManager &GetSelectionManager() const { return SelectionManager; }
 
-    const FLevelViewportLayout& GetViewportLayout() const
-    {
-        return ViewportLayout;
-    }
+    FLevelViewportLayout &GetViewportLayout() { return ViewportLayout; }
 
-    FOverlayStatSystem& GetOverlayStatSystem()
-    {
-        return OverlayStatSystem;
-    }
+    const FLevelViewportLayout &GetViewportLayout() const { return ViewportLayout; }
 
-    const FOverlayStatSystem& GetOverlayStatSystem() const
-    {
-        return OverlayStatSystem;
-    }
+    FOverlayStatSystem &GetOverlayStatSystem() { return OverlayStatSystem; }
 
-private:
-    FSelectionManager SelectionManager;
+    const FOverlayStatSystem &GetOverlayStatSystem() const { return OverlayStatSystem; }
+
+  private:
+    UEditorEngine       *EditorEngine = nullptr;
+    FSelectionManager    SelectionManager;
     FLevelViewportLayout ViewportLayout;
-    FOverlayStatSystem OverlayStatSystem;
+    FOverlayStatSystem   OverlayStatSystem;
 };
