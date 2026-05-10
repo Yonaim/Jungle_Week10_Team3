@@ -36,6 +36,8 @@ public:
 	inline USceneComponent* GetTarget() const { return TargetComponent; }
 	inline int32 GetSelectedAxis() const { return SelectedAxis; }
 
+	bool ParticipatesInRenderSpatialStructure() const override { return false; }
+
 	inline void SetPressedOnHandle(bool bPressed) { bPressedOnHandle = bPressed; }
 	inline bool IsPressedOnHandle() const { return bPressedOnHandle; }
 

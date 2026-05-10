@@ -57,7 +57,7 @@ void FGizmoSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 {
 	UGizmoComponent* Gizmo = GetGizmoComponent();
 
-	if (!Frame.RenderOptions.ShowFlags.bGizmo || !Gizmo->IsVisible())
+	if (!Frame.RenderOptions.ShowFlags.bGizmo || !Gizmo->IsVisible() || !Gizmo->HasTarget() || Gizmo->GetMode() == EGizmoMode::Select)
 	{
 		bVisible = false;
 		return;
@@ -103,3 +103,5 @@ void FGizmoSceneProxy::RebuildGizmoSectionDraws()
 		SectionDraws.push_back({ GizmoMaterial, 0, IdxCount });
 	}
 }
+
+
