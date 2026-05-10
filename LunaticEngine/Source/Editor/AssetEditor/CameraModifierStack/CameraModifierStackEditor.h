@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 
-#include "Editor/Common/UI/EditorWidget.h"
+#include "Common/UI/EditorWidget.h"
 #include <filesystem>
 #include <functional>
 

@@ -1,4 +1,4 @@
-﻿#include "EditorMaterialInspector.h"
+﻿#include "LevelMaterialInspectorPanel.h"
 #include "Editor/LevelEditor/UI/Panels/ContentBrowser/ContentItem.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 #include "Engine/Materials/Material.h"

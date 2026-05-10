@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Core/CoreTypes.h"
-#include "Editor/LevelEditor/UI/Toolbar/EditorPlayToolbarWidget.h"
+#include "LevelEditor/UI/Toolbar/LevelPlayToolbar.h"
 #include "Engine/UI/SWindow.h"
 #include <d3d11.h>
 

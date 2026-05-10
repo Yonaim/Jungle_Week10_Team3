@@ -1,5 +1,5 @@
-#pragma once
+﻿#pragma once
 
-#include "Editor/LevelEditor/UI/Panels/EditorOutlinerWidget.h"
+#include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 
 #define FEditorSceneWidget FEditorOutlinerWidget

@@ -1,4 +1,4 @@
-#include "Editor/AssetEditor/CameraModifierStack/ImGuiBezierWidget.h"
+﻿#include "AssetEditor/Common/UI/BezierWidget.h"
 
 #include "ImGui/imgui_internal.h"
 #include <algorithm>

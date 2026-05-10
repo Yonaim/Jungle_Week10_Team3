@@ -1,5 +1,5 @@
-﻿#include "Editor/LevelEditor/UI/Panels/EditorControlWidget.h"
-#include "Editor/EditorEngine.h"
+﻿#include "LevelEditor/UI/Panels/LevelControlPanel.h"
+#include "EditorEngine.h"
 #include "ImGui/imgui.h"
 #include "Component/CameraComponent.h"
 

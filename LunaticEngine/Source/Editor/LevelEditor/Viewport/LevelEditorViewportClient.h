@@ -1,10 +1,10 @@
-#pragma once
+﻿#pragma once
 
-#include "Editor/Common/EditorViewportClient.h"
+#include "Common/Viewport/EditorViewportClient.h"
 
-// UE의 FLevelEditorViewportClient 대응
-// 레벨 편집 전용 뷰포트 (카메라 조작, 기즈모, 액터 피킹 등)
-// 현재는 FEditorViewportClient의 기존 기능을 그대로 사용
+// UE??FLevelEditorViewportClient ???
+// ?덈꺼 ?몄쭛 ?꾩슜 酉고룷??(移대찓??議곗옉, 湲곗쫰紐? ?≫꽣 ?쇳궧 ??
+// ?꾩옱??FEditorViewportClient??湲곗〈 湲곕뒫??洹몃?濡??ъ슜
 class FLevelEditorViewportClient : public FEditorViewportClient
 {
   public:

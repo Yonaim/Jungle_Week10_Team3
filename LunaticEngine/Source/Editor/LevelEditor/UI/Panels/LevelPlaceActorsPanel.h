@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
-#include "Editor/Common/UI/EditorWidget.h"
-#include "Editor/LevelEditor/Viewport/FLevelViewportLayout.h"
+#include "Common/UI/EditorWidget.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 class FEditorPlaceActorsWidget : public FEditorWidget
 {

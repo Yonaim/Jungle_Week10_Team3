@@ -1,9 +1,9 @@
-#include "Editor/LevelEditor/UI/Debug/EditorShadowMapDebugWidget.h"
+﻿#include "LevelEditor/UI/Debug/ShadowMapDebugPanel.h"
 #include "Component/Light/PointLightComponent.h"
 #include "Component/Light/SpotLightComponent.h"
-#include "Editor/Common/UI/EditorPanelTitleUtils.h"
-#include "Editor/EditorEngine.h"
-#include "Editor/Settings/EditorSettings.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
+#include "EditorEngine.h"
+#include "Settings/EditorSettings.h"
 #include "GameFramework/Light/DirectionalLightActor.h"
 #include "GameFramework/World.h"
 #include "ImGui/imgui.h"
@@ -22,7 +22,7 @@
 
 static const char *FaceNames[] = {"+X", "-X", "+Y", "-Y", "+Z", "-Z"};
 
-// ── Helper: 선택된 Actor에서 LightComponent를 찾고 SceneEnvironment 인덱스 반환 ──
+// ?? Helper: ?좏깮??Actor?먯꽌 LightComponent瑜?李얘퀬 SceneEnvironment ?몃뜳??諛섑솚 ??
 
 enum class ESelectedLightType
 {
@@ -35,7 +35,7 @@ enum class ESelectedLightType
 struct FSelectedLightInfo
 {
     ESelectedLightType Type = ESelectedLightType::None;
-    int32 EnvIndex = -1; // SceneEnvironment 내 인덱스
+    int32 EnvIndex = -1; // SceneEnvironment ???몃뜳??
 };
 
 static FSelectedLightInfo FindSelectedLight()
@@ -53,7 +53,7 @@ static FSelectedLightInfo FindSelectedLight()
     const FSceneEnvironment &Env = World->GetScene().GetEnvironment();
     FSelectionManager &Sel = Editor->GetSelectionManager();
 
-    // 1) SelectedComponent 우선 검사 (댕글링 포인터 방어)
+    // 1) SelectedComponent ?곗꽑 寃??(?뺢?留??ъ씤??諛⑹뼱)
     if (USceneComponent *SelComp = Sel.GetSelectedComponent())
     {
         if (!IsAliveObject(SelComp))
@@ -103,7 +103,7 @@ static FSelectedLightInfo FindSelectedLight()
     return Info;
 }
 
-// ── 공용 Region 오버레이 그리기 ──
+// ?? 怨듭슜 Region ?ㅻ쾭?덉씠 洹몃━湲???
 
 static const ImU32 RegionColors[] = {
     IM_COL32(255, 80, 80, 220),  IM_COL32(80, 220, 80, 220),  IM_COL32(80, 140, 255, 220), IM_COL32(255, 220, 50, 220),
@@ -139,7 +139,7 @@ static void DrawRegionOverlay(const TArray<FAtlasRegion> &Regions, float Preview
     }
 }
 
-// ── Viz CB data ──
+// ?? Viz CB data ??
 
 struct FShadowVisCBData
 {
@@ -153,7 +153,7 @@ struct FShadowVisCBData
     float _pad[3];
 };
 
-// ── Viz RT 관리 ──
+// ?? Viz RT 愿由???
 
 void EditorShadowMapDebugWidget::EnsureVizRT(ID3D11Device *Dev, uint32 Size)
 {
@@ -202,7 +202,7 @@ void EditorShadowMapDebugWidget::ReleaseVizRT()
     VizSize = 0;
 }
 
-// ── Viz Pass: shadow depth → inverted grayscale RT ──
+// ?? Viz Pass: shadow depth ??inverted grayscale RT ??
 
 void EditorShadowMapDebugWidget::RenderVizPass(ID3D11DeviceContext *DC, ID3D11ShaderResourceView *SrcSRV, bool bIsArray,
                                                uint32 SliceIndex, float UVMinX, float UVMinY, float UVMaxX,
@@ -263,7 +263,7 @@ void EditorShadowMapDebugWidget::RenderVizPass(ID3D11DeviceContext *DC, ID3D11Sh
         DC->PSSetShaderResources(1, 1, &NullSRV);
     }
 
-    // Bind shader + draw fullscreen triangle (no vertex input — SV_VertexID only)
+    // Bind shader + draw fullscreen triangle (no vertex input ??SV_VertexID only)
     Shader->Bind(DC);
     DC->IASetInputLayout(nullptr); // override: no vertex input
     DC->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -318,7 +318,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
     ID3D11Device *Dev = D3DDev.GetDevice();
     ID3D11DeviceContext *DC = D3DDev.GetDeviceContext();
 
-    // ── 선택된 라이트가 있으면 자동 탭 전환 ──
+    // ?? ?좏깮???쇱씠?멸? ?덉쑝硫??먮룞 ???꾪솚 ??
     if (SelLight.Type == ESelectedLightType::Directional)
         SelectedTab = 0;
     else if (SelLight.Type == ESelectedLightType::Spot)
@@ -326,7 +326,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
     else if (SelLight.Type == ESelectedLightType::Point)
         SelectedTab = 2;
 
-    // ── 상단 라디오 버튼: t21 / t22 / t23 ──
+    // ?? ?곷떒 ?쇰뵒??踰꾪듉: t21 / t22 / t23 ??
     ImGui::RadioButton("CSM (t21)", &SelectedTab, 0);
     ImGui::SameLine();
     ImGui::RadioButton("Spot Atlas (t22)", &SelectedTab, 1);
@@ -334,7 +334,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
     ImGui::RadioButton("Point (t23)", &SelectedTab, 2);
     ImGui::Separator();
 
-    // ── 시각화 모드 ──
+    // ?? ?쒓컖??紐⑤뱶 ??
     ImGui::RadioButton("Linear", &VizMode, 0);
     ImGui::SameLine();
     ImGui::RadioButton("Pow", &VizMode, 1);
@@ -349,9 +349,9 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
     float AvailWidth = ImGui::GetContentRegionAvail().x;
     float PreviewSize = (AvailWidth > 0.0f) ? AvailWidth : 256.0f;
 
-    // ════════════════════════════════════════
+    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
     // CSM (t21)
-    // ════════════════════════════════════════
+    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
     if (SelectedTab == 0)
     {
         if (!SR.CSM.IsValid())
@@ -365,7 +365,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
         ImGui::Text("C%d range: %.3f - %.3f", CSMCascadeIndex, SR.CSM.DebugCascadeNear.Data[CSMCascadeIndex],
                     SR.CSM.DebugCascadeFar.Data[CSMCascadeIndex]);
 
-        // Cascade 선택 버튼
+        // Cascade ?좏깮 踰꾪듉
         for (int32 i = 0; i < (int32)MAX_SHADOW_CASCADES; ++i)
         {
             if (i > 0)
@@ -383,7 +383,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
         if (ImGui::SmallButton("Reset##csm"))
             CSMDepthBrightness = 1.0f;
 
-        // 선택된 cascade 프리뷰 — VizPass로 반전 렌더링
+        // ?좏깮??cascade ?꾨━酉???VizPass濡?諛섏쟾 ?뚮뜑留?
         if (CSMCascadeIndex >= 0 && CSMCascadeIndex < (int32)MAX_SHADOW_CASCADES && SR.CSM.SRV)
         {
             uint32 VizRes = SR.CSM.Resolution > 0 ? SR.CSM.Resolution : 512;
@@ -395,9 +395,9 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
                          ImVec4(1, 1, 1, 1), ImVec4(0.3f, 0.3f, 0.3f, 1));
         }
     }
-    // ════════════════════════════════════════
+    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
     // Spot Atlas (t22)
-    // ════════════════════════════════════════
+    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
     else if (SelectedTab == 1)
     {
         if (!SR.Spot.IsValid())
@@ -409,7 +409,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
 
         ImGui::Text("Resolution: %u x %u, Pages: %u", SR.Spot.Resolution, SR.Spot.Resolution, SR.Spot.PageCount);
 
-        // Page 선택
+        // Page ?좏깮
         if (SpotPageIndex >= (int32)SR.Spot.PageCount)
             SpotPageIndex = 0;
 
@@ -434,7 +434,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
         uint32 VizRes = SR.Spot.Resolution > 0 ? SR.Spot.Resolution : 512;
         EnsureVizRT(Dev, VizRes);
 
-        // ── 선택된 SpotLight가 있으면 해당 영역만 crop 표시 ──
+        // ?? ?좏깮??SpotLight媛 ?덉쑝硫??대떦 ?곸뿭留?crop ?쒖떆 ??
         const TArray<FAtlasRegion> *pRegions = ShadowPass ? &ShadowPass->GetLastSpotAtlasRegions() : nullptr;
         bool bShowCropped = false;
 
@@ -463,7 +463,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
             }
         }
 
-        // ── 선택 없거나 못 찾으면 기존: 아틀라스 전체 표시 ──
+        // ?? ?좏깮 ?녾굅??紐?李얠쑝硫?湲곗〈: ?꾪??쇱뒪 ?꾩껜 ?쒖떆 ??
         if (!bShowCropped && SR.Spot.SRV)
         {
             if (SpotPageIndex >= 0 && SpotPageIndex < (int32)SR.Spot.PageCount)
@@ -480,9 +480,9 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
             }
         }
     }
-    // ════════════════════════════════════════
+    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
     // Point Atlas (t23)
-    // ════════════════════════════════════════
+    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
     else if (SelectedTab == 2)
     {
         if (!SR.Point.IsValid())
@@ -494,7 +494,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
 
         ImGui::Text("Atlas: %u x %u, Pages: %u", SR.Point.Resolution, SR.Point.Resolution, SR.Point.PageCount);
 
-        // Page 선택
+        // Page ?좏깮
         if (PointPageIndex >= (int32)SR.Point.PageCount)
             PointPageIndex = 0;
 
@@ -518,13 +518,13 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
         uint32 VizRes = SR.Point.Resolution > 0 ? SR.Point.Resolution : 512;
         EnsureVizRT(Dev, VizRes);
 
-        // ── 선택된 PointLight가 있으면 해당 6 face 영역만 crop 표시 ──
+        // ?? ?좏깮??PointLight媛 ?덉쑝硫??대떦 6 face ?곸뿭留?crop ?쒖떆 ??
         const TArray<FAtlasRegion> *pRegions = ShadowPass ? &ShadowPass->GetLastPointAtlasRegions() : nullptr;
         bool bShowCropped = false;
 
         if (SelLight.Type == ESelectedLightType::Point && SelLight.EnvIndex >= 0 && pRegions && SR.Point.SRV)
         {
-            // 해당 라이트의 face 영역 수집
+            // ?대떦 ?쇱씠?몄쓽 face ?곸뿭 ?섏쭛
             TArray<const FAtlasRegion *> FaceRegions;
             for (const FAtlasRegion &R : *pRegions)
             {
@@ -540,7 +540,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
                 ImGui::Text("Selected: L%d (%u x %u px, %u faces, Page %u)", SelLight.EnvIndex, FaceSize, FaceSize,
                             (uint32)FaceRegions.size(), LightPageIdx);
 
-                // 전체 atlas를 한 번 변환 (라이트가 실제로 할당된 page)
+                // ?꾩껜 atlas瑜???踰?蹂??(?쇱씠?멸? ?ㅼ젣濡??좊떦??page)
                 RenderVizPass(DC, SR.Point.SRV, true, LightPageIdx, 0, 0, 1, 1, PointDepthBrightness, (uint32)VizMode,
                               VizExponent);
 
@@ -567,7 +567,7 @@ void EditorShadowMapDebugWidget::Render(float DeltaTime)
             }
         }
 
-        // ── 선택 없거나 못 찾으면 기존: 아틀라스 전체 표시 ──
+        // ?? ?좏깮 ?녾굅??紐?李얠쑝硫?湲곗〈: ?꾪??쇱뒪 ?꾩껜 ?쒖떆 ??
         if (!bShowCropped && SR.Point.SRV)
         {
             RenderVizPass(DC, SR.Point.SRV, true, PointPageIndex, 0, 0, 1, 1, PointDepthBrightness, (uint32)VizMode,

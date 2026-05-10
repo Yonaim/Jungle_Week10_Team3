@@ -1,5 +1,5 @@
-#pragma once
+﻿#pragma once
 
-#include "Editor/LevelEditor/UI/Panels/EditorDetailsWidget.h"
+#include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
 #define FEditorPropertyWidget FEditorDetailsWidget

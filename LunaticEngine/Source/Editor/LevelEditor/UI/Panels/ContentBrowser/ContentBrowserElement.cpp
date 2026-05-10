@@ -1,8 +1,8 @@
-#include "ContentBrowserElement.h"
+﻿#include "ContentBrowserElement.h"
 #include "Core/Notification.h"
-#include "Editor/AssetEditor/CameraModifierStack/AssetEditorWidget.h"
-#include "Editor/Common/File/EditorFileUtils.h"
-#include "Editor/Common/UI/EditorAccentColor.h"
+#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
+#include "Common/File/EditorFileUtils.h"
+#include "Common/UI/EditorAccentColor.h"
 #include "Materials/MaterialManager.h"
 #include "Mesh/ObjImporter.h"
 #include "Platform/Paths.h"
@@ -278,7 +278,7 @@ void DirectoryElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
     Context.bIsNeedRefresh = true;
 }
 
-#include "Editor/EditorEngine.h"
+#include "EditorEngine.h"
 #include "Serialization/SceneSaveManager.h"
 
 void SceneElement::OnDoubleLeftClicked(ContentBrowserContext &Context)

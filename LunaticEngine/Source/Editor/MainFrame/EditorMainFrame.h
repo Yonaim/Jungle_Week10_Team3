@@ -1,14 +1,14 @@
 ﻿#pragma once
 
-#include "Editor/AssetEditor/CameraModifierStack/AssetEditorWidget.h"
-#include "Editor/LevelEditor/UI/Debug/EditorShadowMapDebugWidget.h"
-#include "Editor/LevelEditor/UI/Panels/ContentBrowser/ContentBrowser.h"
-#include "Editor/LevelEditor/UI/Panels/EditorConsoleWidget.h"
-#include "Editor/LevelEditor/UI/Panels/EditorDetailsWidget.h"
-#include "Editor/LevelEditor/UI/Panels/EditorOutlinerWidget.h"
-#include "Editor/LevelEditor/UI/Panels/EditorPlaceActorsWidget.h"
-#include "Editor/LevelEditor/UI/Panels/EditorStatWidget.h"
-#include "Editor/Settings/EditorSettings.h"
+#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
+#include "LevelEditor/UI/Debug/ShadowMapDebugPanel.h"
+#include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowser.h"
+#include "LevelEditor/UI/Panels/LevelConsolePanel.h"
+#include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
+#include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
+#include "LevelEditor/UI/Panels/LevelPlaceActorsPanel.h"
+#include "LevelEditor/UI/Panels/LevelStatPanel.h"
+#include "Settings/EditorSettings.h"
 
 
 class FRenderer;

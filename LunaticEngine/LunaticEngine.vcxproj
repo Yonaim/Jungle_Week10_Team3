@@ -322,33 +322,33 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
-    <ClCompile Include="Source\Editor\EditorRenderPipeline.cpp" />
-    <ClCompile Include="Source\Editor\AssetEditor\CameraModifierStack\AssetEditorWidget.cpp" />
-    <ClCompile Include="Source\Editor\AssetEditor\CameraModifierStack\ImGuiBezierWidget.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierWidget.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp" />
-    <ClCompile Include="Source\Editor\Common\EditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\EditorDragSource.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\EditorWidget.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\NotificationToast.cpp" />
+    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Selection\SelectionManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Area\EditorViewportWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Debug\EditorShadowMapDebugWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\EditorConsoleWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\EditorControlWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\EditorDetailsWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\EditorMaterialInspector.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\EditorOutlinerWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\EditorPlaceActorsWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\EditorStatWidget.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Area\LevelViewportArea.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Debug\ShadowMapDebugPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\LevelConsolePanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\LevelControlPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\LevelDetailsPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\LevelMaterialInspectorPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\LevelOutlinerPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\LevelPlaceActorsPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\LevelStatPanel.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\ContentBrowser.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\ContentBrowserElement.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\EditorPrefabWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\UI\Toolbar\EditorPlayToolbarWidget.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\Viewport\FLevelViewportLayout.cpp" />
-    <ClCompile Include="Source\Editor\MainFrame\EditorMainPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\PrefabPanel.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\UI\Toolbar\LevelPlayToolbar.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.cpp" />
+    <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp" />
     <ClCompile Include="Source\Editor\Settings\EditorSettings.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetCurveUtils.cpp" />
@@ -470,8 +470,8 @@
     <ClCompile Include="Source\Engine\Profiling\Stats.cpp" />
     <ClCompile Include="Source\Engine\Profiling\Timer.cpp" />
     <ClCompile Include="Source\Engine\Render\Command\DrawCommandBuilder.cpp" />
-    <ClCompile Include="Source\Engine\Render\Command\EditorGridRenderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Command\DrawCommandList.cpp" />
+    <ClCompile Include="Source\Engine\Render\Command\EditorGridRenderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Culling\ClusteredLightCuller.cpp" />
     <ClCompile Include="Source\Engine\Render\Culling\GPUOcclusionCulling.cpp" />
     <ClCompile Include="Source\Engine\Render\Culling\TileBasedLightCulling.cpp" />
@@ -587,16 +587,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h" />
-    <ClInclude Include="Source\Editor\EditorRenderPipeline.h" />
-    <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\AssetEditorWidget.h" />
-    <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\ImGuiBezierWidget.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierWidget.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshPreviewViewport.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletonTreePanel.h" />
-    <ClInclude Include="Source\Editor\Common\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\CurveEditor.h" />
     <ClInclude Include="Source\Editor\Common\UI\EditorAccentColor.h" />
@@ -604,30 +602,32 @@
     <ClInclude Include="Source\Editor\Common\UI\EditorPanelTitleUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\EditorWidget.h" />
     <ClInclude Include="Source\Editor\Common\UI\NotificationToast.h" />
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h" />
     <ClInclude Include="Source\Editor\History\SceneHistoryTypes.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Selection\SelectionManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Area\EditorViewportWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Debug\EditorShadowMapDebugWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorConsoleWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorControlWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorDetailsWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorMaterialInspector.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorOutlinerWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorPlaceActorsWidget.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Area\LevelViewportArea.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Debug\ShadowMapDebugPanel.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorPropertyWidget.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorSceneWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorStatWidget.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelConsolePanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelControlPanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelDetailsPanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelMaterialInspectorPanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelOutlinerPanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelPlaceActorsPanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelStatPanel.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\ContentBrowser.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\ContentBrowserContext.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\ContentBrowserElement.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\ContentItem.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\EditorPrefabWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Toolbar\EditorPlayToolbarWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\Viewport\FLevelViewportLayout.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\ContentBrowser\PrefabPanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\UI\Toolbar\LevelPlayToolbar.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelEditorViewportClient.h" />
-    <ClInclude Include="Source\Editor\MainFrame\EditorMainPanel.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.h" />
+    <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h" />
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h" />
     <ClInclude Include="Source\Editor\PIE\PIETypes.h" />
     <ClInclude Include="Source\Editor\Settings\EditorSettings.h" />
@@ -779,8 +779,8 @@
     <ClInclude Include="Source\Engine\Profiling\Timer.h" />
     <ClInclude Include="Source\Engine\Render\Command\DrawCommand.h" />
     <ClInclude Include="Source\Engine\Render\Command\DrawCommandBuilder.h" />
-    <ClInclude Include="Source\Engine\Render\Command\EditorGridRenderer.h" />
     <ClInclude Include="Source\Engine\Render\Command\DrawCommandList.h" />
+    <ClInclude Include="Source\Engine\Render\Command\EditorGridRenderer.h" />
     <ClInclude Include="Source\Engine\Render\Culling\ClusteredLightCuller.h" />
     <ClInclude Include="Source\Engine\Render\Culling\GPUOcclusionCulling.h" />
     <ClInclude Include="Source\Engine\Render\Culling\TileBasedLightCulling.h" />
@@ -1377,14 +1377,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Demo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shaders\Editor\Grid.hlsl">
+    <FxCompile Include="Shaders\Editor\Gizmo.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Demo|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shaders\Editor\Gizmo.hlsl">
+    <FxCompile Include="Shaders\Editor\Grid.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">true</ExcludedFromBuild>

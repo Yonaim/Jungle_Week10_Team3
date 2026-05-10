@@ -5,17 +5,17 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 
 
-#include "Editor/History/SceneHistoryTypes.h"
-#include "Editor/LevelEditor/Selection/SelectionManager.h"
-#include "Editor/LevelEditor/Subsystem/OverlayStatSystem.h"
-#include "Editor/LevelEditor/Viewport/FLevelViewportLayout.h"
-#include "Editor/MainFrame/EditorMainPanel.h"
-#include "Editor/PIE/PIETypes.h"
-#include "Editor/Settings/EditorSettings.h"
+#include "History/SceneHistoryTypes.h"
+#include "LevelEditor/Selection/SelectionManager.h"
+#include "LevelEditor/Subsystem/OverlayStatSystem.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
+#include "MainFrame/EditorMainFrame.h"
+#include "PIE/PIETypes.h"
+#include "Settings/EditorSettings.h"
 #include <optional>
 
 #if STATS
-#include "Editor/EditorRenderPipeline.h"
+#include "LevelEditor/Render/EditorRenderPipeline.h"
 #endif
 
 class UGizmoComponent;

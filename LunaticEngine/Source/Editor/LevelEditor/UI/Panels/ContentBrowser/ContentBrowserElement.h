@@ -103,7 +103,7 @@ class PNGElement final : public ContentBrowserElement
     }
 };
 
-#include "Editor/LevelEditor/UI/Panels/EditorMaterialInspector.h"
+#include "LevelEditor/UI/Panels/LevelMaterialInspectorPanel.h"
 class MaterialElement final : public ContentBrowserElement
 {
   public:

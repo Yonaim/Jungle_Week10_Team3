@@ -1,7 +1,7 @@
-#include "Editor/LevelEditor/UI/Panels/EditorStatWidget.h"
+﻿#include "LevelEditor/UI/Panels/LevelStatPanel.h"
 
-#include "Editor/Common/UI/EditorPanelTitleUtils.h"
-#include "Editor/Settings/EditorSettings.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Settings/EditorSettings.h"
 #include "ImGui/imgui.h"
 #include "Profiling/GPUProfiler.h"
 #include "Profiling/Stats.h"
@@ -30,7 +30,7 @@ void FEditorStatWidget::Render(float DeltaTime)
     EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Stat Profiler", Settings.UI.bStat, "x##CloseStat");
     EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
-    // Pause / Resume 버튼
+    // Pause / Resume 踰꾪듉
     if (bPaused)
     {
         if (ImGui::Button("Resume"))
@@ -42,7 +42,7 @@ void FEditorStatWidget::Render(float DeltaTime)
         {
             std::ostringstream oss;
             auto FormatTable = [&](const char *Title, const TArray<FStatEntry> &Entries) {
-                // 카테고리 기준 정렬
+                // 移댄뀒怨좊━ 湲곗? ?뺣젹
                 TArray<FStatEntry> Sorted = Entries;
                 std::sort(Sorted.begin(), Sorted.end(), [](const FStatEntry &A, const FStatEntry &B) {
                     int cmp = strcmp(A.Category, B.Category);
@@ -88,7 +88,7 @@ void FEditorStatWidget::Render(float DeltaTime)
                 FLODStats::GetLOD2(), FLODStats::GetLOD3());
     ImGui::Separator();
 
-    // 남은 공간을 CPU/GPU 테이블이 반씩 사용
+    // ?⑥? 怨듦컙??CPU/GPU ?뚯씠釉붿씠 諛섏뵫 ?ъ슜
     float AvailableHeight = ImGui::GetContentRegionAvail().y;
     float HalfHeight = (AvailableHeight - ImGui::GetFrameHeightWithSpacing() * 2.0f) * 0.5f;
     if (HalfHeight < 100.0f)
@@ -124,7 +124,7 @@ void FEditorStatWidget::RenderStatTable(const char *TableID, const TArray<FStatE
 
     TArray<FStatEntry> Entries = Source;
 
-    // Category 우선 정렬 후, 선택된 컬럼으로 2차 정렬
+    // Category ?곗꽑 ?뺣젹 ?? ?좏깮??而щ읆?쇰줈 2李??뺣젹
     auto SortPredicate = [&](const FStatEntry &A, const FStatEntry &B) -> bool {
         int catCmp = strcmp(A.Category, B.Category);
         if (catCmp != 0)
@@ -202,7 +202,7 @@ void FEditorStatWidget::RenderStatTable(const char *TableID, const TArray<FStatE
             if (E.CallCount == 0)
                 continue;
 
-            // 카테고리 구분선
+            // 移댄뀒怨좊━ 援щ텇??
             if (!LastCategory || strcmp(LastCategory, E.Category) != 0)
             {
                 LastCategory = E.Category;

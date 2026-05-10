@@ -1,8 +1,8 @@
-﻿#include "Editor/LevelEditor/UI/Area/EditorViewportWidget.h"
+﻿#include "LevelEditor/UI/Area/LevelViewportArea.h"
 
-#include "Editor/Common/UI/EditorPanelTitleUtils.h"
-#include "Editor/EditorEngine.h"
-#include "Editor/LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
+#include "EditorEngine.h"
+#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "ImGui/imgui.h"
 #include "Viewport/Viewport.h"
 
