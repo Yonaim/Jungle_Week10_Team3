@@ -449,8 +449,12 @@ void UGizmoComponent::SetTargetScale(FVector NewScale)
 bool UGizmoComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
 	OutHitResult = {};
-	if (!MeshData || MeshData->Indices.empty())
+	if (!IsVisible() || CurMode == EGizmoMode::Select || !TargetComponent || !MeshData || MeshData->Indices.empty())
 	{
+		if (!IsHolding())
+		{
+			SelectedAxis = -1;
+		}
 		return false;
 	}
 
@@ -542,7 +546,6 @@ void UGizmoComponent::SetTarget(USceneComponent* NewTarget)
 
 	SetWorldLocation(TargetComponent->GetWorldLocation());
 	UpdateGizmoTransform();
-	SetVisibility(true);
 }
 
 void UGizmoComponent::SetTarget(AActor* NewTargetActor)
@@ -737,13 +740,18 @@ void UGizmoComponent::SetNextMode()
 void UGizmoComponent::UpdateGizmoMode(EGizmoMode NewMode)
 {
 	CurMode = NewMode;
-	SetVisibility(NewMode != EGizmoMode::Select);
 	UpdateGizmoTransform();
 }
 
 void UGizmoComponent::UpdateGizmoTransform()
 {
-	if (!TargetComponent) return;
+	if (!TargetComponent)
+	{
+		SetVisibility(false);
+		SelectedAxis = -1;
+		SetPressedOnHandle(false);
+		return;
+	}
 
 	if (CurMode == EGizmoMode::Select)
 	{

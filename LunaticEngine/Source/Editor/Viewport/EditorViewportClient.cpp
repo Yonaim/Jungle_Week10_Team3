@@ -958,6 +958,13 @@ void FEditorViewportClient::OnEditorToggleGizmoMode(const FInputActionValue& Val
 
 	if (Gizmo)
 	{
+		const bool bHasGizmoTarget = SelectionManager && SelectionManager->GetSelectedComponent() && Gizmo->HasTarget();
+		if (!bHasGizmoTarget)
+		{
+			Gizmo->Deactivate();
+			return;
+		}
+
 		if (Input.IsKeyPressed('W')) Gizmo->UpdateGizmoMode(EGizmoMode::Translate);
 		else if (Input.IsKeyPressed('E')) Gizmo->UpdateGizmoMode(EGizmoMode::Rotate);
 		else if (Input.IsKeyPressed('R')) Gizmo->UpdateGizmoMode(EGizmoMode::Scale);
@@ -1355,7 +1362,8 @@ void FEditorViewportClient::TickInteraction(float DeltaTime)
 	}
 	FRay Ray = Camera->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
 	FRayHitResult HitResult;
-	bool bGizmoHit = FRayUtils::RaycastComponent(Gizmo, Ray, HitResult);
+	const bool bCanInteractWithGizmo = SelectionManager && SelectionManager->GetSelectedComponent() && Gizmo->HasTarget();
+	bool bGizmoHit = bCanInteractWithGizmo && FRayUtils::RaycastComponent(Gizmo, Ray, HitResult);
 	if (Input.IsKeyPressed(FInputManager::MOUSE_LEFT) && bIsHovered)
 	{
 		if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyDown(VK_MENU)) { bIsMarqueeSelecting = true; MarqueeStartPos = FVector(MousePos.x, MousePos.y, 0); MarqueeCurrentPos = FVector(MousePos.x, MousePos.y, 0); }
@@ -1449,7 +1457,8 @@ void FEditorViewportClient::HandleDragStart(const FRay& Ray)
 		return;
 	}
 	FScopeCycleCounter PickCounter; FRayHitResult HitResult{};
-	if (FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
+	const bool bCanInteractWithGizmo = SelectionManager && SelectionManager->GetSelectedComponent() && Gizmo->HasTarget();
+	if (bCanInteractWithGizmo && FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
 	{
 		if (SelectionManager)
 		{
@@ -1865,4 +1874,6 @@ bool FEditorViewportClient::GetCursorViewportPosition(uint32& OutX, uint32& OutY
 
 	return false;
 }
+
+
 
