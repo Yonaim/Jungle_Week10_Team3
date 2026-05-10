@@ -8,6 +8,7 @@
 #include "LevelEditor/LevelEditor.h"
 #include "MainFrame/EditorMainFrame.h"
 #include "PIE/PIETypes.h"
+#include "Scene/EditorSceneManager.h"
 #include "Settings/EditorSettings.h"
 #include <optional>
 
@@ -63,8 +64,8 @@ class UEditorEngine : public UEngine
     void           RequestSaveSceneAsDialog();
     bool           SaveSceneAsWithDialog();
     bool           SaveSceneAs(const FString &InScenePath);
-    bool           HasCurrentLevelFilePath() const { return !CurrentLevelFilePath.empty(); }
-    const FString &GetCurrentLevelFilePath() const { return CurrentLevelFilePath; }
+    bool           HasCurrentLevelFilePath() const { return SceneManager.HasCurrentLevelFilePath(); }
+    const FString &GetCurrentLevelFilePath() const { return SceneManager.GetCurrentLevelFilePath(); }
     void           RefreshContentBrowser() { MainFrame.RefreshContentBrowser(); }
     void           SetContentBrowserIconSize(float Size) { MainFrame.SetContentBrowserIconSize(Size); }
     float          GetContentBrowserIconSize() const { return MainFrame.GetContentBrowserIconSize(); }
@@ -170,18 +171,17 @@ class UEditorEngine : public UEngine
     bool IsAssetEditorCapturingInput() const { return MainFrame.GetAssetEditorManager().IsCapturingInput(); }
 
   private:
+    friend class FEditorSceneManager;
+
     // Tick 내에서 호출 — 큐에 요청이 있으면 StartPlayInEditorSession 실행
     void              StartQueuedPlaySessionRequest();
-    void              ProcessDeferredEditorActions();
     void              StartPlayInEditorSession(const FRequestPlaySessionParams &Params);
     void              EndPlayMap();
     bool              EnterPIEPossessedMode();
     bool              EnterPIEEjectedMode();
     void              SyncGameViewportPIEControlState(bool bPossessedMode);
-    void              LoadStartLevel();
     UCameraComponent *FindSceneViewportCamera() const;
     void              RestoreViewportCamera(const FPerspectiveCameraData &CamData);
-    void              DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath);
     void              ClearTrackedTransformHistory();
     void              ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo);
     void              ApplyTrackedActorDeltas(const FTrackedSceneChange &Change, bool bRedo);
@@ -192,6 +192,7 @@ class UEditorEngine : public UEngine
 
     FLevelEditor     LevelEditor;
     FEditorMainFrame MainFrame;
+    FEditorSceneManager SceneManager;
 
     // PIE 요청 단일 슬롯 (UE TOptional<FRequestPlaySessionParams>).
     std::optional<FRequestPlaySessionParams> PlaySessionRequest;
@@ -199,9 +200,7 @@ class UEditorEngine : public UEngine
     std::optional<FPlayInEditorSessionInfo> PlayInEditorSessionInfo;
     // 종료 요청 지연 플래그. Tick 선두에서 확인 후 EndPlayMap 호출.
     bool                                 bRequestEndPlayMapQueued = false;
-    bool                                 bRequestSaveSceneAsDialogQueued = false;
     EPIEControlMode                      PIEControlMode = EPIEControlMode::Possessed;
-    FString                              CurrentLevelFilePath;
     TArray<FTrackedSceneChange>          SceneHistory;
     int32                                SceneHistoryCursor = -1;
     std::optional<FTrackedSceneSnapshot> PendingTrackedSceneBefore;

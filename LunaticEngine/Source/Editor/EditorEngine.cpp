@@ -217,6 +217,8 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
         MainFrame.Create(Window, Renderer, this);
     }
 
+    SceneManager.Init(this);
+
     // 기본 월드 생성 — 모든 서브시스템 초기화의 기반
     CreateWorldContext(EWorldType::Editor, FName("Default"));
     SetActiveWorld(WorldList[0].ContextHandle);
@@ -227,7 +229,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
-        LoadStartLevel();
+        SceneManager.LoadStartLevel();
     }
     ApplyTransformSettingsToGizmo();
 
@@ -246,6 +248,7 @@ void UEditorEngine::Shutdown()
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
     FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
     CloseScene();
+    SceneManager.Shutdown();
     LevelEditor.Shutdown();
     MainFrame.Release();
 
@@ -278,7 +281,7 @@ void UEditorEngine::Tick(float DeltaTime)
     {
         StartQueuedPlaySessionRequest();
     }
-    ProcessDeferredEditorActions();
+    SceneManager.Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
     FDirectoryWatcher::Get().ProcessChanges();
@@ -884,76 +887,11 @@ void UEditorEngine::SyncGameViewportPIEControlState(bool bPossessedMode)
 
 void UEditorEngine::ResetViewport() { GetViewportLayout().ResetViewport(GetWorld()); }
 
-void UEditorEngine::CloseScene() { ClearScene(); }
+void UEditorEngine::CloseScene() { SceneManager.CloseScene(); }
 
-void UEditorEngine::NewScene()
-{
-    StopPlayInEditorImmediate();
-    ClearScene();
-    FWorldContext &Ctx = CreateWorldContext(EWorldType::Editor, FName("NewScene"), "New Scene");
-    Ctx.World->InitWorld();
-    SetActiveWorld(Ctx.ContextHandle);
-    GetSelectionManager().SetWorld(GetWorld());
+void UEditorEngine::NewScene() { SceneManager.NewScene(); }
 
-    ResetViewport();
-    CurrentLevelFilePath.clear();
-}
-
-void UEditorEngine::LoadStartLevel()
-{
-    const FString &StartLevel = FEditorSettings::Get().EditorStartLevel;
-    if (StartLevel.empty())
-    {
-        return;
-    }
-
-    std::filesystem::path ScenePath =
-        std::filesystem::path(FSceneSaveManager::GetSceneDirectory()) / (FPaths::ToWide(StartLevel) + FSceneSaveManager::SceneExtension);
-    FString FilePath = FPaths::ToUtf8(ScenePath.wstring());
-
-    if (!LoadSceneFromPath(FilePath))
-    {
-        // 로드 실패 시 빈 씬으로 복구
-        NewScene();
-    }
-}
-
-void UEditorEngine::ClearScene()
-{
-    StopPlayInEditorImmediate();
-    DestroyCurrentSceneWorlds(true, true);
-}
-
-void UEditorEngine::DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath)
-{
-    if (bClearHistory)
-    {
-        ClearTrackedTransformHistory();
-    }
-
-    GetSelectionManager().ClearSelection();
-    GetSelectionManager().SetWorld(nullptr);
-
-    // 씬 프록시 파괴 전 GPU Occlusion 스테이징 데이터 무효화
-    if (IRenderPipeline *Pipeline = GetRenderPipeline())
-        Pipeline->OnSceneCleared();
-
-    for (FWorldContext &Ctx : WorldList)
-    {
-        Ctx.World->EndPlay();
-        UObjectManager::Get().DestroyObject(Ctx.World);
-    }
-
-    WorldList.clear();
-    ActiveWorldHandle = FName::None;
-    InvalidateTrackedSceneSnapshotCache();
-    if (bResetLevelPath)
-    {
-        CurrentLevelFilePath.clear();
-    }
-
-    GetViewportLayout().DestroyAllCameras();
-}
+void UEditorEngine::ClearScene() { SceneManager.ClearScene(); }
 
 void UEditorEngine::BeginTrackedSceneChange()
 {
@@ -1283,148 +1221,17 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData &CamData)
     }
 }
 
-bool UEditorEngine::SaveSceneAs(const FString &InScenePath)
-{
-    if (InScenePath.empty())
-    {
-        return false;
-    }
+bool UEditorEngine::SaveSceneAs(const FString &InScenePath) { return SceneManager.SaveSceneAs(InScenePath); }
 
-    StopPlayInEditorImmediate();
-    FWorldContext *Context = GetWorldContextFromHandle(GetActiveWorldHandle());
-    if (!Context || !Context->World)
-    {
-        return false;
-    }
+bool UEditorEngine::SaveScene() { return SceneManager.SaveScene(); }
 
-    if (InScenePath.ends_with(".umap") || InScenePath.ends_with(".UMAP"))
-    {
-        FSceneSaveManager::SaveWorldToBinary(InScenePath, Context->World);
-    }
-    else
-    {
-        FSceneSaveManager::SaveSceneAsJSON(InScenePath, *Context, FindSceneViewportCamera());
-    }
+void UEditorEngine::RequestSaveSceneAsDialog() { SceneManager.RequestSaveSceneAsDialog(); }
 
-    CurrentLevelFilePath = InScenePath;
-    return true;
-}
+bool UEditorEngine::SaveSceneAsWithDialog() { return SceneManager.SaveSceneAsWithDialog(); }
 
-bool UEditorEngine::SaveScene()
-{
-    if (HasCurrentLevelFilePath())
-    {
-        return SaveSceneAs(CurrentLevelFilePath);
-    }
+bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath) { return SceneManager.LoadSceneFromPath(InScenePath); }
 
-    return SaveSceneAsWithDialog();
-}
-
-void UEditorEngine::RequestSaveSceneAsDialog()
-{
-    // Native file dialogs are deferred to the next tick so they do not open
-    // while the ImGui menu/popup stack is still being processed.
-    bRequestSaveSceneAsDialogQueued = true;
-}
-
-bool UEditorEngine::SaveSceneAsWithDialog()
-{
-    const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
-    const std::wstring DefaultFile =
-        HasCurrentLevelFilePath()
-            ? std::filesystem::path(FPaths::ToWide(CurrentLevelFilePath)).filename().wstring()
-            : std::wstring(L"Untitled"); // Removed the forced extension so the dialog uses the selected filter's default
-    const FString SelectedPath = FEditorFileUtils::SaveFileDialog({
-        .Filter = L"Binary Scene (*.umap)\0*.umap\0JSON Scene (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
-        .Title = L"Save Scene As",
-        .InitialDirectory = InitialDir.c_str(),
-        .DefaultFileName = DefaultFile.c_str(),
-        .OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
-        .bFileMustExist = false,
-        .bPathMustExist = true,
-        .bPromptOverwrite = true,
-        .bReturnRelativeToProjectRoot = false,
-    });
-    if (SelectedPath.empty())
-    {
-        return false;
-    }
-
-    return SaveSceneAs(SelectedPath);
-}
-
-void UEditorEngine::ProcessDeferredEditorActions()
-{
-    if (!bRequestSaveSceneAsDialogQueued)
-    {
-        return;
-    }
-
-    bRequestSaveSceneAsDialogQueued = false;
-    SaveSceneAsWithDialog();
-}
-
-bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath)
-{
-    if (InScenePath.empty())
-    {
-        return false;
-    }
-
-    StopPlayInEditorImmediate();
-    ClearScene();
-
-    FWorldContext          LoadContext;
-    FPerspectiveCameraData CameraData;
-
-    if (FSceneSaveManager::IsJsonFile(InScenePath))
-    {
-        FSceneSaveManager::LoadSceneFromJSON(InScenePath, LoadContext, CameraData);
-    }
-    else if (InScenePath.ends_with(".umap") || InScenePath.ends_with(".UMAP"))
-    {
-        LoadContext.World = UObjectManager::Get().CreateObject<UWorld>();
-        FSceneSaveManager::LoadWorldFromBinary(InScenePath, LoadContext.World);
-        LoadContext.WorldType = EWorldType::Editor;
-        LoadContext.ContextName = "Loaded Binary Scene";
-        LoadContext.ContextHandle = FName("Loaded Binary Scene");
-    }
-    if (!LoadContext.World)
-    {
-        return false;
-    }
-
-    WorldList.push_back(LoadContext);
-    SetActiveWorld(LoadContext.ContextHandle);
-    GetSelectionManager().SetWorld(LoadContext.World);
-    LoadContext.World->WarmupPickingData();
-    ResetViewport();
-    RestoreViewportCamera(CameraData);
-
-    CurrentLevelFilePath = InScenePath;
-    return true;
-}
-
-bool UEditorEngine::LoadSceneWithDialog()
-{
-    const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
-    const FString      SelectedPath = FEditorFileUtils::OpenFileDialog({
-             .Filter = L"Scene Files (*.Scene;*.umap)\0*.Scene;*.umap\0All Files (*.*)\0*.*\0",
-             .Title = L"Load Scene",
-             .InitialDirectory = InitialDir.c_str(),
-             .OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
-             .bFileMustExist = true,
-             .bPathMustExist = true,
-             .bPromptOverwrite = false,
-             .bReturnRelativeToProjectRoot = false,
-    });
-    if (SelectedPath.empty())
-    {
-        return false;
-    }
-
-    return LoadSceneFromPath(SelectedPath);
-}
+bool UEditorEngine::LoadSceneWithDialog() { return SceneManager.LoadSceneWithDialog(); }
 
 bool UEditorEngine::ImportMaterialWithDialog()
 {

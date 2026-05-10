@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Shaders">
@@ -33,6 +33,9 @@
     </Filter>
     <Filter Include="Source\Editor\AssetEditor\CameraModifierStack">
       <UniqueIdentifier>{0982300b-2b21-e32c-6534-9a41e4e53afe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\AssetEditor\CameraModifierStack\UI">
+      <UniqueIdentifier>{6734d96f-88ef-6725-7dc1-afbc9d4d4e9a}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\AssetEditor\Common">
       <UniqueIdentifier>{5b09f0d1-0af4-302d-01e6-9c8905bb35e5}</UniqueIdentifier>
@@ -99,6 +102,9 @@
     </Filter>
     <Filter Include="Source\Editor\PIE">
       <UniqueIdentifier>{14522082-49ca-bb79-7a95-d909655be310}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Scene">
+      <UniqueIdentifier>{a2ebef06-505d-a90e-e65e-01ae037da974}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\Settings">
       <UniqueIdentifier>{06e78b29-eeff-c85d-7b92-2588bacd7fea}</UniqueIdentifier>
@@ -479,6 +485,18 @@
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshPreviewViewport.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletonTreePanel.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
     </ClCompile>
@@ -494,11 +512,11 @@
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelEditorViewportClient.cpp">
-      <Filter>Source\Editor\LevelEditor\Viewport</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp">
       <Filter>Source\Editor\History</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp">
+      <Filter>Source\Editor\LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
@@ -548,6 +566,9 @@
     <ClCompile Include="Source\Editor\LevelEditor\UI\Toolbar\LevelPlayToolbar.cpp">
       <Filter>Source\Editor\LevelEditor\UI\Toolbar</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelEditorViewportClient.cpp">
+      <Filter>Source\Editor\LevelEditor\Viewport</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.cpp">
       <Filter>Source\Editor\LevelEditor\Viewport</Filter>
     </ClCompile>
@@ -556,6 +577,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp">
       <Filter>Source\Editor\MainFrame</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Scene\EditorSceneManager.cpp">
+      <Filter>Source\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Settings\EditorSettings.cpp">
       <Filter>Source\Editor\Settings</Filter>
@@ -1261,11 +1285,20 @@
     <ClInclude Include="Source\Editor\AssetEditor\AssetEditorManager.h">
       <Filter>Source\Editor\AssetEditor</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\IAssetEditor.h">
+      <Filter>Source\Editor\AssetEditor</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.h">
       <Filter>Source\Editor\AssetEditor\CameraModifierStack</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\AssetEditor\IAssetEditor.h">
-      <Filter>Source\Editor\AssetEditor</Filter>
+    <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackContentsPanel.h">
+      <Filter>Source\Editor\AssetEditor\CameraModifierStack\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackDetailsPanel.h">
+      <Filter>Source\Editor\AssetEditor\CameraModifierStack\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackToolbar.h">
+      <Filter>Source\Editor\AssetEditor\CameraModifierStack\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierWidget.h">
       <Filter>Source\Editor\AssetEditor\Common\UI</Filter>
@@ -1317,6 +1350,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\History\SceneHistoryTypes.h">
       <Filter>Source\Editor\History</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h">
+      <Filter>Source\Editor\LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
@@ -1392,6 +1428,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\PIE\PIETypes.h">
       <Filter>Source\Editor\PIE</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Scene\EditorSceneManager.h">
+      <Filter>Source\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Settings\EditorSettings.h">
       <Filter>Source\Editor\Settings</Filter>
