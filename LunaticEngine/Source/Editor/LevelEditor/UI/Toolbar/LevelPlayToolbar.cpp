@@ -10,7 +10,7 @@
 
 #include <d3d11.h>
 
-void FEditorPlayToolbarWidget::Initialize(UEditorEngine *InEditor, ID3D11Device *InDevice)
+void FEditorPlayToolbarWidget::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
 {
     Editor = InEditor;
     if (!InDevice)

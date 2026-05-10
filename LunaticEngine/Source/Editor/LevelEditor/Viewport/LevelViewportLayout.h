@@ -46,8 +46,8 @@ class FLevelViewportLayout
     FLevelViewportLayout() = default;
     ~FLevelViewportLayout() = default;
 
-    void Initialize(UEditorEngine *InEditor, FWindowsWindow *InWindow, FRenderer &InRenderer,
-                    FSelectionManager *InSelectionManager);
+    void Init(UEditorEngine *InEditor, FWindowsWindow *InWindow, FRenderer &InRenderer,
+              FSelectionManager *InSelectionManager);
     void Release();
 
     // FEditorSettings ↔ 뷰포트 상태 동기화

@@ -990,9 +990,9 @@ void FLevelViewportLayout::ReleaseLayoutIcons()
 	}
 }
 
-// Initialize / Release
+// Init / Release
 
-void FLevelViewportLayout::Initialize(UEditorEngine* InEditor, FWindowsWindow* InWindow, FRenderer& InRenderer,
+void FLevelViewportLayout::Init(UEditorEngine* InEditor, FWindowsWindow* InWindow, FRenderer& InRenderer,
 	FSelectionManager* InSelectionManager)
 {
 	Editor = InEditor;
@@ -1002,7 +1002,7 @@ void FLevelViewportLayout::Initialize(UEditorEngine* InEditor, FWindowsWindow* I
 
 	// 아이콘 로드
 	LoadLayoutIcons(InRenderer.GetFD3DDevice().GetDevice());
-	PlayToolbar.Initialize(InEditor, InRenderer.GetFD3DDevice().GetDevice());
+	PlayToolbar.Init(InEditor, InRenderer.GetFD3DDevice().GetDevice());
 
 	// Play/Stop 툴바 초기화
 
@@ -1010,7 +1010,7 @@ void FLevelViewportLayout::Initialize(UEditorEngine* InEditor, FWindowsWindow* I
 	auto* LevelVC = new FLevelEditorViewportClient();
 	LevelVC->SetOverlayStatSystem(&Editor->GetOverlayStatSystem());
 	LevelVC->SetSettings(&FEditorSettings::Get());
-	LevelVC->Initialize(Window);
+	LevelVC->Init(Window);
 	LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
 	LevelVC->SetGizmo(SelectionManager->GetGizmo());
 	LevelVC->SetSelectionManager(SelectionManager);
@@ -1176,7 +1176,7 @@ void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
 		auto* LevelVC = new FLevelEditorViewportClient();
 		LevelVC->SetOverlayStatSystem(&Editor->GetOverlayStatSystem());
 		LevelVC->SetSettings(&FEditorSettings::Get());
-		LevelVC->Initialize(Window);
+		LevelVC->Init(Window);
 		LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
 		LevelVC->SetGizmo(SelectionManager->GetGizmo());
 		LevelVC->SetSelectionManager(SelectionManager);

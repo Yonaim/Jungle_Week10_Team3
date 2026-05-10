@@ -31,7 +31,7 @@ public:
 	FEditorViewportClient();
 	~FEditorViewportClient() override;
 
-	void Initialize(FWindowsWindow* InWindow);
+	void Init(FWindowsWindow* InWindow);
 	void SetOverlayStatSystem(FOverlayStatSystem* InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
 	// World는 더 이상 저장하지 않는다 — GetWorld()는 GEngine->GetWorld()를 경유하여
 	// ActiveWorldHandle을 따르므로 PIE 전환 시 자동으로 올바른 월드를 반환한다.

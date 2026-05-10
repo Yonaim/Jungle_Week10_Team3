@@ -13,7 +13,7 @@ class FLevelEditorViewportClient;
 class FLevelEditor
 {
   public:
-    void Initialize(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow, FRenderer &InRenderer);
+    void Init(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow, FRenderer &InRenderer);
     void Shutdown();
 
     FSelectionManager &GetSelectionManager() { return SelectionManager; }

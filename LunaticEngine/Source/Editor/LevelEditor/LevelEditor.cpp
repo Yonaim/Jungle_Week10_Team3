@@ -2,14 +2,14 @@
 #include "EditorEngine.h"
 
 
-void FLevelEditor::Initialize(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow, FRenderer &InRenderer)
+void FLevelEditor::Init(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow, FRenderer &InRenderer)
 {
     EditorEngine = InEditorEngine;
 
     SelectionManager.Init();
     SelectionManager.SetWorld(EditorEngine->GetWorld());
 
-    ViewportLayout.Initialize(EditorEngine, InWindow, InRenderer, &SelectionManager);
+    ViewportLayout.Init(EditorEngine, InWindow, InRenderer, &SelectionManager);
 
     ViewportLayout.LoadFromSettings();
 }

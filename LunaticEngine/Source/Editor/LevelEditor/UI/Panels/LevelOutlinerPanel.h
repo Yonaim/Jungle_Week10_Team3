@@ -9,7 +9,7 @@ class AActor;
 class FEditorOutlinerWidget : public FEditorWidget
 {
   public:
-    virtual void Initialize(UEditorEngine *InEditorEngine) override;
+    virtual void Init(UEditorEngine *InEditorEngine) override;
     virtual void Render(float DeltaTime) override;
 
   private:

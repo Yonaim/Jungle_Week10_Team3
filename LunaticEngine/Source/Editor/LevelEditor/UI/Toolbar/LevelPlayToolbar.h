@@ -14,7 +14,7 @@ public:
 	FEditorPlayToolbarWidget() = default;
 	~FEditorPlayToolbarWidget() = default;
 
-	void Initialize(UEditorEngine* InEditor, ID3D11Device* InDevice);
+	void Init(UEditorEngine* InEditor, ID3D11Device* InDevice);
 	void Release();
 
 	// 레이아웃이 예약해야 할 툴바 높이 (패딩 포함).

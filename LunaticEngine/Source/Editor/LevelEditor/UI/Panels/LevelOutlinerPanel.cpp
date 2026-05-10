@@ -252,9 +252,9 @@ bool IsFolderNameUsed(const UWorld *World, const FString &FolderName, const FStr
 
 } // namespace
 
-void FEditorOutlinerWidget::Initialize(UEditorEngine *InEditorEngine)
+void FEditorOutlinerWidget::Init(UEditorEngine *InEditorEngine)
 {
-    FEditorWidget::Initialize(InEditorEngine);
+    FEditorWidget::Init(InEditorEngine);
 }
 
 void FEditorOutlinerWidget::Render(float DeltaTime)

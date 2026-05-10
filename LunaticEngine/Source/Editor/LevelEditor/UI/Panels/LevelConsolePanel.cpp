@@ -292,9 +292,9 @@ void FEditorConsoleWidget::AddLog(const char *fmt, ...)
     FLogManager::Get().LogMessage(Level, "Console", "%s", Message.c_str());
 }
 
-void FEditorConsoleWidget::Initialize(UEditorEngine *InEditorEngine)
+void FEditorConsoleWidget::Init(UEditorEngine *InEditorEngine)
 {
-    FEditorWidget::Initialize(InEditorEngine);
+    FEditorWidget::Init(InEditorEngine);
 
     // 에디터 콘솔을 로그 출력 디바이스로 등록
     FLogManager::Get().AddOutputDevice(&ConsoleDevice);

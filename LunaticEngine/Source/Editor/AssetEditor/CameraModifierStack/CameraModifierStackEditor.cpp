@@ -168,9 +168,9 @@ FCameraShakeModifierAssetDesc MakeDefaultCameraShakeDesc(int32 Index)
 }
 } // namespace
 
-void FAssetEditorWidget::Initialize(UEditorEngine *InEditorEngine)
+void FAssetEditorWidget::Init(UEditorEngine *InEditorEngine)
 {
-    FEditorWidget::Initialize(InEditorEngine);
+    FEditorWidget::Init(InEditorEngine);
     GActiveAssetEditorWidget = this;
 }
 

@@ -12,7 +12,7 @@ struct FCameraShakeModifierAssetDesc;
 class FAssetEditorWidget final : public FEditorWidget
 {
   public:
-    void Initialize(UEditorEngine *InEditorEngine) override;
+    void Init(UEditorEngine *InEditorEngine) override;
     void Shutdown();
     void Render(float DeltaTime) override;
 

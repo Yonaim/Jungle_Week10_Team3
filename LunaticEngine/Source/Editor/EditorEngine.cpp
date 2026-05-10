@@ -223,7 +223,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     GetWorld()->InitWorld();
 
     // Selection & Gizmo
-    LevelEditor.Initialize(this, Window, Renderer);
+    LevelEditor.Init(this, Window, Renderer);
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");

@@ -281,9 +281,9 @@ ID3D11ShaderResourceView *GetMtlPreviewSRV(const std::filesystem::path &Path)
 }
 } // namespace
 
-void FEditorContentBrowserWidget::Initialize(UEditorEngine *InEditor, ID3D11Device *InDevice)
+void FEditorContentBrowserWidget::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
 {
-    FEditorWidget::Initialize(InEditor);
+    FEditorWidget::Init(InEditor);
     if (!InDevice)
         return;
 

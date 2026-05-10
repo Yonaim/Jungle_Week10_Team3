@@ -565,7 +565,7 @@ FEditorViewportClient::~FEditorViewportClient()
     delete ActionEditorToggleScaleSnap;
 }
 
-void FEditorViewportClient::Initialize(FWindowsWindow *InWindow)
+void FEditorViewportClient::Init(FWindowsWindow *InWindow)
 {
     Window = InWindow;
 }

@@ -258,14 +258,14 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
     ImGui_ImplWin32_Init((void *)InWindow->GetHWND());
     ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());
 
-    ConsoleWidget.Initialize(InEditorEngine);
-    DetailsWidget.Initialize(InEditorEngine);
-    OutlinerWidget.Initialize(InEditorEngine);
-    PlaceActorsWidget.Initialize(InEditorEngine);
-    StatWidget.Initialize(InEditorEngine);
-    AssetEditorWidget.Initialize(InEditorEngine);
-    ContentBrowserWidget.Initialize(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
-    ShadowMapDebugWidget.Initialize(InEditorEngine);
+    ConsoleWidget.Init(InEditorEngine);
+    DetailsWidget.Init(InEditorEngine);
+    OutlinerWidget.Init(InEditorEngine);
+    PlaceActorsWidget.Init(InEditorEngine);
+    StatWidget.Init(InEditorEngine);
+    AssetEditorWidget.Init(InEditorEngine);
+    ContentBrowserWidget.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
+    ShadowMapDebugWidget.Init(InEditorEngine);
 }
 
 void FEditorMainFrame::Release()

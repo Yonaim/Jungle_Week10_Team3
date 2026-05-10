@@ -100,7 +100,8 @@ class UEditorEngine : public UEngine
     FEditorSettings       &GetSettings() { return FEditorSettings::Get(); }
     const FEditorSettings &GetSettings() const { return FEditorSettings::Get(); }
 
-    FSelectionManager &GetSelectionManager() { return LevelEditor.GetSelectionManager(); }
+    FSelectionManager       &GetSelectionManager() { return LevelEditor.GetSelectionManager(); }
+    const FSelectionManager &GetSelectionManager() const { return LevelEditor.GetSelectionManager(); }
 
     FLevelViewportLayout       &GetViewportLayout() { return LevelEditor.GetViewportLayout(); }
     const FLevelViewportLayout &GetViewportLayout() const { return LevelEditor.GetViewportLayout(); }

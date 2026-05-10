@@ -1,6 +1,6 @@
 #include "Editor/Common/UI/EditorWidget.h"
 
-void FEditorWidget::Initialize(UEditorEngine *InEditorEngine)
+void FEditorWidget::Init(UEditorEngine *InEditorEngine)
 {
     EditorEngine = InEditorEngine;
 }

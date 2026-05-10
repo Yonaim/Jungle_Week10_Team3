@@ -22,7 +22,7 @@ struct FConsoleLogEntry
 
 // ============================================================
 // FConsoleLogOutputDevice — ImGui 콘솔에 로그를 출력하는 디바이스
-// FEditorConsoleWidget이 소유하며, Initialize/Shutdown 시 등록/해제한다.
+// FEditorConsoleWidget이 소유하며, Init/Shutdown 시 등록/해제한다.
 // ============================================================
 class FConsoleLogOutputDevice : public ILogOutputDevice
 {
@@ -55,7 +55,7 @@ class FEditorConsoleWidget : public FEditorWidget
 {
   public:
     static void AddLog(const char *fmt, ...);
-    virtual void Initialize(UEditorEngine *InEditorEngine) override;
+    virtual void Init(UEditorEngine *InEditorEngine) override;
     virtual void Render(float DeltaTime) override;
     virtual void Shutdown();
 
