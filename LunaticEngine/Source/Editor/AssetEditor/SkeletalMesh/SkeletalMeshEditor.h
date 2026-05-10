@@ -12,20 +12,17 @@ class USkeletalMesh;
 class FSkeletalMeshEditor final : public IAssetEditor
 {
   public:
-    void Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer) override;
-    void Shutdown() override;
-
-    bool CanEdit(UObject *Asset) const override;
+    void Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer) override;
     bool OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath) override;
     void Close() override;
     bool Save() override;
 
-    void Render(float DeltaTime) override;
+    void RenderContent(float DeltaTime) override;
 
-    bool IsOpen() const override { return bOpen; }
     bool IsDirty() const override { return false; }
     bool IsCapturingInput() const override { return bCapturingInput; }
     const char *GetEditorName() const override { return "SkeletalMeshEditor"; }
+    const std::filesystem::path &GetAssetPath() const override { return EditingAssetPath; }
 
   private:
     UEditorEngine        *EditorEngine = nullptr;

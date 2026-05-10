@@ -7,22 +7,10 @@
 
 #include "ImGui/imgui.h"
 
-void FSkeletalMeshEditor::Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
+void FSkeletalMeshEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
 {
     EditorEngine = InEditorEngine;
     Renderer = InRenderer;
-}
-
-void FSkeletalMeshEditor::Shutdown()
-{
-    Close();
-    Renderer = nullptr;
-    EditorEngine = nullptr;
-}
-
-bool FSkeletalMeshEditor::CanEdit(UObject *Asset) const
-{
-    return Cast<USkeletalMesh>(Asset) != nullptr;
 }
 
 bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath)
@@ -63,7 +51,7 @@ bool FSkeletalMeshEditor::Save()
     return false;
 }
 
-void FSkeletalMeshEditor::Render(float DeltaTime)
+void FSkeletalMeshEditor::RenderContent(float DeltaTime)
 {
     (void)DeltaTime;
     if (!bOpen)

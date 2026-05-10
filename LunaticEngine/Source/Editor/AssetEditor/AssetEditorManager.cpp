@@ -1,47 +1,45 @@
 #include "AssetEditor/AssetEditorManager.h"
 
+#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
+#include "AssetEditor/IAssetEditor.h"
+#include "AssetEditor/SkeletalMesh/SkeletalMeshEditor.h"
+#include "AssetEditor/Window/AssetEditorWindow.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Core/Notification.h"
 #include "Engine/Asset/AssetData.h"
 #include "Engine/Asset/AssetFileSerializer.h"
+#include "Engine/Mesh/SkeletalMesh.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
 
-void FAssetEditorManager::Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
+void FAssetEditorManager::Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
 {
     EditorEngine = InEditorEngine;
     Renderer = InRenderer;
-
-    CameraModifierStackEditor.Init(EditorEngine, Renderer);
-    SkeletalMeshEditor.Init(EditorEngine, Renderer);
 }
 
 void FAssetEditorManager::Shutdown()
 {
-    CloseActiveEditor();
-
-    SkeletalMeshEditor.Shutdown();
-    CameraModifierStackEditor.Shutdown();
-
+    AssetEditorWindow.Destroy();
     Renderer = nullptr;
     EditorEngine = nullptr;
 }
 
+void FAssetEditorManager::Tick(float DeltaTime)
+{
+    AssetEditorWindow.Tick(DeltaTime);
+}
+
 void FAssetEditorManager::Render(float DeltaTime)
 {
-    if (ActiveEditor && ActiveEditor->IsOpen())
-    {
-        ActiveEditor->Render(DeltaTime);
-    }
+    AssetEditorWindow.Render(DeltaTime);
 }
 
 bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPath)
 {
     UObject *LoadedAsset = nullptr;
 
-    const std::filesystem::path Ext = AssetPath.extension();
-
-    if (Ext == L".uasset")
+    if (AssetPath.extension() == L".uasset")
     {
         FString Error;
         LoadedAsset = FAssetFileSerializer::LoadAssetFromFile(AssetPath, &Error);
@@ -62,7 +60,6 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
     }
 
     FNotificationManager::Get().AddNotification("Unsupported asset type.", ENotificationType::Info, 3.0f);
-
     return false;
 }
 
@@ -73,20 +70,40 @@ bool FAssetEditorManager::OpenLoadedAsset(UObject *Asset, const std::filesystem:
         return false;
     }
 
-    IAssetEditor *TargetEditor = ResolveEditorForAsset(Asset);
-    if (!TargetEditor)
+    const std::filesystem::path NormalizedPath = AssetPath.lexically_normal();
+
+    if (AssetEditorWindow.IsOpen() && AssetEditorWindow.ActivateTabByAssetPath(NormalizedPath))
+    {
+        AssetEditorWindow.Show();
+        return true;
+    }
+
+    std::unique_ptr<IAssetEditor> Editor = CreateEditorForAsset(Asset);
+    if (!Editor)
     {
         FNotificationManager::Get().AddNotification("No editor registered for this asset.", ENotificationType::Info, 3.0f);
         return false;
     }
 
-    if (ActiveEditor && ActiveEditor != TargetEditor)
+    Editor->Initialize(EditorEngine, Renderer);
+    if (!Editor->OpenAsset(Asset, NormalizedPath))
     {
-        ActiveEditor->Close();
+        Editor->Close();
+        return false;
     }
 
-    ActiveEditor = TargetEditor;
-    return ActiveEditor->OpenAsset(Asset, AssetPath);
+    if (!AssetEditorWindow.IsOpen())
+    {
+        if (!AssetEditorWindow.Create(EditorEngine, Renderer))
+        {
+            Editor->Close();
+            return false;
+        }
+    }
+
+    AssetEditorWindow.OpenEditorTab(std::move(Editor));
+    AssetEditorWindow.Show();
+    return true;
 }
 
 bool FAssetEditorManager::OpenAssetWithDialog(void *OwnerWindowHandle)
@@ -112,35 +129,51 @@ bool FAssetEditorManager::OpenAssetWithDialog(void *OwnerWindowHandle)
 
 bool FAssetEditorManager::CreateCameraModifierStackAsset()
 {
-    CloseActiveEditor();
-    ActiveEditor = &CameraModifierStackEditor;
-    return CameraModifierStackEditor.CreateCameraShakeAsset();
-}
-
-IAssetEditor *FAssetEditorManager::ResolveEditorForAsset(UObject *Asset)
-{
-    if (CameraModifierStackEditor.CanEdit(Asset))
+    std::unique_ptr<FCameraModifierStackEditor> Editor = std::make_unique<FCameraModifierStackEditor>();
+    Editor->Initialize(EditorEngine, Renderer);
+    if (!Editor->CreateCameraShakeAsset())
     {
-        return &CameraModifierStackEditor;
+        Editor->Close();
+        return false;
     }
 
-    if (SkeletalMeshEditor.CanEdit(Asset))
+    if (!AssetEditorWindow.IsOpen() && !AssetEditorWindow.Create(EditorEngine, Renderer))
     {
-        return &SkeletalMeshEditor;
+        Editor->Close();
+        return false;
+    }
+
+    AssetEditorWindow.OpenEditorTab(std::move(Editor));
+    AssetEditorWindow.Show();
+    return true;
+}
+
+bool FAssetEditorManager::SaveActiveEditor()
+{
+    return AssetEditorWindow.SaveActiveTab();
+}
+
+void FAssetEditorManager::CloseActiveEditor()
+{
+    AssetEditorWindow.CloseActiveTab();
+}
+
+bool FAssetEditorManager::IsCapturingInput() const
+{
+    return AssetEditorWindow.IsCapturingInput();
+}
+
+std::unique_ptr<IAssetEditor> FAssetEditorManager::CreateEditorForAsset(UObject *Asset) const
+{
+    if (Cast<UCameraModifierStackAssetData>(Asset))
+    {
+        return std::make_unique<FCameraModifierStackEditor>();
+    }
+
+    if (Cast<USkeletalMesh>(Asset))
+    {
+        return std::make_unique<FSkeletalMeshEditor>();
     }
 
     return nullptr;
 }
-
-bool FAssetEditorManager::SaveActiveEditor() { return ActiveEditor ? ActiveEditor->Save() : false; }
-
-void FAssetEditorManager::CloseActiveEditor()
-{
-    if (ActiveEditor)
-    {
-        ActiveEditor->Close();
-        ActiveEditor = nullptr;
-    }
-}
-
-bool FAssetEditorManager::IsCapturingInput() const { return ActiveEditor && ActiveEditor->IsOpen() && ActiveEditor->IsCapturingInput(); }

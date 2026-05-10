@@ -164,23 +164,10 @@ namespace
     }
 } // namespace
 
-void FCameraModifierStackEditor::Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
+void FCameraModifierStackEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
 {
     EditorEngine = InEditorEngine;
     Renderer = InRenderer;
-}
-
-void FCameraModifierStackEditor::Shutdown()
-{
-    bCapturingInput = false;
-    Close();
-    Renderer = nullptr;
-    EditorEngine = nullptr;
-}
-
-bool FCameraModifierStackEditor::CanEdit(UObject *Asset) const
-{
-    return Cast<UCameraModifierStackAssetData>(Asset) != nullptr;
 }
 
 bool FCameraModifierStackEditor::OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath)
@@ -286,7 +273,7 @@ bool FCameraModifierStackEditor::PromptForSavePath(void *OwnerWindowHandle)
     return true;
 }
 
-void FCameraModifierStackEditor::Render(float DeltaTime)
+void FCameraModifierStackEditor::RenderContent(float DeltaTime)
 {
     (void)DeltaTime;
     if (!bOpen)

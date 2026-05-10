@@ -60,11 +60,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     FLevelEditorSettings::Get().LoadFromFile(FLevelEditorSettings::GetDefaultSettingsPath());
     FProjectSettings::Get().LoadFromFile(FProjectSettings::GetDefaultPath());
 
-    {
-        SCOPE_STARTUP_STAT("EditorMainFrame::Create");
-        MainFrame.Create(Window, Renderer, this);
-    }
-
+    AssetEditorManager.Initialize(this, &Renderer);
     AssetImportManager.Init(this);
 
     // 기본 월드 생성 — 모든 서브시스템 초기화의 기반
@@ -72,8 +68,12 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     SetActiveWorld(WorldList[0].ContextHandle);
     GetWorld()->InitWorld();
 
-    // Selection & Gizmo
-    LevelEditor.Init(this, Window, Renderer);
+    {
+        SCOPE_STARTUP_STAT("LevelEditor::Initialize");
+        LevelEditor.Initialize(this, Window, Renderer);
+    }
+
+    LevelEditorWindow.Create(Window, Renderer, this, &LevelEditor);
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
@@ -92,13 +92,14 @@ void UEditorEngine::Shutdown()
 {
     // 에디터 해제 (엔진보다 먼저)
     LevelEditor.GetViewportLayout().SaveToSettings();
-    MainFrame.SaveToSettings();
+    LevelEditorWindow.SaveToSettings();
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
     FLevelEditorSettings::Get().SaveToFile(FLevelEditorSettings::GetDefaultSettingsPath());
     CloseScene();
+    AssetEditorManager.Shutdown();
     AssetImportManager.Shutdown();
     LevelEditor.Shutdown();
-    MainFrame.Release();
+    LevelEditorWindow.Release();
 
     // 엔진 공통 해제 (Renderer, D3D 등)
     UEngine::Shutdown();
@@ -119,8 +120,7 @@ void UEditorEngine::Tick(float DeltaTime)
         PendingSceneLoadReference.clear();
         LoadScene(SceneToLoad);
     }
-    LevelEditor.GetPIEManager().Tick(DeltaTime);
-    LevelEditor.GetSceneManager().Tick(DeltaTime);
+    LevelEditor.Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
     FDirectoryWatcher::Get().ProcessChanges();
@@ -130,7 +130,8 @@ void UEditorEngine::Tick(float DeltaTime)
     }
     FNotificationManager::Get().Tick(DeltaTime);
     FAudioManager::Get().Update();
-    MainFrame.Update();
+    AssetEditorManager.Tick(DeltaTime);
+    LevelEditorWindow.Update();
 
     for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
     {
@@ -169,7 +170,7 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
     return false;
 }
 
-void UEditorEngine::RenderUI(float DeltaTime) { MainFrame.Render(DeltaTime); }
+void UEditorEngine::RenderUI(float DeltaTime) { LevelEditorWindow.Render(DeltaTime); }
 
 void UEditorEngine::RenderPIEOverlayPopups() { LevelEditor.GetPIEManager().RenderOverlayPopups(); }
 

@@ -1,21 +1,22 @@
 #pragma once
 
-#include <filesystem>
+#include "AssetEditor/Window/AssetEditorWindow.h"
 
-#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
-#include "AssetEditor/IAssetEditor.h"
-#include "AssetEditor/SkeletalMesh/SkeletalMeshEditor.h"
+#include <filesystem>
+#include <memory>
 
 class UObject;
 class UEditorEngine;
 class FRenderer;
+class IAssetEditor;
 
 class FAssetEditorManager
 {
   public:
-    void Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer);
+    void Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer);
     void Shutdown();
 
+    void Tick(float DeltaTime);
     void Render(float DeltaTime);
 
     bool OpenAssetFromPath(const std::filesystem::path &AssetPath);
@@ -28,17 +29,15 @@ class FAssetEditorManager
 
     bool IsCapturingInput() const;
 
-    IAssetEditor *GetActiveEditor() const { return ActiveEditor; }
+    FAssetEditorWindow &GetAssetEditorWindow() { return AssetEditorWindow; }
+    const FAssetEditorWindow &GetAssetEditorWindow() const { return AssetEditorWindow; }
 
   private:
-    IAssetEditor *ResolveEditorForAsset(UObject *Asset);
+    std::unique_ptr<IAssetEditor> CreateEditorForAsset(UObject *Asset) const;
 
   private:
     UEditorEngine *EditorEngine = nullptr;
     FRenderer     *Renderer = nullptr;
 
-    FCameraModifierStackEditor CameraModifierStackEditor;
-    FSkeletalMeshEditor        SkeletalMeshEditor;
-
-    IAssetEditor *ActiveEditor = nullptr;
+    FAssetEditorWindow AssetEditorWindow;
 };

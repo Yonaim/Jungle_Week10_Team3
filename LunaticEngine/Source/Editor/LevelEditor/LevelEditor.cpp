@@ -2,7 +2,7 @@
 #include "EditorEngine.h"
 
 
-void FLevelEditor::Init(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow, FRenderer &InRenderer)
+void FLevelEditor::Initialize(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow, FRenderer &InRenderer)
 {
     EditorEngine = InEditorEngine;
 
@@ -15,6 +15,12 @@ void FLevelEditor::Init(UEditorEngine *InEditorEngine, FWindowsWindow *InWindow,
     PIEManager.Init(EditorEngine);
     HistoryManager.Init(EditorEngine);
     SceneManager.Init(EditorEngine);
+}
+
+void FLevelEditor::Tick(float DeltaTime)
+{
+    PIEManager.Tick(DeltaTime);
+    SceneManager.Tick(DeltaTime);
 }
 
 void FLevelEditor::Shutdown()

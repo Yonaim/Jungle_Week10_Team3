@@ -1,13 +1,14 @@
 ﻿#pragma once
 
+#include "AssetEditor/AssetEditorManager.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 
 #include "AssetTools/AssetImportManager.h"
 #include "LevelEditor/LevelEditor.h"
 #include "LevelEditor/PIE/LevelPIETypes.h"
-#include "MainFrame/EditorMainFrame.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
+#include "LevelEditor/Window/LevelEditorWindow.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -63,13 +64,13 @@ class UEditorEngine : public UEngine
     bool           SaveSceneAs(const FString &InScenePath);
     bool           HasCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().HasCurrentLevelFilePath(); }
     const FString &GetCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().GetCurrentLevelFilePath(); }
-    void           RefreshContentBrowser() { MainFrame.RefreshContentBrowser(); }
-    void           SetContentBrowserIconSize(float Size) { MainFrame.SetContentBrowserIconSize(Size); }
-    float          GetContentBrowserIconSize() const { return MainFrame.GetContentBrowserIconSize(); }
-    void           HideEditorWindows() { MainFrame.HideEditorWindows(); }
-    void           ShowEditorWindows() { MainFrame.ShowEditorWindows(); }
-    void           SetShowEditorOnlyComponents(bool bEnable) { MainFrame.SetShowEditorOnlyComponents(bEnable); }
-    bool           IsShowingEditorOnlyComponents() const { return MainFrame.IsShowingEditorOnlyComponents(); }
+    void           RefreshContentBrowser() { LevelEditorWindow.RefreshContentBrowser(); }
+    void           SetContentBrowserIconSize(float Size) { LevelEditorWindow.SetContentBrowserIconSize(Size); }
+    float          GetContentBrowserIconSize() const { return LevelEditorWindow.GetContentBrowserIconSize(); }
+    void           HideEditorWindows() { LevelEditorWindow.HideEditorWindows(); }
+    void           ShowEditorWindows() { LevelEditorWindow.ShowEditorWindows(); }
+    void           SetShowEditorOnlyComponents(bool bEnable) { LevelEditorWindow.SetShowEditorOnlyComponents(bEnable); }
+    bool           IsShowingEditorOnlyComponents() const { return LevelEditorWindow.IsShowingEditorOnlyComponents(); }
     bool           IsWorldCoordSystem() const { return FLevelEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
     void           ToggleCoordSystem();
     void           ApplyTransformSettingsToGizmo();
@@ -154,10 +155,12 @@ class UEditorEngine : public UEngine
 
     bool OpenAssetFromPath(const std::filesystem::path &AssetPath)
     {
-        return MainFrame.GetAssetEditorManager().OpenAssetFromPath(AssetPath);
+        return AssetEditorManager.OpenAssetFromPath(AssetPath);
     }
 
-    bool IsAssetEditorCapturingInput() const { return MainFrame.GetAssetEditorManager().IsCapturingInput(); }
+    bool IsAssetEditorCapturingInput() const { return AssetEditorManager.IsCapturingInput(); }
+    FAssetEditorManager &GetAssetEditorManager() { return AssetEditorManager; }
+    const FAssetEditorManager &GetAssetEditorManager() const { return AssetEditorManager; }
 
   private:
     friend class FLevelSceneManager;
@@ -174,7 +177,8 @@ class UEditorEngine : public UEngine
     void              RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs);
     void              InvalidateTrackedSceneSnapshotCache();
 
-    FLevelEditor     LevelEditor;
-    FEditorMainFrame MainFrame;
+    FLevelEditor       LevelEditor;
+    FLevelEditorWindow LevelEditorWindow;
+    FAssetEditorManager AssetEditorManager;
     FAssetImportManager AssetImportManager;
 };

@@ -193,7 +193,7 @@ namespace
 
 } // namespace
 
-void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine)
+void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine, FLevelEditor *InLevelEditor)
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -208,6 +208,7 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
 
     Window = InWindow;
     EditorEngine = InEditorEngine;
+    LevelEditor = InLevelEditor;
 
     ImGuiStyle &Style = ImGui::GetStyle();
     Style.WindowPadding.x = (std::max)(Style.WindowPadding.x, 12.0f);
@@ -242,21 +243,19 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
     StatPanel.Init(InEditorEngine);
     ContentBrowser.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
     ShadowMapDebugPanel.Init(InEditorEngine);
-    AssetEditorManager.Init(EditorEngine, &InRenderer);
 }
 
-void FEditorMainFrame::Release()
+void FLevelEditorWindow::Release()
 {
     ConsolePanel.Shutdown();
-    AssetEditorManager.Shutdown();
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 }
 
-void FEditorMainFrame::SaveToSettings() const { ContentBrowser.SaveToSettings(); }
+void FLevelEditorWindow::SaveToSettings() const { ContentBrowser.SaveToSettings(); }
 
-void FEditorMainFrame::Render(float DeltaTime)
+void FLevelEditorWindow::Render(float DeltaTime)
 {
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -355,10 +354,10 @@ void FEditorMainFrame::Render(float DeltaTime)
         ContentBrowser.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && AssetEditorManager.GetActiveEditor() && AssetEditorManager.GetActiveEditor()->IsOpen())
+    if (!bHideEditorWindows && EditorEngine)
     {
         SCOPE_STAT_CAT("AssetEditorManager.Render", "5_UI");
-        AssetEditorManager.Render(DeltaTime);
+        EditorEngine->GetAssetEditorManager().Render(DeltaTime);
     }
 
     if (!bHideEditorWindows && Settings.Panels.bShadowMapDebug)
@@ -383,7 +382,7 @@ void FEditorMainFrame::Render(float DeltaTime)
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void FEditorMainFrame::RenderMainMenuBar()
+void FLevelEditorWindow::RenderMainMenuBar()
 {
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
     const float          TitleBarHeight = GetCustomTitleBarHeight();
@@ -495,11 +494,11 @@ void FEditorMainFrame::RenderMainMenuBar()
             DrawPopupSectionHeader("ASSET");
             if (ImGui::MenuItem("New UAsset..."))
             {
-                AssetEditorManager.CreateCameraModifierStackAsset();
+                EditorEngine->GetAssetEditorManager().CreateCameraModifierStackAsset();
             }
             if (ImGui::MenuItem("Open UAsset...", "Ctrl+Alt+O"))
             {
-                AssetEditorManager.OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
+                EditorEngine->GetAssetEditorManager().OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
             }
 
             DrawPopupSectionHeader("IMPORT");
@@ -807,7 +806,7 @@ void FEditorMainFrame::RenderMainMenuBar()
     ImGui::PopStyleVar(4);
 }
 
-void FEditorMainFrame::RenderProjectSettingsWindow()
+void FLevelEditorWindow::RenderProjectSettingsWindow()
 {
     if (!bShowProjectSettings)
     {
@@ -955,7 +954,7 @@ void FEditorMainFrame::RenderProjectSettingsWindow()
     ImGui::End();
 }
 
-void FEditorMainFrame::RenderShortcutOverlay()
+void FLevelEditorWindow::RenderShortcutOverlay()
 {
     if (!bShowShortcutOverlay)
     {
@@ -987,7 +986,7 @@ void FEditorMainFrame::RenderShortcutOverlay()
     ImGui::End();
 }
 
-void FEditorMainFrame::RenderCreditsOverlay()
+void FLevelEditorWindow::RenderCreditsOverlay()
 {
     if (!bShowCreditsOverlay)
     {
@@ -1034,7 +1033,7 @@ void FEditorMainFrame::RenderCreditsOverlay()
     ImGui::End();
 }
 
-void FEditorMainFrame::Update()
+void FLevelEditorWindow::Update()
 {
     HandleGlobalShortcuts();
 
@@ -1043,7 +1042,7 @@ void FEditorMainFrame::Update()
     // 뷰포트 슬롯 위에서는 bUsingMouse를 해제해야 TickInteraction이 동작
     bool       bWantMouse = IO.WantCaptureMouse;
     bool       bWantKeyboard = IO.WantCaptureKeyboard || bShowShortcutOverlay || bShowCreditsOverlay;
-    const bool bAssetEditorCapturingInput = AssetEditorManager.IsCapturingInput();
+    const bool bAssetEditorCapturingInput = EditorEngine && EditorEngine->GetAssetEditorManager().IsCapturingInput();
     const bool bPIEPopupOpen = EditorEngine && EditorEngine->IsScoreSavePopupOpen();
     if (bPIEPopupOpen)
     {
@@ -1079,7 +1078,7 @@ void FEditorMainFrame::Update()
     }
 }
 
-void FEditorMainFrame::HandleGlobalShortcuts()
+void FLevelEditorWindow::HandleGlobalShortcuts()
 {
     if (!EditorEngine)
     {
@@ -1146,7 +1145,7 @@ void FEditorMainFrame::HandleGlobalShortcuts()
     }
 }
 
-void FEditorMainFrame::HideEditorWindows()
+void FLevelEditorWindow::HideEditorWindows()
 {
     if (bHasSavedPanelVisibility)
     {
@@ -1172,7 +1171,7 @@ void FEditorMainFrame::HideEditorWindows()
     Settings.Panels.bShadowMapDebug = false;
 }
 
-void FEditorMainFrame::ShowEditorWindows()
+void FLevelEditorWindow::ShowEditorWindows()
 {
     if (!bHasSavedPanelVisibility)
     {
@@ -1187,11 +1186,11 @@ void FEditorMainFrame::ShowEditorWindows()
     bHasSavedPanelVisibility = false;
 }
 
-void FEditorMainFrame::HideEditorWindowsForPIE() { HideEditorWindows(); }
+void FLevelEditorWindow::HideEditorWindowsForPIE() { HideEditorWindows(); }
 
-void FEditorMainFrame::RestoreEditorWindowsAfterPIE() { ShowEditorWindows(); }
+void FLevelEditorWindow::RestoreEditorWindowsAfterPIE() { ShowEditorWindows(); }
 
-void FEditorMainFrame::CookCurrentScene()
+void FLevelEditorWindow::CookCurrentScene()
 {
     if (!EditorEngine || !EditorEngine->HasCurrentLevelFilePath())
     {
@@ -1210,7 +1209,7 @@ void FEditorMainFrame::CookCurrentScene()
                                                 bOk ? ENotificationType::Success : ENotificationType::Error);
 }
 
-void FEditorMainFrame::PackageGameBuild(const char *BatFileName)
+void FLevelEditorWindow::PackageGameBuild(const char *BatFileName)
 {
     // 솔루션 루트(.bat 위치)를 찾는다 — 후보 경로를 차례대로 검사.
     // FPaths::RootDir()은 보통 LunaticEngine/ (개발) 또는 exe 디렉터리(배포)를 반환한다.
