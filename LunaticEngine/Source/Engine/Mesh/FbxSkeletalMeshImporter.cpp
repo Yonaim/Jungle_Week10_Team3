@@ -10,6 +10,11 @@
 #if defined(_WIN64)
 namespace
 {
+	// FBX SkeletalMesh 변환:
+	// 1) 메시 정점/인덱스 추출
+	// 2) Skin/Cluster에서 본 영향 수집
+	// 3) 본 계층/InverseBindPose 구성
+	// 4) 머티리얼 섹션 재구성
 	using FControlPointVertexMap = std::unordered_map<FbxMesh*, std::unordered_map<int32, TArray<uint32>>>;
 
 	bool IsSkeletonNode(FbxNode* Node)
@@ -307,9 +312,10 @@ namespace
 		}
 	}
 
-	void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
-	{
-		for (FSkinWeight& SkinWeight : OutMesh.SkinWeights)
+void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
+{
+	// 정점별 총합을 1로 맞춰 스키닝 시 가중치 에너지 보존을 유지한다.
+	for (FSkinWeight& SkinWeight : OutMesh.SkinWeights)
 		{
 			float TotalWeight = 0.0f;
 			for (int32 InfluenceIndex = 0; InfluenceIndex < MaxBoneInfluences; ++InfluenceIndex)
@@ -363,10 +369,12 @@ namespace
 					FbxNode* BoneNode = Cluster->GetLink();
 					if (!BoneNode) continue;
 
-					// 2. Bone 리스트에 추가 (또는 기존 인덱스 찾기)
+					// Cluster는 "해당 본이 어떤 Control Point에 얼마만큼 영향 주는지"를 제공한다.
+					// 본 이름 기반으로 엔진 Bone 배열 인덱스를 정규화한다.
 					int32 BoneIndex = FindOrAddBone(OutMesh, BoneNode, Cluster, BindGlobalMatrices);
 
-					// 3. 이 뼈가 영향을 주는 점들(Control Points) 순회
+					// Control Point 영향치를 코너 기반 엔진 정점으로 전파한다.
+					// (하나의 Control Point가 여러 엔진 정점으로 분화될 수 있음)
 					int CPCount = Cluster->GetControlPointIndicesCount();
 					int* CPIndices = Cluster->GetControlPointIndices();
 					double* CPWeights = Cluster->GetControlPointWeights();
@@ -380,7 +388,7 @@ namespace
 							continue;
 						}
 
-						// 4. 매핑 데이터를 이용해 이 CP를 사용하는 모든 엔진 정점에 가중치 배달
+						// CP -> 엔진 정점 매핑을 통해 실제 렌더 정점 SkinWeight를 누적한다.
 						auto VertexListIt = MeshMapIt->second.find(ControlPointIndex);
 						if (VertexListIt != MeshMapIt->second.end())
 						{

@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
 #include "Component/SceneComponent.h"

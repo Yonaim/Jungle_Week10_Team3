@@ -7,10 +7,7 @@ IMPLEMENT_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 
 void USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
 {
-	if (BoneIndex >= 0 && BoneIndex < (int32)BoneSpaceTransforms.size())
-	{
-		BoneSpaceTransforms[BoneIndex] = LocalTransform;
-	}
+	CurrentPose.SetLocalTransform(BoneIndex, LocalTransform);
 }
 
 void USkeletalMeshComponent::SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform)
@@ -42,20 +39,15 @@ void USkeletalMeshComponent::InitializeSkeleton()
 		return;
 
 	const FSkeletalMesh* MeshAsset = SkeletalMesh->GetSkeletalMeshAsset();
-	const int32 BoneCount = (int32)MeshAsset->Bones.size();
+	InitBoneTransform();
 
-	BoneSpaceTransforms.resize(BoneCount);
-	ComponentSpaceTransforms.resize(BoneCount);
-	for (int32 i = 0; i < BoneCount; ++i)
-	{
-		BoneSpaceTransforms[i] = MeshAsset->Bones[i].LocalBindTransform;
-	}
-
+	// SkinBuffer는 매 프레임 갱신되는 런타임 결과 버퍼이며,
+	// 원본 애셋 정점은 참조 포즈 보존용으로 유지한다.
 	SkinBuffer = MeshAsset->Vertices;
 
-	FillComponentSpaceTransforms();
-	PerformCPUSkinning();
-	FinalizeBoneTransforms();
+	RebuildComponentSpace();
+	PerformCPUSkinning(CurrentPose);
+	FinalizeRenderState();
 }
 
 void USkeletalMeshComponent::BeginPlay()
@@ -69,41 +61,34 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 		return;
 
 	EvaluatePose(DeltaTime);
-	FillComponentSpaceTransforms();
-	PerformCPUSkinning();
-	FinalizeBoneTransforms();
+	UpdatePoseLocal(DeltaTime);
+	RebuildComponentSpace();
+	PerformCPUSkinning(CurrentPose);
+	FinalizeRenderState();
 }
 
 void USkeletalMeshComponent::EvaluatePose(float DeltaTime)
 {
+	(void)DeltaTime;
 	// 현재는 Bind Pose를 유지
 }
 
-void USkeletalMeshComponent::FillComponentSpaceTransforms()
+void USkeletalMeshComponent::UpdatePoseLocal(float DeltaTime)
+{
+	(void)DeltaTime;
+	// EvaluatePose에서 LocalTransforms를 직접 갱신하는 현재 구조를 유지한다.
+}
+
+void USkeletalMeshComponent::RebuildComponentSpace()
 {
 	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
 		return;
 
 	const TArray<FBoneInfo>& Bones = SkeletalMesh->GetSkeletalMeshAsset()->Bones;
-	const int32 BoneCount = (int32)Bones.size();
-
-	for (int32 i = 0; i < BoneCount; ++i)
-	{
-		const FMatrix LocalMatrix = BoneSpaceTransforms[i].ToMatrix();
-		const int32 ParentIndex = Bones[i].ParentIndex;
-
-		if (ParentIndex == InvalidBoneIndex)
-		{
-			ComponentSpaceTransforms[i] = LocalMatrix;
-		}
-		else
-		{
-			ComponentSpaceTransforms[i] = LocalMatrix * ComponentSpaceTransforms[ParentIndex];
-		}
-	}
+	CurrentPose.RebuildComponentSpace(Bones);
 }
 
-void USkeletalMeshComponent::PerformCPUSkinning()
+void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 {
 	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
 		return;
@@ -112,6 +97,7 @@ void USkeletalMeshComponent::PerformCPUSkinning()
 	const TArray<FNormalVertex>& BindVerts = MeshAsset->Vertices;
 	const TArray<FSkinWeight>& SkinWeights = MeshAsset->SkinWeights;
 	const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
+	const TArray<FMatrix>& ComponentSpaceTransforms = Pose.ComponentTransforms;
 	const int32 VertexCount = (int32)BindVerts.size();
 
 	if ((int32)SkinBuffer.size() != VertexCount)
@@ -119,6 +105,12 @@ void USkeletalMeshComponent::PerformCPUSkinning()
 		SkinBuffer.resize(VertexCount);
 	}
 
+	// CPU Skinning 흐름:
+	// Reference Pose 정점
+	// -> 영향 본 반복
+	// -> (InverseBindPose * CurrentComponentSpace) 스키닝 행렬 적용
+	// -> 가중치 누적
+	// -> SkinBuffer에 현재 포즈 정점/노멀 기록
 	for (int32 VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
 	{
 		const FNormalVertex& BindVertex = BindVerts[VertexIndex];
@@ -136,6 +128,8 @@ void USkeletalMeshComponent::PerformCPUSkinning()
 			if (BoneIdx == InvalidBoneIndex || W <= 0.0f)
 				continue;
 
+			// 현재 코드의 행렬 곱 순서를 그대로 사용한다.
+			// 수학 규약(row/column major)에 따라 의미가 달라질 수 있어 추후 검증 포인트다.
 			const FMatrix SkinningMatrix = Bones[BoneIdx].InverseBindPose * ComponentSpaceTransforms[BoneIdx];
 
 			SkinnedPos += SkinningMatrix.TransformPositionWithW(BindVertex.pos) * W;
@@ -152,8 +146,9 @@ void USkeletalMeshComponent::PerformCPUSkinning()
 	}
 }
 
-void USkeletalMeshComponent::FinalizeBoneTransforms()
+void USkeletalMeshComponent::FinalizeRenderState()
 {
+	// 본/스키닝 결과 변경을 렌더러와 바운드 갱신 경로에 알린다.
 	MarkRenderStateDirty();
 	MarkWorldBoundsDirty();
 }

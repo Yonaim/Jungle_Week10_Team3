@@ -9,14 +9,18 @@
 
 struct ID3D11Device;
 
-// LOD 단계별 GPU 리소스
+// LOD 단계별 렌더 리소스 묶음.
+// 각 LOD는 섹션 정보와 GPU 버퍼를 함께 유지한다.
 struct FLODMeshData
 {
 	TArray<FStaticMeshSection> Sections;
 	std::unique_ptr<FMeshBuffer> RenderBuffer;
 };
 
-// UStaticMesh — FStaticMesh를 소유하는 UObject 에셋
+// UStaticMesh:
+// 변형되지 않는(Non-deforming) StaticMesh 애셋 래퍼.
+// - 정점/인덱스/섹션/바운드 같은 기하 데이터는 FStaticMesh가 소유
+// - 이 클래스는 애셋 수명, 리소스 초기화, 머티리얼 슬롯, BVH 유틸을 담당
 class UStaticMesh : public UObject
 {
 public:
@@ -37,7 +41,8 @@ public:
 
 	void InitResources(ID3D11Device* InDevice);
 
-	//스태틱 메시 picking / Mesh Decal 최적화를 위한 BVH 트리 빌드 및 판정 호출 함수
+	// 메시 로컬 공간 삼각형 BVH를 사용한 피킹 경로.
+	// 월드 BVH가 후보를 줄인 뒤, 메시 내부 정밀 판정에서 사용된다.
 	void EnsureMeshTrianglePickingBVHBuilt() const;
 	bool RaycastMeshTrianglesWithBVHLocal(const FVector& LocalOrigin, const FVector& LocalDirection, FRayHitResult& OutHitResult) const;
 	
@@ -47,11 +52,13 @@ public:
 	const TArray<FStaticMeshSection>& GetLODSections(uint32 LODLevel) const;
 
 private:
-	FStaticMesh* StaticMeshAsset = nullptr;
-	TArray<FStaticMaterial> StaticMaterials; // 슬롯 이름과 머티리얼 인터페이스를 묶어서 저장하는 배열
-	mutable FMeshTriangleBVH MeshTrianglePickingBVH; // 빠른 picking을 위해 메시 내부에 트리 형태로 만들어지는 자료구조
+	void RefreshSectionMaterialIndices();
 
-	// LOD1 (70%), LOD2 (50%), LOD3 (25%) — LOD0 is the original StaticMeshAsset
+	FStaticMesh* StaticMeshAsset = nullptr;
+	TArray<FStaticMaterial> StaticMaterials; // 섹션 슬롯명과 실제 머티리얼 연결 정보
+	mutable FMeshTriangleBVH MeshTrianglePickingBVH; // 메시 로컬 정밀 레이캐스트 가속 구조
+
+	// LOD0은 원본 StaticMeshAsset, AdditionalLODs는 단순화 LOD 캐시 슬롯.
 	FLODMeshData AdditionalLODs[3];
 	bool bHasLOD = false;
 };

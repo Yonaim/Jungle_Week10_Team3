@@ -4,7 +4,7 @@
 #include "Core/CoreTypes.h"
 #include <fstream>
 #include <filesystem>
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 #include <wrl/client.h>
 #include <Engine/Materials/MaterialManager.h>
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
@@ -10,7 +10,8 @@
 #include "Materials/MaterialManager.h"
 #include <memory>
 #include <algorithm>
-// Cooked Data 내부용 정점
+
+// 렌더/임포트 공용 정점 포맷(정적 메시, 스키닝 결과 버퍼 공용)
 struct FNormalVertex
 {
 	FVector pos;
@@ -20,10 +21,10 @@ struct FNormalVertex
 	FVector4 tangent;
 };
 
-
+// 하나의 렌더 섹션(대개 서브메시/머티리얼 슬롯 단위)
 struct FStaticMeshSection
 {
-	int32 MaterialIndex = -1; // Index into UStaticMesh's FStaticMaterial array. Cached to avoid per-frame string comparison.
+	int32 MaterialIndex = -1; // UStaticMesh::StaticMaterials 인덱스 캐시
 	FString MaterialSlotName;
 	uint32 FirstIndex;
 	uint32 NumTriangles;
@@ -35,18 +36,17 @@ struct FStaticMeshSection
 	}
 };
 
+// 에셋 직렬화용 머티리얼 슬롯 정보.
+// 메시 섹션은 SlotName으로 머티리얼과 연결되고, 실제 머티리얼은 경로 기반으로 복원된다.
 struct FStaticMaterial
 {
-	// std::shared_ptr<class UMaterialInterface> MaterialInterface;
 	UMaterial* MaterialInterface;
-	FString MaterialSlotName = "None"; // "None"은 특별한 슬롯 이름으로, OBJ 파일에서 머티리얼이 지정되지 않은 섹션에 할당됩니다.
+	FString MaterialSlotName = "None";
 
 	friend FArchive& operator<<(FArchive& Ar, FStaticMaterial& Mat)
 	{
-		// 1. 슬롯 이름 직렬화 (메시 섹션과 매핑용)
 		Ar << Mat.MaterialSlotName;
 
-		// 2. Material path serialization (Source of Truth = Asset/Content/Materials/*.mat)
 		FString JsonPath;
 		if (Ar.IsSaving() && Mat.MaterialInterface)
 		{
@@ -54,7 +54,6 @@ struct FStaticMaterial
 		}
 		Ar << JsonPath;
 
-		// 3. 로딩 시 FMaterialManager를 통해 머티리얼 복원
 		if (Ar.IsLoading())
 		{
 			if (!JsonPath.empty())
@@ -71,19 +70,18 @@ struct FStaticMaterial
 	}
 };
 
-// Cooked Data — GPU용 정점/인덱스
-// FStaticMeshLODResources in UE5
+// StaticMesh Cooked Data 본체.
+// 정점/인덱스/섹션은 에셋 원본 데이터이며, RenderBuffer는 이 데이터에서 생성되는 GPU 리소스 캐시다.
 struct FStaticMesh
 {
 	FString PathFileName;
 	TArray<FNormalVertex> Vertices;
 	TArray<uint32> Indices;
-
 	TArray<FStaticMeshSection> Sections;
 
 	std::unique_ptr<FMeshBuffer> RenderBuffer;
 
-	// 메시 로컬 바운드 캐시 (정점 순회 1회로 계산)
+	// 로컬 바운드 캐시: 피킹/컬링/AABB 갱신 경로에서 재사용한다.
 	FVector BoundsCenter = FVector(0, 0, 0);
 	FVector BoundsExtent = FVector(0, 0, 0);
 	bool    bBoundsValid = false;

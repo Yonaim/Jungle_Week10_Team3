@@ -14,7 +14,7 @@
 #include "Object/ObjectFactory.h"
 #include "Platform/Paths.h"
 #include "Platform/ScriptPaths.h"
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 #include "Engine/Viewport/GameViewportClient.h"
 #include "GameFramework/GamePlayStatics.h"
 #include "Scripting/LuaCoroutineScheduler.h"

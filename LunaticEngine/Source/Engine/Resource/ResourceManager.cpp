@@ -1,6 +1,6 @@
 ﻿#include "Resource/ResourceManager.h"
 #include "Platform/Paths.h"
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 
 #include <fstream>
 #include <filesystem>

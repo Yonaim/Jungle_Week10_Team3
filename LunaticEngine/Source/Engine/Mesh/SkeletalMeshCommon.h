@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#pragma once
-
 #include "Core/CoreTypes.h"
 #include "Mesh/StaticMeshCommon.h"
 #include "Math/Transform.h"
@@ -44,6 +42,8 @@ inline FArchive& SerializeSkeletalMatrix(FArchive& Ar, FMatrix& Matrix)
 	return Ar;
 }
 
+// 정점당 본 영향 정보.
+// 한 정점은 최대 MaxBoneInfluences개의 본 인덱스/가중치를 가진다.
 struct FSkinWeight
 {
 	int32 BoneIndices[MaxBoneInfluences] =
@@ -63,18 +63,18 @@ struct FSkinWeight
 	};
 };
 
+// 본 계층 및 바인드 포즈 정보.
+// - LocalBindTransform: 부모 기준 로컬 바인드 포즈
+// - InverseBindPose: 메시 공간 바인드 글로벌 행렬의 역행렬
+//   (현재 포즈 글로벌과 결합해 스키닝 행렬을 만들 때 사용)
 struct FBoneInfo
 {
 	std::string Name;
 
-	// Root Bone이면 InvalidBoneIndex
+	// 루트 본은 ParentIndex가 InvalidBoneIndex.
 	int32 ParentIndex = InvalidBoneIndex;
 
-	// Bind Pose에서 Parent Bone 기준 Local Transform
 	FTransform LocalBindTransform;
-
-	// Bind Pose에서 Mesh Space 기준 Inverse Matrix
-	// SkinningMatrix = CurrentBoneMatrix * InverseBindPose
 	FMatrix InverseBindPose;
 
 	friend FArchive& operator<<(FArchive& Ar, FBoneInfo& Bone)
@@ -87,6 +87,7 @@ struct FBoneInfo
 	}
 };
 
+// SkeletalMesh 섹션 정보(대개 머티리얼 기준 서브메시).
 struct FSkeletalMeshSection
 {
 	int32 MaterialIndex = 0;
@@ -98,7 +99,10 @@ struct FSkeletalMeshSection
 	uint32 VertexCount = 0;
 };
 
-// Cooked Data
+// SkeletalMesh Cooked Data 본체.
+// - Vertices: Reference Pose 기준 원본 정점
+// - SkinWeights/Bones: 스키닝 입력 데이터
+// - Sections: 렌더링 섹션 정보
 struct FSkeletalMesh
 {
 	FString PathFileName;

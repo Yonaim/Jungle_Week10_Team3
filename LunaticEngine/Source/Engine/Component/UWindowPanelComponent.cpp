@@ -5,7 +5,7 @@
 #include "Platform/Paths.h"
 #include "Render/Scene/FScene.h"
 #include "Serialization/Archive.h"
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 #include "Texture/Texture2D.h"
 
 #include <algorithm>
