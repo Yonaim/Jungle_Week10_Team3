@@ -14,7 +14,7 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
-#include "History/SceneHistoryBuilder.h"
+#include "LevelEditor/History/SceneHistoryBuilder.h"
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Materials/MaterialManager.h"
@@ -218,6 +218,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     }
 
     SceneManager.Init(this);
+    HistoryManager.Init(this);
 
     // 기본 월드 생성 — 모든 서브시스템 초기화의 기반
     CreateWorldContext(EWorldType::Editor, FName("Default"));
@@ -248,6 +249,7 @@ void UEditorEngine::Shutdown()
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
     FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
     CloseScene();
+    HistoryManager.Shutdown();
     SceneManager.Shutdown();
     LevelEditor.Shutdown();
     MainFrame.Release();
@@ -895,293 +897,79 @@ void UEditorEngine::ClearScene() { SceneManager.ClearScene(); }
 
 void UEditorEngine::BeginTrackedSceneChange()
 {
-    if (bTrackingSceneChange || IsPlayingInEditor())
-    {
-        return;
-    }
-
-    FTrackedSceneSnapshot Snapshot;
-    if (CachedTrackedSceneSnapshot.has_value())
-    {
-        Snapshot = *CachedTrackedSceneSnapshot;
-    }
-    else
-    {
-        Snapshot = FSceneHistoryBuilder::CaptureSnapshot(*this);
-    }
-
-    PendingTrackedSceneBefore = Snapshot;
-    bTrackingSceneChange = true;
+    HistoryManager.BeginTrackedSceneChange();
 }
 
 void UEditorEngine::CommitTrackedSceneChange()
 {
-    if (!bTrackingSceneChange || !PendingTrackedSceneBefore.has_value())
-    {
-        return;
-    }
-
-    const FTrackedSceneSnapshot Before = *PendingTrackedSceneBefore;
-    const FTrackedSceneSnapshot After = FSceneHistoryBuilder::CaptureSnapshot(*this);
-
-    PendingTrackedSceneBefore.reset();
-    bTrackingSceneChange = false;
-    CachedTrackedSceneSnapshot = After;
-
-    if (!FSceneHistoryBuilder::HasMeaningfulDelta(Before, After))
-    {
-        return;
-    }
-
-    const FTrackedSceneChange Change = FSceneHistoryBuilder::BuildChange(Before, After);
-
-    if (SceneHistoryCursor + 1 < static_cast<int32>(SceneHistory.size()))
-    {
-        SceneHistory.erase(SceneHistory.begin() + (SceneHistoryCursor + 1), SceneHistory.end());
-    }
-
-    SceneHistory.push_back(Change);
-    if (SceneHistory.size() > 10)
-    {
-        SceneHistory.erase(SceneHistory.begin());
-    }
-    SceneHistoryCursor = static_cast<int32>(SceneHistory.size()) - 1;
+    HistoryManager.CommitTrackedSceneChange();
 }
 
 void UEditorEngine::CancelTrackedSceneChange()
 {
-    PendingTrackedSceneBefore.reset();
-    bTrackingSceneChange = false;
+    HistoryManager.CancelTrackedSceneChange();
 }
 
 bool UEditorEngine::CanUndoSceneChange() const
 {
-    return SceneHistoryCursor >= 0 && SceneHistoryCursor < static_cast<int32>(SceneHistory.size());
+    return HistoryManager.CanUndoSceneChange();
 }
 
-bool UEditorEngine::CanRedoSceneChange() const { return SceneHistoryCursor + 1 < static_cast<int32>(SceneHistory.size()); }
+bool UEditorEngine::CanRedoSceneChange() const { return HistoryManager.CanRedoSceneChange(); }
 
 void UEditorEngine::UndoTrackedSceneChange()
 {
-    if (!CanUndoSceneChange())
-    {
-        return;
-    }
-
-    const FTrackedSceneChange &Change = SceneHistory[SceneHistoryCursor];
-    ApplyTrackedSceneChange(Change, false);
-    --SceneHistoryCursor;
+    HistoryManager.UndoTrackedSceneChange();
 }
 
 void UEditorEngine::RedoTrackedSceneChange()
 {
-    if (!CanRedoSceneChange())
-    {
-        return;
-    }
-
-    const int32                RedoIndex = SceneHistoryCursor + 1;
-    const FTrackedSceneChange &Change = SceneHistory[RedoIndex];
-    ApplyTrackedSceneChange(Change, true);
-    SceneHistoryCursor = RedoIndex;
+    HistoryManager.RedoTrackedSceneChange();
 }
 
 void UEditorEngine::ClearTrackedTransformHistory()
 {
-    SceneHistory.clear();
-    SceneHistoryCursor = -1;
-    PendingTrackedSceneBefore.reset();
-    CachedTrackedSceneSnapshot.reset();
-    bTrackingSceneChange = false;
+    HistoryManager.ClearTrackedTransformHistory();
 }
 
-void UEditorEngine::BeginTrackedTransformChange() { BeginTrackedSceneChange(); }
+void UEditorEngine::BeginTrackedTransformChange() { HistoryManager.BeginTrackedTransformChange(); }
 
-void UEditorEngine::CommitTrackedTransformChange() { CommitTrackedSceneChange(); }
+void UEditorEngine::CommitTrackedTransformChange() { HistoryManager.CommitTrackedTransformChange(); }
 
-bool UEditorEngine::CanUndoTransformChange() const { return CanUndoSceneChange(); }
+bool UEditorEngine::CanUndoTransformChange() const { return HistoryManager.CanUndoTransformChange(); }
 
-bool UEditorEngine::CanRedoTransformChange() const { return CanRedoSceneChange(); }
+bool UEditorEngine::CanRedoTransformChange() const { return HistoryManager.CanRedoTransformChange(); }
 
-void UEditorEngine::UndoTrackedTransformChange() { UndoTrackedSceneChange(); }
+void UEditorEngine::UndoTrackedTransformChange() { HistoryManager.UndoTrackedTransformChange(); }
 
-void UEditorEngine::RedoTrackedTransformChange() { RedoTrackedSceneChange(); }
+void UEditorEngine::RedoTrackedTransformChange() { HistoryManager.RedoTrackedTransformChange(); }
 
 void UEditorEngine::ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo)
 {
-    GetSelectionManager().ClearSelection();
-    ApplyTrackedActorDeltas(Change, bRedo);
-    RestoreTrackedActorOrder(bRedo ? Change.AfterActorOrderUUIDs : Change.BeforeActorOrderUUIDs);
-    RestoreTrackedFolderOrder(bRedo ? Change.AfterOutlinerFolders : Change.BeforeOutlinerFolders);
-    if (UWorld *World = GetWorld())
-    {
-        World->WarmupPickingData();
-    }
-    RestoreViewportCamera(bRedo ? Change.AfterCameraData : Change.BeforeCameraData);
-
-    TArray<uint32> PreferredSelection = FSceneHistoryBuilder::GetChangedActorUUIDs(Change, bRedo);
-    if (PreferredSelection.empty())
-    {
-        PreferredSelection = bRedo ? Change.AfterSelectedActorUUIDs : Change.BeforeSelectedActorUUIDs;
-    }
-    RestoreTrackedSelection(PreferredSelection);
-    CachedTrackedSceneSnapshot = FSceneHistoryBuilder::CaptureSnapshot(*this);
+    HistoryManager.ApplyTrackedSceneChange(Change, bRedo);
 }
 
 void UEditorEngine::ApplyTrackedActorDeltas(const FTrackedSceneChange &Change, bool bRedo)
 {
-    UWorld *World = GetWorld();
-    if (!World)
-    {
-        return;
-    }
-
-    if (bRedo)
-    {
-        for (const FDeletedActorDelta &Delta : Change.DeletedActors)
-        {
-            AActor *ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
-            if (ExistingActor)
-            {
-                World->DestroyActor(ExistingActor);
-            }
-        }
-
-        for (const FCreatedActorDelta &Delta : Change.CreatedActors)
-        {
-            AActor *ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
-            if (!ExistingActor)
-            {
-                FSceneSaveManager::LoadActorFromJSONString(Delta.SerializedActor, World);
-            }
-        }
-
-        for (const FModifiedActorDelta &Delta : Change.ModifiedActors)
-        {
-            AActor *ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
-            if (ExistingActor)
-            {
-                if (!FSceneSaveManager::ApplyActorFromJSONString(ExistingActor, Delta.AfterSerializedActor))
-                {
-                    World->DestroyActor(ExistingActor);
-                    FSceneSaveManager::LoadActorFromJSONString(Delta.AfterSerializedActor, World);
-                }
-            }
-            else
-            {
-                FSceneSaveManager::LoadActorFromJSONString(Delta.AfterSerializedActor, World);
-            }
-        }
-        return;
-    }
-
-    for (const FCreatedActorDelta &Delta : Change.CreatedActors)
-    {
-        AActor *ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
-        if (ExistingActor)
-        {
-            World->DestroyActor(ExistingActor);
-        }
-    }
-
-    for (const FDeletedActorDelta &Delta : Change.DeletedActors)
-    {
-        AActor *ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
-        if (!ExistingActor)
-        {
-            FSceneSaveManager::LoadActorFromJSONString(Delta.SerializedActor, World);
-        }
-    }
-
-    for (const FModifiedActorDelta &Delta : Change.ModifiedActors)
-    {
-        AActor *ExistingActor = Cast<AActor>(UObjectManager::Get().FindByUUID(Delta.ActorUUID));
-        if (ExistingActor)
-        {
-            if (!FSceneSaveManager::ApplyActorFromJSONString(ExistingActor, Delta.BeforeSerializedActor))
-            {
-                World->DestroyActor(ExistingActor);
-                FSceneSaveManager::LoadActorFromJSONString(Delta.BeforeSerializedActor, World);
-            }
-        }
-        else
-        {
-            FSceneSaveManager::LoadActorFromJSONString(Delta.BeforeSerializedActor, World);
-        }
-    }
+    HistoryManager.ApplyTrackedActorDeltas(Change, bRedo);
 }
 
 void UEditorEngine::RestoreTrackedActorOrder(const TArray<uint32> &OrderedUUIDs)
 {
-    UWorld *World = GetWorld();
-    ULevel *PersistentLevel = World ? World->GetPersistentLevel() : nullptr;
-    if (!World || !PersistentLevel || OrderedUUIDs.empty())
-    {
-        return;
-    }
-
-    std::set<uint32> OrderedUUIDSet(OrderedUUIDs.begin(), OrderedUUIDs.end());
-    size_t           PrefixCount = 0;
-    for (AActor *Actor : PersistentLevel->GetActors())
-    {
-        if (!Actor || OrderedUUIDSet.find(Actor->GetUUID()) != OrderedUUIDSet.end())
-        {
-            break;
-        }
-        ++PrefixCount;
-    }
-
-    for (size_t Index = 0; Index < OrderedUUIDs.size(); ++Index)
-    {
-        AActor *Actor = Cast<AActor>(UObjectManager::Get().FindByUUID(OrderedUUIDs[Index]));
-        if (!Actor)
-        {
-            continue;
-        }
-
-        World->MoveActorToIndex(Actor, PrefixCount + Index);
-    }
+    HistoryManager.RestoreTrackedActorOrder(OrderedUUIDs);
 }
 
 void UEditorEngine::RestoreTrackedFolderOrder(const TArray<FString> &OrderedFolders)
 {
-    UWorld *World = GetWorld();
-    ULevel *PersistentLevel = World ? World->GetPersistentLevel() : nullptr;
-    if (!PersistentLevel)
-    {
-        return;
-    }
-
-    PersistentLevel->SetOutlinerFolders(OrderedFolders);
+    HistoryManager.RestoreTrackedFolderOrder(OrderedFolders);
 }
 
 void UEditorEngine::RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs)
 {
-    TArray<AActor *> RestoredSelection;
-    for (uint32 SelectedUUID : SelectedUUIDs)
-    {
-        if (AActor *Actor = Cast<AActor>(UObjectManager::Get().FindByUUID(SelectedUUID)))
-        {
-            RestoredSelection.push_back(Actor);
-        }
-    }
-
-    if (!RestoredSelection.empty())
-    {
-        GetSelectionManager().SelectActors(RestoredSelection);
-    }
-    else
-    {
-        GetSelectionManager().ClearSelection();
-    }
-
-    if (UGizmoComponent *Gizmo = GetGizmo())
-    {
-        Gizmo->UpdateGizmoTransform();
-    }
+    HistoryManager.RestoreTrackedSelection(SelectedUUIDs);
 }
 
-void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { CachedTrackedSceneSnapshot.reset(); }
+void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { HistoryManager.InvalidateTrackedSceneSnapshotCache(); }
 
 UCameraComponent *UEditorEngine::FindSceneViewportCamera() const
 {

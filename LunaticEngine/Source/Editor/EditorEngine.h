@@ -4,7 +4,8 @@
 #include "Engine/Runtime/GameImGuiOverlay.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 
-#include "History/SceneHistoryTypes.h"
+#include "LevelEditor/History/SceneHistoryTypes.h"
+#include "LevelEditor/History/LevelEditorHistoryManager.h"
 #include "LevelEditor/LevelEditor.h"
 #include "MainFrame/EditorMainFrame.h"
 #include "PIE/PIETypes.h"
@@ -172,6 +173,7 @@ class UEditorEngine : public UEngine
 
   private:
     friend class FEditorSceneManager;
+    friend class FLevelEditorHistoryManager;
 
     // Tick 내에서 호출 — 큐에 요청이 있으면 StartPlayInEditorSession 실행
     void              StartQueuedPlaySessionRequest();
@@ -193,6 +195,7 @@ class UEditorEngine : public UEngine
     FLevelEditor     LevelEditor;
     FEditorMainFrame MainFrame;
     FEditorSceneManager SceneManager;
+    FLevelEditorHistoryManager HistoryManager;
 
     // PIE 요청 단일 슬롯 (UE TOptional<FRequestPlaySessionParams>).
     std::optional<FRequestPlaySessionParams> PlaySessionRequest;
@@ -201,10 +204,5 @@ class UEditorEngine : public UEngine
     // 종료 요청 지연 플래그. Tick 선두에서 확인 후 EndPlayMap 호출.
     bool                                 bRequestEndPlayMapQueued = false;
     EPIEControlMode                      PIEControlMode = EPIEControlMode::Possessed;
-    TArray<FTrackedSceneChange>          SceneHistory;
-    int32                                SceneHistoryCursor = -1;
-    std::optional<FTrackedSceneSnapshot> PendingTrackedSceneBefore;
-    std::optional<FTrackedSceneSnapshot> CachedTrackedSceneSnapshot;
-    bool                                 bTrackingSceneChange = false;
     FGameImGuiOverlay                    PIEOverlay;
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Editor/History/SceneHistoryTypes.h"
+#include "Editor/LevelEditor/History/SceneHistoryTypes.h"
 
 class UEditorEngine;
 

@@ -335,8 +335,9 @@
     <ClCompile Include="Source\Editor\Common\UI\EditorWidget.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\NotificationToast.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp" />
-    <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Selection\SelectionManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.cpp" />
@@ -615,9 +616,10 @@
     <ClInclude Include="Source\Editor\Common\UI\EditorWidget.h" />
     <ClInclude Include="Source\Editor\Common\UI\NotificationToast.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
-    <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h" />
-    <ClInclude Include="Source\Editor\History\SceneHistoryTypes.h" />
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryTypes.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Selection\SelectionManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.h" />

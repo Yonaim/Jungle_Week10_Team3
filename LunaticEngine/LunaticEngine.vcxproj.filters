@@ -61,11 +61,11 @@
     <Filter Include="Source\Editor\Common\Viewport">
       <UniqueIdentifier>{1b224187-db21-2228-660f-bef94109b8f6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Editor\History">
-      <UniqueIdentifier>{88bf8456-bdfe-8a62-b07f-40dededb93a4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Editor\LevelEditor">
       <UniqueIdentifier>{dc5ea13c-12fa-c200-a115-d34d97262691}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\LevelEditor\History">
+      <UniqueIdentifier>{bd94c4e1-10e0-61fb-c13d-e94f7c3bf435}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\LevelEditor\Render">
       <UniqueIdentifier>{6be4be08-cdec-b0f4-b092-47491cfd0a82}</UniqueIdentifier>
@@ -512,11 +512,14 @@
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp">
-      <Filter>Source\Editor\History</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp">
       <Filter>Source\Editor\LevelEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.cpp">
+      <Filter>Source\Editor\LevelEditor\History</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.cpp">
+      <Filter>Source\Editor\LevelEditor\History</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
@@ -1346,14 +1349,17 @@
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\History\SceneHistoryBuilder.h">
-      <Filter>Source\Editor\History</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\History\SceneHistoryTypes.h">
-      <Filter>Source\Editor\History</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h">
       <Filter>Source\Editor\LevelEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.h">
+      <Filter>Source\Editor\LevelEditor\History</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.h">
+      <Filter>Source\Editor\LevelEditor\History</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryTypes.h">
+      <Filter>Source\Editor\LevelEditor\History</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
