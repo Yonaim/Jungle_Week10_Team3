@@ -49,6 +49,9 @@
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\UI">
       <UniqueIdentifier>{accfc712-9ed3-719e-74bb-d8a2da9d6b40}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\AssetTools">
+      <UniqueIdentifier>{8bfde865-2372-9bbf-d164-11fd9688e5f8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Common">
       <UniqueIdentifier>{16f01410-ac23-a662-220e-2a92a5b18922}</UniqueIdentifier>
     </Filter>
@@ -496,6 +499,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletonTreePanel.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp">
+      <Filter>Source\Editor\AssetTools</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
@@ -1324,6 +1330,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletonTreePanel.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h">
+      <Filter>Source\Editor\AssetTools</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>

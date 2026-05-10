@@ -4,6 +4,7 @@
 #include "Engine/Runtime/GameImGuiOverlay.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 
+#include "AssetTools/AssetImportManager.h"
 #include "LevelEditor/History/SceneHistoryTypes.h"
 #include "LevelEditor/History/LevelEditorHistoryManager.h"
 #include "LevelEditor/LevelEditor.h"
@@ -196,6 +197,7 @@ class UEditorEngine : public UEngine
     FEditorMainFrame MainFrame;
     FEditorSceneManager SceneManager;
     FLevelEditorHistoryManager HistoryManager;
+    FAssetImportManager AssetImportManager;
 
     // PIE 요청 단일 슬롯 (UE TOptional<FRequestPlaySessionParams>).
     std::optional<FRequestPlaySessionParams> PlaySessionRequest;
