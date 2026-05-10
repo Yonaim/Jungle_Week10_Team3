@@ -1,4 +1,4 @@
-﻿#include "AssetEditor/Common/UI/BezierWidget.h"
+﻿#include "AssetEditor/Common/UI/BezierCurveEditor.h"
 
 #include "ImGui/imgui_internal.h"
 #include <algorithm>

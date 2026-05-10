@@ -35,10 +35,10 @@ class PrefabDragSource final : public EditorDragSource
     // ToDo:Renderer에서 Direct로 ActorImage 생성
 };
 
-class EditorPrefabWidget : public ContentBrowserElement
+class FPrefabElement : public ContentBrowserElement
 {
   public:
-    virtual ~EditorPrefabWidget()
+    virtual ~FPrefabElement()
     {
         delete DragSource;
     }

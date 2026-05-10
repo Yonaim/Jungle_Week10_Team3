@@ -1,4 +1,4 @@
-#include "ContentBrowser.h"
+﻿#include "ContentBrowser.h"
 
 #include "ContentBrowserElement.h"
 #include "Core/AsciiUtils.h"
@@ -281,9 +281,9 @@ ID3D11ShaderResourceView *GetMtlPreviewSRV(const std::filesystem::path &Path)
 }
 } // namespace
 
-void FEditorContentBrowserWidget::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
+void FContentBrowser::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
 {
-    FEditorWidget::Init(InEditor);
+    FEditorUIElement::Init(InEditor);
     if (!InDevice)
         return;
 
@@ -314,7 +314,7 @@ void FEditorContentBrowserWidget::Init(UEditorEngine *InEditor, ID3D11Device *In
     Refresh();
 }
 
-void FEditorContentBrowserWidget::Render(float DeltaTime)
+void FContentBrowser::Render(float DeltaTime)
 {
     (void)DeltaTime;
     FEditorSettings &Settings = FEditorSettings::Get();
@@ -391,7 +391,7 @@ void FEditorContentBrowserWidget::Render(float DeltaTime)
     ImGui::End();
 }
 
-void FEditorContentBrowserWidget::Refresh()
+void FContentBrowser::Refresh()
 {
     const std::filesystem::path CurrentPath = std::filesystem::path(BrowserContext.CurrentPath).lexically_normal();
     if (!IsContentBrowserTopLevelPath(CurrentPath) &&
@@ -407,24 +407,24 @@ void FEditorContentBrowserWidget::Refresh()
     BrowserContext.bIsNeedRefresh = false;
 }
 
-void FEditorContentBrowserWidget::SetIconSize(float Size)
+void FContentBrowser::SetIconSize(float Size)
 {
     const float ClampedSize = (std::max)(84.0f, (std::min)(Size, 124.0f));
     BrowserContext.ContentSize = ImVec2(ClampedSize, ClampedSize + 34.0f);
 }
 
-void FEditorContentBrowserWidget::LoadFromSettings()
+void FContentBrowser::LoadFromSettings()
 {
     BrowserContext.CurrentPath = ResolveContentBrowserSettingsPath(FEditorSettings::Get().ContentBrowserPath);
     BrowserContext.PendingRevealPath = BrowserContext.CurrentPath;
 }
 
-void FEditorContentBrowserWidget::SaveToSettings() const
+void FContentBrowser::SaveToSettings() const
 {
     FEditorSettings::Get().ContentBrowserPath = MakeContentBrowserSettingsPath(BrowserContext.CurrentPath);
 }
 
-void FEditorContentBrowserWidget::RefreshContent()
+void FContentBrowser::RefreshContent()
 {
     CachedBrowserElements.clear();
     TArray<FContentItem> CurrentContents = ReadDirectory(BrowserContext.CurrentPath);
@@ -483,7 +483,7 @@ void FEditorContentBrowserWidget::RefreshContent()
     }
 }
 
-void FEditorContentBrowserWidget::DrawDirNode(FDirNode InNode)
+void FContentBrowser::DrawDirNode(FDirNode InNode)
 {
     ImGuiTreeNodeFlags Flag = (InNode.Children.empty() ? ImGuiTreeNodeFlags_Leaf : ImGuiTreeNodeFlags_OpenOnArrow) |
                               ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -539,7 +539,7 @@ void FEditorContentBrowserWidget::DrawDirNode(FDirNode InNode)
     ImGui::TreePop();
 }
 
-void FEditorContentBrowserWidget::DrawContents()
+void FContentBrowser::DrawContents()
 {
     int elementCount = static_cast<int>(CachedBrowserElements.size());
 
@@ -586,7 +586,7 @@ void FEditorContentBrowserWidget::DrawContents()
     ImGui::Dummy(ImVec2((std::max)(itemWidth, contentWidth), TotalHeight));
 }
 
-TArray<FContentItem> FEditorContentBrowserWidget::ReadDirectory(std::wstring Path)
+TArray<FContentItem> FContentBrowser::ReadDirectory(std::wstring Path)
 {
     TArray<FContentItem> Items;
     const std::filesystem::path CurrentPath = std::filesystem::path(Path).lexically_normal();
@@ -640,7 +640,7 @@ TArray<FContentItem> FEditorContentBrowserWidget::ReadDirectory(std::wstring Pat
     return Items;
 }
 
-FEditorContentBrowserWidget::FDirNode FEditorContentBrowserWidget::BuildDirectoryTree(
+FContentBrowser::FDirNode FContentBrowser::BuildDirectoryTree(
     const std::filesystem::path &DirPath)
 {
     FDirNode Node;

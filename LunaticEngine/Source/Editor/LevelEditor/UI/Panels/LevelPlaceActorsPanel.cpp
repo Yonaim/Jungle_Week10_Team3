@@ -19,8 +19,8 @@
 namespace
 {
 using EPlaceType = FLevelViewportLayout::EViewportPlaceActorType;
-using ECategory = FEditorPlaceActorsWidget::EPlaceActorCategory;
-using FEntry = FEditorPlaceActorsWidget::FPlaceActorEntry;
+using ECategory = FLevelPlaceActorsPanel::EPlaceActorCategory;
+using FEntry = FLevelPlaceActorsPanel::FPlaceActorEntry;
 
 constexpr ImVec4 PlacePanelBg = ImVec4(28.0f / 255.0f, 28.0f / 255.0f, 28.0f / 255.0f, 1.0f);
 constexpr ImVec4 PlaceSidebarButton = ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
@@ -40,21 +40,21 @@ FString GetEditorPathResource(const char *Key)
     return FResourceManager::Get().ResolvePath(FName(Key));
 }
 
-ID3D11ShaderResourceView *GetPlaceActorsCategoryIcon(FEditorPlaceActorsWidget::EPlaceActorCategory Category)
+ID3D11ShaderResourceView *GetPlaceActorsCategoryIcon(FLevelPlaceActorsPanel::EPlaceActorCategory Category)
 {
     switch (Category)
     {
-    case FEditorPlaceActorsWidget::EPlaceActorCategory::Basic:
+    case FLevelPlaceActorsPanel::EPlaceActorCategory::Basic:
         return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Basic")).Get();
-    case FEditorPlaceActorsWidget::EPlaceActorCategory::Text:
+    case FLevelPlaceActorsPanel::EPlaceActorCategory::Text:
         return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ScreenText")).Get();
-    case FEditorPlaceActorsWidget::EPlaceActorCategory::UI:
+    case FLevelPlaceActorsPanel::EPlaceActorCategory::UI:
         return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.ToolIcon.WorldSpace")).Get();
-    case FEditorPlaceActorsWidget::EPlaceActorCategory::Lights:
+    case FLevelPlaceActorsPanel::EPlaceActorCategory::Lights:
         return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Lights")).Get();
-    case FEditorPlaceActorsWidget::EPlaceActorCategory::Shapes:
+    case FLevelPlaceActorsPanel::EPlaceActorCategory::Shapes:
         return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Shapes")).Get();
-    case FEditorPlaceActorsWidget::EPlaceActorCategory::VFX:
+    case FLevelPlaceActorsPanel::EPlaceActorCategory::VFX:
         return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.VFX")).Get();
     default:
         return nullptr;
@@ -150,7 +150,7 @@ const char *GetCategoryLabel(ECategory Category)
 }
 } // namespace
 
-void FEditorPlaceActorsWidget::Render(float DeltaTime)
+void FLevelPlaceActorsPanel::Render(float DeltaTime)
 {
     (void)DeltaTime;
     if (!EditorEngine)
@@ -207,7 +207,7 @@ void FEditorPlaceActorsWidget::Render(float DeltaTime)
     ImGui::End();
 }
 
-void FEditorPlaceActorsWidget::RenderCategorySidebar()
+void FLevelPlaceActorsPanel::RenderCategorySidebar()
 {
 
     const EPlaceActorCategory Categories[] = {EPlaceActorCategory::Basic,  EPlaceActorCategory::Lights,
@@ -252,7 +252,7 @@ void FEditorPlaceActorsWidget::RenderCategorySidebar()
     }
 }
 
-void FEditorPlaceActorsWidget::RenderActorGrid()
+void FLevelPlaceActorsPanel::RenderActorGrid()
 {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, PlacePanelBg);
     if (!ImGui::BeginChild("##PlaceActorGrid", ImVec2(0.0f, 0.0f), true))
@@ -324,7 +324,7 @@ void FEditorPlaceActorsWidget::RenderActorGrid()
     ImGui::PopStyleColor();
 }
 
-bool FEditorPlaceActorsWidget::MatchesSearch(const FPlaceActorEntry &Entry) const
+bool FLevelPlaceActorsPanel::MatchesSearch(const FPlaceActorEntry &Entry) const
 {
     if (SearchBuffer[0] == '\0')
     {
@@ -340,7 +340,7 @@ bool FEditorPlaceActorsWidget::MatchesSearch(const FPlaceActorEntry &Entry) cons
     return SearchKey.find(Query) != FString::npos;
 }
 
-void FEditorPlaceActorsWidget::SpawnActor(const FPlaceActorEntry &Entry)
+void FLevelPlaceActorsPanel::SpawnActor(const FPlaceActorEntry &Entry)
 {
     if (!EditorEngine)
     {

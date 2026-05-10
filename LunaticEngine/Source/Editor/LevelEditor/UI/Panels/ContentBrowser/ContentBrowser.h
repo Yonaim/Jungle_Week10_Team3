@@ -8,7 +8,7 @@
 #include <wrl/client.h>
 
 
-class FEditorContentBrowserWidget final : public FEditorWidget
+class FContentBrowser final : public FEditorUIElement
 {
     struct FDirNode
     {

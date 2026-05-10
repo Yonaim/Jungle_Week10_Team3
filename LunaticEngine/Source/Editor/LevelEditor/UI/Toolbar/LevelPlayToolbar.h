@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 
@@ -8,11 +8,11 @@ class UEditorEngine;
 
 // 뷰포트 상단 Play/Stop 툴바. FLevelViewportLayout이 소유하며,
 // 뷰포트 윈도우 상단 고정 높이만큼의 영역을 차지해 렌더된다.
-class FEditorPlayToolbarWidget
+class FLevelPlayToolbar
 {
 public:
-	FEditorPlayToolbarWidget() = default;
-	~FEditorPlayToolbarWidget() = default;
+	FLevelPlayToolbar() = default;
+	~FLevelPlayToolbar() = default;
 
 	void Init(UEditorEngine* InEditor, ID3D11Device* InDevice);
 	void Release();

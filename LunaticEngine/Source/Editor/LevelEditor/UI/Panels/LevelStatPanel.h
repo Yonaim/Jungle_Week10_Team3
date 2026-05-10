@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 
 #include "Editor/Common/UI/EditorWidget.h"
 #include "Profiling/Stats.h"
 
-class FEditorStatWidget : public FEditorWidget
+class FLevelStatPanel : public FEditorUIElement
 {
   public:
     void Render(float DeltaTime) override;

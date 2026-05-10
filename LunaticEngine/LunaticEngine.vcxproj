@@ -324,7 +324,7 @@
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\AssetEditorManager.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.cpp" />
-    <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierWidget.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.cpp" />
@@ -603,7 +603,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackContentsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackDetailsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackToolbar.h" />
-    <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierWidget.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.h" />
@@ -630,8 +630,6 @@
     <ClInclude Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Area\LevelViewportArea.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Debug\ShadowMapDebugPanel.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorPropertyWidget.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\EditorSceneWidget.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelConsolePanel.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelControlPanel.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Panels\LevelDetailsPanel.h" />

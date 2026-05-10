@@ -1,4 +1,4 @@
-#include "Editor/LevelEditor/UI/Panels/EditorSceneWidget.h"
+﻿#include "Editor/LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 
 #include "Editor/Common/UI/EditorAccentColor.h"
 #include "Editor/Common/UI/EditorPanelTitleUtils.h"
@@ -252,12 +252,12 @@ bool IsFolderNameUsed(const UWorld *World, const FString &FolderName, const FStr
 
 } // namespace
 
-void FEditorOutlinerWidget::Init(UEditorEngine *InEditorEngine)
+void FLevelOutlinerPanel::Init(UEditorEngine *InEditorEngine)
 {
-    FEditorWidget::Init(InEditorEngine);
+    FEditorUIElement::Init(InEditorEngine);
 }
 
-void FEditorOutlinerWidget::Render(float DeltaTime)
+void FLevelOutlinerPanel::Render(float DeltaTime)
 {
     if (!EditorEngine)
     {
@@ -476,7 +476,7 @@ void FEditorOutlinerWidget::Render(float DeltaTime)
     ImGui::End();
 }
 
-void FEditorOutlinerWidget::SelectAllVisibleActors()
+void FLevelOutlinerPanel::SelectAllVisibleActors()
 {
     if (!EditorEngine)
     {
@@ -504,7 +504,7 @@ void FEditorOutlinerWidget::SelectAllVisibleActors()
     EditorEngine->GetSelectionManager().SelectActors(ActorsToSelect);
 }
 
-void FEditorOutlinerWidget::StartActorRename(AActor *Actor)
+void FLevelOutlinerPanel::StartActorRename(AActor *Actor)
 {
     if (!Actor)
     {
@@ -519,7 +519,7 @@ void FEditorOutlinerWidget::StartActorRename(AActor *Actor)
     strncpy_s(RenameBuffer, CurrentName.c_str(), _TRUNCATE);
 }
 
-void FEditorOutlinerWidget::StartFolderRename(const FString &FolderName)
+void FLevelOutlinerPanel::StartFolderRename(const FString &FolderName)
 {
     if (FolderName.empty())
     {
@@ -532,7 +532,7 @@ void FEditorOutlinerWidget::StartFolderRename(const FString &FolderName)
     strncpy_s(FolderRenameBuffer, FolderName.c_str(), _TRUNCATE);
 }
 
-void FEditorOutlinerWidget::CommitActorRename()
+void FLevelOutlinerPanel::CommitActorRename()
 {
     if (!RenamingActor)
     {
@@ -556,7 +556,7 @@ void FEditorOutlinerWidget::CommitActorRename()
     CancelActorRename();
 }
 
-void FEditorOutlinerWidget::CommitFolderRename()
+void FLevelOutlinerPanel::CommitFolderRename()
 {
     if (!EditorEngine || RenamingFolder.empty())
     {
@@ -594,21 +594,21 @@ void FEditorOutlinerWidget::CommitFolderRename()
     CancelFolderRename();
 }
 
-void FEditorOutlinerWidget::CancelActorRename()
+void FLevelOutlinerPanel::CancelActorRename()
 {
     RenamingActor = nullptr;
     bFocusRenameInput = false;
     RenameBuffer[0] = '\0';
 }
 
-void FEditorOutlinerWidget::CancelFolderRename()
+void FLevelOutlinerPanel::CancelFolderRename()
 {
     RenamingFolder.clear();
     bFocusRenameInput = false;
     FolderRenameBuffer[0] = '\0';
 }
 
-bool FEditorOutlinerWidget::DrawVisibilityToggle(const char *Id, bool bVisible) const
+bool FLevelOutlinerPanel::DrawVisibilityToggle(const char *Id, bool bVisible) const
 {
     const ImVec2 Size(20.0f, 16.0f);
     if (!ImGui::InvisibleButton(Id, Size))
@@ -634,9 +634,9 @@ bool FEditorOutlinerWidget::DrawVisibilityToggle(const char *Id, bool bVisible) 
     return bClicked;
 }
 
-void FEditorOutlinerWidget::RenderActorOutliner()
+void FLevelOutlinerPanel::RenderActorOutliner()
 {
-    SCOPE_STAT_CAT("OutlinerWidget::ActorOutliner", "5_UI");
+    SCOPE_STAT_CAT("OutlinerPanel::ActorOutliner", "5_UI");
 
     UWorld *World = EditorEngine->GetWorld();
     if (!World)
@@ -1124,7 +1124,7 @@ void FEditorOutlinerWidget::RenderActorOutliner()
     ImGui::Unindent(TableInsetX);
 }
 
-void FEditorOutlinerWidget::HandleActorDrop(AActor *DraggedActor, AActor *TargetActor) const
+void FLevelOutlinerPanel::HandleActorDrop(AActor *DraggedActor, AActor *TargetActor) const
 {
     if (!EditorEngine || !DraggedActor || !TargetActor || DraggedActor == TargetActor)
     {
@@ -1143,7 +1143,7 @@ void FEditorOutlinerWidget::HandleActorDrop(AActor *DraggedActor, AActor *Target
     EditorEngine->CommitTrackedSceneChange();
 }
 
-void FEditorOutlinerWidget::HandleFolderDrop(AActor *DraggedActor, const FString &FolderName) const
+void FLevelOutlinerPanel::HandleFolderDrop(AActor *DraggedActor, const FString &FolderName) const
 {
     if (!EditorEngine || !DraggedActor)
     {
@@ -1190,7 +1190,7 @@ void FEditorOutlinerWidget::HandleFolderDrop(AActor *DraggedActor, const FString
     EditorEngine->CommitTrackedSceneChange();
 }
 
-void FEditorOutlinerWidget::HandleFolderDrop(const FString &DraggedFolder, const FString &TargetFolder) const
+void FLevelOutlinerPanel::HandleFolderDrop(const FString &DraggedFolder, const FString &TargetFolder) const
 {
     if (!EditorEngine || DraggedFolder.empty() || TargetFolder.empty() || DraggedFolder == TargetFolder)
     {
@@ -1209,7 +1209,7 @@ void FEditorOutlinerWidget::HandleFolderDrop(const FString &DraggedFolder, const
     EditorEngine->CommitTrackedSceneChange();
 }
 
-void FEditorOutlinerWidget::HandleRootDrop(AActor *DraggedActor) const
+void FLevelOutlinerPanel::HandleRootDrop(AActor *DraggedActor) const
 {
     if (!EditorEngine || !DraggedActor)
     {
@@ -1245,7 +1245,7 @@ void FEditorOutlinerWidget::HandleRootDrop(AActor *DraggedActor) const
     EditorEngine->CommitTrackedSceneChange();
 }
 
-void FEditorOutlinerWidget::HandleRootDrop(const FString &DraggedFolder) const
+void FLevelOutlinerPanel::HandleRootDrop(const FString &DraggedFolder) const
 {
     if (!EditorEngine || DraggedFolder.empty())
     {

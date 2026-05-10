@@ -235,26 +235,26 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
     ImGui_ImplWin32_Init((void *)InWindow->GetHWND());
     ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());
 
-    ConsoleWidget.Init(InEditorEngine);
-    DetailsWidget.Init(InEditorEngine);
-    OutlinerWidget.Init(InEditorEngine);
-    PlaceActorsWidget.Init(InEditorEngine);
-    StatWidget.Init(InEditorEngine);
-    ContentBrowserWidget.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
-    ShadowMapDebugWidget.Init(InEditorEngine);
+    ConsolePanel.Init(InEditorEngine);
+    DetailsPanel.Init(InEditorEngine);
+    OutlinerPanel.Init(InEditorEngine);
+    PlaceActorsPanel.Init(InEditorEngine);
+    StatPanel.Init(InEditorEngine);
+    ContentBrowser.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
+    ShadowMapDebugPanel.Init(InEditorEngine);
     AssetEditorManager.Init(EditorEngine, &InRenderer);
 }
 
 void FEditorMainFrame::Release()
 {
-    ConsoleWidget.Shutdown();
+    ConsolePanel.Shutdown();
     AssetEditorManager.Shutdown();
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 }
 
-void FEditorMainFrame::SaveToSettings() const { ContentBrowserWidget.SaveToSettings(); }
+void FEditorMainFrame::SaveToSettings() const { ContentBrowser.SaveToSettings(); }
 
 void FEditorMainFrame::Render(float DeltaTime)
 {
@@ -321,38 +321,38 @@ void FEditorMainFrame::Render(float DeltaTime)
 
     if (!bHideEditorWindows && Settings.UI.bConsole)
     {
-        SCOPE_STAT_CAT("ConsoleWidget.Render", "5_UI");
-        ConsoleWidget.Render(DeltaTime);
+        SCOPE_STAT_CAT("ConsolePanel.Render", "5_UI");
+        ConsolePanel.Render(DeltaTime);
     }
 
     if (!bHideEditorWindows && Settings.UI.bProperty)
     {
-        SCOPE_STAT_CAT("DetailsWidget.Render", "5_UI");
-        DetailsWidget.Render(DeltaTime);
+        SCOPE_STAT_CAT("DetailsPanel.Render", "5_UI");
+        DetailsPanel.Render(DeltaTime);
     }
 
     if (!bHideEditorWindows && Settings.UI.bScene)
     {
-        SCOPE_STAT_CAT("OutlinerWidget.Render", "5_UI");
-        OutlinerWidget.Render(DeltaTime);
+        SCOPE_STAT_CAT("OutlinerPanel.Render", "5_UI");
+        OutlinerPanel.Render(DeltaTime);
     }
 
     if (!bHideEditorWindows && Settings.UI.bPlaceActors)
     {
-        SCOPE_STAT_CAT("PlaceActorsWidget.Render", "5_UI");
-        PlaceActorsWidget.Render(DeltaTime);
+        SCOPE_STAT_CAT("PlaceActorsPanel.Render", "5_UI");
+        PlaceActorsPanel.Render(DeltaTime);
     }
 
     if (!bHideEditorWindows && Settings.UI.bStat)
     {
-        SCOPE_STAT_CAT("StatWidget.Render", "5_UI");
-        StatWidget.Render(DeltaTime);
+        SCOPE_STAT_CAT("StatPanel.Render", "5_UI");
+        StatPanel.Render(DeltaTime);
     }
 
     if (!bHideEditorWindows && Settings.UI.bContentBrowser)
     {
-        SCOPE_STAT_CAT("ContentBrowserWidget.Render", "5_UI");
-        ContentBrowserWidget.Render(DeltaTime);
+        SCOPE_STAT_CAT("ContentBrowser.Render", "5_UI");
+        ContentBrowser.Render(DeltaTime);
     }
 
     if (!bHideEditorWindows && AssetEditorManager.GetActiveEditor() && AssetEditorManager.GetActiveEditor()->IsOpen())
@@ -363,7 +363,7 @@ void FEditorMainFrame::Render(float DeltaTime)
 
     if (!bHideEditorWindows && Settings.UI.bShadowMapDebug)
     {
-        ShadowMapDebugWidget.Render(DeltaTime);
+        ShadowMapDebugPanel.Render(DeltaTime);
     }
 
     RenderProjectSettingsWindow();
@@ -1151,16 +1151,16 @@ void FEditorMainFrame::HideEditorWindows()
     if (bHasSavedUIVisibility)
     {
         bHideEditorWindows = true;
-        bShowWidgetList = false;
+        bShowPanelList = false;
         return;
     }
 
     FEditorSettings &Settings = FEditorSettings::Get();
     SavedUIVisibility = Settings.UI;
-    bSavedShowWidgetList = bShowWidgetList;
+    bSavedShowPanelList = bShowPanelList;
     bHasSavedUIVisibility = true;
     bHideEditorWindows = true;
-    bShowWidgetList = false;
+    bShowPanelList = false;
 
     Settings.UI.bConsole = false;
     Settings.UI.bProperty = false;
@@ -1182,7 +1182,7 @@ void FEditorMainFrame::ShowEditorWindows()
 
     FEditorSettings &Settings = FEditorSettings::Get();
     Settings.UI = SavedUIVisibility;
-    bShowWidgetList = bSavedShowWidgetList;
+    bShowPanelList = bSavedShowPanelList;
     bHideEditorWindows = false;
     bHasSavedUIVisibility = false;
 }

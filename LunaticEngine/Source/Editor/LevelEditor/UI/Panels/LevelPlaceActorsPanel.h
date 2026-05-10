@@ -3,7 +3,7 @@
 #include "Common/UI/EditorWidget.h"
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 
-class FEditorPlaceActorsWidget : public FEditorWidget
+class FLevelPlaceActorsPanel : public FEditorUIElement
 {
   public:
     enum class EPlaceActorCategory : uint8

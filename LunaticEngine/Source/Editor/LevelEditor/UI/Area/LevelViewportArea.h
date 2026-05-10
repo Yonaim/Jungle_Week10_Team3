@@ -1,11 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include "Editor/Common/UI/EditorWidget.h"
 #include <string>
 
 class FLevelEditorViewportClient;
 
-class FEditorViewportWidget : public FEditorWidget
+class FLevelViewportArea : public FEditorUIElement
 {
   public:
     void Render(float DeltaTime) override;

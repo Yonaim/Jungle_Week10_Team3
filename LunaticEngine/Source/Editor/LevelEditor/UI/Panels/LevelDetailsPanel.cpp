@@ -1,4 +1,4 @@
-﻿#include "Editor/LevelEditor/UI/Panels/EditorPropertyWidget.h"
+﻿#include "Editor/LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
 #include "Editor/Common/UI/EditorAccentColor.h"
 #include "Editor/Common/UI/EditorPanelTitleUtils.h"
@@ -1196,7 +1196,7 @@ static FString MakeAssetPreviewLabel(const FString &Path)
     return GetStemFromPath(Path);
 }
 
-FString FEditorDetailsWidget::GetDisplayPropertyLabel(const FString &RawName)
+FString FLevelDetailsPanel::GetDisplayPropertyLabel(const FString &RawName)
 {
     if (RawName == "bTickEnable")
         return "Tick Enabled";
@@ -1327,7 +1327,7 @@ static FString GetDisplayClassLabel(const UClass *Class)
     return Result.empty() ? RawName : Result;
 }
 
-FString FEditorDetailsWidget::GetPropertySectionName(const FPropertyDescriptor &Prop) const
+FString FLevelDetailsPanel::GetPropertySectionName(const FPropertyDescriptor &Prop) const
 {
     if (Prop.Name == "Location" || Prop.Name == "Rotation" || Prop.Name == "Scale")
     {
@@ -1398,7 +1398,7 @@ FString FEditorDetailsWidget::GetPropertySectionName(const FPropertyDescriptor &
     return "Default";
 }
 
-bool FEditorDetailsWidget::DrawColoredFloat3(const char *Label, float Values[3], float Speed, bool bShowReset,
+bool FLevelDetailsPanel::DrawColoredFloat3(const char *Label, float Values[3], float Speed, bool bShowReset,
                                              const float *ResetValues)
 {
     ImGui::PushID(Label);
@@ -1453,7 +1453,7 @@ bool FEditorDetailsWidget::DrawColoredFloat3(const char *Label, float Values[3],
     return bChanged;
 }
 
-bool FEditorDetailsWidget::DrawColoredFloat2(const char *Label, float Values[3], float Speed, bool bShowReset,
+bool FLevelDetailsPanel::DrawColoredFloat2(const char *Label, float Values[3], float Speed, bool bShowReset,
                                              const float *ResetValues)
 {
     ImGui::PushID(Label);
@@ -1504,7 +1504,7 @@ bool FEditorDetailsWidget::DrawColoredFloat2(const char *Label, float Values[3],
     return bChanged;
 }
 
-bool FEditorDetailsWidget::DrawColoredFloat4(const char *Label, float Values[4], float Speed, bool bShowReset)
+bool FLevelDetailsPanel::DrawColoredFloat4(const char *Label, float Values[4], float Speed, bool bShowReset)
 {
     ImGui::PushID(Label);
     ImGui::AlignTextToFramePadding();
@@ -1562,7 +1562,7 @@ bool FEditorDetailsWidget::DrawColoredFloat4(const char *Label, float Values[4],
     return bChanged;
 }
 
-bool FEditorDetailsWidget::DrawNamedFloat4(const char *Label, float Values[4], float Speed, const char *AxisLabels[4],
+bool FLevelDetailsPanel::DrawNamedFloat4(const char *Label, float Values[4], float Speed, const char *AxisLabels[4],
                                            bool bShowReset)
 {
     ImGui::PushID(Label);
@@ -1623,7 +1623,7 @@ bool FEditorDetailsWidget::DrawNamedFloat4(const char *Label, float Values[4], f
     return bChanged;
 }
 
-FString FEditorPropertyWidget::OpenObjFileDialog()
+FString FLevelDetailsPanel::OpenObjFileDialog()
 {
     wchar_t FilePath[MAX_PATH] = {};
 
@@ -1653,7 +1653,7 @@ FString FEditorPropertyWidget::OpenObjFileDialog()
     return FString();
 }
 
-FString FEditorPropertyWidget::OpenFbxFileDialog()
+FString FLevelDetailsPanel::OpenFbxFileDialog()
 {
     wchar_t FilePath[MAX_PATH] = {};
 
@@ -1682,7 +1682,7 @@ FString FEditorPropertyWidget::OpenFbxFileDialog()
     return FString();
 }
 
-void FEditorPropertyWidget::Render(float DeltaTime)
+void FLevelDetailsPanel::Render(float DeltaTime)
 {
     (void)DeltaTime;
 
@@ -1807,7 +1807,7 @@ void FEditorPropertyWidget::Render(float DeltaTime)
     ImGui::End();
 }
 
-void FEditorDetailsWidget::RenderDetailsFilterBar(const TArray<const char *> &AvailableSections)
+void FLevelDetailsPanel::RenderDetailsFilterBar(const TArray<const char *> &AvailableSections)
 {
     const float SearchWidth = ImGui::GetContentRegionAvail().x;
     DrawSearchInputWithIcon("##DetailsSearch", "Search", DetailSearchBuffer, sizeof(DetailSearchBuffer), SearchWidth);
@@ -1856,7 +1856,7 @@ void FEditorDetailsWidget::RenderDetailsFilterBar(const TArray<const char *> &Av
     ImGui::PopStyleVar(3);
 }
 
-bool FEditorDetailsWidget::SectionMatchesSearch(const char *SectionName, const TArray<FPropertyDescriptor> &Props,
+bool FLevelDetailsPanel::SectionMatchesSearch(const char *SectionName, const TArray<FPropertyDescriptor> &Props,
                                                 const TArray<int32> &Indices) const
 {
     if (DetailSearchBuffer[0] == '\0')
@@ -1892,7 +1892,7 @@ bool FEditorDetailsWidget::SectionMatchesSearch(const char *SectionName, const T
     return false;
 }
 
-bool FEditorDetailsWidget::ShouldDisplaySection(const char *SectionName, const TArray<FPropertyDescriptor> &Props,
+bool FLevelDetailsPanel::ShouldDisplaySection(const char *SectionName, const TArray<FPropertyDescriptor> &Props,
                                                 const TArray<int32> &Indices) const
 {
     if (Indices.empty())
@@ -1928,7 +1928,7 @@ bool FEditorDetailsWidget::ShouldDisplaySection(const char *SectionName, const T
     return SectionMatchesSearch(SectionName, Props, Indices);
 }
 
-void FEditorDetailsWidget::CommitActorNameEdit(AActor *Actor)
+void FLevelDetailsPanel::CommitActorNameEdit(AActor *Actor)
 {
     if (!Actor)
     {
@@ -1947,7 +1947,7 @@ void FEditorDetailsWidget::CommitActorNameEdit(AActor *Actor)
     bEditingActorName = false;
 }
 
-void FEditorDetailsWidget::RenderHeader(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)
+void FLevelDetailsPanel::RenderHeader(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)
 {
     const int32 SelectionCount = static_cast<int32>(SelectedActors.size());
 
@@ -2031,7 +2031,7 @@ void FEditorDetailsWidget::RenderHeader(AActor *PrimaryActor, const TArray<AActo
     ImGui::Dummy(ImVec2(0.0f, 8.0f));
 }
 
-void FEditorDetailsWidget::RenderAddComponentButton(AActor *Actor)
+void FLevelDetailsPanel::RenderAddComponentButton(AActor *Actor)
 {
     if (!Actor)
     {
@@ -2131,7 +2131,7 @@ void FEditorDetailsWidget::RenderAddComponentButton(AActor *Actor)
     ImGui::PopStyleColor(4);
 }
 
-void FEditorPropertyWidget::RenderDetails(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)
+void FLevelDetailsPanel::RenderDetails(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)
 {
     if (SelectedComponent && !IsComponentSelectableInDetails(SelectedComponent))
     {
@@ -2189,7 +2189,7 @@ void FEditorPropertyWidget::RenderDetails(AActor *PrimaryActor, const TArray<AAc
     }
 }
 
-void FEditorPropertyWidget::RenderActorProperties(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)
+void FLevelDetailsPanel::RenderActorProperties(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)
 {
     TArray<const char *> AvailableSections;
     if (PrimaryActor->GetRootComponent())
@@ -2316,7 +2316,7 @@ void FEditorPropertyWidget::RenderActorProperties(AActor *PrimaryActor, const TA
     }
 }
 
-void FEditorPropertyWidget::RenderComponentTree(AActor *Actor, float Height)
+void FLevelDetailsPanel::RenderComponentTree(AActor *Actor, float Height)
 {
     if (SelectedComponent && (ShouldHideInComponentTree(SelectedComponent, bShowEditorOnlyComponents) ||
                               !IsComponentSelectableInDetails(SelectedComponent)))
@@ -2420,7 +2420,7 @@ void FEditorPropertyWidget::RenderComponentTree(AActor *Actor, float Height)
     ImGui::PopStyleVar(3);
 }
 
-void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent *Comp)
+void FLevelDetailsPanel::RenderSceneComponentNode(USceneComponent *Comp)
 {
     if (!Comp)
         return;
@@ -2529,7 +2529,7 @@ void FEditorPropertyWidget::RenderSceneComponentNode(USceneComponent *Comp)
     }
 }
 
-void FEditorPropertyWidget::RenderComponentContextMenu(AActor *Actor, UActorComponent *Component)
+void FLevelDetailsPanel::RenderComponentContextMenu(AActor *Actor, UActorComponent *Component)
 {
     if (!Actor || !Component)
     {
@@ -2575,7 +2575,7 @@ void FEditorPropertyWidget::RenderComponentContextMenu(AActor *Actor, UActorComp
     ImGui::EndPopup();
 }
 
-void FEditorPropertyWidget::DeleteSelectedComponent(AActor *Actor)
+void FLevelDetailsPanel::DeleteSelectedComponent(AActor *Actor)
 {
     if (!Actor || !SelectedComponent || !SelectedComponent->CanDeleteFromDetails())
     {
@@ -2590,7 +2590,7 @@ void FEditorPropertyWidget::DeleteSelectedComponent(AActor *Actor)
     EditorEngine->CommitTrackedSceneChange();
 }
 
-void FEditorPropertyWidget::DuplicateSelectedComponent(AActor *Actor)
+void FLevelDetailsPanel::DuplicateSelectedComponent(AActor *Actor)
 {
     if (!Actor || !SelectedComponent)
     {
@@ -2612,7 +2612,7 @@ void FEditorPropertyWidget::DuplicateSelectedComponent(AActor *Actor)
     EditorEngine->CommitTrackedSceneChange();
 }
 
-void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArray<AActor *> &SelectedActors)
+void FLevelDetailsPanel::RenderComponentProperties(AActor *Actor, const TArray<AActor *> &SelectedActors)
 {
     // PropertyDescriptor 기반 자동 위젯 렌더링
     TArray<FPropertyDescriptor> Props;
@@ -2862,7 +2862,7 @@ void FEditorPropertyWidget::RenderComponentProperties(AActor *Actor, const TArra
     }
 }
 
-void FEditorDetailsWidget::RenderPropertySection(const char *SectionName, TArray<FPropertyDescriptor> &Props,
+void FLevelDetailsPanel::RenderPropertySection(const char *SectionName, TArray<FPropertyDescriptor> &Props,
                                                  const TArray<int32> &Indices, const TArray<AActor *> &SelectedActors,
                                                  bool &bAnyChanged)
 {
@@ -2919,7 +2919,7 @@ void FEditorDetailsWidget::RenderPropertySection(const char *SectionName, TArray
     ImGui::PopStyleColor(7);
 }
 
-void FEditorPropertyWidget::PropagatePropertyChange(const FString &PropName, const TArray<AActor *> &SelectedActors)
+void FLevelDetailsPanel::PropagatePropertyChange(const FString &PropName, const TArray<AActor *> &SelectedActors)
 {
     if (!SelectedComponent || SelectedActors.size() < 2)
         return;
@@ -3017,7 +3017,7 @@ void FEditorPropertyWidget::PropagatePropertyChange(const FString &PropName, con
     }
 }
 
-bool FEditorPropertyWidget::RenderPropertyWidget(TArray<FPropertyDescriptor> &Props, int32 &Index)
+bool FLevelDetailsPanel::RenderPropertyWidget(TArray<FPropertyDescriptor> &Props, int32 &Index)
 {
     ImGui::PushID(Index);
     FPropertyDescriptor &Prop = Props[Index];

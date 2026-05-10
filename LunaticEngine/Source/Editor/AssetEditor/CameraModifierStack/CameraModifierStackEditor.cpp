@@ -1,6 +1,6 @@
-#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
+﻿#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
 
-#include "AssetEditor/Common/UI/BezierWidget.h"
+#include "AssetEditor/Common/UI/BezierCurveEditor.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Core/Notification.h"
 #include "EditorEngine.h"

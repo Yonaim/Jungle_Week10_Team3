@@ -198,7 +198,7 @@ class FLevelViewportLayout
     ID3D11ShaderResourceView *LayoutIcons[static_cast<int>(EViewportLayout::MAX)] = {};
     FRect ViewportToolbarRects[MaxViewportSlots] = {};
 
-    FEditorPlayToolbarWidget PlayToolbar;
+    FLevelPlayToolbar PlayToolbar;
     FViewportContextMenuState ContextMenuState;
     bool bHasSavedWorldAxisVisibility = false;
     bool SavedWorldAxisVisibility[MaxViewportSlots] = {};

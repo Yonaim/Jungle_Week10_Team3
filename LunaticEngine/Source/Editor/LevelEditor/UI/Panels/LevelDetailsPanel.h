@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Editor/Common/UI/EditorWidget.h"
 #include "Object/Object.h"
@@ -7,7 +7,7 @@ class UActorComponent;
 class UClass;
 class AActor;
 
-class FEditorDetailsWidget : public FEditorWidget
+class FLevelDetailsPanel : public FEditorUIElement
 {
   public:
     virtual void Render(float DeltaTime) override;

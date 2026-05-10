@@ -155,7 +155,7 @@ struct FShadowVisCBData
 
 // ?? Viz RT 愿由???
 
-void EditorShadowMapDebugWidget::EnsureVizRT(ID3D11Device *Dev, uint32 Size)
+void FShadowMapDebugPanel::EnsureVizRT(ID3D11Device *Dev, uint32 Size)
 {
     if (VizSize == Size && VizTexture)
         return;
@@ -182,7 +182,7 @@ void EditorShadowMapDebugWidget::EnsureVizRT(ID3D11Device *Dev, uint32 Size)
         VizCB.Create(Dev, sizeof(FShadowVisCBData));
 }
 
-void EditorShadowMapDebugWidget::ReleaseVizRT()
+void FShadowMapDebugPanel::ReleaseVizRT()
 {
     if (VizSRV)
     {
@@ -204,7 +204,7 @@ void EditorShadowMapDebugWidget::ReleaseVizRT()
 
 // ?? Viz Pass: shadow depth ??inverted grayscale RT ??
 
-void EditorShadowMapDebugWidget::RenderVizPass(ID3D11DeviceContext *DC, ID3D11ShaderResourceView *SrcSRV, bool bIsArray,
+void FShadowMapDebugPanel::RenderVizPass(ID3D11DeviceContext *DC, ID3D11ShaderResourceView *SrcSRV, bool bIsArray,
                                                uint32 SliceIndex, float UVMinX, float UVMinY, float UVMaxX,
                                                float UVMaxY, float Brightness, uint32 Mode, float Exponent)
 {
@@ -284,7 +284,7 @@ void EditorShadowMapDebugWidget::RenderVizPass(ID3D11DeviceContext *DC, ID3D11Sh
 
 // ============================================================
 
-void EditorShadowMapDebugWidget::Render(float DeltaTime)
+void FShadowMapDebugPanel::Render(float DeltaTime)
 {
     (void)DeltaTime;
 

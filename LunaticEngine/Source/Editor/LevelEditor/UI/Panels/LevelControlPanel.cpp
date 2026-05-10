@@ -3,7 +3,7 @@
 #include "ImGui/imgui.h"
 #include "Component/CameraComponent.h"
 
-void FEditorControlWidget::Render(float DeltaTime)
+void FLevelControlPanel::Render(float DeltaTime)
 {
 	(void)DeltaTime;
 	if (!EditorEngine)

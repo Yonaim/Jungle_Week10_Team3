@@ -1,14 +1,14 @@
-#pragma once
+﻿#pragma once
 
 #include "Editor/Common/UI/EditorWidget.h"
 #include "Render/Resource/Buffer.h"
 #include "Render/Types/RenderConstants.h"
 #include <d3d11.h>
 
-class EditorShadowMapDebugWidget : public FEditorWidget
+class FShadowMapDebugPanel : public FEditorUIElement
 {
   public:
-    virtual ~EditorShadowMapDebugWidget() override
+    virtual ~FShadowMapDebugPanel() override
     {
         ReleaseVizRT();
     }

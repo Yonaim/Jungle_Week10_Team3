@@ -7,7 +7,7 @@
 #include "Viewport/Viewport.h"
 
 
-void FEditorViewportWidget::SetIndex(int32 InIndex)
+void FLevelViewportArea::SetIndex(int32 InIndex)
 {
     Index = InIndex;
     if (Index == 0)
@@ -20,7 +20,7 @@ void FEditorViewportWidget::SetIndex(int32 InIndex)
     }
 }
 
-void FEditorViewportWidget::Render(float DeltaTime)
+void FLevelViewportArea::Render(float DeltaTime)
 {
     (void)DeltaTime;
 

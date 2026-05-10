@@ -2,7 +2,7 @@
 
 #include "Editor/Common/UI/EditorWidget.h"
 
-class FEditorControlWidget : public FEditorWidget
+class FLevelControlPanel : public FEditorUIElement
 {
   public:
     virtual void Render(float DeltaTime) override;

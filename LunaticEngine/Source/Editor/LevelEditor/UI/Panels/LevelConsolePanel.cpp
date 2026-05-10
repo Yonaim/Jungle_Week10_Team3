@@ -234,11 +234,11 @@ void FConsoleLogOutputDevice::Clear()
 }
 
 // ============================================================
-// FEditorConsoleWidget
+// FLevelConsolePanel
 // ============================================================
 
 // 기존 코드 호환용 static 래퍼: UE_LOG로 위임
-void FEditorConsoleWidget::AddLog(const char *fmt, ...)
+void FLevelConsolePanel::AddLog(const char *fmt, ...)
 {
     char Buffer[2048];
     va_list args;
@@ -292,16 +292,16 @@ void FEditorConsoleWidget::AddLog(const char *fmt, ...)
     FLogManager::Get().LogMessage(Level, "Console", "%s", Message.c_str());
 }
 
-void FEditorConsoleWidget::Init(UEditorEngine *InEditorEngine)
+void FLevelConsolePanel::Init(UEditorEngine *InEditorEngine)
 {
-    FEditorWidget::Init(InEditorEngine);
+    FEditorUIElement::Init(InEditorEngine);
 
     // 에디터 콘솔을 로그 출력 디바이스로 등록
     FLogManager::Get().AddOutputDevice(&ConsoleDevice);
     RegisterDefaultCommands();
 }
 
-void FEditorConsoleWidget::RegisterDefaultCommands()
+void FLevelConsolePanel::RegisterDefaultCommands()
 {
     RegisterSystemCommands();
     RegisterEditorCommands();
@@ -309,7 +309,7 @@ void FEditorConsoleWidget::RegisterDefaultCommands()
     RegisterRenderCommands();
 }
 
-void FEditorConsoleWidget::RegisterSystemCommands()
+void FLevelConsolePanel::RegisterSystemCommands()
 {
     RegisterCommand(
         "help", [this](const TArray<FString> &Args) { HandleHelp(Args); }, "System", "help|<category>|<command>",
@@ -323,7 +323,7 @@ void FEditorConsoleWidget::RegisterSystemCommands()
         "System", "clear", "Clears the console log.");
 }
 
-void FEditorConsoleWidget::RegisterEditorCommands()
+void FLevelConsolePanel::RegisterEditorCommands()
 {
     RegisterCommand(
         "hide windows", [this](const TArray<FString> &Args) { HandleHideWindows(Args); }, "Editor", "hide windows",
@@ -345,7 +345,7 @@ void FEditorConsoleWidget::RegisterEditorCommands()
         "cb icon size <20-100>", "Sets the content browser icon size.");
 }
 
-void FEditorConsoleWidget::RegisterDiagnosticsCommands()
+void FLevelConsolePanel::RegisterDiagnosticsCommands()
 {
     RegisterCommand(
         "obj list", [this](const TArray<FString> &Args) { HandleObjList(Args); }, "Diagnostics",
@@ -364,7 +364,7 @@ void FEditorConsoleWidget::RegisterDiagnosticsCommands()
         "Hides all overlay stats.");
 }
 
-void FEditorConsoleWidget::RegisterRenderCommands()
+void FLevelConsolePanel::RegisterRenderCommands()
 {
     RegisterCommand(
         "csm resolution", [this](const TArray<FString> &Args) { HandleCSMResolution(Args); }, "Render",
@@ -392,17 +392,17 @@ void FEditorConsoleWidget::RegisterRenderCommands()
         "shadow filter hard|pcf|vsm|reset", "Overrides shadow filter mode.");
 }
 
-void FEditorConsoleWidget::Shutdown()
+void FLevelConsolePanel::Shutdown()
 {
     FLogManager::Get().RemoveOutputDevice(&ConsoleDevice);
 }
 
-void FEditorConsoleWidget::Clear()
+void FLevelConsolePanel::Clear()
 {
     ConsoleDevice.Clear();
 }
 
-bool FEditorConsoleWidget::ShouldDisplayEntry(ELogLevel Level, const FString &Text) const
+bool FLevelConsolePanel::ShouldDisplayEntry(ELogLevel Level, const FString &Text) const
 {
     const int32 LevelIndex = static_cast<int32>(Level);
     if (LevelIndex < 0 || LevelIndex >= LogLevelCount)
@@ -424,7 +424,7 @@ bool FEditorConsoleWidget::ShouldDisplayEntry(ELogLevel Level, const FString &Te
     return ToLower(Text).find(SearchText) != FString::npos;
 }
 
-void FEditorConsoleWidget::Render(float DeltaTime)
+void FLevelConsolePanel::Render(float DeltaTime)
 {
     (void)DeltaTime;
 
@@ -456,7 +456,7 @@ void FEditorConsoleWidget::Render(float DeltaTime)
     ImGui::End();
 }
 
-void FEditorConsoleWidget::RenderDrawerToolbar()
+void FLevelConsolePanel::RenderDrawerToolbar()
 {
     ImGui::TextUnformatted("Minimum Level");
     ImGui::SameLine();
@@ -512,7 +512,7 @@ void FEditorConsoleWidget::RenderDrawerToolbar()
     ImGui::InputTextWithHint("##ConsoleSearch", "Search logs...", SearchBuf, sizeof(SearchBuf));
 }
 
-void FEditorConsoleWidget::RenderLogContents(float Height)
+void FLevelConsolePanel::RenderLogContents(float Height)
 {
     if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, Height), false, ImGuiWindowFlags_HorizontalScrollbar))
     {
@@ -537,7 +537,7 @@ void FEditorConsoleWidget::RenderLogContents(float Height)
     ImGui::EndChild();
 }
 
-void FEditorConsoleWidget::RenderCompletionCandidates()
+void FLevelConsolePanel::RenderCompletionCandidates()
 {
     if (CompletionCandidates.empty())
     {
@@ -577,7 +577,7 @@ void FEditorConsoleWidget::RenderCompletionCandidates()
     }
 }
 
-void FEditorConsoleWidget::RenderInputLine(const char *Label, float Width, bool bFocusInput)
+void FLevelConsolePanel::RenderInputLine(const char *Label, float Width, bool bFocusInput)
 {
     if (bFocusInput)
     {
@@ -619,24 +619,24 @@ void FEditorConsoleWidget::RenderInputLine(const char *Label, float Width, bool 
     }
 }
 
-const char *FEditorConsoleWidget::GetLatestLogMessage() const
+const char *FLevelConsolePanel::GetLatestLogMessage() const
 {
     const int32 EntryCount = ConsoleDevice.GetEntryCount();
     return EntryCount > 0 ? ConsoleDevice.GetEntryAt(EntryCount - 1).FormattedMessage.c_str() : "";
 }
 
-void FEditorConsoleWidget::RegisterCommand(const FString &Name, CommandFn Fn, const FString &Category,
+void FLevelConsolePanel::RegisterCommand(const FString &Name, CommandFn Fn, const FString &Category,
                                            const FString &Usage, const FString &Description)
 {
     Commands[ToLower(Name)] = {Fn, Category, Usage, Description};
 }
 
-void FEditorConsoleWidget::UpdateCompletionCandidates()
+void FLevelConsolePanel::UpdateCompletionCandidates()
 {
     CompletionCandidates = GetCompletionCandidates(InputBuf);
 }
 
-TArray<FEditorConsoleWidget::FCompletionCandidate> FEditorConsoleWidget::GetCompletionCandidates(
+TArray<FLevelConsolePanel::FCompletionCandidate> FLevelConsolePanel::GetCompletionCandidates(
     const FString &Input) const
 {
     FString LowerInput = TrimLeft(ToLower(Input));
@@ -668,7 +668,7 @@ TArray<FEditorConsoleWidget::FCompletionCandidate> FEditorConsoleWidget::GetComp
     return Candidates;
 }
 
-bool FEditorConsoleWidget::TryFindCommand(const TArray<FString> &Tokens, FString &OutCommandName,
+bool FLevelConsolePanel::TryFindCommand(const TArray<FString> &Tokens, FString &OutCommandName,
                                           const FConsoleCommand *&OutCommand, int32 &OutConsumedTokens) const
 {
     OutCommand = nullptr;
@@ -703,7 +703,7 @@ bool FEditorConsoleWidget::TryFindCommand(const TArray<FString> &Tokens, FString
     return OutCommand != nullptr;
 }
 
-bool FEditorConsoleWidget::PrintCompactHelp(const FString &CategoryFilter)
+bool FLevelConsolePanel::PrintCompactHelp(const FString &CategoryFilter)
 {
     const FString LowerCategoryFilter = ToLower(CategoryFilter);
     std::set<FString> Categories;
@@ -774,7 +774,7 @@ bool FEditorConsoleWidget::PrintCompactHelp(const FString &CategoryFilter)
     return true;
 }
 
-void FEditorConsoleWidget::ExecCommand(const char *CommandLine)
+void FLevelConsolePanel::ExecCommand(const char *CommandLine)
 {
     UE_LOG_CATEGORY(Console, Debug, "> %s", CommandLine);
     History.push_back(_strdup(CommandLine));
@@ -802,7 +802,7 @@ void FEditorConsoleWidget::ExecCommand(const char *CommandLine)
     }
 }
 
-void FEditorConsoleWidget::HandleHelp(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleHelp(const TArray<FString> &Args)
 {
     if (!Args.empty())
     {
@@ -828,7 +828,7 @@ void FEditorConsoleWidget::HandleHelp(const TArray<FString> &Args)
     PrintCompactHelp();
 }
 
-void FEditorConsoleWidget::HandleHideWindows(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleHideWindows(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -841,7 +841,7 @@ void FEditorConsoleWidget::HandleHideWindows(const TArray<FString> &Args)
     AddLog("Editor windows hidden.\n");
 }
 
-void FEditorConsoleWidget::HandleShowWindows(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleShowWindows(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -854,7 +854,7 @@ void FEditorConsoleWidget::HandleShowWindows(const TArray<FString> &Args)
     AddLog("Editor windows restored.\n");
 }
 
-void FEditorConsoleWidget::HandleShowEditorOnly(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleShowEditorOnly(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -867,7 +867,7 @@ void FEditorConsoleWidget::HandleShowEditorOnly(const TArray<FString> &Args)
     AddLog("Property component tree: editor-only components shown.\n");
 }
 
-void FEditorConsoleWidget::HandleHideEditorOnly(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleHideEditorOnly(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -880,7 +880,7 @@ void FEditorConsoleWidget::HandleHideEditorOnly(const TArray<FString> &Args)
     AddLog("Property component tree: editor-only components hidden.\n");
 }
 
-void FEditorConsoleWidget::HandleContentBrowserRefresh(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleContentBrowserRefresh(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -893,7 +893,7 @@ void FEditorConsoleWidget::HandleContentBrowserRefresh(const TArray<FString> &Ar
     AddLog("Content browser refreshed.\n");
 }
 
-void FEditorConsoleWidget::HandleContentBrowserIconSize(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleContentBrowserIconSize(const TArray<FString> &Args)
 {
     if (!EditorEngine)
     {
@@ -919,7 +919,7 @@ void FEditorConsoleWidget::HandleContentBrowserIconSize(const TArray<FString> &A
     AddLog("Content browser icon size set to %.0f.\n", Size);
 }
 
-void FEditorConsoleWidget::HandleObjList(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleObjList(const TArray<FString> &Args)
 {
     const FString ClassFilter = (!Args.empty()) ? Args[0] : "";
 
@@ -978,7 +978,7 @@ void FEditorConsoleWidget::HandleObjList(const TArray<FString> &Args)
     AddLog("GUObjectArray capacity: %zu\n", GUObjectArray.capacity());
 }
 
-void FEditorConsoleWidget::HandleStatFPS(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleStatFPS(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -990,7 +990,7 @@ void FEditorConsoleWidget::HandleStatFPS(const TArray<FString> &Args)
     AddLog("Overlay stat %s: fps\n", bEnabled ? "enabled" : "disabled");
 }
 
-void FEditorConsoleWidget::HandleStatMemory(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleStatMemory(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -1002,7 +1002,7 @@ void FEditorConsoleWidget::HandleStatMemory(const TArray<FString> &Args)
     AddLog("Overlay stat %s: memory\n", bEnabled ? "enabled" : "disabled");
 }
 
-void FEditorConsoleWidget::HandleStatShadow(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleStatShadow(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -1014,7 +1014,7 @@ void FEditorConsoleWidget::HandleStatShadow(const TArray<FString> &Args)
     AddLog("Overlay stat %s: shadow\n", bEnabled ? "enabled" : "disabled");
 }
 
-void FEditorConsoleWidget::HandleStatNone(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleStatNone(const TArray<FString> &Args)
 {
     (void)Args;
     if (!EditorEngine)
@@ -1026,7 +1026,7 @@ void FEditorConsoleWidget::HandleStatNone(const TArray<FString> &Args)
     AddLog("Overlay stat disabled: all\n");
 }
 
-void FEditorConsoleWidget::HandleCSMResolution(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleCSMResolution(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1081,7 +1081,7 @@ void FEditorConsoleWidget::HandleCSMResolution(const TArray<FString> &Args)
     }
 }
 
-void FEditorConsoleWidget::PrintCSMCascadeRanges()
+void FLevelConsolePanel::PrintCSMCascadeRanges()
 {
     FShadowSettings &Settings = FShadowSettings::Get();
     if (!EditorEngine)
@@ -1113,7 +1113,7 @@ void FEditorConsoleWidget::PrintCSMCascadeRanges()
     }
 }
 
-void FEditorConsoleWidget::HandleCSMSplit(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleCSMSplit(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1152,7 +1152,7 @@ void FEditorConsoleWidget::HandleCSMSplit(const TArray<FString> &Args)
     }
 }
 
-void FEditorConsoleWidget::HandleCSMDistance(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleCSMDistance(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1185,7 +1185,7 @@ void FEditorConsoleWidget::HandleCSMDistance(const TArray<FString> &Args)
     }
 }
 
-void FEditorConsoleWidget::HandleCSMCastingDistance(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleCSMCastingDistance(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1219,7 +1219,7 @@ void FEditorConsoleWidget::HandleCSMCastingDistance(const TArray<FString> &Args)
     }
 }
 
-void FEditorConsoleWidget::HandleCSMBlend(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleCSMBlend(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1257,7 +1257,7 @@ void FEditorConsoleWidget::HandleCSMBlend(const TArray<FString> &Args)
     }
 }
 
-void FEditorConsoleWidget::HandleCSMBlendRange(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleCSMBlendRange(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1290,7 +1290,7 @@ void FEditorConsoleWidget::HandleCSMBlendRange(const TArray<FString> &Args)
     }
 }
 
-void FEditorConsoleWidget::HandleShadowBias(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleShadowBias(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1326,7 +1326,7 @@ void FEditorConsoleWidget::HandleShadowBias(const TArray<FString> &Args)
     }
 }
 
-void FEditorConsoleWidget::HandleShadowFilter(const TArray<FString> &Args)
+void FLevelConsolePanel::HandleShadowFilter(const TArray<FString> &Args)
 {
     FShadowSettings &Settings = FShadowSettings::Get();
 
@@ -1383,9 +1383,9 @@ void FEditorConsoleWidget::HandleShadowFilter(const TArray<FString> &Args)
 }
 
 // History & Tab-Completion Callback____________________________________________________________
-int32 FEditorConsoleWidget::TextEditCallback(ImGuiInputTextCallbackData *Data)
+int32 FLevelConsolePanel::TextEditCallback(ImGuiInputTextCallbackData *Data)
 {
-    FEditorConsoleWidget *Console = (FEditorConsoleWidget *)Data->UserData;
+    FLevelConsolePanel *Console = (FLevelConsolePanel *)Data->UserData;
 
     if (Data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter)
     {
@@ -1467,4 +1467,4 @@ int32 FEditorConsoleWidget::TextEditCallback(ImGuiInputTextCallbackData *Data)
     return 0;
 }
 
-ImVector<char *> FEditorConsoleWidget::History;
+ImVector<char *> FLevelConsolePanel::History;

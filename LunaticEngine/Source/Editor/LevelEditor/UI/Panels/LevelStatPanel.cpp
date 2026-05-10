@@ -11,7 +11,7 @@
 #include <sstream>
 #include <string>
 
-void FEditorStatWidget::Render(float DeltaTime)
+void FLevelStatPanel::Render(float DeltaTime)
 {
 #if STATS
     (void)DeltaTime;
@@ -112,7 +112,7 @@ void FEditorStatWidget::Render(float DeltaTime)
 #endif
 }
 
-void FEditorStatWidget::RenderStatTable(const char *TableID, const TArray<FStatEntry> &Source, int &OutSortColumn,
+void FLevelStatPanel::RenderStatTable(const char *TableID, const TArray<FStatEntry> &Source, int &OutSortColumn,
                                         bool &OutSortDescending, float TableHeight)
 {
 #if STATS

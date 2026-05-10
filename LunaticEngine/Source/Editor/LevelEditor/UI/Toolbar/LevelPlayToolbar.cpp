@@ -10,7 +10,7 @@
 
 #include <d3d11.h>
 
-void FEditorPlayToolbarWidget::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
+void FLevelPlayToolbar::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
 {
     Editor = InEditor;
     if (!InDevice)
@@ -33,7 +33,7 @@ void FEditorPlayToolbarWidget::Init(UEditorEngine *InEditor, ID3D11Device *InDev
     DirectX::CreateWICTextureFromFile(InDevice, FPaths::ToWide(RedoIconPath).c_str(), nullptr, &RedoIcon);
 }
 
-void FEditorPlayToolbarWidget::Release()
+void FLevelPlayToolbar::Release()
 {
     if (PlayIcon)
     {
@@ -63,7 +63,7 @@ void FEditorPlayToolbarWidget::Release()
     Editor = nullptr;
 }
 
-void FEditorPlayToolbarWidget::Render(float Width)
+void FLevelPlayToolbar::Render(float Width)
 {
     if (!Editor)
         return;

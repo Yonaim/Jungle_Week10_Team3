@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Editor/Common/UI/EditorWidget.h"
@@ -6,7 +6,7 @@
 
 class AActor;
 
-class FEditorOutlinerWidget : public FEditorWidget
+class FLevelOutlinerPanel : public FEditorUIElement
 {
   public:
     virtual void Init(UEditorEngine *InEditorEngine) override;

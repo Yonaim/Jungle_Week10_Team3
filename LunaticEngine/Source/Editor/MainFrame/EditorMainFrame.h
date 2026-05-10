@@ -25,13 +25,13 @@ class FEditorMainFrame
     void  SaveToSettings() const;
     void  HideEditorWindows();
     void  ShowEditorWindows();
-    void  SetShowEditorOnlyComponents(bool bEnable) { DetailsWidget.SetShowEditorOnlyComponents(bEnable); }
-    bool  IsShowingEditorOnlyComponents() const { return DetailsWidget.IsShowingEditorOnlyComponents(); }
+    void  SetShowEditorOnlyComponents(bool bEnable) { DetailsPanel.SetShowEditorOnlyComponents(bEnable); }
+    bool  IsShowingEditorOnlyComponents() const { return DetailsPanel.IsShowingEditorOnlyComponents(); }
     void  HideEditorWindowsForPIE();
     void  RestoreEditorWindowsAfterPIE();
-    void  RefreshContentBrowser() { ContentBrowserWidget.Refresh(); }
-    void  SetContentBrowserIconSize(float Size) { ContentBrowserWidget.SetIconSize(Size); }
-    float GetContentBrowserIconSize() const { return ContentBrowserWidget.GetIconSize(); }
+    void  RefreshContentBrowser() { ContentBrowser.Refresh(); }
+    void  SetContentBrowserIconSize(float Size) { ContentBrowser.SetIconSize(Size); }
+    float GetContentBrowserIconSize() const { return ContentBrowser.GetIconSize(); }
     bool  IsAssetEditorCapturingInput() const { return AssetEditorManager.IsCapturingInput(); }
 
   private:
@@ -47,20 +47,20 @@ class FEditorMainFrame
     UEditorEngine                 *EditorEngine = nullptr;
     ImFont                        *TitleBarFont = nullptr;
     ImFont                        *WindowControlIconFont = nullptr;
-    FEditorConsoleWidget           ConsoleWidget;
-    FEditorDetailsWidget           DetailsWidget;
-    FEditorOutlinerWidget          OutlinerWidget;
-    FEditorPlaceActorsWidget       PlaceActorsWidget;
-    FEditorStatWidget              StatWidget;
-    FEditorContentBrowserWidget    ContentBrowserWidget;
-    EditorShadowMapDebugWidget     ShadowMapDebugWidget;
-    bool                           bShowWidgetList = false;
+    FLevelConsolePanel           ConsolePanel;
+    FLevelDetailsPanel           DetailsPanel;
+    FLevelOutlinerPanel          OutlinerPanel;
+    FLevelPlaceActorsPanel       PlaceActorsPanel;
+    FLevelStatPanel              StatPanel;
+    FContentBrowser    ContentBrowser;
+    FShadowMapDebugPanel     ShadowMapDebugPanel;
+    bool                           bShowPanelList = false;
     bool                           bShowShortcutOverlay = false;
     bool                           bShowCreditsOverlay = false;
     bool                           bShowProjectSettings = false;
     bool                           bHideEditorWindows = false;
     bool                           bHasSavedUIVisibility = false;
-    bool                           bSavedShowWidgetList = false;
+    bool                           bSavedShowPanelList = false;
     FEditorSettings::FUIVisibility SavedUIVisibility{};
 
     FAssetEditorManager AssetEditorManager;
