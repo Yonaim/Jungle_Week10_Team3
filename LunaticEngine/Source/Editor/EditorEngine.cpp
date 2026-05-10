@@ -1,4 +1,4 @@
-﻿#include "EditorEngine.h"
+#include "EditorEngine.h"
 
 #include "Audio/AudioManager.h"
 #include "Component/CameraComponent.h"
@@ -225,12 +225,12 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     GetWorld()->InitWorld();
 
     // Selection & Gizmo
-    SelectionManager.Init();
-    SelectionManager.SetWorld(GetWorld());
+    GetSelectionManager().Init();
+    GetSelectionManager().SetWorld(GetWorld());
 
     // 뷰포트 레이아웃 초기화 + 저장된 설정 복원
-    ViewportLayout.Initialize(this, Window, Renderer, &SelectionManager);
-    ViewportLayout.LoadFromSettings();
+    GetViewportLayout().Initialize(this, Window, Renderer, &GetSelectionManager());
+    GetViewportLayout().LoadFromSettings();
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
@@ -248,16 +248,16 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
 void UEditorEngine::Shutdown()
 {
     // 에디터 해제 (엔진보다 먼저)
-    ViewportLayout.SaveToSettings();
+    GetViewportLayout().SaveToSettings();
     MainPanel.SaveToSettings();
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
     FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
     CloseScene();
-    SelectionManager.Shutdown();
+    GetSelectionManager().Shutdown();
     MainPanel.Release();
 
     // 뷰포트 레이아웃 해제
-    ViewportLayout.Release();
+    GetViewportLayout().Release();
 
     // 엔진 공통 해제 (Renderer, D3D 등)
     UEngine::Shutdown();
@@ -300,7 +300,7 @@ void UEditorEngine::Tick(float DeltaTime)
     FAudioManager::Get().Update();
     MainPanel.Update();
 
-    for (FEditorViewportClient *VC : ViewportLayout.GetAllViewportClients())
+    for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
     {
         VC->Tick(DeltaTime);
     }
@@ -310,7 +310,7 @@ void UEditorEngine::Tick(float DeltaTime)
 
     if (!IsPIEPossessedMode())
     {
-        SelectionManager.Tick();
+        GetSelectionManager().Tick();
     }
 }
 
@@ -398,8 +398,8 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
         Pipeline->OnSceneCleared();
     }
 
-    SelectionManager.ClearSelection();
-    SelectionManager.SetWorld(nullptr);
+    GetSelectionManager().ClearSelection();
+    GetSelectionManager().SetWorld(nullptr);
 
     if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
     {
@@ -442,7 +442,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
     }
 
     Context->World->SetWorldType(EWorldType::PIE);
-    SelectionManager.SetWorld(Context->World);
+    GetSelectionManager().SetWorld(Context->World);
     Context->World->WarmupPickingData();
     EnsurePIEActiveCamera(Context->World, DummyCamera);
     if (!Context->World->HasBegunPlay())
@@ -453,7 +453,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
 
     if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
     {
-        if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+        if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
         {
             PIEViewportClient->SetViewport(ActiveVC->GetViewport());
             PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
@@ -472,7 +472,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
 
 UCameraComponent *UEditorEngine::GetCamera() const
 {
-    if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
         return ActiveVC->GetCamera();
     }
@@ -481,7 +481,7 @@ UCameraComponent *UEditorEngine::GetCamera() const
 
 bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 {
-    if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
         return ActiveVC->FocusActor(Actor);
     }
@@ -501,7 +501,7 @@ void UEditorEngine::RenderPIEOverlayPopups()
     }
 
     const FRect *AnchorRect = nullptr;
-    if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
         AnchorRect = &ActiveVC->GetViewportScreenRect();
     }
@@ -655,7 +655,7 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Pa
     Info.OriginalRequestParams = Params;
     Info.PIEStartTime = 0.0;
     Info.PreviousActiveWorldHandle = GetActiveWorldHandle();
-    if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
         if (UCameraComponent *VCCamera = ActiveVC->GetCamera())
         {
@@ -682,7 +682,7 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Pa
     //    BeginPlay 이후에는 GameMode/PlayerController가 possess한 카메라가 있으면
     //    그 쪽으로 교체되고, 없으면 씬 안의 첫 CameraComponent로 교체된다
     UCameraComponent *PlaceholderCamera = nullptr;
-    if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
         if (UCameraComponent *VCCamera = ActiveVC->GetCamera())
         {
@@ -693,9 +693,9 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Pa
 
     // 6) Selection을 PIE 월드 기준으로 재바인딩 — 에디터 액터를 가리킨 채로 두면
     //    픽킹(=PIE 월드) / outliner / outline 렌더가 모두 어긋난다.
-    SelectionManager.ClearSelection();
-    SelectionManager.SetGizmoEnabled(false); // PIE 중에는 에디터 gizmo를 숨긴다.
-    SelectionManager.SetWorld(PIEWorld);
+    GetSelectionManager().ClearSelection();
+    GetSelectionManager().SetGizmoEnabled(false); // PIE 중에는 에디터 gizmo를 숨긴다.
+    GetSelectionManager().SetWorld(PIEWorld);
 
     if (!GetGameViewportClient())
     {
@@ -710,7 +710,7 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Pa
         }
         UCameraComponent *InitialTargetCamera = PIEWorld->GetActiveCamera();
         FViewport *InitialViewport = nullptr;
-        if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+        if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
         {
             InitialTargetCamera = ActiveVC->GetCamera() ? ActiveVC->GetCamera() : InitialTargetCamera;
             InitialViewport = ActiveVC->GetViewport();
@@ -722,7 +722,7 @@ void UEditorEngine::StartPlayInEditorSession(const FRequestPlaySessionParams &Pa
 
     // 이 코드와 대응되는 게 아래 EndPlayMap()에 있음.
     // MainPanel.HideEditorWindowsForPIE(); //PIE 중에는 에디터 패널을 숨김.
-    // ViewportLayout.DisableWorldAxisForPIE(); //PIE 중에는 월드 축 렌더링을 비활성화.
+    // GetViewportLayout().DisableWorldAxisForPIE(); //PIE 중에는 월드 축 렌더링을 비활성화.
 
     // 7) BeginPlay 트리거 — 모든 등록/바인딩이 끝난 다음 첫 Tick 이전에 호출.
     //    UWorld::BeginPlay가 bHasBegunPlay를 먼저 세팅하므로 BeginPlay 도중
@@ -795,7 +795,7 @@ void UEditorEngine::EndPlayMap()
         // ActiveCamera는 PIE 시작 시 PIE 월드로 옮겨졌고 PIE 월드와 함께 파괴됐다.
         // Editor 월드의 ActiveCamera는 여전히 그 dangling 포인터를 가리킬 수 있으므로
         // 활성 뷰포트의 카메라로 다시 바인딩해 줘야 frustum culling이 정상 동작한다.
-        if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+        if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
         {
             if (UCameraComponent *VCCamera = ActiveVC->GetCamera())
             {
@@ -813,13 +813,13 @@ void UEditorEngine::EndPlayMap()
     }
 
     // Selection을 에디터 월드로 복원 — PIE 액터는 곧 파괴되므로 먼저 비운다.
-    SelectionManager.ClearSelection();
-    SelectionManager.SetGizmoEnabled(true); // PIE 종료 후 에디터 gizmo 복원
-    SelectionManager.SetWorld(GetWorld());
+    GetSelectionManager().ClearSelection();
+    GetSelectionManager().SetGizmoEnabled(true); // PIE 종료 후 에디터 gizmo 복원
+    GetSelectionManager().SetWorld(GetWorld());
 
     // 이 코드와 대응되는 게 위의 StartPlayInEditorSession()에 있음.
     // MainPanel.RestoreEditorWindowsAfterPIE();
-    // ViewportLayout.RestoreWorldAxisAfterPIE();
+    // GetViewportLayout().RestoreWorldAxisAfterPIE();
 
     if (UGameViewportClient *PIEViewportClient = GetGameViewportClient())
     {
@@ -901,7 +901,7 @@ void UEditorEngine::SyncGameViewportPIEControlState(bool bPossessedMode)
         PIEViewportClient->SetOwnerWindow(Window->GetHWND());
     }
 
-    if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
         // PIEViewportClient->Possess(ActiveVC->GetCamera());
         PIEViewportClient->SetViewport(ActiveVC->GetViewport());
@@ -918,7 +918,7 @@ void UEditorEngine::SyncGameViewportPIEControlState(bool bPossessedMode)
         }
     }
     // 이후 ViewportClient Possess 시도
-    if (FLevelEditorViewportClient *ActiveVC = ViewportLayout.GetActiveViewport())
+    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
         PIEViewportClient->Possess(ActiveVC->GetCamera());
     }
@@ -928,7 +928,7 @@ void UEditorEngine::SyncGameViewportPIEControlState(bool bPossessedMode)
 
 void UEditorEngine::ResetViewport()
 {
-    ViewportLayout.ResetViewport(GetWorld());
+    GetViewportLayout().ResetViewport(GetWorld());
 }
 
 void UEditorEngine::CloseScene()
@@ -943,7 +943,7 @@ void UEditorEngine::NewScene()
     FWorldContext &Ctx = CreateWorldContext(EWorldType::Editor, FName("NewScene"), "New Scene");
     Ctx.World->InitWorld();
     SetActiveWorld(Ctx.ContextHandle);
-    SelectionManager.SetWorld(GetWorld());
+    GetSelectionManager().SetWorld(GetWorld());
 
     ResetViewport();
     CurrentLevelFilePath.clear();
@@ -981,8 +981,8 @@ void UEditorEngine::DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLev
         ClearTrackedTransformHistory();
     }
 
-    SelectionManager.ClearSelection();
-    SelectionManager.SetWorld(nullptr);
+    GetSelectionManager().ClearSelection();
+    GetSelectionManager().SetWorld(nullptr);
 
     // 씬 프록시 파괴 전 GPU Occlusion 스테이징 데이터 무효화
     if (IRenderPipeline *Pipeline = GetRenderPipeline())
@@ -1002,7 +1002,7 @@ void UEditorEngine::DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLev
         CurrentLevelFilePath.clear();
     }
 
-    ViewportLayout.DestroyAllCameras();
+    GetViewportLayout().DestroyAllCameras();
 }
 
 void UEditorEngine::BeginTrackedSceneChange()
@@ -1142,7 +1142,7 @@ void UEditorEngine::RedoTrackedTransformChange()
 
 void UEditorEngine::ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo)
 {
-    SelectionManager.ClearSelection();
+    GetSelectionManager().ClearSelection();
     ApplyTrackedActorDeltas(Change, bRedo);
     RestoreTrackedActorOrder(bRedo ? Change.AfterActorOrderUUIDs : Change.BeforeActorOrderUUIDs);
     RestoreTrackedFolderOrder(bRedo ? Change.AfterOutlinerFolders : Change.BeforeOutlinerFolders);
@@ -1301,11 +1301,11 @@ void UEditorEngine::RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs)
 
     if (!RestoredSelection.empty())
     {
-        SelectionManager.SelectActors(RestoredSelection);
+        GetSelectionManager().SelectActors(RestoredSelection);
     }
     else
     {
-        SelectionManager.ClearSelection();
+        GetSelectionManager().ClearSelection();
     }
 
     if (UGizmoComponent *Gizmo = GetGizmo())
@@ -1321,7 +1321,7 @@ void UEditorEngine::InvalidateTrackedSceneSnapshotCache()
 
 UCameraComponent *UEditorEngine::FindSceneViewportCamera() const
 {
-    for (FLevelEditorViewportClient *VC : ViewportLayout.GetLevelViewportClients())
+    for (FLevelEditorViewportClient *VC : GetViewportLayout().GetLevelViewportClients())
     {
         if (!VC)
         {
@@ -1471,7 +1471,7 @@ bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath)
 
     WorldList.push_back(LoadContext);
     SetActiveWorld(LoadContext.ContextHandle);
-    SelectionManager.SetWorld(LoadContext.World);
+    GetSelectionManager().SetWorld(LoadContext.World);
     LoadContext.World->WarmupPickingData();
     ResetViewport();
     RestoreViewportCamera(CameraData);

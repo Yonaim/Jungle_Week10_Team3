@@ -1,14 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/GameImGuiOverlay.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 
-
 #include "History/SceneHistoryTypes.h"
-#include "LevelEditor/Selection/SelectionManager.h"
-#include "LevelEditor/Subsystem/OverlayStatSystem.h"
-#include "LevelEditor/Viewport/LevelViewportLayout.h"
+#include "LevelEditor/LevelEditor.h"
 #include "MainFrame/EditorMainFrame.h"
 #include "PIE/PIETypes.h"
 #include "Settings/EditorSettings.h"
@@ -52,7 +49,7 @@ class UEditorEngine : public UEngine
     // Editor-specific API
     UGizmoComponent *GetGizmo() const
     {
-        return SelectionManager.GetGizmo();
+        return GetSelectionManager().GetGizmo();
     }
     UCameraComponent *GetCamera() const;
     bool FocusActorInViewport(AActor *Actor);
@@ -147,57 +144,57 @@ class UEditorEngine : public UEngine
 
     FSelectionManager &GetSelectionManager()
     {
-        return SelectionManager;
+        return LevelEditor.GetSelectionManager();
     }
     const FSelectionManager &GetSelectionManager() const
     {
-        return SelectionManager;
+        return LevelEditor.GetSelectionManager();
     }
 
     // 레이아웃에 위임
     const TArray<FEditorViewportClient *> &GetAllViewportClients() const
     {
-        return ViewportLayout.GetAllViewportClients();
+        return LevelEditor.GetViewportLayout().GetAllViewportClients();
     }
     const TArray<FLevelEditorViewportClient *> &GetLevelViewportClients() const
     {
-        return ViewportLayout.GetLevelViewportClients();
+        return LevelEditor.GetViewportLayout().GetLevelViewportClients();
     }
     bool ShouldRenderViewportClient(const FLevelEditorViewportClient *ViewportClient) const
     {
-        return ViewportLayout.ShouldRenderViewportClient(ViewportClient);
+        return LevelEditor.GetViewportLayout().ShouldRenderViewportClient(ViewportClient);
     }
 
     void SetActiveViewport(FLevelEditorViewportClient *InClient)
     {
-        ViewportLayout.SetActiveViewport(InClient);
+        LevelEditor.GetViewportLayout().SetActiveViewport(InClient);
     }
     FLevelEditorViewportClient *GetActiveViewport() const
     {
-        return ViewportLayout.GetActiveViewport();
+        return LevelEditor.GetViewportLayout().GetActiveViewport();
     }
 
     void ToggleViewportSplit()
     {
-        ViewportLayout.ToggleViewportSplit();
+        LevelEditor.GetViewportLayout().ToggleViewportSplit();
     }
     bool IsSplitViewport() const
     {
-        return ViewportLayout.IsSplitViewport();
+        return LevelEditor.GetViewportLayout().IsSplitViewport();
     }
 
     void RenderViewportUI(float DeltaTime)
     {
-        ViewportLayout.RenderViewportUI(DeltaTime);
+        LevelEditor.GetViewportLayout().RenderViewportUI(DeltaTime);
     }
     AActor *SpawnPlaceActor(FLevelViewportLayout::EViewportPlaceActorType Type, const FVector &Location)
     {
-        return ViewportLayout.SpawnPlaceActor(Type, Location);
+        return LevelEditor.GetViewportLayout().SpawnPlaceActor(Type, Location);
     }
 
     bool IsMouseOverViewport() const
     {
-        return ViewportLayout.IsMouseOverViewport();
+        return LevelEditor.GetViewportLayout().IsMouseOverViewport();
     }
 
     void RenderUI(float DeltaTime);
@@ -205,11 +202,11 @@ class UEditorEngine : public UEngine
 
     FOverlayStatSystem &GetOverlayStatSystem()
     {
-        return OverlayStatSystem;
+        return LevelEditor.GetOverlayStatSystem();
     }
     const FOverlayStatSystem &GetOverlayStatSystem() const
     {
-        return OverlayStatSystem;
+        return LevelEditor.GetOverlayStatSystem();
     }
 
     // --- PIE (Play In Editor) ---
@@ -275,10 +272,8 @@ class UEditorEngine : public UEngine
     void RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs);
     void InvalidateTrackedSceneSnapshotCache();
 
-    FSelectionManager SelectionManager;
+    FLevelEditor LevelEditor;
     FEditorMainPanel MainPanel;
-    FLevelViewportLayout ViewportLayout;
-    FOverlayStatSystem OverlayStatSystem;
 
     // PIE 요청 단일 슬롯 (UE TOptional<FRequestPlaySessionParams>).
     std::optional<FRequestPlaySessionParams> PlaySessionRequest;
