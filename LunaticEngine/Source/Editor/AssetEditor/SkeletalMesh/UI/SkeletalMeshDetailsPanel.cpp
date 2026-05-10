@@ -1,5 +1,7 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshDetailsPanel.h"
 
+#include "Common/UI/EditorPanel.h"
+
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Platform/Paths.h"
 #include "ImGui/imgui.h"
@@ -37,28 +39,18 @@ void DrawReadOnlyTextRow(const char *Label, const char *Value)
 } // namespace
 
 void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State,
-                                       const char *WindowName, ImGuiID DockspaceId)
+                                       const FEditorPanelDesc &PanelDesc)
 {
-    if (DockspaceId != 0)
+    if (!FEditorPanel::Begin(PanelDesc))
     {
-        ImGui::SetNextWindowDockID(DockspaceId, ImGuiCond_FirstUseEver);
-    }
-
-    if (!ImGui::Begin(WindowName, nullptr, ImGuiWindowFlags_NoCollapse))
-    {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-
-    ImGui::TextUnformatted("Details");
-    ImGui::SameLine();
-    ImGui::TextDisabled("Viewer / Asset Info");
-    ImGui::Separator();
 
     if (!Mesh)
     {
         ImGui::TextDisabled("No SkeletalMesh asset selected.");
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
 
@@ -72,7 +64,7 @@ void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, const std::filesyste
     ImGui::Spacing();
     RenderBoneEditingPlaceholder(State);
 
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FSkeletalMeshDetailsPanel::RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State)

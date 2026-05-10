@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
+#include "Common/UI/EditorPanel.h"
 
 #include <filesystem>
 
@@ -25,7 +26,7 @@ class FSkeletalMeshDetailsPanel
 {
   public:
     void Render(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State,
-                const char *WindowName, ImGuiID DockspaceId);
+                const FEditorPanelDesc &PanelDesc);
 
   private:
     void RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State);

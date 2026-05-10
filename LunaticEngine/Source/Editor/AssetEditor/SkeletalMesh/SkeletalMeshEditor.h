@@ -6,6 +6,7 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
+#include "Common/UI/EditorPanel.h"
 
 #include <filesystem>
 #include <string>
@@ -33,6 +34,11 @@ class USkeletalMesh;
  * - Skeleton Tree Panel
  * - Details Panel
  *
+ * 구현 규칙:
+ * - 각 영역은 실제 독립 패널로 렌더링한다.
+ * - Level Editor 패널과 같은 FEditorPanel wrapper를 사용해 title/icon/inset 스타일을 통일한다.
+ * - Preview Viewport는 FEditorViewportClient 베이스를 재사용한다.
+ *
  * 김형도 담당 예정 영역은 SkeletonTreePanel / DetailsPanel / PreviewViewportClient 내부에 placeholder로 남겨둔다.
  * Bone hierarchy, pose edit, bone gizmo, skeleton debug draw는 이 클래스가 직접 완성하지 않는다.
  */
@@ -59,9 +65,12 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
   private:
     void RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId);
-    void RenderToolbarPanel(ImGuiID DockspaceId);
+    void RenderToolbarPanel(const FEditorPanelDesc &PanelDesc);
     void BuildDefaultDockLayout(ImGuiID DockspaceId);
-    std::string MakePanelName(const char *BaseName) const;
+
+    std::string MakePanelStableId(const char *PanelName) const;
+    FEditorPanelDesc MakePanelDesc(const char *DisplayName, const char *StableName, const char *IconKey,
+                                   ImGuiWindowFlags Flags = ImGuiWindowFlags_NoCollapse) const;
 
   private:
     UEditorEngine        *EditorEngine = nullptr;

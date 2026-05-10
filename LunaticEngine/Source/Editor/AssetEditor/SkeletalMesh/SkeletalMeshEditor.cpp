@@ -1,5 +1,6 @@
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditor.h"
 
+#include "Common/UI/EditorDockLayoutUtils.h"
 #include "Core/Notification.h"
 #include "EditorEngine.h"
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -127,9 +128,26 @@ void FSkeletalMeshEditor::BuildCustomMenus()
     }
 }
 
-std::string FSkeletalMeshEditor::MakePanelName(const char *BaseName) const
+std::string FSkeletalMeshEditor::MakePanelStableId(const char *PanelName) const
 {
-    return std::string(BaseName) + "###SkeletalMeshEditor_" + BaseName + "_" + std::to_string(EditorInstanceId);
+    return std::string("SkeletalMeshEditor_") + std::to_string(EditorInstanceId) + "_" + PanelName;
+}
+
+FEditorPanelDesc FSkeletalMeshEditor::MakePanelDesc(const char *DisplayName, const char *StableName, const char *IconKey,
+                                                    ImGuiWindowFlags Flags) const
+{
+    FEditorPanelDesc Desc;
+    Desc.DisplayName = DisplayName;
+    Desc.IconKey = IconKey;
+    Desc.WindowFlags = Flags;
+    Desc.bClosable = false;
+    Desc.bApplyContentTopInset = true;
+    Desc.bApplySideInset = true;
+    Desc.bApplyBottomInset = true;
+
+    // StableId는 Render 함수 안에서 std::string 수명을 유지한 채 c_str()로 넣는다.
+    (void)StableName;
+    return Desc;
 }
 
 void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
@@ -139,43 +157,74 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
         return;
     }
 
-    // Level Editor의 메인 DockSpace 안에 SkeletalMesh Viewer 패널을 배치한다.
-    // 기존 Level Editor 패널을 전부 지우면 안 되므로 DockBuilderRemoveNode()는 호출하지 않는다.
-    // 첫 FBX / SkeletalMesh 오픈 시 왼쪽 Skeleton Tree, 중앙 Preview Viewport,
-    // 오른쪽 Details, 상단 Toolbar가 자동으로 추가된다.
-    ImGuiID MainId = DockspaceId;
-    ImGuiID ToolbarId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Up, 0.10f, nullptr, &MainId);
-    ImGuiID SkeletonId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, 0.22f, nullptr, &MainId);
-    ImGuiID DetailsId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Right, 0.28f, nullptr, &MainId);
-    ImGuiID PreviewId = MainId;
+    const std::string ToolbarId = MakePanelStableId("Toolbar");
+    const std::string SkeletonId = MakePanelStableId("SkeletonTree");
+    const std::string PreviewId = MakePanelStableId("PreviewViewport");
+    const std::string DetailsId = MakePanelStableId("Details");
 
-    ImGui::DockBuilderDockWindow(MakePanelName("Toolbar").c_str(), ToolbarId);
-    ImGui::DockBuilderDockWindow(MakePanelName("Skeleton Tree").c_str(), SkeletonId);
-    ImGui::DockBuilderDockWindow(MakePanelName("Preview Viewport").c_str(), PreviewId);
-    ImGui::DockBuilderDockWindow(MakePanelName("Details").c_str(), DetailsId);
-    ImGui::DockBuilderFinish(DockspaceId);
+    FEditorPanelDesc ToolbarDesc = MakePanelDesc("Toolbar", "Toolbar", nullptr);
+    ToolbarDesc.StableId = ToolbarId.c_str();
+
+    FEditorPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
+    SkeletonDesc.StableId = SkeletonId.c_str();
+
+    FEditorPanelDesc PreviewDesc = MakePanelDesc("Preview Viewport", "PreviewViewport", "Editor.Icon.Panel.Viewport");
+    PreviewDesc.StableId = PreviewId.c_str();
+
+    FEditorPanelDesc DetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
+    DetailsDesc.StableId = DetailsId.c_str();
+
+    FFourPanelDockLayoutDesc LayoutDesc;
+    LayoutDesc.ToolbarWindow = FEditorPanel::MakeTitle(ToolbarDesc);
+    LayoutDesc.LeftWindow = FEditorPanel::MakeTitle(SkeletonDesc);
+    LayoutDesc.CenterWindow = FEditorPanel::MakeTitle(PreviewDesc);
+    LayoutDesc.RightWindow = FEditorPanel::MakeTitle(DetailsDesc);
+
+    FEditorDockLayoutUtils::DockFourPanelLayout(DockspaceId, LayoutDesc);
 }
-
 
 void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId)
 {
-    RenderToolbarPanel(0);
-    SkeletonTreePanel.Render(EditingAsset, State, MakePanelName("Skeleton Tree").c_str(), 0);
-    PreviewViewport.Render(EditingAsset, State, DeltaTime, MakePanelName("Preview Viewport").c_str(), 0);
-    DetailsPanel.Render(EditingAsset, EditingAssetPath, State, MakePanelName("Details").c_str(), 0);
+    (void)DockspaceId;
+
+    const std::string ToolbarId = MakePanelStableId("Toolbar");
+    const std::string SkeletonId = MakePanelStableId("SkeletonTree");
+    const std::string PreviewId = MakePanelStableId("PreviewViewport");
+    const std::string DetailsId = MakePanelStableId("Details");
+
+    FEditorPanelDesc ToolbarDesc = MakePanelDesc("Toolbar", "Toolbar", nullptr,
+                                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                                                      ImGuiWindowFlags_NoScrollWithMouse);
+    ToolbarDesc.StableId = ToolbarId.c_str();
+    ToolbarDesc.bDrawTitleIcon = false;
+    ToolbarDesc.bApplyContentTopInset = true;
+    ToolbarDesc.bApplySideInset = true;
+    ToolbarDesc.bApplyBottomInset = false;
+
+    FEditorPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
+    SkeletonDesc.StableId = SkeletonId.c_str();
+
+    FEditorPanelDesc PreviewDesc = MakePanelDesc("Preview Viewport", "PreviewViewport", "Editor.Icon.Panel.Viewport",
+                                                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+                                                     ImGuiWindowFlags_NoScrollWithMouse);
+    PreviewDesc.StableId = PreviewId.c_str();
+    PreviewDesc.bApplySideInset = false;
+    PreviewDesc.bApplyBottomInset = false;
+
+    FEditorPanelDesc DetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
+    DetailsDesc.StableId = DetailsId.c_str();
+
+    RenderToolbarPanel(ToolbarDesc);
+    SkeletonTreePanel.Render(EditingAsset, State, SkeletonDesc);
+    PreviewViewport.Render(EditingAsset, State, DeltaTime, PreviewDesc);
+    DetailsPanel.Render(EditingAsset, EditingAssetPath, State, DetailsDesc);
 }
 
-void FSkeletalMeshEditor::RenderToolbarPanel(ImGuiID DockspaceId)
+void FSkeletalMeshEditor::RenderToolbarPanel(const FEditorPanelDesc &PanelDesc)
 {
-    if (DockspaceId != 0)
-    {
-        ImGui::SetNextWindowDockID(DockspaceId, ImGuiCond_FirstUseEver);
-    }
-
-    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-    if (ImGui::Begin(MakePanelName("Toolbar").c_str(), nullptr, Flags))
+    if (FEditorPanel::Begin(PanelDesc))
     {
         Toolbar.Render(EditingAsset, State);
     }
-    ImGui::End();
+    FEditorPanel::End();
 }

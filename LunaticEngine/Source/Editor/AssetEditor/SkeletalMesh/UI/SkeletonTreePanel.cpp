@@ -1,5 +1,7 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
 
+#include "Common/UI/EditorPanel.h"
+
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "ImGui/imgui.h"
 
@@ -30,28 +32,18 @@ bool ContainsCaseInsensitive(const std::string &Text, const char *Pattern)
 }
 }
 
-void FSkeletonTreePanel::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, const char *WindowName, ImGuiID DockspaceId)
+void FSkeletonTreePanel::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, const FEditorPanelDesc &PanelDesc)
 {
-    if (DockspaceId != 0)
+    if (!FEditorPanel::Begin(PanelDesc))
     {
-        ImGui::SetNextWindowDockID(DockspaceId, ImGuiCond_FirstUseEver);
-    }
-
-    if (!ImGui::Begin(WindowName, nullptr, ImGuiWindowFlags_NoCollapse))
-    {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-
-    ImGui::TextUnformatted("Skeleton Tree");
-    ImGui::SameLine();
-    ImGui::TextDisabled("Bone Selection");
-    ImGui::Separator();
 
     if (!Mesh)
     {
         ImGui::TextDisabled("No Skeleton.");
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
 
@@ -76,7 +68,7 @@ void FSkeletonTreePanel::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &S
     {
         ImGui::TextDisabled("This mesh has no bone data.");
         ImGui::TextDisabled("FBX Importer가 skeleton/bone 데이터를 채우면 여기에 표시된다.");
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
 
@@ -103,5 +95,5 @@ void FSkeletonTreePanel::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &S
     }
     ImGui::EndChild();
 
-    ImGui::End();
+    FEditorPanel::End();
 }
