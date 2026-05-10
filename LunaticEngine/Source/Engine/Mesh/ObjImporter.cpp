@@ -5,7 +5,7 @@
 #include "Engine/Platform/Paths.h"
 #include "Mesh/ObjManager.h"
 #include "Resource/ResourceManager.h"
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 #include "Materials/MaterialManager.h"
 #include <algorithm>
 #include <fstream>

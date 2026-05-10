@@ -3,7 +3,7 @@
 #include "Core/CoreTypes.h"
 #include "Platform/Paths.h"
 #include "Math/Vector.h"
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 
 #include <filesystem>
 #include <fstream>

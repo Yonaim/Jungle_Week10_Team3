@@ -1,6 +1,6 @@
 ﻿#include "Editor/Settings/EditorSettings.h"
 #include "Editor/Viewport/FLevelViewportLayout.h"
-#include "SimpleJSON/json.hpp"
+#include "Engine/Core/SimpleJsonWrapper.h"
 
 #include <fstream>
 #include <filesystem>
