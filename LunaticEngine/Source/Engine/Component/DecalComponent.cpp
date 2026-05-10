@@ -1,4 +1,4 @@
-#include "DecalComponent.h"
+﻿#include "DecalComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Materials/MaterialManager.h"
 #include "Collision/OBB.h"
@@ -260,7 +260,7 @@ UBillboardComponent* UDecalComponent::EnsureEditorBillboard()
 		UBillboardComponent* Billboard = Cast<UBillboardComponent>(Child);
 		if (Billboard && Billboard->IsEditorOnlyComponent())
 		{
-			// ?먮뵒???꾩씠肄?鍮뚮낫?쒕뒗 遺紐??ㅼ??쇨낵 而댄룷?뚰듃 ?몃━ 湲곕낯 ?쒖떆?먯꽌 遺꾨━?쒕떎.
+			// 에디터 아이콘 빌보드는 부모 스케일의 영향과 컴포넌트 트리 기본 표시에서 분리합니다.
 			Billboard->SetAbsoluteScale(true);
 			Billboard->SetHiddenInComponentTree(true);
 			return Billboard;
@@ -271,7 +271,7 @@ UBillboardComponent* UDecalComponent::EnsureEditorBillboard()
 	if (Billboard)
 	{
 		Billboard->AttachToComponent(this);
-		// ?먮뵒???꾩씠肄?鍮뚮낫?쒕뒗 遺紐??ㅼ??쇨낵 而댄룷?뚰듃 ?몃━ 湲곕낯 ?쒖떆?먯꽌 遺꾨━?쒕떎.
+		// 에디터 아이콘 빌보드는 부모 스케일의 영향과 컴포넌트 트리 기본 표시에서 분리합니다.
 		Billboard->SetAbsoluteScale(true);
 		Billboard->SetEditorOnlyComponent(true);
 		Billboard->SetHiddenInComponentTree(true);

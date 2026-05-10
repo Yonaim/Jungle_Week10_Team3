@@ -1,4 +1,4 @@
-#include "BillboardComponent.h"
+﻿#include "BillboardComponent.h"
 #include "GameFramework/World.h"
 #include "Component/CameraComponent.h"
 #include "Render/Proxy/BillboardSceneProxy.h"
@@ -106,7 +106,7 @@ void UBillboardComponent::SetTexture(UTexture2D* InTexture)
 	{
 		TextureSlot.Path = "None";
 	}
-	// ?띿뒪泥?蹂寃????뚮뜑 ?ㅽ뀒?댄듃? ?꾨줉??媛깆떊
+	// 텍스처 변경 시 렌더 상태와 프록시를 함께 갱신합니다.
 	MarkProxyDirty(EDirtyFlag::Material);
 	MarkProxyDirty(EDirtyFlag::Mesh);
 }
@@ -155,7 +155,7 @@ void UBillboardComponent::PostEditProperty(const char* PropertyName)
 	}
 	else if (strcmp(PropertyName, "Width") == 0 || strcmp(PropertyName, "Height") == 0)
 	{
-		// Width/Height??鍮뚮낫??荑쇰뱶 ?ш린瑜?寃곗젙?섎?濡??몃옖?ㅽ뤌/?붾뱶 諛붿슫??紐⑤몢 媛깆떊?댁빞 ?쒕떎.
+		// Width/Height는 빌보드 쿼드 크기를 결정하므로 트랜스폼과 월드 바운드를 모두 갱신해야 합니다.
 		MarkProxyDirty(EDirtyFlag::Transform);
 		MarkWorldBoundsDirty();
 	}
@@ -179,7 +179,7 @@ void UBillboardComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 
 	if (std::abs(Forward.Dot(WorldUp)) > 0.99f)
 	{
-		WorldUp = FVector(0.0f, 1.0f, 0.0f); // ?꾩떆 Up異?蹂寃?
+		WorldUp = FVector(0.0f, 1.0f, 0.0f); // 임시 Up축 변경
 	}
 
 	FVector Right = WorldUp.Cross(Forward).Normalized();
@@ -195,7 +195,7 @@ void UBillboardComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 
 FMatrix UBillboardComponent::ComputeBillboardMatrix(const FVector& CameraForward) const
 {
-	// TickComponent? ?숈씪??濡쒖쭅
+	// TickComponent와 동일한 로직
 	FVector Forward = (CameraForward * -1.0f).Normalized();
 	FVector WorldUp = FVector(0.0f, 0.0f, 1.0f);
 

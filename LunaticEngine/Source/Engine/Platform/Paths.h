@@ -3,15 +3,15 @@
 #include <string>
 #include <Windows.h>
 
-// ?붿쭊 ?꾩뿭 寃쎈줈瑜?愿由ы빀?덈떎.
-// 紐⑤뱺 寃쎈줈???ㅽ뻾 ?뚯씪 湲곗? ?곷? 寃쎈줈?대ŉ, ?쒓? 寃쎈줈瑜??꾪빐 wstring 湲곕컲?낅땲??
+// 엔진 전역 경로를 관리합니다.
+// 모든 경로는 실행 파일 기준 상대 경로이며, 한글 경로를 위해 wstring 기반입니다.
 class FPaths
 {
 public:
-	// ?꾨줈?앺듃 猷⑦듃 (?ㅽ뻾 ?뚯씪???덈뒗 ?붾젆?곕━)
+	// 프로젝트 루트 (실행 파일이 있는 디렉터리)
 	static std::wstring RootDir();
 
-	// 二쇱슂 ?붾젆?곕━
+	// 주요 디렉터리
 	static std::wstring ShaderDir();      // Shaders/
 	static std::wstring AssetDir();       // Asset/
 	static std::wstring ContentDir();     // Asset/Content/
@@ -23,7 +23,7 @@ public:
 	static std::wstring SettingsDir();    // Settings/
 	static std::wstring ScriptsDir();     // Scripts/
 
-	// 二쇱슂 ?뚯씪 寃쎈줈
+	// 주요 파일 경로
 	static std::wstring SettingsFilePath();         // Settings/Editor.ini
 	static std::wstring ResourceFilePath();         // Legacy alias
 	static std::wstring ResourceSettingsDir();      // Settings/Resource/
