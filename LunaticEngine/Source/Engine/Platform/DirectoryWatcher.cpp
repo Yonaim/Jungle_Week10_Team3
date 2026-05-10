@@ -6,6 +6,11 @@
 // ============================================================
 // Initialize / Shutdown
 // ============================================================
+FDirectoryWatcher::~FDirectoryWatcher()
+{
+	Shutdown();
+}
+
 void FDirectoryWatcher::Initialize()
 {
 	if (bRunning) return;
@@ -17,8 +22,7 @@ void FDirectoryWatcher::Initialize()
 
 void FDirectoryWatcher::Shutdown()
 {
-	if (!bRunning) return;
-	bRunning = false;
+	const bool bWasRunning = bRunning.exchange(false);
 
 	if (StopEvent)
 	{
@@ -28,6 +32,11 @@ void FDirectoryWatcher::Shutdown()
 	if (WatchThread.joinable())
 	{
 		WatchThread.join();
+	}
+
+	if (!bWasRunning && !StopEvent && Watches.empty() && Subscriptions.empty())
+	{
+		return;
 	}
 
 	// 감시 핸들 정리

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
+#include "Render/Device/D3DDevice.h"
 
 #include <memory>
 
@@ -8,6 +9,8 @@ class UEditorEngine;
 class FRenderer;
 class IAssetEditor;
 class FWindowsWindow;
+struct ImGuiContext;
+struct ImFont;
 
 class FAssetEditorWindow
 {
@@ -31,10 +34,21 @@ class FAssetEditorWindow
     bool IsCapturingInput() const;
 
   private:
-    bool EnsureNativeWindow();
+    static LRESULT CALLBACK StaticWindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+    LRESULT WindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+
+    bool CreateNativeWindow();
+    void DestroyNativeWindow();
+    void SetupImGuiContext();
+    void ShutdownImGuiContext();
+    void RenderWindowContents(float DeltaTime);
+    void MakeCurrentContext() const;
 
   private:
     std::unique_ptr<FWindowsWindow> NativeWindow;
+    FD3DDevice                      WindowDevice;
+    ImGuiContext                   *WindowImGuiContext = nullptr;
+    ImFont                         *WindowTitleFont = nullptr;
 
     UEditorEngine *EditorEngine = nullptr;
     FRenderer     *Renderer = nullptr;
@@ -43,4 +57,5 @@ class FAssetEditorWindow
 
     bool bOpen = false;
     bool bCapturingInput = false;
+    bool bWindowClassRegistered = false;
 };

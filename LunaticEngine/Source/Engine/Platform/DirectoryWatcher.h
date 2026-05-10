@@ -47,6 +47,8 @@ class FDirectoryWatcher : public TSingleton<FDirectoryWatcher>
 	friend class TSingleton<FDirectoryWatcher>;
 
 public:
+	~FDirectoryWatcher();
+
 	void Initialize();
 	void Shutdown();
 

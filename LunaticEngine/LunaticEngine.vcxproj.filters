@@ -596,6 +596,9 @@
     <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp">
       <Filter>Source\Editor\MainFrame</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\MainFrame\EditorMainMenuBar.cpp">
+      <Filter>Source\Editor\MainFrame</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp">
       <Filter>Source\Editor\MainFrame</Filter>
     </ClCompile>
@@ -1346,9 +1349,6 @@
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\UI\CurveEditor.h">
-      <Filter>Source\Editor\Common\UI</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\EditorAccentColor.h">
       <Filter>Source\Editor\Common\UI</Filter>
     </ClInclude>
@@ -1452,6 +1452,12 @@
       <Filter>Source\Editor\LevelEditor\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h">
+      <Filter>Source\Editor\MainFrame</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\MainFrame\EditorMainMenuBar.h">
+      <Filter>Source\Editor\MainFrame</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\MainFrame\EditorMenuProvider.h">
       <Filter>Source\Editor\MainFrame</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h">

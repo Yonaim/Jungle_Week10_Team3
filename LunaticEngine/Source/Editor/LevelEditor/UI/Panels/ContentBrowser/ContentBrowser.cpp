@@ -548,24 +548,30 @@ void FContentBrowser::DrawContents()
     const float itemHeight = BrowserContext.ContentSize.y;
     const float MinGap = 10.0f;
 
+    if (itemWidth <= 0.0f || itemHeight <= 0.0f)
+    {
+        return;
+    }
+
     int columnCount = static_cast<int>((contentWidth + MinGap) / (itemWidth + MinGap));
     if (columnCount < 1)
     {
         columnCount = 1;
     }
+    const int safeColumnCount = (std::max)(columnCount, 1);
 
     float gapSize = MinGap;
-    if (columnCount > 1)
+    if (safeColumnCount > 1)
     {
-        gapSize = (std::max)(MinGap, (contentWidth - itemWidth * columnCount) / (columnCount - 1));
+        gapSize = (std::max)(MinGap, (contentWidth - itemWidth * safeColumnCount) / (safeColumnCount - 1));
     }
 
     ImVec2 startPos = ImGui::GetCursorPos();
 
     for (int i = 0; i < elementCount; ++i)
     {
-        int column = i % columnCount;
-        int row = i / columnCount;
+        int column = i % safeColumnCount;
+        int row = i / safeColumnCount;
 
         float x = startPos.x + column * (itemWidth + gapSize);
         float y = startPos.y + row * (itemHeight + gapSize);
@@ -580,7 +586,7 @@ void FContentBrowser::DrawContents()
         SaveToSettings();
     }
 
-    int rowCount = (elementCount + columnCount - 1) / columnCount;
+    int rowCount = (elementCount + safeColumnCount - 1) / safeColumnCount;
     const float TotalHeight = rowCount * itemHeight + (rowCount > 0 ? (rowCount - 1) * gapSize : 0.0f);
     ImGui::SetCursorPos(startPos);
     ImGui::Dummy(ImVec2((std::max)(itemWidth, contentWidth), TotalHeight));

@@ -1162,7 +1162,13 @@ void ImDrawList::_PathArcToFastEx(const ImVec2& center, float radius, int a_min_
 
     // Calculate arc auto segment step size
     if (a_step <= 0)
-        a_step = IM_DRAWLIST_ARCFAST_SAMPLE_MAX / _CalcCircleAutoSegmentCount(radius);
+    {
+        const int circle_segment_count = _CalcCircleAutoSegmentCount(radius);
+        if (circle_segment_count <= 0)
+            a_step = 1;
+        else
+            a_step = IM_DRAWLIST_ARCFAST_SAMPLE_MAX / circle_segment_count;
+    }
 
     // Make sure we never do steps larger than one quarter of the circle
     a_step = ImClamp(a_step, 1, IM_DRAWLIST_ARCFAST_TABLE_SIZE / 4);

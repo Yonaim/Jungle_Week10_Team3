@@ -12,6 +12,7 @@
 #include <cfloat>
 #include <filesystem>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace EditorPanelTitleUtils
@@ -33,10 +34,10 @@ struct FFocusedPanelOverlay
     float TabRounding = 0.0f;
 };
 
-inline ImFont *&GetPanelChromeIconFontStorage()
+inline std::unordered_map<ImGuiContext *, ImFont *> &GetPanelChromeIconFontStorage()
 {
-    static ImFont *Font = nullptr;
-    return Font;
+    static std::unordered_map<ImGuiContext *, ImFont *> Fonts;
+    return Fonts;
 }
 
 inline std::vector<FPendingPanelDecoration> &GetPendingDecorations()
@@ -53,8 +54,14 @@ inline std::vector<FFocusedPanelOverlay> &GetFocusedPanelOverlays()
 
 inline void EnsurePanelChromeIconFontLoaded()
 {
-    ImFont *&Font = GetPanelChromeIconFontStorage();
-    if (Font)
+    ImGuiContext *Context = ImGui::GetCurrentContext();
+    if (!Context)
+    {
+        return;
+    }
+
+    auto &Fonts = GetPanelChromeIconFontStorage();
+    if (auto Found = Fonts.find(Context); Found != Fonts.end() && Found->second)
     {
         return;
     }
@@ -67,12 +74,35 @@ inline void EnsurePanelChromeIconFontLoaded()
 
     ImFontConfig FontConfig{};
     FontConfig.PixelSnapH = true;
-    Font = ImGui::GetIO().Fonts->AddFontFromFileTTF(FontPath, 12.0f, &FontConfig);
+    Fonts[Context] = ImGui::GetIO().Fonts->AddFontFromFileTTF(FontPath, 12.0f, &FontConfig);
 }
 
 inline ImFont *GetPanelChromeIconFont()
 {
-    return GetPanelChromeIconFontStorage();
+    ImGuiContext *Context = ImGui::GetCurrentContext();
+    if (!Context)
+    {
+        return nullptr;
+    }
+
+    auto &Fonts = GetPanelChromeIconFontStorage();
+    if (auto Found = Fonts.find(Context); Found != Fonts.end())
+    {
+        return Found->second;
+    }
+
+    return nullptr;
+}
+
+inline void ReleasePanelChromeIconFontForCurrentContext()
+{
+    ImGuiContext *Context = ImGui::GetCurrentContext();
+    if (!Context)
+    {
+        return;
+    }
+
+    GetPanelChromeIconFontStorage().erase(Context);
 }
 
 inline ImU32 GetDockTabBarGapColor()

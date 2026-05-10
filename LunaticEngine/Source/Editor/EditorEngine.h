@@ -9,6 +9,7 @@
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "LevelEditor/Window/LevelEditorWindow.h"
+#include "MainFrame/EditorMainFrame.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -178,6 +179,7 @@ class UEditorEngine : public UEngine
     void              InvalidateTrackedSceneSnapshotCache();
 
     FLevelEditor       LevelEditor;
+    FEditorMainFrame   MainFrame;
     FLevelEditorWindow LevelEditorWindow;
     FAssetEditorManager AssetEditorManager;
     FAssetImportManager AssetImportManager;

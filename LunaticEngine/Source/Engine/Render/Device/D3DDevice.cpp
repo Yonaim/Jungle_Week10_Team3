@@ -6,13 +6,31 @@
 
 void FD3DDevice::Create(HWND InHWindow)
 {
+	if (!InHWindow)
+	{
+		return;
+	}
+
 	CreateDeviceAndSwapChain(InHWindow);
+	if (!SwapChain || !Device || !DeviceContext)
+	{
+		return;
+	}
+
 	CreateFrameBuffer();
 	CreateDepthStencilBuffer();
 }
 
 void FD3DDevice::Release()
 {
+	if (!DeviceContext)
+	{
+		ReleaseDepthStencilBuffer();
+		ReleaseFrameBuffer();
+		ReleaseDeviceAndSwapChain();
+		return;
+	}
+
 	DeviceContext->ClearState();
 	DeviceContext->Flush();
 
@@ -24,6 +42,11 @@ void FD3DDevice::Release()
 
 void FD3DDevice::BeginFrame()
 {
+	if (!DeviceContext || !FrameBufferRTV || !DepthStencilView)
+	{
+		return;
+	}
+
 	DeviceContext->ClearRenderTargetView(FrameBufferRTV, ClearColor);
 	DeviceContext->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 0.0f, 0);
 
@@ -33,11 +56,13 @@ void FD3DDevice::BeginFrame()
 
 void FD3DDevice::Present()
 {
-	BOOL bFullscreen = FALSE;
-	if (SwapChain)
+	if (!SwapChain)
 	{
-		SwapChain->GetFullscreenState(&bFullscreen, nullptr);
+		return;
 	}
+
+	BOOL bFullscreen = FALSE;
+	SwapChain->GetFullscreenState(&bFullscreen, nullptr);
 
 	UINT PresentFlags = (bTearingSupported && !bFullscreen) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 	SwapChain->Present(0, PresentFlags);
@@ -73,7 +98,10 @@ void FD3DDevice::CopyToBackbuffer(ID3D11Texture2D* Source)
 
 void FD3DDevice::OnResizeViewport(int Width, int Height)
 {
-	if (!SwapChain) return;
+	if (!SwapChain || !DeviceContext || Width <= 0 || Height <= 0)
+	{
+		return;
+	}
 
 	DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
 
@@ -101,6 +129,11 @@ ID3D11DeviceContext* FD3DDevice::GetDeviceContext() const
 
 void FD3DDevice::CreateDeviceAndSwapChain(HWND InHWindow)
 {
+	if (!InHWindow)
+	{
+		return;
+	}
+
 	D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
 
 	DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
@@ -141,9 +174,16 @@ void FD3DDevice::CreateDeviceAndSwapChain(HWND InHWindow)
 	CreateDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-	D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
+	const HRESULT Result = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
 		CreateDeviceFlags, featureLevels, ARRAYSIZE(featureLevels), D3D11_SDK_VERSION,
 		&swapChainDesc, &SwapChain, &Device, nullptr, &DeviceContext);
+	if (FAILED(Result) || !SwapChain || !Device || !DeviceContext)
+	{
+		SAFE_RELEASE(SwapChain);
+		SAFE_RELEASE(DeviceContext);
+		SAFE_RELEASE(Device);
+		return;
+	}
 
 	// CPU가 GPU보다 1프레임 이상 앞서지 못하게 제한
 	// (기본값 3 → Present 큐 깊이로 인한 FPS 톱니파 현상 방지)
@@ -199,7 +239,16 @@ void FD3DDevice::ReleaseDeviceAndSwapChain()
 
 void FD3DDevice::CreateFrameBuffer()
 {
+	if (!SwapChain || !Device)
+	{
+		return;
+	}
+
 	SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&FrameBuffer);
+	if (!FrameBuffer)
+	{
+		return;
+	}
 
 	CD3D11_RENDER_TARGET_VIEW_DESC frameBufferRTVDesc = {};
 	frameBufferRTVDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -216,6 +265,11 @@ void FD3DDevice::ReleaseFrameBuffer()
 
 void FD3DDevice::CreateDepthStencilBuffer()
 {
+	if (!Device || ViewportInfo.Width <= 0.0f || ViewportInfo.Height <= 0.0f)
+	{
+		return;
+	}
+
 	D3D11_TEXTURE2D_DESC depthStencilDesc = {};
 	depthStencilDesc.Width = static_cast<uint32>(ViewportInfo.Width);
 	depthStencilDesc.Height = static_cast<uint32>(ViewportInfo.Height);

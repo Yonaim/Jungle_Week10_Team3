@@ -6,6 +6,8 @@
 
 namespace ImGui
 {
+constexpr int BezierHandleCircleSegments = 12;
+
 static ImVec2 AddVec2(const ImVec2 &A, const ImVec2 &B)
 {
     return ImVec2(A.x + B.x, A.y + B.y);
@@ -89,6 +91,13 @@ int Bezier(const char *Label, float P[4])
 
     const float Avail = GetContentRegionAvail().x;
     const float Dim = (std::min)(Avail, 180.0f);
+    if (Dim <= 1.0f)
+    {
+        Dummy(ImVec2((std::max)(Dim, 1.0f), (std::max)(Dim, 1.0f)));
+        PopID();
+        return Changed;
+    }
+
     const ImVec2 Canvas(Dim, Dim);
     const ImRect Bb(Window->DC.CursorPos, AddVec2(Window->DC.CursorPos, Canvas));
     ItemSize(Bb);
@@ -129,8 +138,10 @@ int Bezier(const char *Label, float P[4])
         }
         if (IsItemActive() && IsMouseDragging(ImGuiMouseButton_Left))
         {
-            P[I * 2 + 0] += GetIO().MouseDelta.x / Canvas.x;
-            P[I * 2 + 1] -= GetIO().MouseDelta.y / Canvas.y;
+            const float SafeCanvasWidth = (std::max)(Canvas.x, 1.0f);
+            const float SafeCanvasHeight = (std::max)(Canvas.y, 1.0f);
+            P[I * 2 + 0] += GetIO().MouseDelta.x / SafeCanvasWidth;
+            P[I * 2 + 1] -= GetIO().MouseDelta.y / SafeCanvasHeight;
             P[I * 2 + 0] = (std::max)(-1.0f, (std::min)(P[I * 2 + 0], 2.0f));
             P[I * 2 + 1] = (std::max)(-1.0f, (std::min)(P[I * 2 + 1], 2.0f));
             Changed = true;
@@ -159,10 +170,10 @@ int Bezier(const char *Label, float P[4])
     ImVec2 P2 = AddVec2(MulVec2(ImVec2(P[2], 1.0f - P[3]), SubVec2(Bb.Max, Bb.Min)), Bb.Min);
     DrawList->AddLine(ImVec2(Bb.Min.x, Bb.Max.y), P1, ImColor(White), LineWidth);
     DrawList->AddLine(ImVec2(Bb.Max.x, Bb.Min.y), P2, ImColor(White), LineWidth);
-    DrawList->AddCircleFilled(P1, GrabRadius, ImColor(White));
-    DrawList->AddCircleFilled(P1, GrabRadius - GrabBorder, ImColor(PointA));
-    DrawList->AddCircleFilled(P2, GrabRadius, ImColor(White));
-    DrawList->AddCircleFilled(P2, GrabRadius - GrabBorder, ImColor(PointB));
+    DrawList->AddCircleFilled(P1, GrabRadius, ImColor(White), BezierHandleCircleSegments);
+    DrawList->AddCircleFilled(P1, GrabRadius - GrabBorder, ImColor(PointA), BezierHandleCircleSegments);
+    DrawList->AddCircleFilled(P2, GrabRadius, ImColor(White), BezierHandleCircleSegments);
+    DrawList->AddCircleFilled(P2, GrabRadius - GrabBorder, ImColor(PointB), BezierHandleCircleSegments);
 
     if (Hovered || Changed)
     {
