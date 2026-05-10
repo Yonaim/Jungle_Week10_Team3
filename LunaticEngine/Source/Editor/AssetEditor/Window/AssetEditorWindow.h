@@ -37,6 +37,8 @@ class FAssetEditorWindow : public IEditorMenuProvider
 
   private:
     void RenderWindowContents(float DeltaTime);
+    void RenderDockSpace();
+    void RenderEmptyState();
 
   private:
     UEditorEngine       *EditorEngine = nullptr;

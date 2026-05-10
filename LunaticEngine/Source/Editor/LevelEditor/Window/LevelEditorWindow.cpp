@@ -260,7 +260,7 @@ void FLevelEditorWindow::FlushPendingMenuAction()
     case EPendingMenuAction::NewUAsset:
         if (EditorEngine)
         {
-            EditorEngine->GetAssetEditorManager().CreateCameraModifierStackAsset();
+            EditorEngine->GetAssetEditorManager().ShowAssetEditorWindow();
         }
         return;
     case EPendingMenuAction::OpenUAsset:
@@ -475,7 +475,7 @@ void FLevelEditorWindow::BuildFileMenu()
     }
 
     DrawPopupSectionHeader("ASSET");
-    if (ImGui::MenuItem("New UAsset...") && EditorEngine)
+    if (ImGui::MenuItem("Open Asset Editor") && EditorEngine)
     {
         PendingMenuAction = EPendingMenuAction::NewUAsset;
         return;

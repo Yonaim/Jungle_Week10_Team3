@@ -6,6 +6,7 @@
 #include "ImGui/imgui.h"
 
 #include <algorithm>
+#include <string>
 
 bool FAssetEditorTabManager::OpenTab(std::unique_ptr<IAssetEditor> Editor)
 {
@@ -91,7 +92,7 @@ void FAssetEditorTabManager::Tick(float DeltaTime)
     }
 }
 
-void FAssetEditorTabManager::Render(float DeltaTime)
+void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 {
     for (int32 Index = 0; Index < static_cast<int32>(Tabs.size());)
     {
@@ -103,13 +104,24 @@ void FAssetEditorTabManager::Render(float DeltaTime)
         }
 
         bool bOpen = true;
-        ImGuiTabItemFlags Flags = (Index == ActiveTabIndex) ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
-        if (ImGui::BeginTabItem(Tab->GetTitle(), &bOpen, Flags))
+        FString WindowTitle = FString(Tab->GetTitle()) + "###AssetEditorTab" + std::to_string(Index);
+
+        if (DockspaceId != 0)
         {
-            ActiveTabIndex = Index;
-            Tab->Render(DeltaTime);
-            ImGui::EndTabItem();
+            ImGui::SetNextWindowDockID(DockspaceId, ImGuiCond_FirstUseEver);
         }
+
+        ImGuiWindowFlags Flags = ImGuiWindowFlags_NoCollapse;
+        if (ImGui::Begin(WindowTitle.c_str(), &bOpen, Flags))
+        {
+            if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+            {
+                ActiveTabIndex = Index;
+            }
+
+            Tab->Render(DeltaTime);
+        }
+        ImGui::End();
 
         if (!bOpen)
         {
@@ -124,6 +136,11 @@ void FAssetEditorTabManager::Render(float DeltaTime)
 bool FAssetEditorTabManager::HasOpenTabs() const
 {
     return !Tabs.empty();
+}
+
+int32 FAssetEditorTabManager::GetTabCount() const
+{
+    return static_cast<int32>(Tabs.size());
 }
 
 bool FAssetEditorTabManager::IsCapturingInput() const

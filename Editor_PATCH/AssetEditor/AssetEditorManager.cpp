@@ -92,7 +92,7 @@ bool FAssetEditorManager::OpenSourceFileFromPath(const std::filesystem::path &So
         return OpenFbxForPreview(SourcePath);
     }
 
-    FNotificationManager::Get().AddNotification("Unsupported source file type.", ENotificationType::Info, 3.0f);
+    FNotificationManager::Get().AddNotification("Unsupported source file type.", ENotificationType::Warning, 3.0f);
     return false;
 }
 

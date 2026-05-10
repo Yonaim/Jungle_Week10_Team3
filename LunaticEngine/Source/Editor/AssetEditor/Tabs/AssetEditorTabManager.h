@@ -2,6 +2,7 @@
 
 #include "AssetEditor/Tabs/AssetEditorTab.h"
 #include "Core/CoreTypes.h"
+#include "ImGui/imgui.h"
 
 #include <filesystem>
 #include <memory>
@@ -19,9 +20,10 @@ class FAssetEditorTabManager
     bool SaveActiveTab();
 
     void Tick(float DeltaTime);
-    void Render(float DeltaTime);
+    void Render(float DeltaTime, ImGuiID DockspaceId = 0);
 
     bool HasOpenTabs() const;
+    int32 GetTabCount() const;
     bool IsCapturingInput() const;
     IAssetEditor *GetActiveEditor() const;
 
