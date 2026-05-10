@@ -1,6 +1,6 @@
 """
 GenerateProjectFiles.py — Auto-generate .vcxproj, .vcxproj.filters
-for KraftonEngine from the on-disk folder structure.
+for LunaticEngine from the on-disk folder structure.
 
 Usage:
     python Scripts/GenerateProjectFiles.py
@@ -16,7 +16,7 @@ from pathlib import Path
 # ──────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
 
-PROJECT_NAME = "KraftonEngine"
+PROJECT_NAME = "LunaticEngine"
 PROJECT_DIR = ROOT / PROJECT_NAME
 PROJECT_GUID = "{55068e81-c0a0-49f9-ab7b-54aea968722b}"
 ROOT_NAMESPACE = "Week2"
@@ -69,7 +69,7 @@ NONE_EXTS = {".natstepfilter", ".config"}
 RC_EXTS = {".rc"}
 
 # Root-level files to include (relative to project dir)
-ROOT_FILES = ["main.cpp"]
+ROOT_FILES = ["main.cpp", "SkeletalMeshProxy.cpp", "SkeletalMeshProxy.h"]
 
 # Include paths (relative to project dir)
 INCLUDE_PATHS = [
@@ -78,6 +78,7 @@ INCLUDE_PATHS = [
     "ThirdParty",
     "ThirdParty\\ImGui",
     "ThirdParty\\sol2",
+    "ThirdParty\\FBXSDK\\include",
     "Source\\Editor",
     "Source\\ObjViewer",
     ".",
@@ -306,15 +307,27 @@ def generate_vcxproj(files: dict[str, list[str]]):
 
         if is_x64:
             ET.SubElement(cl, "LanguageStandard").text = "stdcpp20"
+            ET.SubElement(cl, "AdditionalIncludeDirectories").text = (
+                "$(ProjectDir)ThirdParty\\FBXSDK\\include;%(AdditionalIncludeDirectories)"
+            )
 
         link = ET.SubElement(idg, "Link")
         subsystem = props.get("subsystem", "Windows" if is_x64 else "Console")
         ET.SubElement(link, "SubSystem").text = subsystem
         ET.SubElement(link, "GenerateDebugInformation").text = "true"
+        if is_x64:
+            ET.SubElement(link, "AdditionalDependencies").text = (
+                "libfbxsdk-md.lib;libxml2-md.lib;zlib-md.lib;%(AdditionalDependencies)"
+            )
+            fbx_lib_config = "release" if is_release else "debug"
+            ET.SubElement(link, "AdditionalLibraryDirectories").text = (
+                f"$(ProjectDir)ThirdParty\\FBXSDK\\lib\\x64\\{fbx_lib_config};%(AdditionalLibraryDirectories)"
+            )
+            ET.SubElement(link, "AdditionalOptions").text = "/ignore:4099 %(AdditionalOptions)"
 
         manifest = ET.SubElement(idg, "Manifest")
         ET.SubElement(manifest, "AdditionalManifestFiles").text = (
-            "KraftonEngine.exe.manifest;%(AdditionalManifestFiles)"
+            "LunaticEngine.exe.manifest;%(AdditionalManifestFiles)"
         )
 
     # ClCompile items
