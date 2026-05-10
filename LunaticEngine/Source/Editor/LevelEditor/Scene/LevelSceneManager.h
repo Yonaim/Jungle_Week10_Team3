@@ -4,7 +4,7 @@
 
 class UEditorEngine;
 
-class FEditorSceneManager
+class FLevelSceneManager
 {
 public:
     void Init(UEditorEngine* InEditorEngine);

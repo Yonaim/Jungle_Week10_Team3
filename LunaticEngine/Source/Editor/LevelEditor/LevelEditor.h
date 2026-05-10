@@ -1,7 +1,9 @@
 #pragma once
 
+#include "LevelEditor/History/LevelEditorHistoryManager.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/PIE/LevelPIEManager.h"
+#include "LevelEditor/Scene/LevelSceneManager.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 
@@ -33,10 +35,20 @@ class FLevelEditor
 
     const FLevelPIEManager& GetPIEManager() const { return PIEManager; }
 
+    FLevelEditorHistoryManager& GetHistoryManager() { return HistoryManager; }
+
+    const FLevelEditorHistoryManager& GetHistoryManager() const { return HistoryManager; }
+
+    FLevelSceneManager& GetSceneManager() { return SceneManager; }
+
+    const FLevelSceneManager& GetSceneManager() const { return SceneManager; }
+
   private:
     UEditorEngine       *EditorEngine = nullptr;
     FSelectionManager    SelectionManager;
     FLevelViewportLayout ViewportLayout;
     FOverlayStatSystem   OverlayStatSystem;
     FLevelPIEManager     PIEManager;
+    FLevelEditorHistoryManager HistoryManager;
+    FLevelSceneManager   SceneManager;
 };

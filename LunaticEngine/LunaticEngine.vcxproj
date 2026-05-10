@@ -341,6 +341,7 @@
     <ClCompile Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\PIE\LevelPIEManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\Scene\LevelSceneManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Selection\SelectionManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\UI\Area\LevelViewportArea.cpp" />
@@ -360,7 +361,6 @@
     <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp" />
-    <ClCompile Include="Source\Editor\Scene\EditorSceneManager.cpp" />
     <ClCompile Include="Source\Editor\Settings\EditorSettings.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetCurveUtils.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetData.cpp" />
@@ -626,6 +626,7 @@
     <ClInclude Include="Source\Editor\LevelEditor\PIE\LevelPIEManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\PIE\LevelPIETypes.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\Scene\LevelSceneManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Selection\SelectionManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Area\LevelViewportArea.h" />
@@ -647,7 +648,6 @@
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h" />
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h" />
-    <ClInclude Include="Source\Editor\Scene\EditorSceneManager.h" />
     <ClInclude Include="Source\Editor\Settings\EditorSettings.h" />
     <ClInclude Include="Source\Engine\Asset\AssetCurveUtils.h" />
     <ClInclude Include="Source\Engine\Asset\AssetData.h" />

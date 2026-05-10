@@ -1,18 +1,13 @@
 ﻿#pragma once
 
 #include "Engine/Runtime/Engine.h"
-#include "Engine/Runtime/GameImGuiOverlay.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 
 #include "AssetTools/AssetImportManager.h"
-#include "LevelEditor/History/SceneHistoryTypes.h"
-#include "LevelEditor/History/LevelEditorHistoryManager.h"
 #include "LevelEditor/LevelEditor.h"
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "MainFrame/EditorMainFrame.h"
-#include "Scene/EditorSceneManager.h"
 #include "Settings/EditorSettings.h"
-#include <optional>
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -66,8 +61,8 @@ class UEditorEngine : public UEngine
     void           RequestSaveSceneAsDialog();
     bool           SaveSceneAsWithDialog();
     bool           SaveSceneAs(const FString &InScenePath);
-    bool           HasCurrentLevelFilePath() const { return SceneManager.HasCurrentLevelFilePath(); }
-    const FString &GetCurrentLevelFilePath() const { return SceneManager.GetCurrentLevelFilePath(); }
+    bool           HasCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().HasCurrentLevelFilePath(); }
+    const FString &GetCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().GetCurrentLevelFilePath(); }
     void           RefreshContentBrowser() { MainFrame.RefreshContentBrowser(); }
     void           SetContentBrowserIconSize(float Size) { MainFrame.SetContentBrowserIconSize(Size); }
     float          GetContentBrowserIconSize() const { return MainFrame.GetContentBrowserIconSize(); }
@@ -165,7 +160,7 @@ class UEditorEngine : public UEngine
     bool IsAssetEditorCapturingInput() const { return MainFrame.GetAssetEditorManager().IsCapturingInput(); }
 
   private:
-    friend class FEditorSceneManager;
+    friend class FLevelSceneManager;
     friend class FLevelEditorHistoryManager;
     friend class FLevelPIEManager;
 
@@ -181,7 +176,5 @@ class UEditorEngine : public UEngine
 
     FLevelEditor     LevelEditor;
     FEditorMainFrame MainFrame;
-    FEditorSceneManager SceneManager;
-    FLevelEditorHistoryManager HistoryManager;
     FAssetImportManager AssetImportManager;
 };

@@ -1,4 +1,4 @@
-#include "Scene/EditorSceneManager.h"
+﻿#include "LevelEditor/Scene/LevelSceneManager.h"
 
 #include "Common/File/EditorFileUtils.h"
 #include "EditorEngine.h"
@@ -8,30 +8,30 @@
 #include "Object/Object.h"
 #include "Settings/EditorSettings.h"
 
-void FEditorSceneManager::Init(UEditorEngine* InEditorEngine)
+void FLevelSceneManager::Init(UEditorEngine* InEditorEngine)
 {
     EditorEngine = InEditorEngine;
 }
 
-void FEditorSceneManager::Shutdown()
+void FLevelSceneManager::Shutdown()
 {
     bRequestSaveSceneAsDialogQueued = false;
     CurrentLevelFilePath.clear();
     EditorEngine = nullptr;
 }
 
-void FEditorSceneManager::Tick(float DeltaTime)
+void FLevelSceneManager::Tick(float DeltaTime)
 {
     (void)DeltaTime;
     ProcessDeferredActions();
 }
 
-void FEditorSceneManager::CloseScene()
+void FLevelSceneManager::CloseScene()
 {
     ClearScene();
 }
 
-void FEditorSceneManager::NewScene()
+void FLevelSceneManager::NewScene()
 {
     if (!EditorEngine)
     {
@@ -50,7 +50,7 @@ void FEditorSceneManager::NewScene()
     CurrentLevelFilePath.clear();
 }
 
-void FEditorSceneManager::LoadStartLevel()
+void FLevelSceneManager::LoadStartLevel()
 {
     if (!EditorEngine)
     {
@@ -73,7 +73,7 @@ void FEditorSceneManager::LoadStartLevel()
     }
 }
 
-void FEditorSceneManager::ClearScene()
+void FLevelSceneManager::ClearScene()
 {
     if (!EditorEngine)
     {
@@ -84,7 +84,7 @@ void FEditorSceneManager::ClearScene()
     DestroyCurrentSceneWorlds(true, true);
 }
 
-bool FEditorSceneManager::LoadSceneFromPath(const FString& InScenePath)
+bool FLevelSceneManager::LoadSceneFromPath(const FString& InScenePath)
 {
     if (!EditorEngine || InScenePath.empty())
     {
@@ -126,7 +126,7 @@ bool FEditorSceneManager::LoadSceneFromPath(const FString& InScenePath)
     return true;
 }
 
-bool FEditorSceneManager::LoadSceneWithDialog()
+bool FLevelSceneManager::LoadSceneWithDialog()
 {
     if (!EditorEngine)
     {
@@ -152,7 +152,7 @@ bool FEditorSceneManager::LoadSceneWithDialog()
     return LoadSceneFromPath(SelectedPath);
 }
 
-bool FEditorSceneManager::SaveScene()
+bool FLevelSceneManager::SaveScene()
 {
     if (HasCurrentLevelFilePath())
     {
@@ -162,7 +162,7 @@ bool FEditorSceneManager::SaveScene()
     return SaveSceneAsWithDialog();
 }
 
-bool FEditorSceneManager::SaveSceneAs(const FString& InScenePath)
+bool FLevelSceneManager::SaveSceneAs(const FString& InScenePath)
 {
     if (!EditorEngine || InScenePath.empty())
     {
@@ -189,12 +189,12 @@ bool FEditorSceneManager::SaveSceneAs(const FString& InScenePath)
     return true;
 }
 
-void FEditorSceneManager::RequestSaveSceneAsDialog()
+void FLevelSceneManager::RequestSaveSceneAsDialog()
 {
     bRequestSaveSceneAsDialogQueued = true;
 }
 
-bool FEditorSceneManager::SaveSceneAsWithDialog()
+bool FLevelSceneManager::SaveSceneAsWithDialog()
 {
     if (!EditorEngine)
     {
@@ -223,7 +223,7 @@ bool FEditorSceneManager::SaveSceneAsWithDialog()
     return SaveSceneAs(SelectedPath);
 }
 
-void FEditorSceneManager::ProcessDeferredActions()
+void FLevelSceneManager::ProcessDeferredActions()
 {
     if (!bRequestSaveSceneAsDialogQueued)
     {
@@ -234,7 +234,7 @@ void FEditorSceneManager::ProcessDeferredActions()
     SaveSceneAsWithDialog();
 }
 
-void FEditorSceneManager::DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath)
+void FLevelSceneManager::DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath)
 {
     if (!EditorEngine)
     {

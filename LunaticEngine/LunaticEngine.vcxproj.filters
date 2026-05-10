@@ -76,6 +76,9 @@
     <Filter Include="Source\Editor\LevelEditor\Render">
       <UniqueIdentifier>{6be4be08-cdec-b0f4-b092-47491cfd0a82}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\LevelEditor\Scene">
+      <UniqueIdentifier>{f52017d7-e133-0371-a4cb-c74181d33784}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\LevelEditor\Selection">
       <UniqueIdentifier>{f5a22a04-e6d3-4fbc-0fea-dac2213941e6}</UniqueIdentifier>
     </Filter>
@@ -105,9 +108,6 @@
     </Filter>
     <Filter Include="Source\Editor\MainFrame">
       <UniqueIdentifier>{a22e312b-6905-0adf-9b01-d4fad0c0f77a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Editor\Scene">
-      <UniqueIdentifier>{a2ebef06-505d-a90e-e65e-01ae037da974}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\Settings">
       <UniqueIdentifier>{06e78b29-eeff-c85d-7b92-2588bacd7fea}</UniqueIdentifier>
@@ -533,6 +533,9 @@
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\Scene\LevelSceneManager.cpp">
+      <Filter>Source\Editor\LevelEditor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\Selection\SelectionManager.cpp">
       <Filter>Source\Editor\LevelEditor\Selection</Filter>
     </ClCompile>
@@ -589,9 +592,6 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp">
       <Filter>Source\Editor\MainFrame</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\Scene\EditorSceneManager.cpp">
-      <Filter>Source\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Settings\EditorSettings.cpp">
       <Filter>Source\Editor\Settings</Filter>
@@ -1382,6 +1382,9 @@
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h">
       <Filter>Source\Editor\LevelEditor\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\Scene\LevelSceneManager.h">
+      <Filter>Source\Editor\LevelEditor\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\Selection\SelectionManager.h">
       <Filter>Source\Editor\LevelEditor\Selection</Filter>
     </ClInclude>
@@ -1444,9 +1447,6 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h">
       <Filter>Source\Editor\MainFrame</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\Scene\EditorSceneManager.h">
-      <Filter>Source\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Settings\EditorSettings.h">
       <Filter>Source\Editor\Settings</Filter>

@@ -65,8 +65,6 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
         MainFrame.Create(Window, Renderer, this);
     }
 
-    SceneManager.Init(this);
-    HistoryManager.Init(this);
     AssetImportManager.Init(this);
 
     // 기본 월드 생성 — 모든 서브시스템 초기화의 기반
@@ -79,7 +77,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
-        SceneManager.LoadStartLevel();
+        LevelEditor.GetSceneManager().LoadStartLevel();
     }
     ApplyTransformSettingsToGizmo();
 
@@ -99,8 +97,6 @@ void UEditorEngine::Shutdown()
     FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
     CloseScene();
     AssetImportManager.Shutdown();
-    HistoryManager.Shutdown();
-    SceneManager.Shutdown();
     LevelEditor.Shutdown();
     MainFrame.Release();
 
@@ -124,7 +120,7 @@ void UEditorEngine::Tick(float DeltaTime)
         LoadScene(SceneToLoad);
     }
     LevelEditor.GetPIEManager().Tick(DeltaTime);
-    SceneManager.Tick(DeltaTime);
+    LevelEditor.GetSceneManager().Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
     FDirectoryWatcher::Get().ProcessChanges();
@@ -231,87 +227,87 @@ bool UEditorEngine::TogglePIEControlMode() { return LevelEditor.GetPIEManager().
 
 void UEditorEngine::ResetViewport() { GetViewportLayout().ResetViewport(GetWorld()); }
 
-void UEditorEngine::CloseScene() { SceneManager.CloseScene(); }
+void UEditorEngine::CloseScene() { LevelEditor.GetSceneManager().CloseScene(); }
 
-void UEditorEngine::NewScene() { SceneManager.NewScene(); }
+void UEditorEngine::NewScene() { LevelEditor.GetSceneManager().NewScene(); }
 
-void UEditorEngine::ClearScene() { SceneManager.ClearScene(); }
+void UEditorEngine::ClearScene() { LevelEditor.GetSceneManager().ClearScene(); }
 
 void UEditorEngine::BeginTrackedSceneChange()
 {
-    HistoryManager.BeginTrackedSceneChange();
+    LevelEditor.GetHistoryManager().BeginTrackedSceneChange();
 }
 
 void UEditorEngine::CommitTrackedSceneChange()
 {
-    HistoryManager.CommitTrackedSceneChange();
+    LevelEditor.GetHistoryManager().CommitTrackedSceneChange();
 }
 
 void UEditorEngine::CancelTrackedSceneChange()
 {
-    HistoryManager.CancelTrackedSceneChange();
+    LevelEditor.GetHistoryManager().CancelTrackedSceneChange();
 }
 
 bool UEditorEngine::CanUndoSceneChange() const
 {
-    return HistoryManager.CanUndoSceneChange();
+    return LevelEditor.GetHistoryManager().CanUndoSceneChange();
 }
 
-bool UEditorEngine::CanRedoSceneChange() const { return HistoryManager.CanRedoSceneChange(); }
+bool UEditorEngine::CanRedoSceneChange() const { return LevelEditor.GetHistoryManager().CanRedoSceneChange(); }
 
 void UEditorEngine::UndoTrackedSceneChange()
 {
-    HistoryManager.UndoTrackedSceneChange();
+    LevelEditor.GetHistoryManager().UndoTrackedSceneChange();
 }
 
 void UEditorEngine::RedoTrackedSceneChange()
 {
-    HistoryManager.RedoTrackedSceneChange();
+    LevelEditor.GetHistoryManager().RedoTrackedSceneChange();
 }
 
 void UEditorEngine::ClearTrackedTransformHistory()
 {
-    HistoryManager.ClearTrackedTransformHistory();
+    LevelEditor.GetHistoryManager().ClearTrackedTransformHistory();
 }
 
-void UEditorEngine::BeginTrackedTransformChange() { HistoryManager.BeginTrackedTransformChange(); }
+void UEditorEngine::BeginTrackedTransformChange() { LevelEditor.GetHistoryManager().BeginTrackedTransformChange(); }
 
-void UEditorEngine::CommitTrackedTransformChange() { HistoryManager.CommitTrackedTransformChange(); }
+void UEditorEngine::CommitTrackedTransformChange() { LevelEditor.GetHistoryManager().CommitTrackedTransformChange(); }
 
-bool UEditorEngine::CanUndoTransformChange() const { return HistoryManager.CanUndoTransformChange(); }
+bool UEditorEngine::CanUndoTransformChange() const { return LevelEditor.GetHistoryManager().CanUndoTransformChange(); }
 
-bool UEditorEngine::CanRedoTransformChange() const { return HistoryManager.CanRedoTransformChange(); }
+bool UEditorEngine::CanRedoTransformChange() const { return LevelEditor.GetHistoryManager().CanRedoTransformChange(); }
 
-void UEditorEngine::UndoTrackedTransformChange() { HistoryManager.UndoTrackedTransformChange(); }
+void UEditorEngine::UndoTrackedTransformChange() { LevelEditor.GetHistoryManager().UndoTrackedTransformChange(); }
 
-void UEditorEngine::RedoTrackedTransformChange() { HistoryManager.RedoTrackedTransformChange(); }
+void UEditorEngine::RedoTrackedTransformChange() { LevelEditor.GetHistoryManager().RedoTrackedTransformChange(); }
 
 void UEditorEngine::ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo)
 {
-    HistoryManager.ApplyTrackedSceneChange(Change, bRedo);
+    LevelEditor.GetHistoryManager().ApplyTrackedSceneChange(Change, bRedo);
 }
 
 void UEditorEngine::ApplyTrackedActorDeltas(const FTrackedSceneChange &Change, bool bRedo)
 {
-    HistoryManager.ApplyTrackedActorDeltas(Change, bRedo);
+    LevelEditor.GetHistoryManager().ApplyTrackedActorDeltas(Change, bRedo);
 }
 
 void UEditorEngine::RestoreTrackedActorOrder(const TArray<uint32> &OrderedUUIDs)
 {
-    HistoryManager.RestoreTrackedActorOrder(OrderedUUIDs);
+    LevelEditor.GetHistoryManager().RestoreTrackedActorOrder(OrderedUUIDs);
 }
 
 void UEditorEngine::RestoreTrackedFolderOrder(const TArray<FString> &OrderedFolders)
 {
-    HistoryManager.RestoreTrackedFolderOrder(OrderedFolders);
+    LevelEditor.GetHistoryManager().RestoreTrackedFolderOrder(OrderedFolders);
 }
 
 void UEditorEngine::RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs)
 {
-    HistoryManager.RestoreTrackedSelection(SelectedUUIDs);
+    LevelEditor.GetHistoryManager().RestoreTrackedSelection(SelectedUUIDs);
 }
 
-void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { HistoryManager.InvalidateTrackedSceneSnapshotCache(); }
+void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { LevelEditor.GetHistoryManager().InvalidateTrackedSceneSnapshotCache(); }
 
 UCameraComponent *UEditorEngine::FindSceneViewportCamera() const
 {
@@ -351,17 +347,17 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData &CamData)
     }
 }
 
-bool UEditorEngine::SaveSceneAs(const FString &InScenePath) { return SceneManager.SaveSceneAs(InScenePath); }
+bool UEditorEngine::SaveSceneAs(const FString &InScenePath) { return LevelEditor.GetSceneManager().SaveSceneAs(InScenePath); }
 
-bool UEditorEngine::SaveScene() { return SceneManager.SaveScene(); }
+bool UEditorEngine::SaveScene() { return LevelEditor.GetSceneManager().SaveScene(); }
 
-void UEditorEngine::RequestSaveSceneAsDialog() { SceneManager.RequestSaveSceneAsDialog(); }
+void UEditorEngine::RequestSaveSceneAsDialog() { LevelEditor.GetSceneManager().RequestSaveSceneAsDialog(); }
 
-bool UEditorEngine::SaveSceneAsWithDialog() { return SceneManager.SaveSceneAsWithDialog(); }
+bool UEditorEngine::SaveSceneAsWithDialog() { return LevelEditor.GetSceneManager().SaveSceneAsWithDialog(); }
 
-bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath) { return SceneManager.LoadSceneFromPath(InScenePath); }
+bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath) { return LevelEditor.GetSceneManager().LoadSceneFromPath(InScenePath); }
 
-bool UEditorEngine::LoadSceneWithDialog() { return SceneManager.LoadSceneWithDialog(); }
+bool UEditorEngine::LoadSceneWithDialog() { return LevelEditor.GetSceneManager().LoadSceneWithDialog(); }
 
 bool UEditorEngine::ImportMaterialWithDialog() { return AssetImportManager.ImportMaterialWithDialog(); }
 
