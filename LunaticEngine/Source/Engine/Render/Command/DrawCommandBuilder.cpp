@@ -564,8 +564,8 @@ void FDrawCommandBuilder::BuildEditorGridCommand(const FFrameContext& Frame, con
 		AxisCmd.Pass = ERenderPass::EditorGrid;
 		AxisCmd.Shader = GridShader;
 		AxisCmd.RenderState = GridRS;
-		// 2개의 축 스트립(각 6 vertices) = 12 vertices.
-		AxisCmd.Buffer.VertexCount = 12;
+		// X/Y/Z 3개 축 스트립(축당 6 vertices) = 18 vertices.
+		AxisCmd.Buffer.VertexCount = 18;
 		AxisCmd.Bindings.PerShaderCB[0] = &GridAxisCB;
 		AxisCmd.BuildSortKey();
 	}

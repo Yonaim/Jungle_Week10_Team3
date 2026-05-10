@@ -28,6 +28,7 @@ struct VSOutput
 	float4 Position : SV_POSITION;
 	float3 WorldPos : TEXCOORD0;
 	float2 LocalPos : TEXCOORD1;
+	float3 AxisColor : TEXCOORD2;
 };
 
 float ComputeGridLineAlpha(float2 coord, float2 derivative, float lineThickness)
@@ -64,13 +65,14 @@ VSOutput VS(uint VertexID : SV_VertexID)
 		const float3 worldPos = GridCenter.xyz + GridAxisA.xyz * (localPos.x * Range) + GridAxisB.xyz * (localPos.y * Range);
 		output.WorldPos = worldPos;
 		output.LocalPos = localPos;
+		output.AxisColor = 0.0f.xxx;
 		output.Position = mul(mul(float4(worldPos, 1.0f), View), Projection);
 		return output;
 	}
 
 	const uint axisVertexID = VertexID;
-	// Axis pass: 2개 스트립(planeID 0/1)을 별도 도형으로 만든다.
-	const uint planeID = axisVertexID / 6;
+	// Axis pass: X/Y/Z 3개 축 스트립(축당 6 vertices)을 생성한다.
+	const uint axisID = axisVertexID / 6;
 	const uint localID = axisVertexID % 6;
 	const float2 q = Positions[localID];
 	const float axisT = q.x;
@@ -78,21 +80,32 @@ VSOutput VS(uint VertexID : SV_VertexID)
 
 	float3 worldPos = 0.0f.xxx;
 	float axisCoord = 0.0f;
-	if (planeID == 0)
+	float3 axisColor = 0.0f.xxx;
+	if (axisID == 0)
 	{
-		// Y 폭을 가지는 Z축 스트립
-		worldPos = float3(0.0f, q.y * stripHalfWidth, axisT * AxisLength);
+		// X축 (빨강): Y 방향 폭을 가진 리본
+		worldPos = float3(axisT * AxisLength, q.y * stripHalfWidth, 0.0f);
 		axisCoord = worldPos.y;
+		axisColor = AxisColorA.rgb;
+	}
+	else if (axisID == 1)
+	{
+		// Y축 (초록): X 방향 폭을 가진 리본
+		worldPos = float3(q.y * stripHalfWidth, axisT * AxisLength, 0.0f);
+		axisCoord = worldPos.x;
+		axisColor = AxisColorB.rgb;
 	}
 	else
 	{
-		// X 폭을 가지는 Z축 스트립
+		// Z축 (파랑): X 방향 폭을 가진 리본
 		worldPos = float3(q.y * stripHalfWidth, 0.0f, axisT * AxisLength);
 		axisCoord = worldPos.x;
+		axisColor = AxisColorN.rgb;
 	}
 
 	output.WorldPos = worldPos;
 	output.LocalPos = float2(axisCoord, axisT);
+	output.AxisColor = axisColor;
 	output.Position = mul(mul(float4(worldPos, 1.0f), View), Projection);
 	return output;
 }
@@ -114,7 +127,7 @@ float4 PS(VSOutput input) : SV_TARGET
 		axisAlpha *= 1.0f - smoothstep(0.85f, 1.0f, abs(input.LocalPos.y));
 		float finalAlpha = axisAlpha * fade * AxisIntensity * nearMask;
 		finalAlpha *= step(0.01f, finalAlpha);
-		return float4(AxisColorN.rgb, finalAlpha);
+		return float4(input.AxisColor, finalAlpha);
 	}
 
 	const float2 planeCoord = float2(dot(input.WorldPos, GridAxisA.xyz), dot(input.WorldPos, GridAxisB.xyz));
