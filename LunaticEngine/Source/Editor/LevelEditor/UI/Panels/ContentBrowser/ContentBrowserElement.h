@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "ContentItem.h"
 #include "Core/ClassTypes.h"
-#include "Editor/LevelEditor/UI/Panels/ContentBrowser/ContentBrowserContext.h"
+#include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowserContext.h"
 #include <d3d11.h>
 #include <shellapi.h>
 

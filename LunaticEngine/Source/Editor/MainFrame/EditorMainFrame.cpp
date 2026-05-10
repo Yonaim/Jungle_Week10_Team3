@@ -9,7 +9,7 @@
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Object/Object.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -302,8 +302,8 @@ void FEditorMainFrame::Render(float DeltaTime)
     ImGui::PopStyleVar(4);
 
     // 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
-    const FEditorSettings &Settings = FEditorSettings::Get();
-    if (EditorEngine && Settings.UI.bViewport)
+    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (EditorEngine && Settings.Panels.bViewport)
     {
         SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
         EditorEngine->RenderViewportUI(DeltaTime);
@@ -314,42 +314,42 @@ void FEditorMainFrame::Render(float DeltaTime)
         }
     }
 
-    if (!bHideEditorWindows && Settings.UI.bImGUISettings)
+    if (!bHideEditorWindows && Settings.Panels.bImGuiSettings)
     {
         ImGuiSetting::ShowSetting();
     }
 
-    if (!bHideEditorWindows && Settings.UI.bConsole)
+    if (!bHideEditorWindows && Settings.Panels.bConsole)
     {
         SCOPE_STAT_CAT("ConsolePanel.Render", "5_UI");
         ConsolePanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.UI.bProperty)
+    if (!bHideEditorWindows && Settings.Panels.bDetails)
     {
         SCOPE_STAT_CAT("DetailsPanel.Render", "5_UI");
         DetailsPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.UI.bScene)
+    if (!bHideEditorWindows && Settings.Panels.bOutliner)
     {
         SCOPE_STAT_CAT("OutlinerPanel.Render", "5_UI");
         OutlinerPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.UI.bPlaceActors)
+    if (!bHideEditorWindows && Settings.Panels.bPlaceActors)
     {
         SCOPE_STAT_CAT("PlaceActorsPanel.Render", "5_UI");
         PlaceActorsPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.UI.bStat)
+    if (!bHideEditorWindows && Settings.Panels.bStats)
     {
         SCOPE_STAT_CAT("StatPanel.Render", "5_UI");
         StatPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.UI.bContentBrowser)
+    if (!bHideEditorWindows && Settings.Panels.bContentBrowser)
     {
         SCOPE_STAT_CAT("ContentBrowser.Render", "5_UI");
         ContentBrowser.Render(DeltaTime);
@@ -361,7 +361,7 @@ void FEditorMainFrame::Render(float DeltaTime)
         AssetEditorManager.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.UI.bShadowMapDebug)
+    if (!bHideEditorWindows && Settings.Panels.bShadowMapDebug)
     {
         ShadowMapDebugPanel.Render(DeltaTime);
     }
@@ -417,7 +417,7 @@ void FEditorMainFrame::RenderMainMenuBar()
         return;
     }
 
-    FEditorSettings          &Settings = FEditorSettings::Get();
+    FLevelEditorSettings          &Settings = FLevelEditorSettings::Get();
     ID3D11ShaderResourceView *LogoTexture =
         FResourceManager::Get().FindLoadedTexture(FResourceManager::Get().ResolvePath(FName("Editor.Icon.AppLogo"))).Get();
 
@@ -564,17 +564,17 @@ void FEditorMainFrame::RenderMainMenuBar()
 
         if (ImGui::BeginMenu("Window"))
         {
-            ImGui::Checkbox("Viewport", &Settings.UI.bViewport);
+            ImGui::Checkbox("Viewport", &Settings.Panels.bViewport);
             ImGui::Separator();
-            ImGui::Checkbox("Console", &Settings.UI.bConsole);
-            ImGui::Checkbox("Details", &Settings.UI.bProperty);
-            ImGui::Checkbox("Outliner", &Settings.UI.bScene);
-            ImGui::Checkbox("Place Actors", &Settings.UI.bPlaceActors);
-            ImGui::Checkbox("Stat Profiler", &Settings.UI.bStat);
-            ImGui::Checkbox("Content Browser", &Settings.UI.bContentBrowser);
-            ImGui::Checkbox("Shadow Map Debug", &Settings.UI.bShadowMapDebug);
+            ImGui::Checkbox("Console", &Settings.Panels.bConsole);
+            ImGui::Checkbox("Details", &Settings.Panels.bDetails);
+            ImGui::Checkbox("Outliner", &Settings.Panels.bOutliner);
+            ImGui::Checkbox("Place Actors", &Settings.Panels.bPlaceActors);
+            ImGui::Checkbox("Stat Profiler", &Settings.Panels.bStats);
+            ImGui::Checkbox("Content Browser", &Settings.Panels.bContentBrowser);
+            ImGui::Checkbox("Shadow Map Debug", &Settings.Panels.bShadowMapDebug);
             ImGui::Separator();
-            ImGui::Checkbox("ImGuiSetting", &Settings.UI.bImGUISettings);
+            ImGui::Checkbox("ImGuiSetting", &Settings.Panels.bImGuiSettings);
             ImGui::EndMenu();
         }
 
@@ -1097,11 +1097,11 @@ void FEditorMainFrame::HandleGlobalShortcuts()
     }
 
     FInputManager   &Input = FInputManager::Get();
-    FEditorSettings &Settings = FEditorSettings::Get();
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
 
     if (Input.IsKeyPressed(VK_OEM_3))
     {
-        Settings.UI.bConsole = !Settings.UI.bConsole;
+        Settings.Panels.bConsole = !Settings.Panels.bConsole;
         return;
     }
 
@@ -1113,7 +1113,7 @@ void FEditorMainFrame::HandleGlobalShortcuts()
     const bool bShift = Input.IsKeyDown(VK_SHIFT);
     if (Input.IsKeyPressed(VK_SPACE))
     {
-        Settings.UI.bContentBrowser = !Settings.UI.bContentBrowser;
+        Settings.Panels.bContentBrowser = !Settings.Panels.bContentBrowser;
         return;
     }
 
@@ -1148,43 +1148,43 @@ void FEditorMainFrame::HandleGlobalShortcuts()
 
 void FEditorMainFrame::HideEditorWindows()
 {
-    if (bHasSavedUIVisibility)
+    if (bHasSavedPanelVisibility)
     {
         bHideEditorWindows = true;
         bShowPanelList = false;
         return;
     }
 
-    FEditorSettings &Settings = FEditorSettings::Get();
-    SavedUIVisibility = Settings.UI;
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    SavedPanelVisibility = Settings.Panels;
     bSavedShowPanelList = bShowPanelList;
-    bHasSavedUIVisibility = true;
+    bHasSavedPanelVisibility = true;
     bHideEditorWindows = true;
     bShowPanelList = false;
 
-    Settings.UI.bConsole = false;
-    Settings.UI.bProperty = false;
-    Settings.UI.bScene = false;
-    Settings.UI.bPlaceActors = false;
-    Settings.UI.bStat = false;
-    Settings.UI.bContentBrowser = false;
-    Settings.UI.bImGUISettings = false;
-    Settings.UI.bShadowMapDebug = false;
+    Settings.Panels.bConsole = false;
+    Settings.Panels.bDetails = false;
+    Settings.Panels.bOutliner = false;
+    Settings.Panels.bPlaceActors = false;
+    Settings.Panels.bStats = false;
+    Settings.Panels.bContentBrowser = false;
+    Settings.Panels.bImGuiSettings = false;
+    Settings.Panels.bShadowMapDebug = false;
 }
 
 void FEditorMainFrame::ShowEditorWindows()
 {
-    if (!bHasSavedUIVisibility)
+    if (!bHasSavedPanelVisibility)
     {
         bHideEditorWindows = false;
         return;
     }
 
-    FEditorSettings &Settings = FEditorSettings::Get();
-    Settings.UI = SavedUIVisibility;
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    Settings.Panels = SavedPanelVisibility;
     bShowPanelList = bSavedShowPanelList;
     bHideEditorWindows = false;
-    bHasSavedUIVisibility = false;
+    bHasSavedPanelVisibility = false;
 }
 
 void FEditorMainFrame::HideEditorWindowsForPIE() { HideEditorWindows(); }

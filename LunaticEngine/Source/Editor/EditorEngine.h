@@ -7,7 +7,7 @@
 #include "LevelEditor/LevelEditor.h"
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "MainFrame/EditorMainFrame.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -70,7 +70,7 @@ class UEditorEngine : public UEngine
     void           ShowEditorWindows() { MainFrame.ShowEditorWindows(); }
     void           SetShowEditorOnlyComponents(bool bEnable) { MainFrame.SetShowEditorOnlyComponents(bEnable); }
     bool           IsShowingEditorOnlyComponents() const { return MainFrame.IsShowingEditorOnlyComponents(); }
-    bool           IsWorldCoordSystem() const { return FEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
+    bool           IsWorldCoordSystem() const { return FLevelEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
     void           ToggleCoordSystem();
     void           ApplyTransformSettingsToGizmo();
     void           BeginTrackedSceneChange();
@@ -94,8 +94,8 @@ class UEditorEngine : public UEngine
             P->OnSceneCleared();
     }
 
-    FEditorSettings       &GetSettings() { return FEditorSettings::Get(); }
-    const FEditorSettings &GetSettings() const { return FEditorSettings::Get(); }
+    FLevelEditorSettings       &GetSettings() { return FLevelEditorSettings::Get(); }
+    const FLevelEditorSettings &GetSettings() const { return FLevelEditorSettings::Get(); }
 
     FSelectionManager       &GetSelectionManager() { return LevelEditor.GetSelectionManager(); }
     const FSelectionManager &GetSelectionManager() const { return LevelEditor.GetSelectionManager(); }

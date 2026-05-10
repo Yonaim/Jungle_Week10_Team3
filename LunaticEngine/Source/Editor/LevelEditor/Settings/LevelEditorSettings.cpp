@@ -1,4 +1,4 @@
-﻿#include "Editor/Settings/EditorSettings.h"
+﻿#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 
@@ -68,14 +68,14 @@ constexpr const char *Slots = "Slots";
 constexpr const char *ViewportType = "ViewportType";
 constexpr const char *SplitterRatios = "SplitterRatios";
 
-// UI Widgets
-constexpr const char *UIWidgets = "UIWidgets";
+// UI Panels
+constexpr const char *UIPanels = "UIPanels";
 constexpr const char *ShowViewport = "ShowViewport";
 constexpr const char *ShowConsole = "ShowConsole";
-constexpr const char *ShowPropertyWindow = "ShowPropertyWindow";
-constexpr const char *ShowSceneManager = "ShowSceneManager";
+constexpr const char *ShowDetailsPanel = "ShowDetailsPanel";
+constexpr const char *ShowOutlinerPanel = "ShowOutlinerPanel";
 constexpr const char *ShowPlaceActors = "ShowPlaceActors";
-constexpr const char *ShowStatProfiler = "ShowStatProfiler";
+constexpr const char *ShowStatsPanel = "ShowStatsPanel";
 constexpr const char *ShowContentBrowser = "ShowContentBrowser";
 constexpr const char *ShowImGuiSettings = "ShowImGuiSettings";
 constexpr const char *ShowShadowMapDebug = "ShowShadowMapDebug";
@@ -99,7 +99,7 @@ constexpr const char *bEnableScaleSnap = "bEnableScaleSnap";
 constexpr const char *ScaleSnapSize = "ScaleSnapSize";
 } // namespace Key
 
-void FEditorSettings::SaveToFile(const FString &Path) const
+void FLevelEditorSettings::SaveToFile(const FString &Path) const
 {
     using namespace json;
 
@@ -183,19 +183,18 @@ void FEditorSettings::SaveToFile(const FString &Path) const
     LayoutObj[Key::SplitterRatios] = RatiosArr;
     Root[Key::Layout] = LayoutObj;
 
-    // UI Widgets
-    JSON WidgetsObj = Object();
-    WidgetsObj[Key::ShowViewport] = UI.bViewport;
-    WidgetsObj[Key::ShowConsole] = UI.bConsole;
-    WidgetsObj[Key::ShowPropertyWindow] = UI.bProperty;
-    WidgetsObj[Key::ShowSceneManager] = UI.bScene;
-    WidgetsObj[Key::ShowPlaceActors] = UI.bPlaceActors;
-    WidgetsObj[Key::ShowStatProfiler] = UI.bStat;
-    WidgetsObj[Key::ShowContentBrowser] = UI.bContentBrowser;
-    WidgetsObj[Key::ShowImGuiSettings] = UI.bImGUISettings;
-    WidgetsObj[Key::ShowShadowMapDebug] = UI.bShadowMapDebug;
-    Root[Key::UIWidgets] = WidgetsObj;
-
+    // UI Panels
+    JSON PanelsObj = Object();
+    PanelsObj[Key::ShowViewport] = Panels.bViewport;
+    PanelsObj[Key::ShowConsole] = Panels.bConsole;
+    PanelsObj[Key::ShowDetailsPanel] = Panels.bDetails;
+    PanelsObj[Key::ShowOutlinerPanel] = Panels.bOutliner;
+    PanelsObj[Key::ShowPlaceActors] = Panels.bPlaceActors;
+    PanelsObj[Key::ShowStatsPanel] = Panels.bStats;
+    PanelsObj[Key::ShowContentBrowser] = Panels.bContentBrowser;
+    PanelsObj[Key::ShowImGuiSettings] = Panels.bImGuiSettings;
+    PanelsObj[Key::ShowShadowMapDebug] = Panels.bShadowMapDebug;
+    Root[Key::UIPanels] = PanelsObj;
     // Perspective Camera
     JSON CamObj = Object();
     CamObj[Key::Location] = Array(PerspCamLocation.X, PerspCamLocation.Y, PerspCamLocation.Z);
@@ -229,7 +228,7 @@ void FEditorSettings::SaveToFile(const FString &Path) const
     }
 }
 
-void FEditorSettings::LoadFromFile(const FString &Path)
+void FLevelEditorSettings::LoadFromFile(const FString &Path)
 {
     using namespace json;
 
@@ -394,30 +393,54 @@ void FEditorSettings::LoadFromFile(const FString &Path)
         }
     }
 
-    // UI Widgets
-    if (Root.hasKey(Key::UIWidgets))
+    // UI Panels
+    if (Root.hasKey(Key::UIPanels))
     {
-        JSON W = Root[Key::UIWidgets];
-        if (W.hasKey(Key::ShowViewport))
-            UI.bViewport = W[Key::ShowViewport].ToBool();
-        if (W.hasKey(Key::ShowConsole))
-            UI.bConsole = W[Key::ShowConsole].ToBool();
-        if (W.hasKey(Key::ShowPropertyWindow))
-            UI.bProperty = W[Key::ShowPropertyWindow].ToBool();
-        if (W.hasKey(Key::ShowSceneManager))
-            UI.bScene = W[Key::ShowSceneManager].ToBool();
-        if (W.hasKey(Key::ShowPlaceActors))
-            UI.bPlaceActors = W[Key::ShowPlaceActors].ToBool();
-        if (W.hasKey(Key::ShowStatProfiler))
-            UI.bStat = W[Key::ShowStatProfiler].ToBool();
-        if (W.hasKey(Key::ShowContentBrowser))
-            UI.bContentBrowser = W[Key::ShowContentBrowser].ToBool();
-        if (W.hasKey(Key::ShowImGuiSettings))
-            UI.bImGUISettings = W[Key::ShowImGuiSettings].ToBool();
-        if (W.hasKey(Key::ShowShadowMapDebug))
-            UI.bShadowMapDebug = W[Key::ShowShadowMapDebug].ToBool();
+        JSON P = Root[Key::UIPanels];
+        if (P.hasKey(Key::ShowViewport))
+            Panels.bViewport = P[Key::ShowViewport].ToBool();
+        if (P.hasKey(Key::ShowConsole))
+            Panels.bConsole = P[Key::ShowConsole].ToBool();
+        if (P.hasKey(Key::ShowDetailsPanel))
+            Panels.bDetails = P[Key::ShowDetailsPanel].ToBool();
+        if (P.hasKey(Key::ShowOutlinerPanel))
+            Panels.bOutliner = P[Key::ShowOutlinerPanel].ToBool();
+        if (P.hasKey(Key::ShowPlaceActors))
+            Panels.bPlaceActors = P[Key::ShowPlaceActors].ToBool();
+        if (P.hasKey(Key::ShowStatsPanel))
+            Panels.bStats = P[Key::ShowStatsPanel].ToBool();
+        else if (P.hasKey("ShowStatProfiler"))
+            Panels.bStats = P["ShowStatProfiler"].ToBool();
+        if (P.hasKey(Key::ShowContentBrowser))
+            Panels.bContentBrowser = P[Key::ShowContentBrowser].ToBool();
+        if (P.hasKey(Key::ShowImGuiSettings))
+            Panels.bImGuiSettings = P[Key::ShowImGuiSettings].ToBool();
+        if (P.hasKey(Key::ShowShadowMapDebug))
+            Panels.bShadowMapDebug = P[Key::ShowShadowMapDebug].ToBool();
     }
 
+    else if (Root.hasKey("UIWidgets"))
+    {
+        JSON LegacyPanels = Root["UIWidgets"];
+        if (LegacyPanels.hasKey(Key::ShowViewport))
+            Panels.bViewport = LegacyPanels[Key::ShowViewport].ToBool();
+        if (LegacyPanels.hasKey(Key::ShowConsole))
+            Panels.bConsole = LegacyPanels[Key::ShowConsole].ToBool();
+        if (LegacyPanels.hasKey("ShowPropertyWindow"))
+            Panels.bDetails = LegacyPanels["ShowPropertyWindow"].ToBool();
+        if (LegacyPanels.hasKey("ShowSceneManager"))
+            Panels.bOutliner = LegacyPanels["ShowSceneManager"].ToBool();
+        if (LegacyPanels.hasKey(Key::ShowPlaceActors))
+            Panels.bPlaceActors = LegacyPanels[Key::ShowPlaceActors].ToBool();
+        if (LegacyPanels.hasKey("ShowStatProfiler"))
+            Panels.bStats = LegacyPanels["ShowStatProfiler"].ToBool();
+        if (LegacyPanels.hasKey(Key::ShowContentBrowser))
+            Panels.bContentBrowser = LegacyPanels[Key::ShowContentBrowser].ToBool();
+        if (LegacyPanels.hasKey(Key::ShowImGuiSettings))
+            Panels.bImGuiSettings = LegacyPanels[Key::ShowImGuiSettings].ToBool();
+        if (LegacyPanels.hasKey(Key::ShowShadowMapDebug))
+            Panels.bShadowMapDebug = LegacyPanels[Key::ShowShadowMapDebug].ToBool();
+    }
     // Perspective Camera
     if (Root.hasKey(Key::PerspectiveCamera))
     {
@@ -464,3 +487,7 @@ void FEditorSettings::LoadFromFile(const FString &Path)
             ScaleSnapSize = static_cast<float>(TransformObj[Key::ScaleSnapSize].ToFloat());
     }
 }
+
+
+
+

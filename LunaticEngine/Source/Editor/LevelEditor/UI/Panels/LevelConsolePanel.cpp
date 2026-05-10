@@ -4,7 +4,7 @@
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "GameFramework/World.h"
 #include "Object/Object.h"
 #include "Render/Scene/FScene.h"
@@ -429,8 +429,8 @@ void FLevelConsolePanel::Render(float DeltaTime)
     (void)DeltaTime;
 
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    FEditorSettings &Settings = FEditorSettings::Get();
-    if (!Settings.UI.bConsole)
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (!Settings.Panels.bConsole)
     {
         return;
     }
@@ -439,7 +439,7 @@ void FLevelConsolePanel::Render(float DeltaTime)
     const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Console", PanelIconKey);
     const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Console", Settings.UI.bConsole, "x##CloseConsole");
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Console", Settings.Panels.bConsole, "x##CloseConsole");
     if (!bIsOpen)
     {
         ImGui::End();

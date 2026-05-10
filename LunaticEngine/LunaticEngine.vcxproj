@@ -333,7 +333,7 @@
     <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp" />
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\EditorDragSource.cpp" />
-    <ClCompile Include="Source\Editor\Common\UI\EditorWidget.cpp" />
+    <ClCompile Include="Source\Editor\Common\UI\EditorUIElement.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\NotificationToast.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp" />
@@ -343,6 +343,7 @@
     <ClCompile Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Scene\LevelSceneManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Selection\SelectionManager.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\Settings\LevelEditorSettings.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\UI\Area\LevelViewportArea.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\UI\Debug\ShadowMapDebugPanel.cpp" />
@@ -361,7 +362,6 @@
     <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp" />
-    <ClCompile Include="Source\Editor\Settings\EditorSettings.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetCurveUtils.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetData.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetFileSerializer.cpp" />
@@ -616,7 +616,7 @@
     <ClInclude Include="Source\Editor\Common\UI\EditorAccentColor.h" />
     <ClInclude Include="Source\Editor\Common\UI\EditorDragSource.h" />
     <ClInclude Include="Source\Editor\Common\UI\EditorPanelTitleUtils.h" />
-    <ClInclude Include="Source\Editor\Common\UI\EditorWidget.h" />
+    <ClInclude Include="Source\Editor\Common\UI\EditorUIElement.h" />
     <ClInclude Include="Source\Editor\Common\UI\NotificationToast.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h" />
@@ -628,6 +628,7 @@
     <ClInclude Include="Source\Editor\LevelEditor\Render\EditorRenderPipeline.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Scene\LevelSceneManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Selection\SelectionManager.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\Settings\LevelEditorSettings.h" />
     <ClInclude Include="Source\Editor\LevelEditor\Subsystem\OverlayStatSystem.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Area\LevelViewportArea.h" />
     <ClInclude Include="Source\Editor\LevelEditor\UI\Debug\ShadowMapDebugPanel.h" />
@@ -648,7 +649,6 @@
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.h" />
     <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h" />
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h" />
-    <ClInclude Include="Source\Editor\Settings\EditorSettings.h" />
     <ClInclude Include="Source\Engine\Asset\AssetCurveUtils.h" />
     <ClInclude Include="Source\Engine\Asset\AssetData.h" />
     <ClInclude Include="Source\Engine\Asset\AssetFileSerializer.h" />

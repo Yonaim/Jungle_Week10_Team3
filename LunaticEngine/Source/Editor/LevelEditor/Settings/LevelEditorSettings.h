@@ -13,9 +13,9 @@ enum class EEditorCoordSystem : uint8
 	Local = 1
 };
 
-class FEditorSettings : public TSingleton<FEditorSettings>
+class FLevelEditorSettings : public TSingleton<FLevelEditorSettings>
 {
-	friend class TSingleton<FEditorSettings>;
+	friend class TSingleton<FLevelEditorSettings>;
 
 public:
 	// Viewport
@@ -52,21 +52,23 @@ public:
 	FString ContentBrowserPath; // 비어있으면 프로젝트 루트
 
 	// UI 위젯 표시 여부
-	struct FUIVisibility
+	struct FLevelEditorPanelVisibility
 	{
 		bool bViewport = true;
 		bool bConsole = true;
-		bool bProperty = true;
-		bool bScene = true;
+		bool bDetails = true;
+		bool bOutliner = true;
 		bool bPlaceActors = true;
-		bool bStat = false;
+		bool bStats = false;
 		bool bContentBrowser = true;
-		bool bImGUISettings = false;
+		bool bImGuiSettings = false;
 		bool bShadowMapDebug = false;
-	} UI;
+	} Panels;
 
 	void SaveToFile(const FString& Path) const;
 	void LoadFromFile(const FString& Path);
 
 	static FString GetDefaultSettingsPath() { return FPaths::ToUtf8(FPaths::SettingsFilePath()); }
 };
+
+

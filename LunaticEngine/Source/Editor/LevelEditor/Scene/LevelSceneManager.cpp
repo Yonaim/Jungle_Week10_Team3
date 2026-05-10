@@ -6,7 +6,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "Object/Object.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 
 void FLevelSceneManager::Init(UEditorEngine* InEditorEngine)
 {
@@ -57,7 +57,7 @@ void FLevelSceneManager::LoadStartLevel()
         return;
     }
 
-    const FString& StartLevel = FEditorSettings::Get().EditorStartLevel;
+    const FString& StartLevel = FLevelEditorSettings::Get().EditorStartLevel;
     if (StartLevel.empty())
     {
         return;

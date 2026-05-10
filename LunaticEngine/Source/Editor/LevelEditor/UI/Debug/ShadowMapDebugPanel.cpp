@@ -3,7 +3,7 @@
 #include "Component/Light/SpotLightComponent.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "EditorEngine.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "GameFramework/Light/DirectionalLightActor.h"
 #include "GameFramework/World.h"
 #include "ImGui/imgui.h"
@@ -288,8 +288,8 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
 {
     (void)DeltaTime;
 
-    FEditorSettings &Settings = FEditorSettings::Get();
-    if (!Settings.UI.bShadowMapDebug)
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (!Settings.Panels.bShadowMapDebug)
     {
         return;
     }
@@ -298,7 +298,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
     const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Shadow Map Debug", PanelIconKey);
     const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Shadow Map Debug", Settings.UI.bShadowMapDebug,
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Shadow Map Debug", Settings.Panels.bShadowMapDebug,
                                                      "x##CloseShadow");
     if (!bIsOpen)
     {

@@ -1,9 +1,9 @@
-﻿#include "Editor/LevelEditor/UI/Panels/LevelDetailsPanel.h"
+﻿#include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
-#include "Editor/Common/UI/EditorAccentColor.h"
-#include "Editor/Common/UI/EditorPanelTitleUtils.h"
-#include "Editor/EditorEngine.h"
-#include "Editor/Settings/EditorSettings.h"
+#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
+#include "EditorEngine.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 
 
 #include "Component/ActorComponent.h"
@@ -1688,8 +1688,8 @@ void FLevelDetailsPanel::Render(float DeltaTime)
 
     ImGui::SetNextWindowSize(ImVec2(350.0f, 500.0f), ImGuiCond_Once);
 
-    FEditorSettings &Settings = FEditorSettings::Get();
-    if (!Settings.UI.bProperty)
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (!Settings.Panels.bDetails)
     {
         return;
     }
@@ -1698,7 +1698,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
     const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Details", PanelIconKey);
     ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Details", Settings.UI.bProperty, "x##CloseDetails");
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Details", Settings.Panels.bDetails, "x##CloseDetails");
     EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     FSelectionManager &Selection = EditorEngine->GetSelectionManager();
@@ -2901,7 +2901,7 @@ void FLevelDetailsPanel::RenderPropertySection(const char *SectionName, TArray<F
 
         int32 MutableIndex = PropIndex;
         EditorEngine->BeginTrackedSceneChange();
-        const bool bChanged = RenderPropertyWidget(Props, MutableIndex);
+        const bool bChanged = RenderPropertyRow(Props, MutableIndex);
         if (bChanged)
         {
             bAnyChanged = true;
@@ -3017,7 +3017,7 @@ void FLevelDetailsPanel::PropagatePropertyChange(const FString &PropName, const 
     }
 }
 
-bool FLevelDetailsPanel::RenderPropertyWidget(TArray<FPropertyDescriptor> &Props, int32 &Index)
+bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, int32 &Index)
 {
     ImGui::PushID(Index);
     FPropertyDescriptor &Prop = Props[Index];

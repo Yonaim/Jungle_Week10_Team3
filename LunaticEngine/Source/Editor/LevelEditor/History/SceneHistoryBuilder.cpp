@@ -1,7 +1,7 @@
-#include "Editor/LevelEditor/History/SceneHistoryBuilder.h"
+﻿#include "LevelEditor/History/SceneHistoryBuilder.h"
 
 #include "Component/CameraComponent.h"
-#include "Editor/EditorEngine.h"
+#include "EditorEngine.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Object/Object.h"

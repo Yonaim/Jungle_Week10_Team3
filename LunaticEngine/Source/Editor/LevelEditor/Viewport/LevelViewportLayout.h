@@ -11,7 +11,7 @@ class AActor;
 class FLevelEditorViewportClient;
 class FEditorViewportClient;
 class FSelectionManager;
-class FEditorSettings;
+class FLevelEditorSettings;
 class FWindowsWindow;
 class FRenderer;
 class UWorld;
@@ -50,7 +50,7 @@ class FLevelViewportLayout
               FSelectionManager *InSelectionManager);
     void Release();
 
-    // FEditorSettings ↔ 뷰포트 상태 동기화
+    // FLevelEditorSettings ↔ 뷰포트 상태 동기화
     void SaveToSettings();
     void LoadFromSettings();
 

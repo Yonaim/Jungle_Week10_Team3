@@ -57,7 +57,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     UTexture2D::ScanTextureAssets();
 
     // 에디터 전용 초기화
-    FEditorSettings::Get().LoadFromFile(FEditorSettings::GetDefaultSettingsPath());
+    FLevelEditorSettings::Get().LoadFromFile(FLevelEditorSettings::GetDefaultSettingsPath());
     FProjectSettings::Get().LoadFromFile(FProjectSettings::GetDefaultPath());
 
     {
@@ -94,7 +94,7 @@ void UEditorEngine::Shutdown()
     LevelEditor.GetViewportLayout().SaveToSettings();
     MainFrame.SaveToSettings();
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
-    FEditorSettings::Get().SaveToFile(FEditorSettings::GetDefaultSettingsPath());
+    FLevelEditorSettings::Get().SaveToFile(FLevelEditorSettings::GetDefaultSettingsPath());
     CloseScene();
     AssetImportManager.Shutdown();
     LevelEditor.Shutdown();
@@ -191,7 +191,7 @@ bool UEditorEngine::IsScoreSavePopupOpen() const { return LevelEditor.GetPIEMana
 
 void UEditorEngine::ToggleCoordSystem()
 {
-    FEditorSettings &Settings = FEditorSettings::Get();
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
     Settings.CoordSystem = (Settings.CoordSystem == EEditorCoordSystem::World) ? EEditorCoordSystem::Local : EEditorCoordSystem::World;
     ApplyTransformSettingsToGizmo();
 }
@@ -204,7 +204,7 @@ void UEditorEngine::ApplyTransformSettingsToGizmo()
         return;
     }
 
-    const FEditorSettings &Settings = FEditorSettings::Get();
+    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
     const bool             bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
     Gizmo->SetWorldSpace(bForceLocalForScale ? false : (Settings.CoordSystem == EEditorCoordSystem::World));
     // 에디터 설정의 좌표계/스냅 값을 매 프레임 Gizmo 상태와 동기화한다.

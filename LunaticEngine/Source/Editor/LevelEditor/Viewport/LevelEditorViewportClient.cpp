@@ -1,9 +1,9 @@
-#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+﻿#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 
 #include "Core/ProjectSettings.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
 #include "LevelEditor/UI/Panels/LevelConsolePanel.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Input/InputModifier.h"
 #include "Engine/Input/InputTrigger.h"
@@ -740,7 +740,7 @@ void FLevelEditorViewportClient::SetupInput()
 
     EnhancedInputManager.BindAction(ActionEditorDecreaseSnap, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) {
-                                        FEditorSettings &S = FEditorSettings::Get();
+                                        FLevelEditorSettings &S = FLevelEditorSettings::Get();
                                         if (FInputManager::Get().IsKeyDown(VK_SHIFT))
                                             S.RotationSnapSize = (std::max)(1.0f, S.RotationSnapSize - 5.0f);
                                         else
@@ -748,7 +748,7 @@ void FLevelEditorViewportClient::SetupInput()
                                     });
     EnhancedInputManager.BindAction(ActionEditorIncreaseSnap, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) {
-                                        FEditorSettings &S = FEditorSettings::Get();
+                                        FLevelEditorSettings &S = FLevelEditorSettings::Get();
                                         if (FInputManager::Get().IsKeyDown(VK_SHIFT))
                                             S.RotationSnapSize = (std::min)(90.0f, S.RotationSnapSize + 5.0f);
                                         else
@@ -829,17 +829,17 @@ void FLevelEditorViewportClient::SetupInput()
     EnhancedInputManager.BindAction(
         ActionEditorToggleGridSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
             if (FInputManager::Get().IsKeyDown(VK_SHIFT))
-                FEditorSettings::Get().bEnableTranslationSnap = !FEditorSettings::Get().bEnableTranslationSnap;
+                FLevelEditorSettings::Get().bEnableTranslationSnap = !FLevelEditorSettings::Get().bEnableTranslationSnap;
         });
     EnhancedInputManager.BindAction(
         ActionEditorToggleRotationSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
             if (FInputManager::Get().IsKeyDown(VK_SHIFT))
-                FEditorSettings::Get().bEnableRotationSnap = !FEditorSettings::Get().bEnableRotationSnap;
+                FLevelEditorSettings::Get().bEnableRotationSnap = !FLevelEditorSettings::Get().bEnableRotationSnap;
         });
     EnhancedInputManager.BindAction(
         ActionEditorToggleScaleSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
             if (FInputManager::Get().IsKeyDown(VK_SHIFT))
-                FEditorSettings::Get().bEnableScaleSnap = !FEditorSettings::Get().bEnableScaleSnap;
+                FLevelEditorSettings::Get().bEnableScaleSnap = !FLevelEditorSettings::Get().bEnableScaleSnap;
         });
 }
 
@@ -895,7 +895,7 @@ void FLevelEditorViewportClient::OnEditorZoom(const FInputActionValue &Value)
     FInputManager &Input = FInputManager::Get();
     if (Input.IsMouseButtonDown(VK_RBUTTON))
     {
-        float &Speed = FEditorSettings::Get().CameraSpeed;
+        float &Speed = FLevelEditorSettings::Get().CameraSpeed;
         Speed = Clamp(Speed + Value.Get() * 2.0f, 1.0f, 100.0f);
         return;
     }
@@ -1227,7 +1227,7 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
                 EditorEngine->TogglePIEControlMode();
             }
 
-            // 매 Tick마다 SetDrivingCamera(EditorViewportCamera)를 하지 말 것
+            // 留?Tick留덈떎 SetDrivingCamera(EditorViewportCamera)瑜??섏? 留?寃?
             if (EditorEngine->IsPIEPossessedMode())
             {
                 if (UGameViewportClient *GameViewportClient = EditorEngine->GetGameViewportClient())
@@ -2095,4 +2095,3 @@ void FLevelEditorViewportClient::DrawUIScreenTranslateGizmo()
     DrawList->AddRect(ImVec2(CenterX - CenterHalf, CenterY - CenterHalf),
                       ImVec2(CenterX + CenterHalf, CenterY + CenterHalf), IM_COL32(255, 255, 255, 220), 2.0f, 0, 1.5f);
 }
-

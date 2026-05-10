@@ -1,6 +1,6 @@
-﻿#include "Editor/LevelEditor/Subsystem/OverlayStatSystem.h"
+﻿#include "LevelEditor/Subsystem/OverlayStatSystem.h"
 
-#include "Editor/EditorEngine.h"
+#include "EditorEngine.h"
 #include "Engine/Profiling/GPUProfiler.h"
 #include "Engine/Profiling/MemoryStats.h"
 #include "Engine/Profiling/ShadowStats.h"

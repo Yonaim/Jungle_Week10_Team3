@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include "Editor/Common/UI/EditorDragSource.h"
-#include "Editor/LevelEditor/UI/Panels/ContentBrowser/ContentBrowserElement.h"
+#include "Common/UI/EditorDragSource.h"
+#include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowserElement.h"
 #include "Render/Types/RenderTypes.h"
 #include "imgui.h"
 

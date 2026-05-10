@@ -32,7 +32,7 @@
 #include "Platform/Paths.h"
 #include "Render/Pipeline/Renderer.h"
 #include "Resource/ResourceManager.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "UI/SSplitter.h"
 #include "Viewport/Viewport.h"
 #include "WICTextureLoader.h"
@@ -179,7 +179,7 @@ namespace
         return bChanged;
     }
 
-    void DrawCameraPopupContent(UCameraComponent *Camera, FEditorSettings &Settings)
+    void DrawCameraPopupContent(UCameraComponent *Camera, FLevelEditorSettings &Settings)
     {
         DrawPopupSectionHeader("CAMERA");
         ImGui::PushStyleColor(ImGuiCol_Text, CameraPopupHintColor);
@@ -792,7 +792,7 @@ namespace
         ImGui::PopID();
     }
 
-    void RenderSnapPopupContent(int32 SlotIndex, FEditorSettings &Settings, float FallbackSize, float MaxIconSize)
+    void RenderSnapPopupContent(int32 SlotIndex, FLevelEditorSettings &Settings, float FallbackSize, float MaxIconSize)
     {
         static const float TranslationSnapSizes[] = {1.0f, 5.0f, 10.0f, 50.0f, 100.0f, 500.0f, 1000.0f, 5000.0f, 10000.0f};
         static const float RotationSnapSizes[] = {5.0f, 10.0f, 15.0f, 30.0f, 45.0f, 60.0f, 90.0f, 120.0f};
@@ -860,7 +860,7 @@ namespace
         }
     }
 
-    void RenderSnapToolbarButton(int32 SlotIndex, FEditorSettings &Settings, float Width, float FallbackSize, float MaxIconSize)
+    void RenderSnapToolbarButton(int32 SlotIndex, FLevelEditorSettings &Settings, float Width, float FallbackSize, float MaxIconSize)
     {
         char ButtonId[64];
         char PopupId[64];
@@ -1072,7 +1072,7 @@ void FLevelViewportLayout::Init(UEditorEngine *InEditor, FWindowsWindow *InWindo
     // LevelViewportClient 생성 (단일 뷰포트)
     auto *LevelVC = new FLevelEditorViewportClient();
     LevelVC->SetOverlayStatSystem(&Editor->GetOverlayStatSystem());
-    LevelVC->SetSettings(&FEditorSettings::Get());
+    LevelVC->SetSettings(&FLevelEditorSettings::Get());
     LevelVC->Init(Window);
     LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
     LevelVC->SetGizmo(SelectionManager->GetGizmo());
@@ -1237,7 +1237,7 @@ void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
 
         auto *LevelVC = new FLevelEditorViewportClient();
         LevelVC->SetOverlayStatSystem(&Editor->GetOverlayStatSystem());
-        LevelVC->SetSettings(&FEditorSettings::Get());
+        LevelVC->SetSettings(&FLevelEditorSettings::Get());
         LevelVC->Init(Window);
         LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
         LevelVC->SetGizmo(SelectionManager->GetGizmo());
@@ -1808,7 +1808,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
     const std::string     WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Viewport", PanelIconKey);
     const bool            bIsOpen = ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_None);
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Viewport", FEditorSettings::Get().UI.bViewport, "x##CloseViewport");
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Viewport", FLevelEditorSettings::Get().Panels.bViewport, "x##CloseViewport");
     if (!bIsOpen)
     {
         ImGui::End();
@@ -2116,7 +2116,7 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
     }
     ShowItemTooltip("Scale");
 
-    FEditorSettings &Settings = Editor->GetSettings();
+    FLevelEditorSettings &Settings = Editor->GetSettings();
 
     ImGui::SameLine(0.0f, GroupSpacing);
     const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
@@ -2225,7 +2225,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                 FViewportRenderOptions     &Opts = VC->GetRenderOptions();
                 UCameraComponent           *Camera = VC->GetCamera();
                 UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
-                FEditorSettings            &Settings = Editor->GetSettings();
+                FLevelEditorSettings            &Settings = Editor->GetSettings();
                 const bool                  bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
                 const bool                  bUseCompactToolbarLayout = PaneRect.Width < 520.0f;
                 const float                 EffectiveButtonSpacing = bUseCompactToolbarLayout ? 3.0f : PaneToolbarButtonSpacing;
@@ -2723,7 +2723,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             FViewportRenderOptions     &Opts = VC->GetRenderOptions();
             UCameraComponent           *Camera = VC->GetCamera();
             UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
-            FEditorSettings            &Settings = Editor->GetSettings();
+            FLevelEditorSettings            &Settings = Editor->GetSettings();
 
             auto DrawSelectedToolbarIcon = [&](const char *Id, EToolbarIcon Icon, bool bSelected, const char *Tooltip) -> bool
             {
@@ -2945,7 +2945,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             PushCommonPopupBgColor();
             if (ImGui::BeginPopup(CameraPopupID))
             {
-                FEditorSettings &Settings = FEditorSettings::Get();
+                FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
                 DrawCameraPopupContent(Camera, Settings);
 
                 ImGui::EndPopup();
@@ -3517,11 +3517,11 @@ AActor *FLevelViewportLayout::SpawnPlaceActor(EViewportPlaceActorType Type, cons
     return SpawnedActor;
 }
 
-// ─── FEditorSettings ↔ 뷰포트 상태 동기화 ──────────────────
+// ─── FLevelEditorSettings ↔ 뷰포트 상태 동기화 ──────────────────
 
 void FLevelViewportLayout::SaveToSettings()
 {
-    FEditorSettings &S = FEditorSettings::Get();
+    FLevelEditorSettings &S = FLevelEditorSettings::Get();
 
     S.LayoutType = static_cast<int32>(CurrentLayout);
 
@@ -3577,7 +3577,7 @@ void FLevelViewportLayout::SaveToSettings()
 
 void FLevelViewportLayout::LoadFromSettings()
 {
-    const FEditorSettings &S = FEditorSettings::Get();
+    const FLevelEditorSettings &S = FLevelEditorSettings::Get();
 
     // 레이아웃 전환 (슬롯 생성 + 트리 빌드)
     EViewportLayout NewLayout = static_cast<EViewportLayout>(S.LayoutType);

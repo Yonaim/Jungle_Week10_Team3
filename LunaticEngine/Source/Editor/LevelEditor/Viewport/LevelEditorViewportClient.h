@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
 #include "Core/CollisionTypes.h"
@@ -18,13 +18,13 @@ class UCameraComponent;
 class UGizmoComponent;
 class ULightComponentBase;
 class AActor;
-class FEditorSettings;
+class FLevelEditorSettings;
 class FWindowsWindow;
 class FSelectionManager;
 class FOverlayStatSystem;
 
-// Level Editor 전용 Viewport Client.
-// 카메라 조작, Actor picking, Gizmo 조작, View mode, PIE shortcut 등을 담당한다.
+// Level Editor ?꾩슜 Viewport Client.
+// 移대찓??議곗옉, Actor picking, Gizmo 議곗옉, View mode, PIE shortcut ?깆쓣 ?대떦?쒕떎.
 class FLevelEditorViewportClient : public FEditorViewportClient
 {
   public:
@@ -39,7 +39,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
 
     void             SetOverlayStatSystem(FOverlayStatSystem *InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
     void             SetGizmo(UGizmoComponent *InGizmo) { Gizmo = InGizmo; }
-    void             SetSettings(const FEditorSettings *InSettings) { Settings = InSettings; }
+    void             SetSettings(const FLevelEditorSettings *InSettings) { Settings = InSettings; }
     void             SetSelectionManager(FSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
     UGizmoComponent *GetGizmo() { return Gizmo; }
 
@@ -100,7 +100,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     FOverlayStatSystem    *OverlayStatSystem = nullptr;
     UCameraComponent      *Camera = nullptr;
     UGizmoComponent       *Gizmo = nullptr;
-    const FEditorSettings *Settings = nullptr;
+    const FLevelEditorSettings *Settings = nullptr;
     FSelectionManager     *SelectionManager = nullptr;
     FViewportRenderOptions RenderOptions;
     ULightComponentBase   *LightViewOverride = nullptr;

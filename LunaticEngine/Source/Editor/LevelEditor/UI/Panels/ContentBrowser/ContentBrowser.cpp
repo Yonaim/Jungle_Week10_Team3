@@ -2,9 +2,9 @@
 
 #include "ContentBrowserElement.h"
 #include "Core/AsciiUtils.h"
-#include "Editor/Common/UI/EditorAccentColor.h"
-#include "Editor/Common/UI/EditorPanelTitleUtils.h"
-#include "Editor/Settings/EditorSettings.h"
+#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "Engine/Runtime/Engine.h"
 #include "Materials/MaterialManager.h"
 #include "Resource/ResourceManager.h"
@@ -317,8 +317,8 @@ void FContentBrowser::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
 void FContentBrowser::Render(float DeltaTime)
 {
     (void)DeltaTime;
-    FEditorSettings &Settings = FEditorSettings::Get();
-    if (!Settings.UI.bContentBrowser)
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (!Settings.Panels.bContentBrowser)
     {
         return;
     }
@@ -327,7 +327,7 @@ void FContentBrowser::Render(float DeltaTime)
     const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Content Browser", PanelIconKey);
     const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Content Browser", Settings.UI.bContentBrowser,
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Content Browser", Settings.Panels.bContentBrowser,
                                                      "x##CloseContentBrowser");
     if (!bIsOpen)
     {
@@ -415,13 +415,13 @@ void FContentBrowser::SetIconSize(float Size)
 
 void FContentBrowser::LoadFromSettings()
 {
-    BrowserContext.CurrentPath = ResolveContentBrowserSettingsPath(FEditorSettings::Get().ContentBrowserPath);
+    BrowserContext.CurrentPath = ResolveContentBrowserSettingsPath(FLevelEditorSettings::Get().ContentBrowserPath);
     BrowserContext.PendingRevealPath = BrowserContext.CurrentPath;
 }
 
 void FContentBrowser::SaveToSettings() const
 {
-    FEditorSettings::Get().ContentBrowserPath = MakeContentBrowserSettingsPath(BrowserContext.CurrentPath);
+    FLevelEditorSettings::Get().ContentBrowserPath = MakeContentBrowserSettingsPath(BrowserContext.CurrentPath);
 }
 
 void FContentBrowser::RefreshContent()

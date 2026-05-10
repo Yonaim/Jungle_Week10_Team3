@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Core/CoreTypes.h"
-#include "Editor/Common/UI/EditorWidget.h"
+#include "Common/UI/EditorUIElement.h"
 
 
 class AActor;

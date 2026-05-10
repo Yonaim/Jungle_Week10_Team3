@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Editor/Common/UI/EditorWidget.h"
+#include "Common/UI/EditorUIElement.h"
 #include "Profiling/Stats.h"
 
 class FLevelStatPanel : public FEditorUIElement

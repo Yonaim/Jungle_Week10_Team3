@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Editor/Common/UI/EditorWidget.h"
+#include "Common/UI/EditorUIElement.h"
 #include "Render/Resource/Buffer.h"
 #include "Render/Types/RenderConstants.h"
 #include <d3d11.h>

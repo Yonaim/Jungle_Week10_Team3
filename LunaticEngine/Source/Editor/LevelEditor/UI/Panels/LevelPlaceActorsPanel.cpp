@@ -5,7 +5,7 @@
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "EditorEngine.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "ImGui/imgui.h"
@@ -159,8 +159,8 @@ void FLevelPlaceActorsPanel::Render(float DeltaTime)
     }
 
     ImGui::SetNextWindowSize(ImVec2(420.0f, 640.0f), ImGuiCond_Once);
-    FEditorSettings &Settings = FEditorSettings::Get();
-    if (!Settings.UI.bPlaceActors)
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (!Settings.Panels.bPlaceActors)
     {
         return;
     }
@@ -169,7 +169,7 @@ void FLevelPlaceActorsPanel::Render(float DeltaTime)
     const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Place Actors", PanelIconKey);
     const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Place Actors", Settings.UI.bPlaceActors,
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Place Actors", Settings.Panels.bPlaceActors,
                                                      "x##ClosePlaceActors");
     if (!bIsOpen)
     {

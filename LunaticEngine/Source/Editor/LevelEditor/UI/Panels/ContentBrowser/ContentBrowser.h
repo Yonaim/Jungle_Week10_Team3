@@ -2,7 +2,7 @@
 #include "ContentBrowserContext.h"
 #include "ContentBrowserElement.h"
 #include "ContentItem.h"
-#include "Editor/Common/UI/EditorWidget.h"
+#include "Common/UI/EditorUIElement.h"
 #include <d3d11.h>
 #include <memory>
 #include <wrl/client.h>

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Common/UI/EditorWidget.h"
+#include "Common/UI/EditorUIElement.h"
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 class FLevelPlaceActorsPanel : public FEditorUIElement

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Editor/Common/UI/EditorWidget.h"
+#include "Common/UI/EditorUIElement.h"
 #include "Object/Object.h"
 
 class UActorComponent;
@@ -31,7 +31,7 @@ class FLevelDetailsPanel : public FEditorUIElement
     void RenderActorProperties(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors);
     void DeleteSelectedComponent(AActor *Actor);
     void DuplicateSelectedComponent(AActor *Actor);
-    bool RenderPropertyWidget(TArray<struct FPropertyDescriptor> &Props, int32 &Index);
+    bool RenderPropertyRow(TArray<struct FPropertyDescriptor> &Props, int32 &Index);
     void CommitActorNameEdit(AActor *Actor);
     void RenderPropertySection(const char *SectionName, TArray<struct FPropertyDescriptor> &Props,
                                const TArray<int32> &Indices, const TArray<AActor *> &SelectedActors, bool &bAnyChanged);

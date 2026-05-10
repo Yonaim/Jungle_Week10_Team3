@@ -1,10 +1,10 @@
-﻿#include "Editor/LevelEditor/UI/Panels/LevelOutlinerPanel.h"
+﻿#include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 
-#include "Editor/Common/UI/EditorAccentColor.h"
-#include "Editor/Common/UI/EditorPanelTitleUtils.h"
-#include "Editor/EditorEngine.h"
-#include "Editor/LevelEditor/Selection/SelectionManager.h"
-#include "Editor/Settings/EditorSettings.h"
+#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
+#include "EditorEngine.h"
+#include "LevelEditor/Selection/SelectionManager.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Resource/ResourceManager.h"
@@ -267,8 +267,8 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     (void)DeltaTime;
     ImGui::SetNextWindowSize(ImVec2(520.0f, 420.0f), ImGuiCond_Once);
 
-    FEditorSettings &Settings = FEditorSettings::Get();
-    if (!Settings.UI.bScene)
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (!Settings.Panels.bOutliner)
     {
         return;
     }
@@ -277,7 +277,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Outliner", PanelIconKey);
     const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Outliner", Settings.UI.bScene, "x##CloseOutliner");
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Outliner", Settings.Panels.bOutliner, "x##CloseOutliner");
     if (!bIsOpen)
     {
         ImGui::End();

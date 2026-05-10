@@ -8,7 +8,7 @@
 #include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 #include "LevelEditor/UI/Panels/LevelPlaceActorsPanel.h"
 #include "LevelEditor/UI/Panels/LevelStatPanel.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 
 class FRenderer;
 class UEditorEngine;
@@ -59,9 +59,9 @@ class FEditorMainFrame
     bool                           bShowCreditsOverlay = false;
     bool                           bShowProjectSettings = false;
     bool                           bHideEditorWindows = false;
-    bool                           bHasSavedUIVisibility = false;
+    bool                           bHasSavedPanelVisibility = false;
     bool                           bSavedShowPanelList = false;
-    FEditorSettings::FUIVisibility SavedUIVisibility{};
+    FLevelEditorSettings::FLevelEditorPanelVisibility SavedPanelVisibility{};
 
     FAssetEditorManager AssetEditorManager;
 

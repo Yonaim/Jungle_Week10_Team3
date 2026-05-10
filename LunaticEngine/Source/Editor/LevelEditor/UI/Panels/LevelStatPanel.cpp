@@ -1,7 +1,7 @@
 ﻿#include "LevelEditor/UI/Panels/LevelStatPanel.h"
 
 #include "Common/UI/EditorPanelTitleUtils.h"
-#include "Settings/EditorSettings.h"
+#include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "ImGui/imgui.h"
 #include "Profiling/GPUProfiler.h"
 #include "Profiling/Stats.h"
@@ -15,8 +15,8 @@ void FLevelStatPanel::Render(float DeltaTime)
 {
 #if STATS
     (void)DeltaTime;
-    FEditorSettings &Settings = FEditorSettings::Get();
-    if (!Settings.UI.bStat)
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    if (!Settings.Panels.bStats)
     {
         return;
     }
@@ -27,7 +27,7 @@ void FLevelStatPanel::Render(float DeltaTime)
     const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Stat Profiler", PanelIconKey);
     ImGui::Begin(WindowTitle.c_str());
     EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Stat Profiler", Settings.UI.bStat, "x##CloseStat");
+    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Stat Profiler", Settings.Panels.bStats, "x##CloseStat");
     EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     // Pause / Resume 踰꾪듉
