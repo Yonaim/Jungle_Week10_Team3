@@ -2429,6 +2429,7 @@
     </ClInclude>
     <ClInclude Include="SkeletalMeshProxy.h">
       <Filter>Source\Engine\Render\Proxy</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Mesh\SkeletalMesh.h">
       <Filter>Source\Engine\Mesh</Filter>
     </ClInclude>
