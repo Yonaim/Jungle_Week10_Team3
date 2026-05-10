@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 
+#include <algorithm>
 
 namespace Key
 {
@@ -38,6 +39,13 @@ constexpr const char *bShowShadowFrustum = "bShowShadowFrustum";
 constexpr const char *bGammaCorrection = "bGammaCorrection";
 constexpr const char *GridSpacing = "GridSpacing";
 constexpr const char *GridHalfLineCount = "GridHalfLineCount";
+constexpr const char *GridLineThickness = "GridLineThickness";
+constexpr const char *GridMajorLineThickness = "GridMajorLineThickness";
+constexpr const char *GridMajorLineInterval = "GridMajorLineInterval";
+constexpr const char *GridMinorIntensity = "GridMinorIntensity";
+constexpr const char *GridMajorIntensity = "GridMajorIntensity";
+constexpr const char *GridAxisThickness = "GridAxisThickness";
+constexpr const char *GridAxisIntensity = "GridAxisIntensity";
 constexpr const char *DebugLineThickness = "DebugLineThickness";
 constexpr const char *ActorHelperBillboardScale = "ActorHelperBillboardScale";
 constexpr const char *CameraMoveSensitivity = "CameraMoveSensitivity";
@@ -146,6 +154,13 @@ void FEditorSettings::SaveToFile(const FString &Path) const
         SlotObj[Key::bGammaCorrection] = Opts.ShowFlags.bGammaCorrection;
         SlotObj[Key::GridSpacing] = Opts.GridSpacing;
         SlotObj[Key::GridHalfLineCount] = Opts.GridHalfLineCount;
+        SlotObj[Key::GridLineThickness] = Opts.GridRenderSettings.LineThickness;
+        SlotObj[Key::GridMajorLineThickness] = Opts.GridRenderSettings.MajorLineThickness;
+        SlotObj[Key::GridMajorLineInterval] = Opts.GridRenderSettings.MajorLineInterval;
+        SlotObj[Key::GridMinorIntensity] = Opts.GridRenderSettings.MinorIntensity;
+        SlotObj[Key::GridMajorIntensity] = Opts.GridRenderSettings.MajorIntensity;
+        SlotObj[Key::GridAxisThickness] = Opts.GridRenderSettings.AxisThickness;
+        SlotObj[Key::GridAxisIntensity] = Opts.GridRenderSettings.AxisIntensity;
         SlotObj[Key::DebugLineThickness] = Opts.DebugLineThickness;
         SlotObj[Key::ActorHelperBillboardScale] = Opts.ActorHelperBillboardScale;
         SlotObj[Key::CameraMoveSensitivity] = Opts.CameraMoveSensitivity;
@@ -319,6 +334,27 @@ void FEditorSettings::LoadFromFile(const FString &Path)
                     Opts.GridSpacing = static_cast<float>(S[Key::GridSpacing].ToFloat());
                 if (S.hasKey(Key::GridHalfLineCount))
                     Opts.GridHalfLineCount = S[Key::GridHalfLineCount].ToInt();
+                if (S.hasKey(Key::GridLineThickness))
+                    Opts.GridRenderSettings.LineThickness =
+                        std::clamp(static_cast<float>(S[Key::GridLineThickness].ToFloat()), 0.0f, 8.0f);
+                if (S.hasKey(Key::GridMajorLineThickness))
+                    Opts.GridRenderSettings.MajorLineThickness =
+                        std::clamp(static_cast<float>(S[Key::GridMajorLineThickness].ToFloat()), 0.0f, 12.0f);
+                if (S.hasKey(Key::GridMajorLineInterval))
+                    Opts.GridRenderSettings.MajorLineInterval =
+                        std::clamp<int32>(S[Key::GridMajorLineInterval].ToInt(), 1, 100);
+                if (S.hasKey(Key::GridMinorIntensity))
+                    Opts.GridRenderSettings.MinorIntensity =
+                        std::clamp(static_cast<float>(S[Key::GridMinorIntensity].ToFloat()), 0.0f, 2.0f);
+                if (S.hasKey(Key::GridMajorIntensity))
+                    Opts.GridRenderSettings.MajorIntensity =
+                        std::clamp(static_cast<float>(S[Key::GridMajorIntensity].ToFloat()), 0.0f, 2.0f);
+                if (S.hasKey(Key::GridAxisThickness))
+                    Opts.GridRenderSettings.AxisThickness =
+                        std::clamp(static_cast<float>(S[Key::GridAxisThickness].ToFloat()), 0.0f, 12.0f);
+                if (S.hasKey(Key::GridAxisIntensity))
+                    Opts.GridRenderSettings.AxisIntensity =
+                        std::clamp(static_cast<float>(S[Key::GridAxisIntensity].ToFloat()), 0.0f, 2.0f);
                 if (S.hasKey(Key::DebugLineThickness))
                     Opts.DebugLineThickness = static_cast<float>(S[Key::DebugLineThickness].ToFloat());
                 if (S.hasKey(Key::ActorHelperBillboardScale))

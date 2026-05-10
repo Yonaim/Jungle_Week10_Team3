@@ -41,7 +41,8 @@ enum class ERenderPass : uint32
 	AdditiveDecal,	// Additive 빌보드 등
 	AlphaBlend,		// 반투명 지오메트리 (Font, SubUV, Billboard, Translucent)
 	SelectionMask,	// 선택 스텐실 마스크
-	EditorLines,	// 디버그 라인 + 그리드 (LINELIST)
+	EditorGrid,		// 픽셀 셰이더 기반 에디터 그리드
+	EditorLines,	// 디버그 라인 (LINELIST)
 	PostProcess,	// 아웃라인 풀스크린, Fog, SceneDepth
 	FXAA,			// FXAA 안티앨리어싱 (SceneColor 복사 후 실행)
 	GammaCorrection,// Linear scene color를 sRGB 출력 감마로 변환
@@ -64,6 +65,7 @@ inline const char* GetRenderPassName(ERenderPass Pass)
 		"RenderPass::AdditiveDecal",
 		"RenderPass::AlphaBlend",
 		"RenderPass::SelectionMask",
+		"RenderPass::EditorGrid",
 		"RenderPass::EditorLines",
 		"RenderPass::PostProcess",
 		"RenderPass::FXAA",
@@ -90,6 +92,7 @@ namespace RenderStateStrings
 		{ "AdditiveDecal", (int)ERenderPass::AdditiveDecal },
 		{ "AlphaBlend",    (int)ERenderPass::AlphaBlend },
 		{ "SelectionMask", (int)ERenderPass::SelectionMask },
+		{ "EditorGrid",    (int)ERenderPass::EditorGrid },
 		{ "EditorLines",   (int)ERenderPass::EditorLines },
 		{ "PostProcess",   (int)ERenderPass::PostProcess },
 		{ "FXAA",          (int)ERenderPass::FXAA },

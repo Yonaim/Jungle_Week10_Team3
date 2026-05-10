@@ -1,5 +1,5 @@
 ﻿#include "DrawCommandBuilder.h"
-
+#include "EditorGridRenderer.h"
 #include "Resource/ResourceManager.h"
 #include "Render/Types/RenderTypes.h"
 #include "Render/Types/FogParams.h"
@@ -65,6 +65,8 @@ void FDrawCommandBuilder::Create(ID3D11Device* InDevice, ID3D11DeviceContext* In
 	FontGeometry.Create(InDevice);
 	ScreenQuads.Create(InDevice);
 
+	GridCB.Create(InDevice, EditorGridRenderer::GetConstantBufferSize());
+	GridAxisCB.Create(InDevice, EditorGridRenderer::GetConstantBufferSize());
 	FogCB.Create(InDevice, sizeof(FFogConstants));
 	FadeCB.Create(InDevice, sizeof(FFadeConstants));
 	OutlineCB.Create(InDevice, sizeof(FOutlinePostProcessConstants));
@@ -86,6 +88,8 @@ void FDrawCommandBuilder::Release()
 	}
 	PerObjectCBPool.clear();
 
+	GridCB.Release();
+	GridAxisCB.Release();
 	FogCB.Release();
 	FadeCB.Release();
 	OutlineCB.Release();
@@ -414,19 +418,7 @@ void FDrawCommandBuilder::PrepareDynamicGeometry(const FFrameContext& Frame, con
 		EditorLines.AddBillboardLine(Line.Start, Line.End, Line.Color.ToVector4(), Frame, Frame.RenderOptions.DebugLineThickness);
 	}
 
-	// --- Grid 패스: 월드 그리드 + 축 ---
-	if (Scene->HasGrid())
-	{
-		const FVector CameraPos = Frame.View.GetInverseFast().GetLocation();
-		FVector CameraFwd = Frame.CameraRight.Cross(Frame.CameraUp);
-		CameraFwd.Normalize();
-
-		GridLines.AddWorldHelpers(
-			Frame.RenderOptions.ShowFlags,
-			Scene->GetGridSpacing(),
-			Scene->GetGridHalfLineCount(),
-			CameraPos, CameraFwd, Frame.IsFixedOrtho());
-	}
+	// 픽셀 셰이더 기반 그리드는 BuildEditorGridCommand에서 생성합니다.
 
 	// --- ScreenText 패스: 스크린 공간 텍스트 ---
 	for (const auto& Quad : Scene->GetScreenQuads())
@@ -474,6 +466,7 @@ void FDrawCommandBuilder::PrepareDynamicGeometry(const FFrameContext& Frame, con
 void FDrawCommandBuilder::BuildDynamicDrawCommands(const FFrameContext& Frame, const FScene* Scene)
 {
 	EViewMode ViewMode = Frame.RenderOptions.ViewMode;
+	BuildEditorGridCommand(Frame, Scene);
 	BuildEditorLineCommands(ViewMode);
 	BuildPostProcessCommands(Frame, Scene);
 	BuildUICommands(ViewMode);
@@ -508,6 +501,74 @@ void FDrawCommandBuilder::BuildEditorLineCommands(EViewMode ViewMode)
 
 	EmitLineCommand(EditorLines, EditorShader, EditorLinesRS);
 	EmitLineCommand(GridLines, EditorShader, EditorLinesRS);
+}
+
+void FDrawCommandBuilder::BuildEditorGridCommand(const FFrameContext& Frame, const FScene* Scene)
+{
+	// Grid는 Editor에서 수집된 Scene 경량 데이터가 있을 때만 그린다.
+	if (!Scene || !Scene->HasGrid())
+	{
+		return;
+	}
+
+	const FShowFlags& ShowFlags = Frame.RenderOptions.ShowFlags;
+	// Grid/WorldAxis가 모두 꺼진 경우에는 pass 자체를 생성하지 않는다.
+	if (!ShowFlags.bGrid && !ShowFlags.bWorldAxis)
+	{
+		return;
+	}
+
+	// Grid는 전용 HLSL(Shaders/Editor/Grid.hlsl)로 렌더한다.
+	FShader* GridShader = FShaderManager::Get().GetOrCreate(EShaderPath::Grid);
+	if (!GridShader)
+	{
+		return;
+	}
+
+	const FGridRenderSettings Settings = EditorGridRenderer::SanitizeSettings(Frame.RenderOptions.GridRenderSettings);
+	const FDrawCommandRenderState GridRS = PassRenderStateTable->ToDrawCommandState(ERenderPass::EditorGrid, Frame.RenderOptions.ViewMode);
+
+	if (ShowFlags.bGrid)
+	{
+		EditorGridRenderer::FGridShaderConstants GridConstants;
+		// DrawAxisPass=0 경로: 그리드 평면 + 평면 위 Axis 강조(X/Y 또는 선택 평면 축).
+		EditorGridRenderer::BuildShaderConstants(
+			Frame, *Scene, Settings,
+			true, false, false,
+			GridConstants);
+
+		GridCB.Update(CachedContext, &GridConstants, sizeof(GridConstants));
+
+		FDrawCommand& GridCmd = DrawCommandList.AddCommand();
+		GridCmd.Pass = ERenderPass::EditorGrid;
+		GridCmd.Shader = GridShader;
+		GridCmd.RenderState = GridRS;
+		// Grid.hlsl VS는 VertexID만 사용하므로 VB 없이 2개 삼각형(6 vertices)으로 평면을 만든다.
+		GridCmd.Buffer.VertexCount = 6;
+		GridCmd.Bindings.PerShaderCB[0] = &GridCB;
+		GridCmd.BuildSortKey();
+	}
+
+	if (ShowFlags.bWorldAxis)
+	{
+		EditorGridRenderer::FGridShaderConstants AxisConstants;
+		// DrawAxisPass=1 경로: 월드 축 스트립 전용 도형을 별도 DrawCall로 렌더한다.
+		EditorGridRenderer::BuildShaderConstants(
+			Frame, *Scene, Settings,
+			false, true, true,
+			AxisConstants);
+
+		GridAxisCB.Update(CachedContext, &AxisConstants, sizeof(AxisConstants));
+
+		FDrawCommand& AxisCmd = DrawCommandList.AddCommand();
+		AxisCmd.Pass = ERenderPass::EditorGrid;
+		AxisCmd.Shader = GridShader;
+		AxisCmd.RenderState = GridRS;
+		// 2개의 축 스트립(각 6 vertices) = 12 vertices.
+		AxisCmd.Buffer.VertexCount = 12;
+		AxisCmd.Bindings.PerShaderCB[0] = &GridAxisCB;
+		AxisCmd.BuildSortKey();
+	}
 }
 
 // ============================================================
@@ -822,3 +883,4 @@ FConstantBuffer* FDrawCommandBuilder::GetPerObjectCBForProxy(const FPrimitiveSce
 	EnsurePerObjectCBPoolCapacity(Proxy.GetProxyId() + 1);
 	return &PerObjectCBPool[Proxy.GetProxyId()];
 }
+

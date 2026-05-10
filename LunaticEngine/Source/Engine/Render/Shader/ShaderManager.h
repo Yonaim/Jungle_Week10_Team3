@@ -69,6 +69,8 @@ namespace EShaderPath
 
 	inline constexpr const char* Editor = "Shaders/Editor/Editor.hlsl";
 	inline constexpr const char* Gizmo = "Shaders/Editor/Gizmo.hlsl";
+	// Pixel Shader 기반 에디터 그리드/월드축 오버레이.
+	inline constexpr const char* Grid = "Shaders/Editor/Grid.hlsl";
 
 	inline constexpr const char* FXAA = "Shaders/PostProcess/FXAA.hlsl";
 	inline constexpr const char* Outline = "Shaders/PostProcess/Outline.hlsl";
