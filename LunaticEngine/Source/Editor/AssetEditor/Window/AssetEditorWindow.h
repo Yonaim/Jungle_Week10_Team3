@@ -1,24 +1,17 @@
 #pragma once
 
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
-#include "Engine/Render/Window/WindowRenderContext.h"
 #include "Common/Menu/EditorMenuProvider.h"
-#include "Common/Menu/EditorMenuBar.h"
-
-#include <memory>
 
 class UEditorEngine;
-class FRenderer;
 class FAssetEditorManager;
-class FEditorImGuiSystem;
 class IAssetEditor;
-class FWindowsWindow;
 
 class FAssetEditorWindow : public IEditorMenuProvider
 {
   public:
-    bool Create(UEditorEngine *InEditorEngine, FRenderer *InRenderer, FAssetEditorManager *InOwnerManager);
-    void Destroy();
+    void Initialize(UEditorEngine *InEditorEngine, FAssetEditorManager *InOwnerManager);
+    void Shutdown();
 
     void Show();
     void Hide();
@@ -43,28 +36,15 @@ class FAssetEditorWindow : public IEditorMenuProvider
     FString GetFrameTitleTooltip() const override;
 
   private:
-    static LRESULT CALLBACK StaticWindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
-    LRESULT WindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
-
-    bool CreateNativeWindow();
-    void DestroyNativeWindow();
     void RenderWindowContents(float DeltaTime);
 
   private:
-    std::unique_ptr<FWindowsWindow> NativeWindow;
-    FWindowRenderContext            RenderContext;
-
     UEditorEngine       *EditorEngine = nullptr;
-    FRenderer           *Renderer = nullptr;
     FAssetEditorManager *OwnerManager = nullptr;
-    FEditorImGuiSystem  *ImGuiSystem = nullptr;
-
-    FEditorMenuBar MenuBar;
 
     FAssetEditorTabManager TabManager;
 
     bool bOpen = false;
     bool bVisible = false;
     bool bCapturingInput = false;
-    bool bWindowClassRegistered = false;
 };

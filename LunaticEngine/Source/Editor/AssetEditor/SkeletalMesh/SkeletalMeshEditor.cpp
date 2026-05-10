@@ -60,17 +60,6 @@ void FSkeletalMeshEditor::RenderContent(float DeltaTime)
         return;
     }
 
-    bool bWindowOpen = bOpen;
-    ImGui::SetNextWindowSize(ImVec2(720.0f, 480.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Skeletal Mesh Editor", &bWindowOpen, ImGuiWindowFlags_NoCollapse))
-    {
-        ImGui::End();
-        bOpen = bWindowOpen;
-        bCapturingInput = bOpen;
-        return;
-    }
-
-    bOpen = bWindowOpen;
     bCapturingInput = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) ||
                       ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
@@ -86,5 +75,4 @@ void FSkeletalMeshEditor::RenderContent(float DeltaTime)
         ImGui::Text("Indices: %d", EditingAsset->GetIndexCount());
     }
 
-    ImGui::End();
 }

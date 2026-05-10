@@ -20,7 +20,7 @@ void FAssetEditorManager::Initialize(UEditorEngine *InEditorEngine, FRenderer *I
 
 void FAssetEditorManager::Shutdown()
 {
-    AssetEditorWindow.Destroy();
+    AssetEditorWindow.Shutdown();
     Renderer = nullptr;
     EditorEngine = nullptr;
 }
@@ -92,14 +92,7 @@ bool FAssetEditorManager::OpenLoadedAsset(UObject *Asset, const std::filesystem:
         return false;
     }
 
-    if (!AssetEditorWindow.IsOpen())
-    {
-        if (!AssetEditorWindow.Create(EditorEngine, Renderer, this))
-        {
-            Editor->Close();
-            return false;
-        }
-    }
+    AssetEditorWindow.Initialize(EditorEngine, this);
 
     AssetEditorWindow.OpenEditorTab(std::move(Editor));
     AssetEditorWindow.Show();
@@ -137,11 +130,7 @@ bool FAssetEditorManager::CreateCameraModifierStackAsset()
         return false;
     }
 
-    if (!AssetEditorWindow.IsOpen() && !AssetEditorWindow.Create(EditorEngine, Renderer, this))
-    {
-        Editor->Close();
-        return false;
-    }
+    AssetEditorWindow.Initialize(EditorEngine, this);
 
     AssetEditorWindow.OpenEditorTab(std::move(Editor));
     AssetEditorWindow.Show();

@@ -282,20 +282,6 @@ void FCameraModifierStackEditor::RenderContent(float DeltaTime)
         return;
     }
 
-    FString WindowTitle = "Asset Editor";
-    if (EditingAsset)
-    {
-        WindowTitle += " - ";
-        WindowTitle += GetFileNameUtf8(EditingAssetPath);
-        if (bDirty)
-        {
-            WindowTitle += " *";
-        }
-    }
-
-    bool bWindowOpen = bOpen;
-    ImGui::SetNextWindowSize(ImVec2(980.0f, 620.0f), ImGuiCond_FirstUseEver);
-    ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.5f);
     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, AssetEditorBlueSoft);
@@ -312,16 +298,6 @@ void FCameraModifierStackEditor::RenderContent(float DeltaTime)
     ImGui::PushStyleColor(ImGuiCol_SeparatorActive, AssetEditorBlueActive);
     ImGui::PushStyleColor(ImGuiCol_PlotLines, AssetEditorBlueHover);
     ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBorder);
-    if (!ImGui::Begin(WindowTitle.c_str(), &bWindowOpen, WindowFlags))
-    {
-        ImGui::End();
-        ImGui::PopStyleColor(14);
-        ImGui::PopStyleVar(2);
-        bOpen = bWindowOpen;
-        bCapturingInput = bOpen;
-        return;
-    }
-    bOpen = bWindowOpen;
     bCapturingInput = IsCurrentAssetEditorCapturingInput();
 
     DrawToolbar();
@@ -330,7 +306,6 @@ void FCameraModifierStackEditor::RenderContent(float DeltaTime)
     if (!EditingAsset)
     {
         ImGui::TextDisabled("Open a .uasset file from File > Open... or the Content Browser.");
-        ImGui::End();
         ImGui::PopStyleColor(14);
         ImGui::PopStyleVar(2);
         return;
@@ -350,7 +325,6 @@ void FCameraModifierStackEditor::RenderContent(float DeltaTime)
         ImGui::EndTable();
     }
 
-    ImGui::End();
     ImGui::PopStyleColor(14);
     ImGui::PopStyleVar(2);
 }
