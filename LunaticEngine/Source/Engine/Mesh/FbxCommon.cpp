@@ -50,6 +50,13 @@ bool FFbxCommon::ParseFbx(const FString& FbxFilePath, FFbxInfo& OutContext)
 
 	Importer->Destroy();
 
+	const FbxAxisSystem TargetAxisSystem = FbxAxisSystem::MayaZUp;
+	const FbxAxisSystem SourceAxisSystem = OutContext.Scene->GetGlobalSettings().GetAxisSystem();
+	if (SourceAxisSystem != TargetAxisSystem)
+	{
+		TargetAxisSystem.ConvertScene(OutContext.Scene);
+	}
+
 	FbxGeometryConverter GeometryConverter(OutContext.Manager);
 	GeometryConverter.Triangulate(OutContext.Scene, true);
 	return true;
