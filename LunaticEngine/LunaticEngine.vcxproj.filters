@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Shaders">
@@ -467,6 +467,9 @@
     <ClCompile Include="Source\Editor\EditorEngine.cpp">
       <Filter>Source\Editor</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\AssetEditorManager.cpp">
+      <Filter>Source\Editor\AssetEditor</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.cpp">
       <Filter>Source\Editor\AssetEditor\CameraModifierStack</Filter>
     </ClCompile>
@@ -490,6 +493,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelEditorViewportClient.cpp">
+      <Filter>Source\Editor\LevelEditor\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\History\SceneHistoryBuilder.cpp">
       <Filter>Source\Editor\History</Filter>
@@ -1252,8 +1258,14 @@
     <ClInclude Include="Source\Editor\EditorEngine.h">
       <Filter>Source\Editor</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\AssetEditorManager.h">
+      <Filter>Source\Editor\AssetEditor</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.h">
       <Filter>Source\Editor\AssetEditor\CameraModifierStack</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\IAssetEditor.h">
+      <Filter>Source\Editor\AssetEditor</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierWidget.h">
       <Filter>Source\Editor\AssetEditor\Common\UI</Filter>

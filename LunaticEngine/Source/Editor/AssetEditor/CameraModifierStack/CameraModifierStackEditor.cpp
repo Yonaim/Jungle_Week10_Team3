@@ -1,17 +1,14 @@
-﻿#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
+#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
 
-#include "Core/Notification.h"
 #include "AssetEditor/Common/UI/BezierWidget.h"
 #include "Common/File/EditorFileUtils.h"
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Core/Notification.h"
 #include "EditorEngine.h"
 #include "Engine/Asset/AssetData.h"
 #include "Engine/Asset/AssetFileSerializer.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
-
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
@@ -23,246 +20,209 @@
 
 namespace
 {
-FAssetEditorWidget *GActiveAssetEditorWidget = nullptr;
-constexpr ImVec4 AssetEditorBlue = ImVec4(0.20f, 0.48f, 0.90f, 1.0f);
-constexpr ImVec4 AssetEditorBlueHover = ImVec4(0.26f, 0.58f, 0.98f, 1.0f);
-constexpr ImVec4 AssetEditorBlueActive = ImVec4(0.14f, 0.39f, 0.80f, 1.0f);
-constexpr ImVec4 AssetEditorBlueSoft = ImVec4(0.18f, 0.36f, 0.62f, 0.38f);
-constexpr ImVec4 AssetEditorBorder = ImVec4(0.34f, 0.36f, 0.40f, 0.96f);
-constexpr ImVec4 AssetEditorButtonBg = ImVec4(0.12f, 0.16f, 0.23f, 1.0f);
+    constexpr ImVec4 AssetEditorBlue = ImVec4(0.20f, 0.48f, 0.90f, 1.0f);
+    constexpr ImVec4 AssetEditorBlueHover = ImVec4(0.26f, 0.58f, 0.98f, 1.0f);
+    constexpr ImVec4 AssetEditorBlueActive = ImVec4(0.14f, 0.39f, 0.80f, 1.0f);
+    constexpr ImVec4 AssetEditorBlueSoft = ImVec4(0.18f, 0.36f, 0.62f, 0.38f);
+    constexpr ImVec4 AssetEditorBorder = ImVec4(0.34f, 0.36f, 0.40f, 0.96f);
+    constexpr ImVec4 AssetEditorButtonBg = ImVec4(0.12f, 0.16f, 0.23f, 1.0f);
 
-constexpr ImVec4 AssetEditorHeaderBg = ImVec4(0.15f, 0.19f, 0.27f, 1.0f);
-constexpr ImVec4 AssetEditorVectorLabelColor = ImVec4(0.83f, 0.84f, 0.87f, 1.0f);
-constexpr ImVec4 AssetEditorVectorFieldBg = ImVec4(10.0f / 255.0f, 10.0f / 255.0f, 10.0f / 255.0f, 1.0f);
-constexpr ImVec4 AssetEditorVectorFieldHoverBg = ImVec4(15.0f / 255.0f, 15.0f / 255.0f, 15.0f / 255.0f, 1.0f);
-constexpr ImVec4 AssetEditorVectorFieldActiveBg = ImVec4(20.0f / 255.0f, 20.0f / 255.0f, 20.0f / 255.0f, 1.0f);
-constexpr float AssetEditorVectorLabelWidth = 56.0f;
-constexpr float AssetEditorPropertyLabelWidth = 136.0f;
+    constexpr ImVec4 AssetEditorHeaderBg = ImVec4(0.15f, 0.19f, 0.27f, 1.0f);
+    constexpr ImVec4 AssetEditorVectorLabelColor = ImVec4(0.83f, 0.84f, 0.87f, 1.0f);
+    constexpr ImVec4 AssetEditorVectorFieldBg = ImVec4(10.0f / 255.0f, 10.0f / 255.0f, 10.0f / 255.0f, 1.0f);
+    constexpr ImVec4 AssetEditorVectorFieldHoverBg = ImVec4(15.0f / 255.0f, 15.0f / 255.0f, 15.0f / 255.0f, 1.0f);
+    constexpr ImVec4 AssetEditorVectorFieldActiveBg = ImVec4(20.0f / 255.0f, 20.0f / 255.0f, 20.0f / 255.0f, 1.0f);
+    constexpr float AssetEditorVectorLabelWidth = 56.0f;
+    constexpr float AssetEditorPropertyLabelWidth = 136.0f;
 
-bool DrawAngularActionButton(const char *Label, const ImVec2 &Size = ImVec2(0.0f, 0.0f))
-{
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, AssetEditorButtonBg);
-    ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBlueSoft);
-    const bool bPressed = ImGui::Button(Label, Size);
-    ImGui::PopStyleColor(2);
-    ImGui::PopStyleVar(2);
-    return bPressed;
-}
-
-void PushAssetEditorVectorFieldStyle()
-{
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, AssetEditorVectorFieldBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, AssetEditorVectorFieldHoverBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, AssetEditorVectorFieldActiveBg);
-    ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBorder);
-}
-
-void PopAssetEditorVectorFieldStyle()
-{
-    ImGui::PopStyleColor(4);
-}
-
-FString GetFileNameUtf8(const std::filesystem::path &Path)
-{
-    if (Path.empty())
+    bool DrawAngularActionButton(const char *Label, const ImVec2 &Size = ImVec2(0.0f, 0.0f))
     {
-        return "Untitled";
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, AssetEditorButtonBg);
+        ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBlueSoft);
+        const bool bPressed = ImGui::Button(Label, Size);
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+        return bPressed;
     }
-    return FPaths::ToUtf8(Path.filename().wstring());
-}
 
-bool IsWindowInHierarchy(const ImGuiWindow *Window, const ImGuiWindow *ExpectedRoot)
-{
-    const ImGuiWindow *Current = Window;
-    while (Current)
+    void PushAssetEditorVectorFieldStyle()
     {
-        if (Current == ExpectedRoot)
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, AssetEditorVectorFieldBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, AssetEditorVectorFieldHoverBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, AssetEditorVectorFieldActiveBg);
+        ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBorder);
+    }
+
+    void PopAssetEditorVectorFieldStyle()
+    {
+        ImGui::PopStyleColor(4);
+    }
+
+    FString GetFileNameUtf8(const std::filesystem::path &Path)
+    {
+        if (Path.empty())
+        {
+            return "Untitled";
+        }
+        return FPaths::ToUtf8(Path.filename().wstring());
+    }
+
+    bool IsWindowInHierarchy(const ImGuiWindow *Window, const ImGuiWindow *ExpectedRoot)
+    {
+        const ImGuiWindow *Current = Window;
+        while (Current)
+        {
+            if (Current == ExpectedRoot)
+            {
+                return true;
+            }
+            Current = Current->ParentWindow;
+        }
+        return false;
+    }
+
+    bool IsCurrentAssetEditorCapturingInput()
+    {
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
         {
             return true;
         }
-        Current = Current->ParentWindow;
-    }
-    return false;
-}
 
-bool IsCurrentAssetEditorCapturingInput()
-{
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
-    {
-        return true;
-    }
+        ImGuiContext &Context = *GImGui;
+        ImGuiWindow *CurrentWindow = Context.CurrentWindow;
+        if (!CurrentWindow)
+        {
+            return false;
+        }
 
-    ImGuiContext &Context = *GImGui;
-    ImGuiWindow *CurrentWindow = Context.CurrentWindow;
-    if (!CurrentWindow)
-    {
+        ImGuiWindow *RootWindow = CurrentWindow->RootWindow ? CurrentWindow->RootWindow : CurrentWindow;
+        if (ImGui::GetIO().WantTextInput && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+        {
+            return true;
+        }
+
+        if (Context.ActiveIdWindow && IsWindowInHierarchy(Context.ActiveIdWindow, RootWindow))
+        {
+            return true;
+        }
+
         return false;
     }
 
-    ImGuiWindow *RootWindow = CurrentWindow->RootWindow ? CurrentWindow->RootWindow : CurrentWindow;
-    if (ImGui::GetIO().WantTextInput && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+    void DrawStringInput(const char *Label, FString &Value, size_t BufferSize = 256)
     {
-        return true;
+        TArray<char> Buffer;
+        Buffer.resize(BufferSize);
+        std::fill(Buffer.begin(), Buffer.end(), '\0');
+        std::snprintf(Buffer.data(), BufferSize, "%s", Value.c_str());
+        if (ImGui::InputText(Label, Buffer.data(), Buffer.size()))
+        {
+            Value = Buffer.data();
+        }
     }
 
-    if (Context.ActiveIdWindow && IsWindowInHierarchy(Context.ActiveIdWindow, RootWindow))
+    bool DrawVector3Input(const char *Label, FVector &Value)
     {
-        return true;
+        float Values[3] = {Value.X, Value.Y, Value.Z};
+        if (ImGui::DragFloat3(Label, Values, 0.01f))
+        {
+            Value.X = Values[0];
+            Value.Y = Values[1];
+            Value.Z = Values[2];
+            return true;
+        }
+        return false;
     }
 
-    return false;
-}
-
-void DrawStringInput(const char *Label, FString &Value, size_t BufferSize = 256)
-{
-    TArray<char> Buffer;
-    Buffer.resize(BufferSize);
-    std::fill(Buffer.begin(), Buffer.end(), '\0');
-    std::snprintf(Buffer.data(), BufferSize, "%s", Value.c_str());
-    if (ImGui::InputText(Label, Buffer.data(), Buffer.size()))
+    bool DrawRotatorInput(const char *Label, FRotator &Value)
     {
-        Value = Buffer.data();
+        float Values[3] = {Value.Pitch, Value.Yaw, Value.Roll};
+        if (ImGui::DragFloat3(Label, Values, 0.01f))
+        {
+            Value.Pitch = Values[0];
+            Value.Yaw = Values[1];
+            Value.Roll = Values[2];
+            return true;
+        }
+        return false;
     }
-}
 
-bool DrawVector3Input(const char *Label, FVector &Value)
-{
-    float Values[3] = {Value.X, Value.Y, Value.Z};
-    if (ImGui::DragFloat3(Label, Values, 0.01f))
+    FCameraShakeModifierAssetDesc MakeDefaultCameraShakeDesc(int32 Index)
     {
-        Value.X = Values[0];
-        Value.Y = Values[1];
-        Value.Z = Values[2];
-        return true;
+        FCameraShakeModifierAssetDesc Desc;
+        Desc.EditorId = GenerateAssetEditorId();
+        Desc.Name = "CameraShake_" + std::to_string(Index);
+        FAssetBezierCurve EaseOut;
+        EaseOut.ControlPoints[0] = 0.20f;
+        EaseOut.ControlPoints[1] = 1.00f;
+        EaseOut.ControlPoints[2] = 0.85f;
+        EaseOut.ControlPoints[3] = 0.00f;
+        Desc.Curves.CopyFrom(EaseOut);
+        return Desc;
     }
-    return false;
-}
-
-bool DrawRotatorInput(const char *Label, FRotator &Value)
-{
-    float Values[3] = {Value.Pitch, Value.Yaw, Value.Roll};
-    if (ImGui::DragFloat3(Label, Values, 0.01f))
-    {
-        Value.Pitch = Values[0];
-        Value.Yaw = Values[1];
-        Value.Roll = Values[2];
-        return true;
-    }
-    return false;
-}
-
-FCameraShakeModifierAssetDesc MakeDefaultCameraShakeDesc(int32 Index)
-{
-    FCameraShakeModifierAssetDesc Desc;
-    Desc.EditorId = GenerateAssetEditorId();
-    Desc.Name = "CameraShake_" + std::to_string(Index);
-    FAssetBezierCurve EaseOut;
-    EaseOut.ControlPoints[0] = 0.20f;
-    EaseOut.ControlPoints[1] = 1.00f;
-    EaseOut.ControlPoints[2] = 0.85f;
-    EaseOut.ControlPoints[3] = 0.00f;
-    Desc.Curves.CopyFrom(EaseOut);
-    return Desc;
-}
 } // namespace
 
-void FAssetEditorWidget::Init(UEditorEngine *InEditorEngine)
+void FCameraModifierStackEditor::Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
 {
-    FEditorWidget::Init(InEditorEngine);
-    GActiveAssetEditorWidget = this;
+    EditorEngine = InEditorEngine;
+    Renderer = InRenderer;
 }
 
-void FAssetEditorWidget::Shutdown()
+void FCameraModifierStackEditor::Shutdown()
 {
-    if (GActiveAssetEditorWidget == this)
-    {
-        GActiveAssetEditorWidget = nullptr;
-    }
     bCapturingInput = false;
-    CloseCurrentAsset();
+    Close();
+    Renderer = nullptr;
+    EditorEngine = nullptr;
 }
 
-bool FAssetEditorWidget::OpenAssetFile(const std::filesystem::path &FilePath)
+bool FCameraModifierStackEditor::CanEdit(UObject *Asset) const
 {
-    if (!GActiveAssetEditorWidget)
-    {
-        FNotificationManager::Get().AddNotification("Asset Editor is not initialized.", ENotificationType::Error, 5.0f);
-        return false;
-    }
-    return GActiveAssetEditorWidget->OpenAssetFromPath(FilePath);
+    return Cast<UCameraModifierStackAssetData>(Asset) != nullptr;
 }
 
-bool FAssetEditorWidget::OpenAssetWithDialog(void *OwnerWindowHandle)
+bool FCameraModifierStackEditor::OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath)
 {
-    const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
-        .Filter = L"Asset Files (*.uasset)\0*.uasset\0All Files (*.*)\0*.*\0",
-        .Title = L"Open Asset",
-        .InitialDirectory = FPaths::AssetDir().c_str(),
-        .OwnerWindowHandle = OwnerWindowHandle,
-        .bFileMustExist = true,
-        .bPathMustExist = true,
-        .bPromptOverwrite = false,
-        .bReturnRelativeToProjectRoot = false,
-    });
-
-    if (SelectedPath.empty())
-    {
-        return false;
-    }
-
-    return OpenAssetFromPath(std::filesystem::path(FPaths::ToWide(SelectedPath)));
-}
-
-bool FAssetEditorWidget::CreateCameraShakeAsset()
-{
-    CloseCurrentAsset();
-    auto *NewAsset = UObjectManager::Get().CreateObject<UCameraModifierStackAssetData>();
-    NewAsset->CameraShakes.push_back(MakeDefaultCameraShakeDesc(0));
-
-    EditingAsset = NewAsset;
-    EditingAssetPath.clear();
-    SelectedEditorId = NewAsset->CameraShakes.front().EditorId;
-    bOpen = true;
-    bDirty = true;
-    FNotificationManager::Get().AddNotification("Created new asset", ENotificationType::Success, 2.5f);
-    return true;
-}
-
-bool FAssetEditorWidget::OpenAssetFromPath(const std::filesystem::path &FilePath)
-{
-    FString Error;
-    UAssetData *LoadedAsset = FAssetFileSerializer::LoadAssetFromFile(FilePath, &Error);
+    UCameraModifierStackAssetData *LoadedAsset = Cast<UCameraModifierStackAssetData>(Asset);
     if (!LoadedAsset)
     {
-        FNotificationManager::Get().AddNotification(Error.empty() ? "Failed to load asset." : Error,
-                                                    ENotificationType::Error, 5.0f);
         return false;
     }
 
-    CloseCurrentAsset();
+    Close();
     EditingAsset = LoadedAsset;
-    EditingAssetPath = FilePath.lexically_normal();
+    EditingAssetPath = AssetPath.lexically_normal();
     SelectedEditorId = 0;
     bOpen = true;
     bDirty = false;
 
-    if (UCameraModifierStackAssetData *StackAsset = Cast<UCameraModifierStackAssetData>(EditingAsset))
+    LoadedAsset->EnsureValidEditorIds();
+    if (!LoadedAsset->CameraShakes.empty())
     {
-        StackAsset->EnsureValidEditorIds();
-        if (!StackAsset->CameraShakes.empty())
-        {
-            SelectedEditorId = StackAsset->CameraShakes.front().EditorId;
-        }
+        SelectedEditorId = LoadedAsset->CameraShakes.front().EditorId;
     }
 
-    FNotificationManager::Get().AddNotification("Opened asset: " + GetFileNameUtf8(EditingAssetPath),
-                                                ENotificationType::Success, 3.0f);
+    FNotificationManager::Get().AddNotification("Opened asset: " + GetFileNameUtf8(EditingAssetPath), ENotificationType::Success, 3.0f);
     return true;
 }
 
-bool FAssetEditorWidget::SaveCurrentAsset()
+void FCameraModifierStackEditor::Close()
+{
+    if (EditingAsset)
+    {
+        UObjectManager::Get().DestroyObject(EditingAsset);
+        EditingAsset = nullptr;
+    }
+
+    EditingAssetPath.clear();
+    SelectedEditorId = 0;
+    bOpen = false;
+    bDirty = false;
+}
+
+bool FCameraModifierStackEditor::Save()
 {
     if (!EditingAsset)
     {
@@ -279,18 +239,31 @@ bool FAssetEditorWidget::SaveCurrentAsset()
     FString Error;
     if (!FAssetFileSerializer::SaveAssetToFile(EditingAssetPath, EditingAsset, &Error))
     {
-        FNotificationManager::Get().AddNotification(Error.empty() ? "Failed to save asset." : Error,
-                                                    ENotificationType::Error, 5.0f);
+        FNotificationManager::Get().AddNotification(Error.empty() ? "Failed to save asset." : Error, ENotificationType::Error, 5.0f);
         return false;
     }
 
     bDirty = false;
-    FNotificationManager::Get().AddNotification("Saved asset: " + GetFileNameUtf8(EditingAssetPath),
-                                                ENotificationType::Success, 3.0f);
+    FNotificationManager::Get().AddNotification("Saved asset: " + GetFileNameUtf8(EditingAssetPath), ENotificationType::Success, 3.0f);
     return true;
 }
 
-bool FAssetEditorWidget::PromptForSavePath(void *OwnerWindowHandle)
+bool FCameraModifierStackEditor::CreateCameraShakeAsset()
+{
+    Close();
+    auto *NewAsset = UObjectManager::Get().CreateObject<UCameraModifierStackAssetData>();
+    NewAsset->CameraShakes.push_back(MakeDefaultCameraShakeDesc(0));
+
+    EditingAsset = NewAsset;
+    EditingAssetPath.clear();
+    SelectedEditorId = NewAsset->CameraShakes.front().EditorId;
+    bOpen = true;
+    bDirty = true;
+    FNotificationManager::Get().AddNotification("Created new asset", ENotificationType::Success, 2.5f);
+    return true;
+}
+
+bool FCameraModifierStackEditor::PromptForSavePath(void *OwnerWindowHandle)
 {
     const FString SelectedPath = FEditorFileUtils::SaveFileDialog({
         .Filter = L"Asset Files (*.uasset)\0*.uasset\0All Files (*.*)\0*.*\0",
@@ -313,19 +286,7 @@ bool FAssetEditorWidget::PromptForSavePath(void *OwnerWindowHandle)
     return true;
 }
 
-void FAssetEditorWidget::CloseCurrentAsset()
-{
-    if (EditingAsset)
-    {
-        UObjectManager::Get().DestroyObject(EditingAsset);
-        EditingAsset = nullptr;
-    }
-    EditingAssetPath.clear();
-    SelectedEditorId = 0;
-    bDirty = false;
-}
-
-void FAssetEditorWidget::Render(float DeltaTime)
+void FCameraModifierStackEditor::Render(float DeltaTime)
 {
     (void)DeltaTime;
     if (!bOpen)
@@ -407,21 +368,16 @@ void FAssetEditorWidget::Render(float DeltaTime)
     ImGui::PopStyleVar(2);
 }
 
-void FAssetEditorWidget::DrawToolbar()
+void FCameraModifierStackEditor::DrawToolbar()
 {
     if (DrawAngularActionButton("New##AssetEditorNewAsset"))
     {
         CreateCameraShakeAsset();
     }
     ImGui::SameLine();
-    if (DrawAngularActionButton("Open...##AssetEditorOpen"))
-    {
-        OpenAssetWithDialog(nullptr);
-    }
-    ImGui::SameLine();
     if (DrawAngularActionButton("Save##AssetEditorSave"))
     {
-        SaveCurrentAsset();
+        Save();
     }
     ImGui::SameLine();
     if (EditingAsset)
@@ -430,7 +386,7 @@ void FAssetEditorWidget::DrawToolbar()
     }
 }
 
-void FAssetEditorWidget::DrawAssetContents()
+void FCameraModifierStackEditor::DrawAssetContents()
 {
     ImGui::BeginChild("Asset Contents", ImVec2(0, 0), true);
     ImGui::TextUnformatted("Asset Contents");
@@ -448,7 +404,7 @@ void FAssetEditorWidget::DrawAssetContents()
     ImGui::EndChild();
 }
 
-void FAssetEditorWidget::DrawDetails()
+void FCameraModifierStackEditor::DrawDetails()
 {
     ImGui::BeginChild("Details", ImVec2(0, 0), true);
     ImGui::TextUnformatted("Details");
@@ -466,7 +422,7 @@ void FAssetEditorWidget::DrawDetails()
     ImGui::EndChild();
 }
 
-bool FAssetEditorWidget::DrawLabeledField(const char *Label, const std::function<bool()> &DrawField)
+bool FCameraModifierStackEditor::DrawLabeledField(const char *Label, const std::function<bool()> &DrawField)
 {
     const float RowStartX = ImGui::GetCursorPosX();
     const float TotalWidth = ImGui::GetContentRegionAvail().x;
@@ -490,7 +446,7 @@ bool FAssetEditorWidget::DrawLabeledField(const char *Label, const std::function
     return DrawField();
 }
 
-bool FAssetEditorWidget::DrawCurveEditor(const char *Label, FAssetBezierCurve &Curve)
+bool FCameraModifierStackEditor::DrawCurveEditor(const char *Label, FAssetBezierCurve &Curve)
 {
     bool bChanged = false;
     ImGui::PushID(Label);
@@ -523,7 +479,7 @@ bool FAssetEditorWidget::DrawCurveEditor(const char *Label, FAssetBezierCurve &C
     return bChanged;
 }
 
-bool FAssetEditorWidget::DrawCurveControlPointRow(const char *Label, float &XValue, float &YValue)
+bool FCameraModifierStackEditor::DrawCurveControlPointRow(const char *Label, float &XValue, float &YValue)
 {
     bool bChanged = false;
     ImGui::PushID(Label);
@@ -537,8 +493,7 @@ bool FAssetEditorWidget::DrawCurveControlPointRow(const char *Label, float &XVal
     const float BarWidth = 3.0f;
     const float FieldSpacing = 3.0f;
     const float InterFieldSpacing = ImGui::GetStyle().ItemSpacing.x;
-    const float FieldWidth =
-        (std::max)(48.0f, (TotalWidth - InterFieldSpacing - (BarWidth + FieldSpacing) * 2.0f) * 0.5f);
+    const float FieldWidth = (std::max)(48.0f, (TotalWidth - InterFieldSpacing - (BarWidth + FieldSpacing) * 2.0f) * 0.5f);
     const ImVec4 AxisColors[2] = {ImVec4(0.85f, 0.22f, 0.22f, 1.0f), ImVec4(0.36f, 0.74f, 0.25f, 1.0f)};
     float *Values[2] = {&XValue, &YValue};
     const char *AxisIds[2] = {"##X", "##Y"};
@@ -564,7 +519,7 @@ bool FAssetEditorWidget::DrawCurveControlPointRow(const char *Label, float &XVal
     return bChanged;
 }
 
-void FAssetEditorWidget::DrawCameraModifierStackAssetContents(UCameraModifierStackAssetData &Asset)
+void FCameraModifierStackEditor::DrawCameraModifierStackAssetContents(UCameraModifierStackAssetData &Asset)
 {
     if (DrawAngularActionButton("Add##AssetEditorAddEntry"))
     {
@@ -591,9 +546,8 @@ void FAssetEditorWidget::DrawCameraModifierStackAssetContents(UCameraModifierSta
     if (DrawAngularActionButton("Delete"))
     {
         Asset.CameraShakes.erase(std::remove_if(Asset.CameraShakes.begin(), Asset.CameraShakes.end(),
-                                                [this](const FCameraShakeModifierAssetDesc &Desc) {
-                                                    return Desc.EditorId == SelectedEditorId;
-                                                }),
+                                                [this](const FCameraShakeModifierAssetDesc &Desc)
+                                                { return Desc.EditorId == SelectedEditorId; }),
                                  Asset.CameraShakes.end());
         SelectedEditorId = Asset.CameraShakes.empty() ? 0 : Asset.CameraShakes.front().EditorId;
         MarkDirty();
@@ -639,7 +593,7 @@ void FAssetEditorWidget::DrawCameraModifierStackAssetContents(UCameraModifierSta
     }
 }
 
-void FAssetEditorWidget::DrawCameraModifierStackAssetDetails(UCameraModifierStackAssetData &Asset)
+void FCameraModifierStackEditor::DrawCameraModifierStackAssetDetails(UCameraModifierStackAssetData &Asset)
 {
     FCameraShakeModifierAssetDesc *Desc = FindSelectedCameraShake(Asset);
     if (!Desc)
@@ -654,7 +608,7 @@ void FAssetEditorWidget::DrawCameraModifierStackAssetDetails(UCameraModifierStac
     }
 }
 
-FCameraShakeModifierAssetDesc *FAssetEditorWidget::FindSelectedCameraShake(UCameraModifierStackAssetData &Asset)
+FCameraShakeModifierAssetDesc *FCameraModifierStackEditor::FindSelectedCameraShake(UCameraModifierStackAssetData &Asset)
 {
     for (FCameraShakeModifierAssetDesc &Desc : Asset.CameraShakes)
     {
@@ -666,56 +620,54 @@ FCameraShakeModifierAssetDesc *FAssetEditorWidget::FindSelectedCameraShake(UCame
     return nullptr;
 }
 
-bool FAssetEditorWidget::DrawCameraShakeDetails(FCameraShakeModifierAssetDesc &Desc)
+bool FCameraModifierStackEditor::DrawCameraShakeDetails(FCameraShakeModifierAssetDesc &Desc)
 {
     bool bChanged = false;
 
     if (ImGui::CollapsingHeader("Identity", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        bChanged |= DrawLabeledField("Name", [&]() {
-            const FString OldName = Desc.Name;
-            DrawStringInput("##Name", Desc.Name);
-            return OldName != Desc.Name;
-        });
-        DrawLabeledField("EditorId", [&]() {
-            ImGui::TextDisabled("%llu", static_cast<unsigned long long>(Desc.EditorId));
-            return false;
-        });
+        bChanged |= DrawLabeledField("Name",
+                                     [&]()
+                                     {
+                                         const FString OldName = Desc.Name;
+                                         DrawStringInput("##Name", Desc.Name);
+                                         return OldName != Desc.Name;
+                                     });
+        DrawLabeledField("EditorId",
+                         [&]()
+                         {
+                             ImGui::TextDisabled("%llu", static_cast<unsigned long long>(Desc.EditorId));
+                             return false;
+                         });
     }
 
     if (ImGui::CollapsingHeader("Common", ImGuiTreeNodeFlags_DefaultOpen))
     {
         int Priority = static_cast<int>(Desc.Common.Priority);
-        bChanged |= DrawLabeledField("Priority", [&]() {
-            if (ImGui::DragInt("##Priority", &Priority, 1.0f, 0, 255))
-            {
-                Desc.Common.Priority = static_cast<uint8>(Priority);
-                return true;
-            }
-            return false;
-        });
-        bChanged |= DrawLabeledField("Alpha In Time", [&]() {
-            return ImGui::DragFloat("##AlphaInTime", &Desc.Common.AlphaInTime, 0.01f, 0.0f, 10.0f);
-        });
-        bChanged |= DrawLabeledField("Alpha Out Time", [&]() {
-            return ImGui::DragFloat("##AlphaOutTime", &Desc.Common.AlphaOutTime, 0.01f, 0.0f, 10.0f);
-        });
-        bChanged |= DrawLabeledField("Start Disabled",
-                                     [&]() { return ImGui::Checkbox("##StartDisabled", &Desc.Common.bStartDisabled); });
+        bChanged |= DrawLabeledField("Priority",
+                                     [&]()
+                                     {
+                                         if (ImGui::DragInt("##Priority", &Priority, 1.0f, 0, 255))
+                                         {
+                                             Desc.Common.Priority = static_cast<uint8>(Priority);
+                                             return true;
+                                         }
+                                         return false;
+                                     });
+        bChanged |= DrawLabeledField("Alpha In Time",
+                                     [&]() { return ImGui::DragFloat("##AlphaInTime", &Desc.Common.AlphaInTime, 0.01f, 0.0f, 10.0f); });
+        bChanged |= DrawLabeledField("Alpha Out Time",
+                                     [&]() { return ImGui::DragFloat("##AlphaOutTime", &Desc.Common.AlphaOutTime, 0.01f, 0.0f, 10.0f); });
+        bChanged |= DrawLabeledField("Start Disabled", [&]() { return ImGui::Checkbox("##StartDisabled", &Desc.Common.bStartDisabled); });
     }
 
     if (ImGui::CollapsingHeader("Camera Shake", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        bChanged |= DrawLabeledField(
-            "Duration", [&]() { return ImGui::DragFloat("##Duration", &Desc.Duration, 0.01f, 0.0f, 30.0f); });
-        bChanged |= DrawLabeledField(
-            "Intensity", [&]() { return ImGui::DragFloat("##Intensity", &Desc.Intensity, 0.01f, 0.0f, 20.0f); });
-        bChanged |= DrawLabeledField(
-            "Frequency", [&]() { return ImGui::DragFloat("##Frequency", &Desc.Frequency, 0.10f, 0.0f, 200.0f); });
-        bChanged |= DrawLabeledField("Location Amplitude",
-                                     [&]() { return DrawVector3Input("##LocationAmplitude", Desc.LocationAmplitude); });
-        bChanged |= DrawLabeledField("Rotation Amplitude",
-                                     [&]() { return DrawRotatorInput("##RotationAmplitude", Desc.RotationAmplitude); });
+        bChanged |= DrawLabeledField("Duration", [&]() { return ImGui::DragFloat("##Duration", &Desc.Duration, 0.01f, 0.0f, 30.0f); });
+        bChanged |= DrawLabeledField("Intensity", [&]() { return ImGui::DragFloat("##Intensity", &Desc.Intensity, 0.01f, 0.0f, 20.0f); });
+        bChanged |= DrawLabeledField("Frequency", [&]() { return ImGui::DragFloat("##Frequency", &Desc.Frequency, 0.10f, 0.0f, 200.0f); });
+        bChanged |= DrawLabeledField("Location Amplitude", [&]() { return DrawVector3Input("##LocationAmplitude", Desc.LocationAmplitude); });
+        bChanged |= DrawLabeledField("Rotation Amplitude", [&]() { return DrawRotatorInput("##RotationAmplitude", Desc.RotationAmplitude); });
         bChanged |= DrawLabeledField("Use Curves", [&]() { return ImGui::Checkbox("##UseCurves", &Desc.bUseCurves); });
     }
 

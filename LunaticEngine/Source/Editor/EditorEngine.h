@@ -68,7 +68,6 @@ class UEditorEngine : public UEngine
     void           RefreshContentBrowser() { MainFrame.RefreshContentBrowser(); }
     void           SetContentBrowserIconSize(float Size) { MainFrame.SetContentBrowserIconSize(Size); }
     float          GetContentBrowserIconSize() const { return MainFrame.GetContentBrowserIconSize(); }
-    bool           IsAssetEditorCapturingInput() const { return MainFrame.IsAssetEditorCapturingInput(); }
     void           HideEditorWindows() { MainFrame.HideEditorWindows(); }
     void           ShowEditorWindows() { MainFrame.ShowEditorWindows(); }
     void           SetShowEditorOnlyComponents(bool bEnable) { MainFrame.SetShowEditorOnlyComponents(bEnable); }
@@ -162,6 +161,13 @@ class UEditorEngine : public UEngine
         if (IsPlayingInEditor())
             EndPlayMap();
     }
+
+    bool OpenAssetFromPath(const std::filesystem::path &AssetPath)
+    {
+        return MainFrame.GetAssetEditorManager().OpenAssetFromPath(AssetPath);
+    }
+
+    bool IsAssetEditorCapturingInput() const { return MainFrame.GetAssetEditorManager().IsCapturingInput(); }
 
   private:
     // Tick 내에서 호출 — 큐에 요청이 있으면 StartPlayInEditorSession 실행

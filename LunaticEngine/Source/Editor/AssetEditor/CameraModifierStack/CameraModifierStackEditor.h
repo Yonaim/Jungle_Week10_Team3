@@ -1,39 +1,39 @@
-﻿#pragma once
+#pragma once
 
-#include "Common/UI/EditorWidget.h"
+#include "AssetEditor/IAssetEditor.h"
+#include "Core/CoreTypes.h"
+
 #include <filesystem>
 #include <functional>
 
 class UAssetData;
+class UObject;
 class UCameraModifierStackAssetData;
+class UEditorEngine;
+class FRenderer;
 struct FAssetBezierCurve;
 struct FCameraShakeModifierAssetDesc;
 
-class FAssetEditorWidget final : public FEditorWidget
+class FCameraModifierStackEditor final : public IAssetEditor
 {
   public:
-    void Init(UEditorEngine *InEditorEngine) override;
-    void Shutdown();
+    void Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer) override;
+    void Shutdown() override;
+
+    bool CanEdit(UObject *Asset) const override;
+    bool OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath) override;
+    void Close() override;
+    bool Save() override;
+
     void Render(float DeltaTime) override;
 
-    bool OpenAssetWithDialog(void *OwnerWindowHandle = nullptr);
-    bool CreateCameraShakeAsset();
-    bool OpenAssetFromPath(const std::filesystem::path &FilePath);
-    bool SaveCurrentAsset();
-    bool HasOpenAsset() const
-    {
-        return EditingAsset != nullptr;
-    }
-    bool IsOpen() const
-    {
-        return bOpen;
-    }
-    bool IsCapturingInput() const
-    {
-        return bCapturingInput;
-    }
+    bool IsOpen() const override { return bOpen; }
+    bool IsDirty() const override { return bDirty; }
+    bool IsCapturingInput() const override { return bCapturingInput; }
+    const char *GetEditorName() const override { return "CameraModifierStackEditor"; }
 
-    static bool OpenAssetFile(const std::filesystem::path &FilePath);
+    bool CreateCameraShakeAsset();
+    bool HasOpenAsset() const { return EditingAsset != nullptr; }
 
   private:
     void DrawToolbar();
@@ -46,18 +46,17 @@ class FAssetEditorWidget final : public FEditorWidget
     void DrawCameraModifierStackAssetContents(UCameraModifierStackAssetData &Asset);
     void DrawCameraModifierStackAssetDetails(UCameraModifierStackAssetData &Asset);
     bool DrawCameraShakeDetails(FCameraShakeModifierAssetDesc &Desc);
+    void MarkDirty() { bDirty = true; }
+
     FCameraShakeModifierAssetDesc *FindSelectedCameraShake(UCameraModifierStackAssetData &Asset);
-    void CloseCurrentAsset();
-    void MarkDirty()
-    {
-        bDirty = true;
-    }
 
   private:
-    UAssetData *EditingAsset = nullptr;
+    UEditorEngine        *EditorEngine = nullptr;
+    FRenderer            *Renderer = nullptr;
+    UAssetData           *EditingAsset = nullptr;
     std::filesystem::path EditingAssetPath;
-    uint64 SelectedEditorId = 0;
-    bool bOpen = false;
-    bool bDirty = false;
-    bool bCapturingInput = false;
+    uint64                SelectedEditorId = 0;
+    bool                  bOpen = false;
+    bool                  bDirty = false;
+    bool                  bCapturingInput = false;
 };

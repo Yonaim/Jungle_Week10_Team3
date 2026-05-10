@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
+#include "AssetEditor/AssetEditorManager.h"
 #include "LevelEditor/UI/Debug/ShadowMapDebugPanel.h"
 #include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowser.h"
 #include "LevelEditor/UI/Panels/LevelConsolePanel.h"
@@ -18,39 +18,21 @@ struct ImFont;
 class FEditorMainFrame
 {
   public:
-    void Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine);
-    void Release();
-    void Render(float DeltaTime);
-    void Update();
-    void SaveToSettings() const;
-    void HideEditorWindows();
-    void ShowEditorWindows();
-    void SetShowEditorOnlyComponents(bool bEnable)
-    {
-        DetailsWidget.SetShowEditorOnlyComponents(bEnable);
-    }
-    bool IsShowingEditorOnlyComponents() const
-    {
-        return DetailsWidget.IsShowingEditorOnlyComponents();
-    }
-    void HideEditorWindowsForPIE();
-    void RestoreEditorWindowsAfterPIE();
-    void RefreshContentBrowser()
-    {
-        ContentBrowserWidget.Refresh();
-    }
-    void SetContentBrowserIconSize(float Size)
-    {
-        ContentBrowserWidget.SetIconSize(Size);
-    }
-    float GetContentBrowserIconSize() const
-    {
-        return ContentBrowserWidget.GetIconSize();
-    }
-    bool IsAssetEditorCapturingInput() const
-    {
-        return AssetEditorWidget.IsCapturingInput();
-    }
+    void  Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine);
+    void  Release();
+    void  Render(float DeltaTime);
+    void  Update();
+    void  SaveToSettings() const;
+    void  HideEditorWindows();
+    void  ShowEditorWindows();
+    void  SetShowEditorOnlyComponents(bool bEnable) { DetailsWidget.SetShowEditorOnlyComponents(bEnable); }
+    bool  IsShowingEditorOnlyComponents() const { return DetailsWidget.IsShowingEditorOnlyComponents(); }
+    void  HideEditorWindowsForPIE();
+    void  RestoreEditorWindowsAfterPIE();
+    void  RefreshContentBrowser() { ContentBrowserWidget.Refresh(); }
+    void  SetContentBrowserIconSize(float Size) { ContentBrowserWidget.SetIconSize(Size); }
+    float GetContentBrowserIconSize() const { return ContentBrowserWidget.GetIconSize(); }
+    bool  IsAssetEditorCapturingInput() const { return AssetEditorManager.IsCapturingInput(); }
 
   private:
     void RenderMainMenuBar();
@@ -61,24 +43,30 @@ class FEditorMainFrame
     void PackageGameBuild(const char *BatFileName);
     void CookCurrentScene();
 
-    FWindowsWindow *Window = nullptr;
-    UEditorEngine *EditorEngine = nullptr;
-    ImFont *TitleBarFont = nullptr;
-    ImFont *WindowControlIconFont = nullptr;
-    FEditorConsoleWidget ConsoleWidget;
-    FEditorDetailsWidget DetailsWidget;
-    FEditorOutlinerWidget OutlinerWidget;
-    FEditorPlaceActorsWidget PlaceActorsWidget;
-    FEditorStatWidget StatWidget;
-    FEditorContentBrowserWidget ContentBrowserWidget;
-    FAssetEditorWidget AssetEditorWidget;
-    EditorShadowMapDebugWidget ShadowMapDebugWidget;
-    bool bShowWidgetList = false;
-    bool bShowShortcutOverlay = false;
-    bool bShowCreditsOverlay = false;
-    bool bShowProjectSettings = false;
-    bool bHideEditorWindows = false;
-    bool bHasSavedUIVisibility = false;
-    bool bSavedShowWidgetList = false;
+    FWindowsWindow                *Window = nullptr;
+    UEditorEngine                 *EditorEngine = nullptr;
+    ImFont                        *TitleBarFont = nullptr;
+    ImFont                        *WindowControlIconFont = nullptr;
+    FEditorConsoleWidget           ConsoleWidget;
+    FEditorDetailsWidget           DetailsWidget;
+    FEditorOutlinerWidget          OutlinerWidget;
+    FEditorPlaceActorsWidget       PlaceActorsWidget;
+    FEditorStatWidget              StatWidget;
+    FEditorContentBrowserWidget    ContentBrowserWidget;
+    EditorShadowMapDebugWidget     ShadowMapDebugWidget;
+    bool                           bShowWidgetList = false;
+    bool                           bShowShortcutOverlay = false;
+    bool                           bShowCreditsOverlay = false;
+    bool                           bShowProjectSettings = false;
+    bool                           bHideEditorWindows = false;
+    bool                           bHasSavedUIVisibility = false;
+    bool                           bSavedShowWidgetList = false;
     FEditorSettings::FUIVisibility SavedUIVisibility{};
+
+    FAssetEditorManager AssetEditorManager;
+
+  public:
+    FAssetEditorManager &GetAssetEditorManager() { return AssetEditorManager; }
+
+    const FAssetEditorManager &GetAssetEditorManager() const { return AssetEditorManager; }
 };
