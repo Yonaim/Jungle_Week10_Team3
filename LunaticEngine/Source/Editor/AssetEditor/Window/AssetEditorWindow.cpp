@@ -97,7 +97,7 @@ void FAssetEditorWindow::Tick(float DeltaTime)
     TabManager.Tick(DeltaTime);
 }
 
-void FAssetEditorWindow::RenderContent(float DeltaTime)
+void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
 {
     if (!IsOpen())
     {
@@ -105,109 +105,37 @@ void FAssetEditorWindow::RenderContent(float DeltaTime)
         return;
     }
 
-    RenderWindowContents(DeltaTime);
+    // 별도 OS 창 / 별도 ImGui window를 만들지 않고, Level Editor의 메인 DockSpace 안에
+    // 에셋 에디터 패널들을 직접 추가한다.
+    // - 일반 에셋 에디터(CameraModifierStack 등)는 하나의 dockable panel로 감싸서 렌더링한다.
+    // - SkeletalMeshEditor는 UsesExternalPanels()를 통해 Toolbar / Preview Viewport /
+    //   Skeleton Tree / Details를 각각 독립 panel로 렌더링한다.
+    if (TabManager.HasOpenTabs())
+    {
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, AssetEditorFrameBg);
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, AssetEditorSurface);
+        ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBorder);
+        TabManager.Render(DeltaTime, DockspaceId);
+        ImGui::PopStyleColor(3);
+
+        bCapturingInput = TabManager.IsCapturingInput();
+        return;
+    }
+
+    // 탭이 없으면 아무 panel도 띄우지 않는다.
+    // 사용자는 Level Editor의 Content Browser에서 .fbx / .uasset을 열거나,
+    // File 메뉴의 Open UAsset / Open FBX 진입점으로 에셋 패널을 추가한다.
+    bCapturingInput = false;
+}
+
+void FAssetEditorWindow::RenderEmptyState(ImGuiID DockspaceId)
+{
+    (void)DockspaceId;
 }
 
 bool FAssetEditorWindow::IsCapturingInput() const
 {
     return IsOpen() && (bCapturingInput || TabManager.IsCapturingInput());
-}
-
-void FAssetEditorWindow::RenderWindowContents(float DeltaTime)
-{
-    ImGui::SetNextWindowSize(ImVec2(1280.0f, 720.0f), ImGuiCond_FirstUseEver);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, AssetEditorFrameBg);
-    ImGui::PushStyleColor(ImGuiCol_MenuBarBg, AssetEditorSurface);
-    ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBorder);
-
-    bool bWindowOpen = bOpen;
-    ImGuiID DockspaceId = 0;
-    const ImGuiWindowFlags HostFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-    if (ImGui::Begin("Asset Editor##AssetEditorRoot", &bWindowOpen, HostFlags))
-    {
-        bCapturingInput = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) ||
-                          ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-
-        if (ImGui::BeginMenuBar())
-        {
-            if (ImGui::BeginMenu("File"))
-            {
-                BuildFileMenu();
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Edit"))
-            {
-                BuildEditMenu();
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Window"))
-            {
-                BuildWindowMenu();
-                ImGui::EndMenu();
-            }
-            BuildCustomMenus();
-            ImGui::EndMenuBar();
-        }
-
-        if (TabManager.HasOpenTabs())
-        {
-            DockspaceId = ImGui::GetID("##AssetEditorDockSpace");
-            RenderDockSpace();
-        }
-        else
-        {
-            RenderEmptyState();
-        }
-    }
-    ImGui::End();
-
-    if (TabManager.HasOpenTabs())
-    {
-        TabManager.Render(DeltaTime, DockspaceId);
-    }
-
-    ImGui::PopStyleColor(3);
-    bOpen = bWindowOpen;
-    bVisible = bWindowOpen;
-}
-
-void FAssetEditorWindow::RenderDockSpace()
-{
-    const ImGuiID DockspaceId = ImGui::GetID("##AssetEditorDockSpace");
-    ImGui::DockSpace(DockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
-}
-
-void FAssetEditorWindow::RenderEmptyState()
-{
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 32.0f);
-
-    const char *Title = "No asset is open";
-    const char *Hint = "Open a .uasset or .fbx from File, or double-click it in the Content Browser.";
-
-    const float AvailableWidth = ImGui::GetContentRegionAvail().x;
-    const ImVec2 TitleSize = ImGui::CalcTextSize(Title);
-    const ImVec2 HintSize = ImGui::CalcTextSize(Hint);
-
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (AvailableWidth - TitleSize.x) * 0.5f);
-    ImGui::TextDisabled("%s", Title);
-
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (AvailableWidth - HintSize.x) * 0.5f);
-    ImGui::TextDisabled("%s", Hint);
-
-    ImGui::Spacing();
-    const float ButtonWidth = 140.0f;
-    const float ButtonGap = 8.0f;
-    const float TotalButtonWidth = ButtonWidth * 2.0f + ButtonGap;
-    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - TotalButtonWidth) * 0.5f);
-    if (ImGui::Button("Open Asset...", ImVec2(ButtonWidth, 0.0f)) && OwnerManager)
-    {
-        OwnerManager->OpenAssetWithDialog(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
-    }
-    ImGui::SameLine(0.0f, ButtonGap);
-    if (ImGui::Button("Open FBX...", ImVec2(ButtonWidth, 0.0f)) && OwnerManager)
-    {
-        OwnerManager->OpenFbxWithDialog(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
-    }
 }
 
 

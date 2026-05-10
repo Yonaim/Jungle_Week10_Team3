@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Window/LevelEditorWindow.h"
+#include "LevelEditor/Window/LevelEditorWindow.h"
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
@@ -269,6 +269,12 @@ void FLevelEditorWindow::FlushPendingMenuAction()
             EditorEngine->GetAssetEditorManager().OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
         }
         return;
+    case EPendingMenuAction::OpenFBX:
+        if (EditorEngine)
+        {
+            EditorEngine->GetAssetEditorManager().OpenFbxWithDialog(Window ? Window->GetHWND() : nullptr);
+        }
+        return;
     case EPendingMenuAction::ImportMaterial:
         if (EditorEngine)
         {
@@ -372,7 +378,8 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 6.0f));
     if (ImGui::Begin("##EditorDockSpaceHost", nullptr, DockspaceWindowFlags))
     {
-        ImGui::DockSpace(ImGui::GetID("##EditorDockSpace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
+        MainDockspaceId = ImGui::GetID("##EditorDockSpace");
+        ImGui::DockSpace(MainDockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
     }
     ImGui::End();
     ImGui::PopStyleVar(4);
@@ -485,6 +492,11 @@ void FLevelEditorWindow::BuildFileMenu()
         PendingMenuAction = EPendingMenuAction::OpenUAsset;
         return;
     }
+    if (ImGui::MenuItem("Open FBX...", "Ctrl+Alt+F") && EditorEngine)
+    {
+        PendingMenuAction = EPendingMenuAction::OpenFBX;
+        return;
+    }
 
     DrawPopupSectionHeader("IMPORT");
     if (ImGui::MenuItem("Import Material...") && EditorEngine)
@@ -549,6 +561,16 @@ void FLevelEditorWindow::BuildEditMenu()
 void FLevelEditorWindow::BuildWindowMenu()
 {
     FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+
+    if (bHideEditorWindows)
+    {
+        if (ImGui::MenuItem("Restore Level Editor Panels"))
+        {
+            ShowEditorWindows();
+        }
+        ImGui::Separator();
+    }
+
     ImGui::Checkbox("Viewport", &Settings.Panels.bViewport);
     ImGui::Separator();
     ImGui::Checkbox("Console", &Settings.Panels.bConsole);
@@ -800,6 +822,41 @@ void FLevelEditorWindow::HideEditorWindows()
     Settings.Panels.bContentBrowser = false;
     Settings.Panels.bImGuiSettings = false;
     Settings.Panels.bShadowMapDebug = false;
+}
+
+void FLevelEditorWindow::HideLevelEditorUIForAssetEditor()
+{
+    // FBX / SkeletalMesh Viewer 집중 모드.
+    //
+    // 기존 HideEditorWindows()는 PIE 흐름과도 공유되므로 Level Viewport는 남겨둔다.
+    // 하지만 FBX Viewer 작업에서는 Level Viewport까지 가리면 Preview Viewport / Skeleton Tree / Details만
+    // 보이게 할 수 있으므로, 이 함수는 별도 경로로 Level Editor UI 전체를 숨긴다.
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+
+    if (!bHasSavedPanelVisibility)
+    {
+        SavedPanelVisibility = Settings.Panels;
+        bSavedShowPanelList = bShowPanelList;
+        bHasSavedPanelVisibility = true;
+    }
+
+    bHideEditorWindows = true;
+    bShowPanelList = false;
+
+    Settings.Panels.bViewport = false;
+    Settings.Panels.bConsole = false;
+    Settings.Panels.bDetails = false;
+    Settings.Panels.bOutliner = false;
+    Settings.Panels.bPlaceActors = false;
+    Settings.Panels.bStats = false;
+    Settings.Panels.bContentBrowser = false;
+    Settings.Panels.bImGuiSettings = false;
+    Settings.Panels.bShadowMapDebug = false;
+}
+
+void FLevelEditorWindow::RestoreLevelEditorUIAfterAssetEditor()
+{
+    ShowEditorWindows();
 }
 
 void FLevelEditorWindow::ShowEditorWindows()

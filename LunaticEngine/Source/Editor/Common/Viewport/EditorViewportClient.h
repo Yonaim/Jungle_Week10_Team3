@@ -6,6 +6,18 @@
 class FWindowsWindow;
 class FViewport;
 
+/**
+ * 모든 Editor Viewport Client의 공통 베이스.
+ *
+ * 역할:
+ * - FViewport 포인터와 ImGui/SWindow layout 정보를 보관한다.
+ * - Viewport screen rect, active/hovered 상태, viewport image 렌더링 같은 공통 기능을 제공한다.
+ *
+ * 주의:
+ * - 이 클래스는 Level Editor 전용 기능을 몰라야 한다.
+ * - Actor picking, Gizmo, Selection, Camera navigation, PIE shortcut은 FLevelEditorViewportClient 쪽에 둔다.
+ * - SkeletalMeshPreviewViewportClient 같은 Asset Preview 뷰포트도 이 베이스를 상속한다.
+ */
 class FEditorViewportClient : public FViewportClient
 {
   public:
@@ -29,6 +41,7 @@ class FEditorViewportClient : public FViewportClient
     bool IsHovered() const { return bIsHovered; }
 
     void SetViewportSize(float InWidth, float InHeight);
+    void SetViewportScreenRect(const FRect &InRect);
 
     const FRect &GetViewportScreenRect() const { return ViewportScreenRect; }
 

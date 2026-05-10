@@ -9,6 +9,7 @@
 #include "Engine/Asset/AssetData.h"
 #include "Engine/Asset/AssetFileSerializer.h"
 #include "Engine/Mesh/SkeletalMesh.h"
+#include "EditorEngine.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
 
@@ -46,9 +47,9 @@ void FAssetEditorManager::Tick(float DeltaTime)
     AssetEditorWindow.Tick(DeltaTime);
 }
 
-void FAssetEditorManager::RenderContent(float DeltaTime)
+void FAssetEditorManager::RenderContent(float DeltaTime, ImGuiID DockspaceId)
 {
-    AssetEditorWindow.RenderContent(DeltaTime);
+    AssetEditorWindow.RenderContent(DeltaTime, DockspaceId);
 }
 
 bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPath)
@@ -193,7 +194,23 @@ bool FAssetEditorManager::OpenFbxForPreview(const std::filesystem::path &FbxPath
         return false;
     }
 
-    return OpenLoadedAsset(ImportedMesh, NormalizedPath);
+    const bool bOpened = OpenLoadedAsset(ImportedMesh, NormalizedPath);
+    if (!bOpened)
+    {
+        UObjectManager::Get().DestroyObject(ImportedMesh);
+        return false;
+    }
+
+    if (EditorEngine)
+    {
+        // 임시 UX:
+        // FBX를 열면 Level Editor의 기존 패널/뷰포트는 숨기고,
+        // SkeletalMesh Viewer 관련 Asset Editor 패널만 보이도록 전환한다.
+        // 나중에 별도 Asset Editor Workspace / Window를 다시 도입하면 이 호출은 제거한다.
+        EditorEngine->HideLevelEditorUIForAssetEditor();
+    }
+
+    return true;
 }
 
 bool FAssetEditorManager::ShowAssetEditorWindow()

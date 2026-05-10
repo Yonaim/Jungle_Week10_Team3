@@ -178,7 +178,7 @@ void UEditorEngine::RenderUI(float DeltaTime)
 {
     ImGuiSystem.BeginFrame();
     LevelEditorWindow.RenderContent(DeltaTime);
-    AssetEditorManager.RenderContent(DeltaTime);
+    AssetEditorManager.RenderContent(DeltaTime, LevelEditorWindow.GetMainDockspaceId());
     ImGuiSystem.EndFrame();
     LevelEditorWindow.FlushPendingMenuAction();
 }

@@ -8,12 +8,34 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
 
 #include <filesystem>
+#include <string>
+
+#include "ImGui/imgui.h"
 
 class UObject;
 class UEditorEngine;
 class FRenderer;
 class USkeletalMesh;
 
+/**
+ * SkeletalMesh Viewer / Asset Editor.
+ *
+ * 김연하 담당 범위:
+ * - SkeletalMesh 에셋 열기
+ * - Viewer 패널 구성
+ * - Preview Viewport 표시
+ * - Mesh 정보 Details 표시
+ * - Reference Pose / Skinned Pose 보기 상태 제공
+ *
+ * 패널 구성:
+ * - Toolbar Panel
+ * - Preview Viewport Panel
+ * - Skeleton Tree Panel
+ * - Details Panel
+ *
+ * 김형도 담당 예정 영역은 SkeletonTreePanel / DetailsPanel / PreviewViewportClient 내부에 placeholder로 남겨둔다.
+ * Bone hierarchy, pose edit, bone gizmo, skeleton debug draw는 이 클래스가 직접 완성하지 않는다.
+ */
 class FSkeletalMeshEditor final : public IAssetEditor
 {
   public:
@@ -24,6 +46,10 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     void Tick(float DeltaTime) override;
     void RenderContent(float DeltaTime) override;
+
+    // SkeletalMeshEditor는 단일 탭 내부 content가 아니라 여러 도킹 패널을 직접 렌더링한다.
+    bool UsesExternalPanels() const override { return true; }
+    void RenderPanels(float DeltaTime, ImGuiID DockspaceId) override;
     void BuildCustomMenus() override;
 
     bool IsDirty() const override { return bDirty; }
@@ -32,7 +58,10 @@ class FSkeletalMeshEditor final : public IAssetEditor
     const std::filesystem::path &GetAssetPath() const override { return EditingAssetPath; }
 
   private:
-    void RenderLayout(float DeltaTime);
+    void RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId);
+    void RenderToolbarPanel(ImGuiID DockspaceId);
+    void BuildDefaultDockLayout(ImGuiID DockspaceId);
+    std::string MakePanelName(const char *BaseName) const;
 
   private:
     UEditorEngine        *EditorEngine = nullptr;
@@ -40,7 +69,9 @@ class FSkeletalMeshEditor final : public IAssetEditor
     USkeletalMesh        *EditingAsset = nullptr;
     std::filesystem::path EditingAssetPath;
 
+    // 에디터 전체 공유 상태. 패널들이 이 상태를 같이 보고 갱신한다.
     FSkeletalMeshEditorState State;
+
     FSkeletalMeshEditorToolbar Toolbar;
     FSkeletalMeshPreviewViewport PreviewViewport;
     FSkeletonTreePanel SkeletonTreePanel;
@@ -48,5 +79,10 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     bool bOpen = false;
     bool bDirty = false;
+
+    // 동일 타입 에디터를 여러 개 열었을 때 ImGui ID 충돌을 피하기 위한 인스턴스 ID.
+    uint32 EditorInstanceId = 0;
+    ImGuiID BuiltDockspaceId = 0;
+
     bool bCapturingInput = false;
 };

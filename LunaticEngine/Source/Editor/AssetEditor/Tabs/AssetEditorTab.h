@@ -5,6 +5,16 @@
 #include <filesystem>
 #include <memory>
 
+/**
+ * Asset Editor 안에서 열린 문서 하나를 나타내는 래퍼.
+ *
+ * 현재는 별도 Asset Editor Window를 쓰지 않고 Level Editor DockSpace 안에 패널을 붙이지만,
+ * 개념적으로는 여전히 "열린 에셋 문서 하나"를 의미한다.
+ *
+ * 역할:
+ * - IAssetEditor 인스턴스 하나를 소유한다.
+ * - 탭 제목 / 에셋 경로 / 렌더링을 에디터에 위임한다.
+ */
 class FAssetEditorTab
 {
   public:

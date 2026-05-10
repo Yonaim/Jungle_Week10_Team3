@@ -67,6 +67,25 @@ void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
     }
 }
 
+
+void FEditorViewportClient::SetViewportScreenRect(const FRect &InRect)
+{
+    ViewportScreenRect = InRect;
+    SetViewportSize(InRect.Width, InRect.Height);
+
+    if (!Viewport)
+    {
+        return;
+    }
+
+    const uint32 NewWidth = static_cast<uint32>(InRect.Width > 0.0f ? InRect.Width : 0.0f);
+    const uint32 NewHeight = static_cast<uint32>(InRect.Height > 0.0f ? InRect.Height : 0.0f);
+    if (NewWidth > 0 && NewHeight > 0 && (NewWidth != Viewport->GetWidth() || NewHeight != Viewport->GetHeight()))
+    {
+        Viewport->RequestResize(NewWidth, NewHeight);
+    }
+}
+
 void FEditorViewportClient::UpdateLayoutRect()
 {
     if (!LayoutWindow)

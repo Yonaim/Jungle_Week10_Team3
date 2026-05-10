@@ -97,9 +97,27 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
     for (int32 Index = 0; Index < static_cast<int32>(Tabs.size());)
     {
         FAssetEditorTab *Tab = Tabs[Index].get();
-        if (!Tab)
+        if (!Tab || !Tab->GetEditor())
         {
             CloseTab(Index);
+            continue;
+        }
+
+        IAssetEditor *Editor = Tab->GetEditor();
+
+        if (Editor->UsesExternalPanels())
+        {
+            // SkeletalMeshEditor처럼 에디터 내부 영역이 실제 패널 단위로 나뉘는 경우.
+            // 이 경로에서는 wrapper window를 만들지 않고, 에디터가 직접 여러 panel을
+            // Level Editor 메인 DockSpace에 추가한다.
+            Editor->RenderPanels(DeltaTime, DockspaceId);
+
+            if (Editor->IsCapturingInput())
+            {
+                ActiveTabIndex = Index;
+            }
+
+            ++Index;
             continue;
         }
 
@@ -132,6 +150,7 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
         ++Index;
     }
 }
+
 
 bool FAssetEditorTabManager::HasOpenTabs() const
 {

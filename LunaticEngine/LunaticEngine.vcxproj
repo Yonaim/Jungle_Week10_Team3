@@ -329,6 +329,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshPreviewViewport.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletonTreePanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.cpp" />

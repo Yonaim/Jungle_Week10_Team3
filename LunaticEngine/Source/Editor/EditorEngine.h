@@ -70,6 +70,8 @@ class UEditorEngine : public UEngine
     float          GetContentBrowserIconSize() const { return LevelEditorWindow.GetContentBrowserIconSize(); }
     void           HideEditorWindows() { LevelEditorWindow.HideEditorWindows(); }
     void           ShowEditorWindows() { LevelEditorWindow.ShowEditorWindows(); }
+    void           HideLevelEditorUIForAssetEditor() { LevelEditorWindow.HideLevelEditorUIForAssetEditor(); }
+    void           RestoreLevelEditorUIAfterAssetEditor() { LevelEditorWindow.RestoreLevelEditorUIAfterAssetEditor(); }
     void           SetShowEditorOnlyComponents(bool bEnable) { LevelEditorWindow.SetShowEditorOnlyComponents(bEnable); }
     bool           IsShowingEditorOnlyComponents() const { return LevelEditorWindow.IsShowingEditorOnlyComponents(); }
     bool           IsWorldCoordSystem() const { return FLevelEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
