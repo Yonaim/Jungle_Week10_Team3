@@ -185,3 +185,16 @@ IAssetEditor *FAssetEditorTabManager::GetActiveEditor() const
 
     return Tabs[ActiveTabIndex]->GetEditor();
 }
+
+void FAssetEditorTabManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
+{
+    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    {
+        if (!Tab || !Tab->GetEditor())
+        {
+            continue;
+        }
+
+        Tab->GetEditor()->CollectViewportClients(OutClients);
+    }
+}

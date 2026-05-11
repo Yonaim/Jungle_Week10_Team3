@@ -69,6 +69,9 @@ void FSkeletalMeshEditorToolbar::Render(USkeletalMesh *Mesh, FSkeletalMeshEditor
     ImGui::Checkbox("Show Bones", &State.bShowBones);
 
     ImGui::SameLine();
+    ImGui::Checkbox("Grid", &State.bShowGrid);
+
+    ImGui::SameLine();
     ImGui::Checkbox("Pose Edit Mode", &State.bEnablePoseEditMode);
     if (ImGui::IsItemHovered())
     {

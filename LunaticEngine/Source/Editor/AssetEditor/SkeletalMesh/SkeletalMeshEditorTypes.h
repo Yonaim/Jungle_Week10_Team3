@@ -25,6 +25,7 @@ struct FSkeletalMeshEditorState
     int32 SelectedMaterialSlotIndex = -1;
 
     bool bShowBones = true;
+    bool bShowGrid = true;
     bool bShowReferencePose = true;
     bool bEnablePoseEditMode = false;
     bool bShowMeshStatsOverlay = true;

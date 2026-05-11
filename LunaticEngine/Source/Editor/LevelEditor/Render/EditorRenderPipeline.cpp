@@ -1,9 +1,10 @@
-﻿#include "EditorRenderPipeline.h"
+#include "EditorRenderPipeline.h"
 #include "Component/CameraComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Core/ProjectSettings.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "Common/Viewport/EditorViewportClient.h"
 #include "Engine/Camera/PlayerCameraManager.h"
 #include "Engine/Render/Types/ForwardLightData.h"
 #include "GameFramework/GameModeBase.h"
@@ -75,6 +76,28 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer &Renderer)
 
         SCOPE_STAT_CAT("RenderViewport", "2_Render");
         RenderViewport(ViewportClient, Renderer);
+    }
+
+    // Asset Editor Preview Viewport 렌더링.
+    // LevelEditorViewportClient를 재사용하지 않고, 각 Asset Preview Client가 만든
+    // FEditorViewportRenderRequest만 공통 렌더 경로로 넘긴다.
+    TArray<FEditorViewportClient *> AssetViewportClients;
+    Editor->CollectAssetViewportClients(AssetViewportClients);
+    for (FEditorViewportClient *ViewportClient : AssetViewportClients)
+    {
+        if (!ViewportClient)
+        {
+            continue;
+        }
+
+        FEditorViewportRenderRequest Request;
+        if (!ViewportClient->BuildRenderRequest(Request))
+        {
+            continue;
+        }
+
+        SCOPE_STAT_CAT("RenderAssetPreviewViewport", "2_Render");
+        RenderViewportRequest(Request, Renderer);
     }
 
     // 스왑체인 백버퍼 복귀 → ImGui 합성 → Present
@@ -163,6 +186,31 @@ void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient *VC, FRend
     }
 }
 
+void FEditorRenderPipeline::RenderViewportRequest(const FEditorViewportRenderRequest &Request, FRenderer &Renderer)
+{
+    if (!Request.Viewport || !Request.Camera || !Request.Scene)
+    {
+        return;
+    }
+
+    ID3D11DeviceContext *Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
+    if (!Ctx)
+    {
+        return;
+    }
+
+    PrepareViewport(Request.Viewport, Request.Camera, Ctx);
+    BuildFrameFromRequest(Request);
+
+    FCollectOutput Output;
+    CollectSceneCommands(Request, Renderer, Output);
+
+    {
+        SCOPE_STAT_CAT("Renderer.RenderAssetPreview", "4_ExecutePass");
+        Renderer.Render(Frame, *Request.Scene);
+    }
+}
+
 // ============================================================
 // PrepareViewport — 지연 리사이즈 적용 + RT 클리어
 // ============================================================
@@ -247,6 +295,33 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, UCameraCo
     }
 }
 
+void FEditorRenderPipeline::BuildFrameFromRequest(const FEditorViewportRenderRequest &Request)
+{
+    Frame.ClearViewportResources();
+    Frame.SetCameraInfo(Request.Camera);
+    Frame.SetRenderOptions(Request.RenderOptions);
+    Frame.RenderOptions.ShowFlags.bGrid = Request.bRenderGrid;
+    Frame.SetViewportInfo(Request.Viewport);
+
+    const FMinimalViewInfo &CameraState = Request.Camera->GetCameraState();
+    const float AR = CameraState.bConstrainAspectRatio
+                         ? CameraState.LetterBoxingAspectW / CameraState.LetterBoxingAspectH
+                         : CameraState.AspectRatio;
+    Frame.ApplyConstrainedAR(AR);
+
+    Frame.bIsLightView = false;
+    Frame.OcclusionCulling = nullptr;
+    Frame.LODContext.CameraPos = Frame.CameraPosition;
+    Frame.LODContext.bForceFullRefresh = true;
+    Frame.LODContext.bValid = true;
+
+    if (!Request.CursorProvider || !Request.CursorProvider->GetCursorViewportPosition(Frame.CursorViewportX, Frame.CursorViewportY))
+    {
+        Frame.CursorViewportX = UINT32_MAX;
+        Frame.CursorViewportY = UINT32_MAX;
+    }
+}
+
 // ============================================================
 // CollectCommands — Scene 데이터 주입 + DrawCommand 생성
 // ============================================================
@@ -313,4 +388,30 @@ void FEditorRenderPipeline::CollectCommands(FLevelEditorViewportClient *VC, UWor
         SCOPE_STAT_CAT("BuildCommands", "3_Collect");
         Builder.BuildCommands(Frame, &Scene, Output);
     }
+}
+
+void FEditorRenderPipeline::CollectSceneCommands(const FEditorViewportRenderRequest &Request, FRenderer &Renderer,
+                                                 FCollectOutput &Output)
+{
+    if (!Request.Scene)
+    {
+        return;
+    }
+
+    SCOPE_STAT_CAT("CollectorAssetPreview", "3_Collect");
+
+    FScene &Scene = *Request.Scene;
+    Scene.ClearFrameData();
+
+    FDrawCommandBuilder &Builder = Renderer.GetBuilder();
+    Builder.BeginCollect(Frame, Scene.GetProxyCount());
+
+    Collector.CollectScene(Scene, Frame, Output);
+
+    if (Request.bRenderGrid)
+    {
+        Collector.CollectGrid(Frame.RenderOptions.GridSpacing, Frame.RenderOptions.GridHalfLineCount, Scene);
+    }
+
+    Builder.BuildCommands(Frame, &Scene, Output);
 }

@@ -1,4 +1,4 @@
-﻿#include "RenderCollector.h"
+#include "RenderCollector.h"
 
 #include "Collision/ConvexVolume.h"
 #include "Component/ActorComponent.h"
@@ -19,6 +19,7 @@
 
 #include <Collision/Octree.h>
 #include <Collision/SpatialPartition.h>
+#include <algorithm>
 
 // ============================================================
 // UpdateProxyLOD — LOD 갱신 공통 헬퍼 (Collector + Builder 공유)
@@ -66,6 +67,35 @@ void FRenderCollector::Collect(UWorld *World, const FFrameContext &Frame, FColle
     }
 
     FilterVisibleProxies(Frame, Scene, Output, World);
+}
+
+
+void FRenderCollector::CollectScene(FScene &Scene, const FFrameContext &Frame, FCollectOutput &Output)
+{
+    Scene.UpdateDirtyProxies();
+
+    Output.FrustumVisibleProxies.clear();
+    Output.FrustumVisibleProxies.reserve(Scene.GetProxyCount() + static_cast<uint32>(Scene.GetNeverCullProxies().size()));
+
+    // Asset Preview Scene은 World/Octree가 없으므로 Scene에 등록된 proxy를 직접 순회한다.
+    // 단일 preview mesh 중심이라 frustum culling보다 명확한 렌더 연결을 우선한다.
+    for (FPrimitiveSceneProxy *Proxy : Scene.GetAllProxies())
+    {
+        if (Proxy)
+        {
+            Output.FrustumVisibleProxies.push_back(Proxy);
+        }
+    }
+
+    for (FPrimitiveSceneProxy *Proxy : Scene.GetNeverCullProxies())
+    {
+        if (Proxy && std::find(Output.FrustumVisibleProxies.begin(), Output.FrustumVisibleProxies.end(), Proxy) == Output.FrustumVisibleProxies.end())
+        {
+            Output.FrustumVisibleProxies.push_back(Proxy);
+        }
+    }
+
+    FilterVisibleProxies(Frame, Scene, Output, nullptr);
 }
 
 void FRenderCollector::CollectGrid(float GridSpacing, int32 GridHalfLineCount, FScene &Scene)

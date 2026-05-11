@@ -170,6 +170,7 @@ class UEditorEngine : public UEngine
     const FEditorImGuiSystem &GetImGuiSystem() const { return ImGuiSystem; }
 
     bool IsAssetEditorCapturingInput() const { return AssetEditorManager.IsCapturingInput(); }
+    void CollectAssetViewportClients(TArray<FEditorViewportClient *> &OutClients) const { AssetEditorManager.CollectViewportClients(OutClients); }
     FAssetEditorManager &GetAssetEditorManager() { return AssetEditorManager; }
     const FAssetEditorManager &GetAssetEditorManager() const { return AssetEditorManager; }
 

@@ -8,6 +8,7 @@
 #include <memory>
 
 class IAssetEditor;
+class FEditorViewportClient;
 
 /**
  * 열린 Asset Editor 문서들을 관리하는 관리자.
@@ -39,6 +40,7 @@ class FAssetEditorTabManager
     int32 GetTabCount() const;
     bool IsCapturingInput() const;
     IAssetEditor *GetActiveEditor() const;
+    void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
 
   private:
     TArray<std::unique_ptr<FAssetEditorTab>> Tabs;

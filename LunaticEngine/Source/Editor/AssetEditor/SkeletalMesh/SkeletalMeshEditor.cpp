@@ -109,6 +109,19 @@ void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
                       ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
 }
 
+void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients)
+{
+    if (!bOpen)
+    {
+        return;
+    }
+
+    if (FSkeletalMeshPreviewViewportClient *Client = PreviewViewport.GetViewportClient())
+    {
+        OutClients.push_back(Client);
+    }
+}
+
 void FSkeletalMeshEditor::BuildCustomMenus()
 {
     if (ImGui::BeginMenu("Mesh"))

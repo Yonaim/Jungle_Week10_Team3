@@ -11,6 +11,7 @@ class UEditorEngine;
 class FRenderer;
 class IAssetEditor;
 class USkeletalMesh;
+class FEditorViewportClient;
 
 /**
  * Asset Editor의 진입점이자 라우터.
@@ -59,6 +60,7 @@ class FAssetEditorManager
     void CloseActiveEditor();
 
     bool IsCapturingInput() const;
+    void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
 
     FAssetEditorWindow &GetAssetEditorWindow() { return AssetEditorWindow; }
     const FAssetEditorWindow &GetAssetEditorWindow() const { return AssetEditorWindow; }

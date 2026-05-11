@@ -138,6 +138,16 @@ bool FAssetEditorWindow::IsCapturingInput() const
     return IsOpen() && (bCapturingInput || TabManager.IsCapturingInput());
 }
 
+void FAssetEditorWindow::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
+{
+    if (!IsOpen())
+    {
+        return;
+    }
+
+    TabManager.CollectViewportClients(OutClients);
+}
+
 
 void FAssetEditorWindow::BuildFileMenu()
 {

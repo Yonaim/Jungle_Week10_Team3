@@ -290,6 +290,11 @@ bool FAssetEditorManager::IsCapturingInput() const
     return AssetEditorWindow.IsCapturingInput();
 }
 
+void FAssetEditorManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
+{
+    AssetEditorWindow.CollectViewportClients(OutClients);
+}
+
 USkeletalMesh *FAssetEditorManager::CreateSkeletalMeshForEditorPreview(const std::filesystem::path &SourcePath) const
 {
     const std::filesystem::path NormalizedPath = SourcePath.lexically_normal();

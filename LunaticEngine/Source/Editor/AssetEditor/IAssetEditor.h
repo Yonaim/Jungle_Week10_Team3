@@ -2,11 +2,14 @@
 
 #include <filesystem>
 
+#include "Core/CoreTypes.h"
+
 #include "ImGui/imgui.h"
 
 class UObject;
 class UEditorEngine;
 class FRenderer;
+class FEditorViewportClient;
 
 /**
  * 모든 에셋 에디터의 공통 인터페이스.
@@ -51,6 +54,9 @@ class IAssetEditor
 
     virtual bool IsDirty() const = 0;
     virtual bool IsCapturingInput() const = 0;
+
+    /** Asset Editor 내부에 있는 렌더 가능한 Preview Viewport들을 수집한다. */
+    virtual void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) { (void)OutClients; }
 
     virtual const char *GetEditorName() const = 0;
     virtual const std::filesystem::path &GetAssetPath() const = 0;

@@ -1,4 +1,4 @@
-﻿#include "SkeletalMeshComponent.h"
+#include "SkeletalMeshComponent.h"
 #include "Serialization/Archive.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/SkeletalMeshCommon.h"
@@ -65,6 +65,18 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	RebuildComponentSpace();
 	PerformCPUSkinning(CurrentPose);
 	FinalizeRenderState();
+}
+
+void USkeletalMeshComponent::RefreshSkinningForEditor(float DeltaTime)
+{
+    if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
+        return;
+
+    EvaluatePose(DeltaTime);
+    UpdatePoseLocal(DeltaTime);
+    RebuildComponentSpace();
+    PerformCPUSkinning(CurrentPose);
+    FinalizeRenderState();
 }
 
 void USkeletalMeshComponent::EvaluatePose(float DeltaTime)
