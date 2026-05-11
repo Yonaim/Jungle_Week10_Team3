@@ -464,8 +464,16 @@ void FSkeletalMeshPreviewViewportClient::RenderFallbackOverlay()
 		return;
 	}
 
-	ImGui::SetCursorScreenPos(ImVec2(R.X + 16.0f, R.Y + 16.0f));
-	ImGui::BeginGroup();
+	ImGui::SetNextWindowPos(ImVec2(R.X + 12.0f, R.Y + 12.0f));
+	ImGui::SetNextWindowSize(ImVec2(300.0f, 0.0f));
+
+	ImGuiWindowFlags Flags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_AlwaysAutoResize;
+
+	ImGui::Begin("##SkeletalMeshPreviewOverlay", nullptr, Flags);
 
 	ImGui::TextUnformatted("Skeletal Mesh Preview Viewport");
 
@@ -480,45 +488,17 @@ void FSkeletalMeshPreviewViewportClient::RenderFallbackOverlay()
 		if (State)
 		{
 			ImGui::Text("Selected Bone: %d", State->SelectedBoneIndex);
-			ImGui::Text("Show Bones: %s", State->bShowBones ? "true" : "false");
+			ImGui::Checkbox("Show Bones", &State->bShowBones);
+			ImGui::Checkbox("Pose Edit Mode", &State->bEnablePoseEditMode);
 		}
 
-		if (PreviewComponent)
-		{
-			const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
-			ImGui::Text("Pose Transforms: %d", static_cast<int32>(Pose.ComponentTransforms.size()));
+		ImGui::Separator();
 
-			int32 ProjectOK = 0;
-			int32 ProjectFail = 0;
-
-			const FSkeletalMesh* MeshAsset = PreviewMesh->GetSkeletalMeshAsset();
-			if (MeshAsset)
-			{
-				const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
-				const int32 BoneCount = static_cast<int32>(Bones.size());
-
-				for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
-				{
-					const FVector BonePos = Pose.ComponentTransforms[BoneIndex].GetLocation();
-					ImVec2 Screen;
-					if (ProjectWorldToViewport(BonePos, Screen))
-					{
-						++ProjectOK;
-					}
-					else
-					{
-						++ProjectFail;
-					}
-				}
-			}
-
-			ImGui::Text("Project OK: %d", ProjectOK);
-			ImGui::Text("Project Fail: %d", ProjectFail);
-		}
+		// 임시 Bone 회전 테스트 버튼
+		RenderPoseEditDebugControls();
 	}
 
-	ImGui::TextDisabled("RMB Drag: Orbit / MMB Drag: Pan / Wheel: Zoom / Toolbar: Frame");
-	ImGui::EndGroup();
+	ImGui::End();
 }
 
 // 임시 Bone 회전 테스트용 함수
@@ -526,25 +506,33 @@ void FSkeletalMeshPreviewViewportClient::RenderPoseEditDebugControls()
 {
 	if (!State || !State->bEnablePoseEditMode)
 	{
+		ImGui::TextDisabled("Pose Edit Mode is disabled.");
 		return;
 	}
 
-	if (!PreviewComponent || State->SelectedBoneIndex < 0)
+	if (!PreviewComponent)
 	{
-		ImGui::TextDisabled("Select a bone.");
+		ImGui::TextDisabled("Preview component is not available.");
+		return;
+	}
+
+	if (State->SelectedBoneIndex < 0)
+	{
+		ImGui::TextDisabled("Select a bone from Skeleton Tree.");
+		return;
+	}
+
+	const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
+	const int32 BoneIndex = State->SelectedBoneIndex;
+
+	if (BoneIndex >= static_cast<int32>(Pose.LocalTransforms.size()))
+	{
+		ImGui::TextDisabled("Selected bone index is out of pose range.");
 		return;
 	}
 
 	if (ImGui::Button("Rotate Selected Bone Local Z +10 deg"))
 	{
-		const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
-		const int32 BoneIndex = State->SelectedBoneIndex;
-
-		if (BoneIndex < 0 || BoneIndex >= static_cast<int32>(Pose.LocalTransforms.size()))
-		{
-			return;
-		}
-
 		FTransform Local = Pose.LocalTransforms[BoneIndex];
 
 		constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
@@ -557,6 +545,31 @@ void FSkeletalMeshPreviewViewportClient::RenderPoseEditDebugControls()
 		Local.Rotation.Normalize();
 
 		PreviewComponent->SetBoneLocalTransform(BoneIndex, Local);
+		PreviewComponent->RefreshSkinningForEditor(0.0f);
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Rotate -10 deg"))
+	{
+		FTransform Local = Pose.LocalTransforms[BoneIndex];
+
+		constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
+		const FQuat AddRot = FQuat::FromAxisAngle(
+			FVector(0.0f, 0.0f, 1.0f),
+			-10.0f * DegToRad
+		);
+
+		Local.Rotation = Local.Rotation * AddRot;
+		Local.Rotation.Normalize();
+
+		PreviewComponent->SetBoneLocalTransform(BoneIndex, Local);
+		PreviewComponent->RefreshSkinningForEditor(0.0f);
+	}
+
+	if (ImGui::Button("Reset Preview Pose"))
+	{
+		PreviewComponent->SetSkeletalMesh(PreviewMesh);
 		PreviewComponent->RefreshSkinningForEditor(0.0f);
 	}
 }
@@ -594,6 +607,7 @@ void FSkeletalMeshPreviewViewportClient::RenderSkeletonDebugOverlay()
 	}
 
 	ImDrawList* DrawList = ImGui::GetForegroundDrawList();
+	const FMatrix ComponentToWorld = PreviewComponent->GetWorldMatrix();
 
 	for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
 	{
@@ -606,8 +620,8 @@ void FSkeletalMeshPreviewViewportClient::RenderSkeletonDebugOverlay()
 		ImVec2 BoneScreen;
 		ImVec2 ParentScreen;
 
-		const FVector BonePos = Pose.ComponentTransforms[BoneIndex].GetLocation();
-		const FVector ParentPos = Pose.ComponentTransforms[ParentIndex].GetLocation();
+		const FVector BonePos = ComponentToWorld.TransformPositionWithW(Pose.ComponentTransforms[BoneIndex].GetLocation());
+		const FVector ParentPos = ComponentToWorld.TransformPositionWithW(Pose.ComponentTransforms[ParentIndex].GetLocation());
 
 		if (!ProjectWorldToViewport(BonePos, BoneScreen))
 		{

@@ -6,6 +6,7 @@
 #include "Mesh/StaticMeshCommon.h"
 
 #include <algorithm>
+#include <cmath>
 
 #if defined(_WIN64)
 namespace
@@ -68,10 +69,43 @@ namespace
 
 	FTransform MakeTransformFromMatrix(const FMatrix& Matrix)
 	{
+		FVector AxisX(Matrix.M[0][0], Matrix.M[0][1], Matrix.M[0][2]);
+		FVector AxisY(Matrix.M[1][0], Matrix.M[1][1], Matrix.M[1][2]);
+		FVector AxisZ(Matrix.M[2][0], Matrix.M[2][1], Matrix.M[2][2]);
+
+		FVector Scale(AxisX.Length(), AxisY.Length(), AxisZ.Length());
+		if (Scale.X > 1e-6f)
+		{
+			AxisX /= Scale.X;
+		}
+		if (Scale.Y > 1e-6f)
+		{
+			AxisY /= Scale.Y;
+		}
+		if (Scale.Z > 1e-6f)
+		{
+			AxisZ /= Scale.Z;
+		}
+
+		FMatrix RotationMatrix(
+			AxisX.X, AxisX.Y, AxisX.Z, 0.0f,
+			AxisY.X, AxisY.Y, AxisY.Z, 0.0f,
+			AxisZ.X, AxisZ.Y, AxisZ.Z, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f);
+
+		if (RotationMatrix.GetBasisDeterminant3x3() < 0.0f)
+		{
+			// Preserve FBX axis-remap reflection through FTransform's signed scale.
+			Scale.X = -Scale.X;
+			RotationMatrix.M[0][0] = -RotationMatrix.M[0][0];
+			RotationMatrix.M[0][1] = -RotationMatrix.M[0][1];
+			RotationMatrix.M[0][2] = -RotationMatrix.M[0][2];
+		}
+
 		return FTransform(
 			Matrix.GetLocation(),
-			Matrix.ToQuat(),
-			Matrix.GetScale());
+			RotationMatrix.ToQuat(),
+			Scale);
 	}
 
 	void ApplyBoneBindGlobal(FBoneInfo& Bone, const FMatrix& BindGlobalMatrix)
@@ -117,6 +151,42 @@ namespace
 
 		for (int32 BoneIndex = 0; BoneIndex < static_cast<int32>(OutMesh.Bones.size()); ++BoneIndex)
 		{
+			if (BoneIndex < static_cast<int32>(BindGlobalMatrices.size()))
+			{
+				const FMatrix& OriginalBindGlobal = BindGlobalMatrices[BoneIndex];
+				const FMatrix& RebuiltBindGlobal = RebuiltGlobalMatrices[BoneIndex];
+				const FVector OriginalLocation = OriginalBindGlobal.GetLocation();
+				const FVector RebuiltLocation = RebuiltBindGlobal.GetLocation();
+				const FVector Delta = RebuiltLocation - OriginalLocation;
+				const float DeltaLength = std::sqrt(Delta.X * Delta.X + Delta.Y * Delta.Y + Delta.Z * Delta.Z);
+				const float OriginalDet = OriginalBindGlobal.GetBasisDeterminant3x3();
+				const float RebuiltDet = RebuiltBindGlobal.GetBasisDeterminant3x3();
+				const bool bHandednessChanged = (OriginalDet < 0.0f && RebuiltDet >= 0.0f)
+					|| (OriginalDet >= 0.0f && RebuiltDet < 0.0f);
+
+				// TEMP SkeletalDebug: remove after FBX bind-pose reconstruction is verified.
+				if (DeltaLength > 0.01f || bHandednessChanged)
+				{
+					const FBoneInfo& Bone = OutMesh.Bones[BoneIndex];
+					UE_LOG_CATEGORY(ObjImporter, Warning,
+						"[TEMP SkeletalDebug] Bind rebuild mismatch Bone=%s Index=%d Parent=%d "
+						"OriginalLoc=(%.4f, %.4f, %.4f) RebuiltLoc=(%.4f, %.4f, %.4f) "
+						"Delta=%.4f OriginalDet=%.4f RebuiltDet=%.4f",
+						Bone.Name.c_str(),
+						BoneIndex,
+						Bone.ParentIndex,
+						OriginalLocation.X,
+						OriginalLocation.Y,
+						OriginalLocation.Z,
+						RebuiltLocation.X,
+						RebuiltLocation.Y,
+						RebuiltLocation.Z,
+						DeltaLength,
+						OriginalDet,
+						RebuiltDet);
+				}
+			}
+
 			// Current bind pose is reconstructed from FTransform. Make the inverse
 			// bind pose match that exact runtime representation so bind-pose
 			// skinning is identity and does not tilt skinned-only sections.
@@ -140,6 +210,39 @@ namespace
 		{
 			Vertices.push_back(VertexIndex);
 		}
+	}
+
+	bool TryGetMeshBindGlobalMatrix(FbxMesh* Mesh, FbxAMatrix& OutMatrix)
+	{
+		if (!Mesh)
+		{
+			return false;
+		}
+
+		const int32 DeformerCount = Mesh->GetDeformerCount(FbxDeformer::eSkin);
+		for (int32 DeformerIndex = 0; DeformerIndex < DeformerCount; ++DeformerIndex)
+		{
+			FbxSkin* Skin = static_cast<FbxSkin*>(Mesh->GetDeformer(DeformerIndex, FbxDeformer::eSkin));
+			if (!Skin)
+			{
+				continue;
+			}
+
+			const int32 ClusterCount = Skin->GetClusterCount();
+			for (int32 ClusterIndex = 0; ClusterIndex < ClusterCount; ++ClusterIndex)
+			{
+				FbxCluster* Cluster = Skin->GetCluster(ClusterIndex);
+				if (!Cluster)
+				{
+					continue;
+				}
+
+				Cluster->GetTransformMatrix(OutMatrix);
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	void ConvertMeshNode(
@@ -167,7 +270,37 @@ namespace
 			UVSetName = UVSetNames[0];
 		}
 
-		const FbxAMatrix GlobalTransform = Node->EvaluateGlobalTransform();
+		FbxAMatrix GlobalTransform = Node->EvaluateGlobalTransform();
+		FbxAMatrix MeshBindGlobalTransform;
+		if (TryGetMeshBindGlobalMatrix(Mesh, MeshBindGlobalTransform))
+		{
+			const FMatrix EvaluatedGlobalMatrix = ConvertFbxAMatrixToFMatrix(GlobalTransform);
+			const FMatrix MeshBindGlobalMatrix = ConvertFbxAMatrixToFMatrix(MeshBindGlobalTransform);
+			const FVector EvaluatedLocation = EvaluatedGlobalMatrix.GetLocation();
+			const FVector MeshBindLocation = MeshBindGlobalMatrix.GetLocation();
+			const FVector Delta = MeshBindLocation - EvaluatedLocation;
+			const float DeltaLength = std::sqrt(Delta.X * Delta.X + Delta.Y * Delta.Y + Delta.Z * Delta.Z);
+
+			// Skinned vertices must be baked into the same bind-time global space
+			// used by cluster link matrices, otherwise debug bones and mesh drift apart.
+			GlobalTransform = MeshBindGlobalTransform;
+
+			// TEMP SkeletalDebug: remove after FBX bind-space import is verified.
+			if (DeltaLength > 0.01f)
+			{
+				UE_LOG_CATEGORY(ObjImporter, Warning,
+					"[TEMP SkeletalDebug] Mesh bind transform differs from evaluated node transform Node=%s "
+					"EvaluatedLoc=(%.4f, %.4f, %.4f) MeshBindLoc=(%.4f, %.4f, %.4f) Delta=%.4f",
+					Node->GetName(),
+					EvaluatedLocation.X,
+					EvaluatedLocation.Y,
+					EvaluatedLocation.Z,
+					MeshBindLocation.X,
+					MeshBindLocation.Y,
+					MeshBindLocation.Z,
+					DeltaLength);
+			}
+		}
 		std::unordered_map<FFbxVertexKey, uint32, FFbxVertexKeyHash> VertexMap;
 		const int32 PolygonCount = Mesh->GetPolygonCount();
 
