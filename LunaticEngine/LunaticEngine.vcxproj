@@ -342,15 +342,12 @@
     <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp" />
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp" />
-    <ClCompile Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\DragDrop\DragSource.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\ImGui\EditorImGuiStyleSettings.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\ImGui\EditorImGuiSystem.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp" />
-    <ClCompile Include="Source\Editor\Common\UI\Panels\Panel.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportCamera.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp" />
-    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportPanel.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.cpp" />

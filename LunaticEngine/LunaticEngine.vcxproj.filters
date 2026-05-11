@@ -590,9 +590,6 @@
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp">
       <Filter>Source\Editor\Common\UI\Base</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.cpp">
-      <Filter>Source\Editor\Common\UI\Docking</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\Common\UI\DragDrop\DragSource.cpp">
       <Filter>Source\Editor\Common\UI\DragDrop</Filter>
     </ClCompile>
@@ -605,16 +602,10 @@
     <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp">
       <Filter>Source\Editor\Common\UI\Notifications</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\UI\Panels\Panel.cpp">
-      <Filter>Source\Editor\Common\UI\Panels</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportCamera.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
-      <Filter>Source\Editor\Common\Viewport</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportPanel.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp">
