@@ -41,15 +41,7 @@ void APlayerController::Possess(APawnActor* InPawn)
 
 	if (PossessedPawn)
 	{
-		UCameraComponent* PawnCamera = nullptr;
-		for (UActorComponent* Comp : PossessedPawn->GetComponents())
-		{
-			if (UCameraComponent* Cam = Cast<UCameraComponent>(Comp))
-			{
-				PawnCamera = Cam;
-				break;
-			}
-		}
+		UCameraComponent* PawnCamera = PossessedPawn->GetOrCreateGameplayCameraComponent();
 
 		if (PawnCamera)
 		{

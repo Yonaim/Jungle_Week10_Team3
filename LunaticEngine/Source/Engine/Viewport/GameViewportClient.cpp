@@ -192,7 +192,7 @@ bool UGameViewportClient::Tick(float DeltaTime)
 	bool bChanged = false;
 
 	// 본 프로젝트는 마우스 입력을 사용하지 않으므로 항상 커서 노출 (캡처/클립 해제)
-	const bool bScriptDrivesCamera = true;
+	const bool bScriptDrivesCamera = false;
 	SetCursorCaptured(false);
 
 	if (bPIEPossessedInputEnabled)

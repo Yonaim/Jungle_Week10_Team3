@@ -9,6 +9,28 @@
 #include "Core/Log.h"
 IMPLEMENT_CLASS(AGameModeBase, AActor)
 
+namespace
+{
+	APawnActor* FindFirstPlacedPawn(UWorld* World)
+	{
+		if (!World)
+		{
+			return nullptr;
+		}
+
+		for (AActor* Actor : World->GetActors())
+		{
+			APawnActor* Pawn = Cast<APawnActor>(Actor);
+			if (Pawn && IsAliveObject(Pawn))
+			{
+				return Pawn;
+			}
+		}
+
+		return nullptr;
+	}
+}
+
 void AGameModeBase::StartPlay()
 {
 	UWorld* World = GetTypedOuter<UWorld>();
@@ -34,23 +56,25 @@ void AGameModeBase::StartPlay()
 		}
 	}
 
-	//  DefaultPawn 스폰 후 PlayerController가 Possess
-	if (!DefaultPawnClassName.empty())
+	//  배치된 Pawn이 있으면 우선 Possess하고, 없을 때만 DefaultPawn을 스폰한다.
+	SpawnedPawn = FindFirstPlacedPawn(World);
+	if (!SpawnedPawn && !DefaultPawnClassName.empty())
 	{
 		UObject* Obj = FObjectFactory::Get().Create(DefaultPawnClassName, World->GetCurrentLevel());
 		SpawnedPawn = Cast<APawnActor>(Obj);
 		if (SpawnedPawn)
 		{
 			World->AddActor(SpawnedPawn);
-			if (SpawnedController)
-			{
-				SpawnedController->Possess(SpawnedPawn);
-			}
 		}
 		else if (Obj)
 		{
 			UObjectManager::Get().DestroyObject(Obj);
 		}
+	}
+
+	if (SpawnedController && SpawnedPawn)
+	{
+		SpawnedController->Possess(SpawnedPawn);
 	}
 
 	if (!PlayerCameraManagerClassName.empty()) {
