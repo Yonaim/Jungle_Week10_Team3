@@ -3,6 +3,7 @@
 #include "Component/BillboardComponent.h"
 #include "GameFramework/AActor.h"
 #include "Materials/Material.h"
+#include "Object/ObjectFactory.h"
 #include "Render/Resource/MeshBufferManager.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Types/FrameContext.h"
@@ -10,7 +11,7 @@
 
 namespace
 {
-	constexpr float EditorBillboardScreenScale = 0.04f;
+	constexpr float EditorBillboardScreenScale = 0.10f;
 
 	float ComputeEditorBillboardScale(const FFrameContext& Frame, const FVector& WorldLocation)
 	{
@@ -70,14 +71,42 @@ void FBillboardSceneProxy::UpdateMesh()
 	if (!Texture || !Texture->GetSRV())
 	{
 		MeshBuffer = GetOwner()->GetMeshBuffer();
+
+		if (!DefaultMaterial || DefaultMaterial->GetShader() != FShaderManager::Get().GetOrCreate(EShaderPath::Primitive))
+		{
+			if (DefaultMaterial)
+			{
+				UObjectManager::Get().DestroyObject(DefaultMaterial);
+				DefaultMaterial = nullptr;
+			}
+
+			DefaultMaterial = UMaterial::CreateTransient(
+				ERenderPass::Opaque,
+				EBlendState::Opaque,
+				EDepthStencilState::Default,
+				ERasterizerState::SolidNoCull,
+				FShaderManager::Get().GetOrCreate(EShaderPath::Primitive));
+		}
+
 		SectionDraws.clear();
+		if (MeshBuffer && DefaultMaterial)
+		{
+			const uint32 IndexCount = MeshBuffer->GetIndexBuffer().GetIndexCount();
+			SectionDraws.push_back({ DefaultMaterial, 0, IndexCount });
+		}
 		return;
 	}
 
 	MeshBuffer = &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::TexturedQuad);
 
-	if (!DefaultMaterial)
+	if (!DefaultMaterial || DefaultMaterial->GetShader() != FShaderManager::Get().GetOrCreate(EShaderPath::Billboard))
 	{
+		if (DefaultMaterial)
+		{
+			UObjectManager::Get().DestroyObject(DefaultMaterial);
+			DefaultMaterial = nullptr;
+		}
+
 		DefaultMaterial = UMaterial::CreateTransient(
 			ERenderPass::AlphaBlend,
 			EBlendState::AlphaBlend,

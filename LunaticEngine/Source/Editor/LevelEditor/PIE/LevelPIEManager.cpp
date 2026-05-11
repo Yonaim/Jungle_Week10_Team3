@@ -496,6 +496,7 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
         return;
     }
 
+    EditorEngine->ClearPendingSceneLoadRequest();
     EditorEngine->SetGamePaused(false);
     FInputManager::Get().ResetAllKeyStates();
     FAudioManager::Get().StopAll();
@@ -727,6 +728,15 @@ void FLevelPIEManager::SyncGameViewportPIEControlState(bool bPossessedMode)
         {
             PIEViewportClient->Possess(GameCamera);
             return;
+        }
+
+        if (PlayInEditorSessionInfo && PlayInEditorSessionInfo->SavedViewportCamera.bValid)
+        {
+            if (UCameraComponent* FallbackCamera = EnsurePIEActiveCamera(World, PlayInEditorSessionInfo->SavedViewportCamera))
+            {
+                PIEViewportClient->Possess(FallbackCamera);
+                return;
+            }
         }
     }
 

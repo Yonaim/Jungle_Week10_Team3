@@ -19,6 +19,7 @@
 
 
 #include "Collision/RayUtils.h"
+#include "Component/BillboardComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/MeshComponent.h"
@@ -372,8 +373,79 @@ void BuildBoundingBoxCorners(const FBoundingBox &Bounds, FVector OutCorners[8])
     OutCorners[7] = FVector(Max.X, Max.Y, Max.Z);
 }
 
+bool ProjectBillboardToViewport(const UBillboardComponent *Billboard, const FEditorViewportCamera *Camera,
+                                const FViewportRenderOptions &RenderOptions, float ViewportWidth, float ViewportHeight,
+                                float &OutMinX, float &OutMinY, float &OutMaxX, float &OutMaxY, float &OutMinDepth)
+{
+    if (!Billboard || !Camera)
+    {
+        return false;
+    }
+
+    const float ScreenScale = Billboard->ComputeRenderedScreenScale(
+        Camera->GetWorldLocation(), Camera->IsOrthogonal(), Camera->GetOrthoWidth(), RenderOptions.ActorHelperBillboardScale);
+    FMatrix BillboardWorldMatrix = Billboard->ComputeBillboardMatrix(Camera->GetForwardVector());
+    const float BillboardWidth = Billboard->GetWidth() * ScreenScale;
+    const float BillboardHeight = Billboard->GetHeight() * ScreenScale;
+
+    BillboardWorldMatrix.M[1][0] *= BillboardWidth;
+    BillboardWorldMatrix.M[1][1] *= BillboardWidth;
+    BillboardWorldMatrix.M[1][2] *= BillboardWidth;
+    BillboardWorldMatrix.M[2][0] *= BillboardHeight;
+    BillboardWorldMatrix.M[2][1] *= BillboardHeight;
+    BillboardWorldMatrix.M[2][2] *= BillboardHeight;
+
+    const FVector LocalCorners[4] = {
+        FVector(0.0f, -0.5f, -0.5f),
+        FVector(0.0f,  0.5f, -0.5f),
+        FVector(0.0f, -0.5f,  0.5f),
+        FVector(0.0f,  0.5f,  0.5f),
+    };
+
+    const FMatrix ViewProjection = Camera->GetViewProjectionMatrix();
+    float MinX = FLT_MAX;
+    float MinY = FLT_MAX;
+    float MaxX = -FLT_MAX;
+    float MaxY = -FLT_MAX;
+    float MinDepth = FLT_MAX;
+    bool bProjectedAny = false;
+
+    for (const FVector &LocalCorner : LocalCorners)
+    {
+        const FVector WorldCorner = BillboardWorldMatrix.TransformPositionWithW(LocalCorner);
+
+        float ScreenX = 0.0f;
+        float ScreenY = 0.0f;
+        float Depth = 0.0f;
+        if (!ProjectWorldToViewport(ViewProjection, WorldCorner, ViewportWidth, ViewportHeight, ScreenX, ScreenY, Depth))
+        {
+            continue;
+        }
+
+        MinX = (std::min)(MinX, ScreenX);
+        MinY = (std::min)(MinY, ScreenY);
+        MaxX = (std::max)(MaxX, ScreenX);
+        MaxY = (std::max)(MaxY, ScreenY);
+        MinDepth = (std::min)(MinDepth, Depth);
+        bProjectedAny = true;
+    }
+
+    if (!bProjectedAny)
+    {
+        return false;
+    }
+
+    OutMinX = MinX;
+    OutMinY = MinY;
+    OutMaxX = MaxX;
+    OutMaxY = MaxY;
+    OutMinDepth = MinDepth;
+    return true;
+}
+
 AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *Camera, float MouseViewportX,
                                    float MouseViewportY, float ViewportWidth, float ViewportHeight,
+                                   const FViewportRenderOptions &RenderOptions,
                                    UPrimitiveComponent *&OutPrimitive)
 {
     OutPrimitive = nullptr;
@@ -406,15 +478,6 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
                 continue;
             }
 
-            const FBoundingBox Bounds = Primitive->GetWorldBoundingBox();
-            if (!Bounds.IsValid())
-            {
-                continue;
-            }
-
-            FVector Corners[8];
-            BuildBoundingBoxCorners(Bounds, Corners);
-
             float MinX = FLT_MAX;
             float MinY = FLT_MAX;
             float MaxX = -FLT_MAX;
@@ -422,23 +485,40 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
             float MinDepth = FLT_MAX;
             bool bProjectedAny = false;
 
-            for (const FVector &Corner : Corners)
+            if (const UBillboardComponent *Billboard = Cast<UBillboardComponent>(Primitive))
             {
-                float ScreenX = 0.0f;
-                float ScreenY = 0.0f;
-                float Depth = 0.0f;
-                if (!ProjectWorldToViewport(ViewProjection, Corner, ViewportWidth, ViewportHeight, ScreenX, ScreenY,
-                                            Depth))
+                bProjectedAny = ProjectBillboardToViewport(Billboard, Camera, RenderOptions, ViewportWidth,
+                                                           ViewportHeight, MinX, MinY, MaxX, MaxY, MinDepth);
+            }
+            else
+            {
+                const FBoundingBox Bounds = Primitive->GetWorldBoundingBox();
+                if (!Bounds.IsValid())
                 {
                     continue;
                 }
 
-                MinX = (std::min)(MinX, ScreenX);
-                MinY = (std::min)(MinY, ScreenY);
-                MaxX = (std::max)(MaxX, ScreenX);
-                MaxY = (std::max)(MaxY, ScreenY);
-                MinDepth = (std::min)(MinDepth, Depth);
-                bProjectedAny = true;
+                FVector Corners[8];
+                BuildBoundingBoxCorners(Bounds, Corners);
+
+                for (const FVector &Corner : Corners)
+                {
+                    float ScreenX = 0.0f;
+                    float ScreenY = 0.0f;
+                    float Depth = 0.0f;
+                    if (!ProjectWorldToViewport(ViewProjection, Corner, ViewportWidth, ViewportHeight, ScreenX, ScreenY,
+                                                Depth))
+                    {
+                        continue;
+                    }
+
+                    MinX = (std::min)(MinX, ScreenX);
+                    MinY = (std::min)(MinY, ScreenY);
+                    MaxX = (std::max)(MaxX, ScreenX);
+                    MaxY = (std::max)(MaxY, ScreenY);
+                    MinDepth = (std::min)(MinDepth, Depth);
+                    bProjectedAny = true;
+                }
             }
 
             if (!bProjectedAny)
@@ -1866,7 +1946,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
                         const float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
                         const float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
                         BestActor = FindScreenSpacePrimitiveAt(W, GetCamera(), LocalMouseX, LocalMouseY, VPWidth, VPHeight,
-                                                               ScreenHitPrimitive);
+                                                               RenderOptions, ScreenHitPrimitive);
                         if (ScreenHitPrimitive)
                         {
                             HitResult.HitComponent = ScreenHitPrimitive;

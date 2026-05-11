@@ -38,6 +38,7 @@ public:
 	virtual void OpenTitleCreditsPopup() {}
 	virtual bool IsScoreSavePopupOpen() const { return false; }
 	bool RequestSceneLoad(const FString& InSceneReference);
+	void ClearPendingSceneLoadRequest() { PendingSceneLoadReference.clear(); }
 
 	virtual void OnWindowResized(uint32 Width, uint32 Height);
 

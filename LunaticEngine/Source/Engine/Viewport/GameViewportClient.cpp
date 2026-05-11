@@ -203,9 +203,10 @@ bool UGameViewportClient::Tick(float DeltaTime)
 
 	bool bChanged = false;
 
-	// Keep the cursor visible in PIE. We only move the camera here for ejected spectator control;
-	// gameplay-owned cameras continue to be driven by the game side.
-	const bool bScriptDrivesCamera = !bSpectatorCameraMovementEnabled;
+	// PIE에서는 Possess된 카메라를 항상 GameViewport 입력으로 구동한다.
+	// 일부 게임 월드는 CameraComponent만 있고 실제 런타임 이동 로직이 없어,
+	// script-driven 분기를 두면 카메라가 완전히 멈출 수 있다.
+	const bool bScriptDrivesCamera = false;
 	SetCursorCaptured(false);
 
 	if (bPIEPossessedInputEnabled)

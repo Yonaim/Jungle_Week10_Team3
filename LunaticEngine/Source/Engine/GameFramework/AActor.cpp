@@ -4,6 +4,7 @@
 #include "Component/ActorComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Component/Movement/MovementComponent.h"
+#include "Component/SkinnedMeshComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Math/Rotator.h"
@@ -63,6 +64,10 @@ const char* GetDefaultEditorBillboardIconKey(const AActor* Actor)
 	if (ClassName.find("StaticMeshActor") != FString::npos)
 	{
 		return "Editor.Icon.StaticMeshActor";
+	}
+	if (ClassName.find("SkeletalMeshActor") != FString::npos)
+	{
+		return "Editor.Icon.SkeletalMeshActor";
 	}
 	if (ClassName.find("ScreenText") != FString::npos)
 	{
@@ -131,6 +136,15 @@ bool AActor::HasNonEditorOnlyPrimitiveComponent() const
 		if (UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(PrimitiveComponent))
 		{
 			if (StaticMeshComponent->GetStaticMesh())
+			{
+				return true;
+			}
+			continue;
+		}
+
+		if (USkinnedMeshComponent* SkinnedMeshComponent = Cast<USkinnedMeshComponent>(PrimitiveComponent))
+		{
+			if (SkinnedMeshComponent->GetSkeletalMesh())
 			{
 				return true;
 			}

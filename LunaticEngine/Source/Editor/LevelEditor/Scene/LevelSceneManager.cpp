@@ -40,6 +40,7 @@ void FLevelSceneManager::NewScene()
     }
 
     EditorEngine->StopPlayInEditorImmediate();
+    EditorEngine->ClearPendingSceneLoadRequest();
     ClearScene();
 
     FWorldContext& Ctx = EditorEngine->CreateWorldContext(EWorldType::Editor, FName("NewScene"), "New Scene");
@@ -82,6 +83,7 @@ void FLevelSceneManager::ClearScene()
     }
 
     EditorEngine->StopPlayInEditorImmediate();
+    EditorEngine->ClearPendingSceneLoadRequest();
     DestroyCurrentSceneWorlds(true, true);
 }
 

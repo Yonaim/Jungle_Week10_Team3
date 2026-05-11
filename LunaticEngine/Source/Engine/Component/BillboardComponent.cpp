@@ -23,6 +23,8 @@ IMPLEMENT_CLASS(UBillboardComponent, UPrimitiveComponent)
 
 namespace
 {
+constexpr float EditorBillboardScreenScale = 0.10f;
+
 FString ResolveLegacyBillboardTexturePath(const FString& InPath)
 {
 	const FString FileName = std::filesystem::path(InPath).filename().string();
@@ -53,6 +55,50 @@ FString ResolveLegacyBillboardTexturePath(const FString& InPath)
 	}
 
 	return InPath;
+}
+
+const char* GetDefaultBillboardFallbackIconKey(const AActor* Actor)
+{
+	if (!Actor)
+	{
+		return "Editor.Icon.Actor";
+	}
+
+	const FString ClassName = Actor->GetClass()->GetName();
+	if (ClassName.find("Character") != FString::npos)
+	{
+		return "Editor.Icon.Character";
+	}
+	if (ClassName.find("Pawn") != FString::npos)
+	{
+		return "Editor.Icon.Pawn";
+	}
+	if (ClassName.find("SpotLight") != FString::npos)
+	{
+		return "Editor.Icon.SpotLight";
+	}
+	if (ClassName.find("PointLight") != FString::npos)
+	{
+		return "Editor.Icon.PointLight";
+	}
+	if (ClassName.find("DirectionalLight") != FString::npos)
+	{
+		return "Editor.Icon.DirectionalLight";
+	}
+	if (ClassName.find("AmbientLight") != FString::npos)
+	{
+		return "Editor.Icon.AmbientLight";
+	}
+	if (ClassName.find("HeightFog") != FString::npos)
+	{
+		return "Editor.Icon.HeightFog";
+	}
+	if (ClassName.find("Decal") != FString::npos)
+	{
+		return "Editor.Icon.Decal";
+	}
+
+	return "Editor.Icon.Actor";
 }
 }
 
@@ -93,6 +139,8 @@ void UBillboardComponent::PostDuplicate()
 	{
 		ResolveTextureFromPath(TextureSlot.Path);
 	}
+
+	EnsureVisibleFallbackTexture();
 }
 
 void UBillboardComponent::SetTexture(UTexture2D* InTexture)
@@ -163,6 +211,8 @@ void UBillboardComponent::PostEditProperty(const char* PropertyName)
 	{
 		MarkProxyDirty(EDirtyFlag::Transform);
 	}
+
+	EnsureVisibleFallbackTexture();
 }
 
 void UBillboardComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
@@ -213,20 +263,52 @@ FMatrix UBillboardComponent::ComputeBillboardMatrix(const FVector& CameraForward
 	return FMatrix::MakeScaleMatrix(GetWorldScale()) * RotMatrix * FMatrix::MakeTranslationMatrix(GetWorldLocation());
 }
 
-bool UBillboardComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
+float UBillboardComponent::ComputeRenderedScreenScale(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth,
+	float BillboardScale) const
 {
-	return IntersectBillboard(Ray, OutHitResult, true);
+	if (!IsEditorOnly())
+	{
+		return 1.0f;
+	}
+
+	float Scale = 1.0f;
+	if (bIsOrtho)
+	{
+		Scale = OrthoWidth * EditorBillboardScreenScale;
+	}
+	else
+	{
+		const float Distance = FVector::Distance(CameraLocation, GetWorldLocation());
+		Scale = Distance * EditorBillboardScreenScale;
+	}
+
+	return (std::max)(0.01f, Scale) * BillboardScale;
 }
 
-bool UBillboardComponent::IntersectBillboard(const FRay& Ray, FRayHitResult& OutHitResult, bool bRespectTextureAlpha) const
+bool UBillboardComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
+{
+	float ScreenScale = 1.0f;
+	if (IsEditorOnly())
+	{
+		// Perspective picking uses the click ray origin as the active view position so the hit area tracks the rendered helper size.
+		ScreenScale = ComputeRenderedScreenScale(Ray.Origin, false, 10.0f, 1.0f);
+	}
+
+	return IntersectBillboard(Ray, OutHitResult, true, ScreenScale);
+}
+
+bool UBillboardComponent::IntersectBillboard(const FRay& Ray, FRayHitResult& OutHitResult, bool bRespectTextureAlpha,
+	float ScreenScale) const
 {
 	FMatrix BillboardWorldMatrix = ComputeBillboardMatrix(Ray.Direction);
-	BillboardWorldMatrix.M[1][0] *= Width;
-	BillboardWorldMatrix.M[1][1] *= Width;
-	BillboardWorldMatrix.M[1][2] *= Width;
-	BillboardWorldMatrix.M[2][0] *= Height;
-	BillboardWorldMatrix.M[2][1] *= Height;
-	BillboardWorldMatrix.M[2][2] *= Height;
+	const float ScaledWidth = Width * ScreenScale;
+	const float ScaledHeight = Height * ScreenScale;
+	BillboardWorldMatrix.M[1][0] *= ScaledWidth;
+	BillboardWorldMatrix.M[1][1] *= ScaledWidth;
+	BillboardWorldMatrix.M[1][2] *= ScaledWidth;
+	BillboardWorldMatrix.M[2][0] *= ScaledHeight;
+	BillboardWorldMatrix.M[2][1] *= ScaledHeight;
+	BillboardWorldMatrix.M[2][2] *= ScaledHeight;
 	const FMatrix InvWorldMatrix = BillboardWorldMatrix.GetInverse();
 
 	FRay LocalRay;
@@ -275,7 +357,7 @@ bool UBillboardComponent::ResolveTextureFromPath(const FString& InPath)
 	if (InPath.empty() || InPath == "None")
 	{
 		SetTexture(nullptr);
-		return true;
+		return EnsureVisibleFallbackTexture();
 	}
 
 	const FString ResolvedPath = ResolveLegacyBillboardTexturePath(InPath);
@@ -288,7 +370,7 @@ bool UBillboardComponent::ResolveTextureFromPath(const FString& InPath)
 		UMaterial* LoadedMat = FMaterialManager::Get().GetOrCreateMaterial(ResolvedPath);
 		if (!LoadedMat)
 		{
-			return false;
+			return EnsureVisibleFallbackTexture();
 		}
 
 		UTexture2D* PreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(LoadedMat);
@@ -296,7 +378,7 @@ bool UBillboardComponent::ResolveTextureFromPath(const FString& InPath)
 		{
 			SetTexture(nullptr);
 			TextureSlot.Path = ResolvedPath;
-			return false;
+			return EnsureVisibleFallbackTexture();
 		}
 
 		SetTexture(PreviewTexture);
@@ -307,9 +389,53 @@ bool UBillboardComponent::ResolveTextureFromPath(const FString& InPath)
 	UTexture2D* LoadedTexture = UTexture2D::LoadFromFile(ResolvedPath, Device);
 	if (!LoadedTexture)
 	{
-		return false;
+		return EnsureVisibleFallbackTexture();
 	}
 
 	SetTexture(LoadedTexture);
 	return true;
+}
+
+FString UBillboardComponent::GetFallbackTexturePath() const
+{
+	const AActor* OwnerActor = GetOwner();
+	const char* const PreferredKeys[] = {
+		GetDefaultBillboardFallbackIconKey(OwnerActor),
+		"Editor.Billboard.Decal",
+		"Editor.Icon.Actor"
+	};
+
+	for (const char* Key : PreferredKeys)
+	{
+		const FString ResolvedPath = FResourceManager::Get().ResolvePath(FName(Key));
+		if (!ResolvedPath.empty())
+		{
+			return ResolvedPath;
+		}
+	}
+
+	return FString();
+}
+
+bool UBillboardComponent::EnsureVisibleFallbackTexture()
+{
+	if (Texture && Texture->GetSRV())
+	{
+		return true;
+	}
+
+	const FString FallbackPath = GetFallbackTexturePath();
+	if (FallbackPath.empty())
+	{
+		return false;
+	}
+
+	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+	if (UTexture2D* FallbackTexture = UTexture2D::LoadFromFile(FallbackPath, Device))
+	{
+		SetTexture(FallbackTexture);
+		return true;
+	}
+
+	return false;
 }

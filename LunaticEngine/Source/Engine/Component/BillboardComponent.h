@@ -40,13 +40,17 @@ public:
 
 	// 주어진 카메라 방향으로 빌보드 월드 행렬을 계산 (per-view 렌더링용)
 	FMatrix ComputeBillboardMatrix(const FVector& CameraForward) const;
+	float ComputeRenderedScreenScale(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f,
+		float BillboardScale = 1.0f) const;
 
 	FMeshBuffer* GetMeshBuffer() const override { return &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::Quad); }
 	FMeshDataView GetMeshDataView() const override { return FMeshDataView::FromMeshData(FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad)); }
 
 protected:
+	bool EnsureVisibleFallbackTexture();
+	FString GetFallbackTexturePath() const;
 	bool ResolveTextureFromPath(const FString& InPath);
-	bool IntersectBillboard(const FRay& Ray, FRayHitResult& OutHitResult, bool bRespectTextureAlpha) const;
+	bool IntersectBillboard(const FRay& Ray, FRayHitResult& OutHitResult, bool bRespectTextureAlpha, float ScreenScale = 1.0f) const;
 
 	bool bIsBillboard = true;
 
