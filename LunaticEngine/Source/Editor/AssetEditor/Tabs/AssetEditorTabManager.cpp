@@ -93,6 +93,18 @@ void FAssetEditorTabManager::Tick(float DeltaTime)
     }
 }
 
+
+void FAssetEditorTabManager::InvalidateEditorLayouts()
+{
+    for (const std::unique_ptr<FAssetEditorTab>& Tab : Tabs)
+    {
+        if (Tab && Tab->GetEditor())
+        {
+            Tab->GetEditor()->InvalidateDockLayout();
+        }
+    }
+}
+
 void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 {
     for (int32 Index = 0; Index < static_cast<int32>(Tabs.size());)

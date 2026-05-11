@@ -105,6 +105,11 @@ void FSkeletalMeshEditor::RenderContent(float DeltaTime)
     RenderPanels(DeltaTime, 0);
 }
 
+void FSkeletalMeshEditor::InvalidateDockLayout()
+{
+    BuiltDockspaceId = 0;
+}
+
 void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
 {
     if (!bOpen)
