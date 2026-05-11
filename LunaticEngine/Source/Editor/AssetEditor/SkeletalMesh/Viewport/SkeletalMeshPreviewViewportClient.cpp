@@ -579,6 +579,14 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
 
+    // Make the preview camera use the same render range as the preview scene render target.
+    // The ImGui panel rect is the source of truth for Asset Preview viewport size.
+    if (ViewportScreenRect.Width > 0.0f && ViewportScreenRect.Height > 0.0f)
+    {
+        ViewCamera.OnResize(static_cast<int32>(ViewportScreenRect.Width),
+                            static_cast<int32>(ViewportScreenRect.Height));
+    }
+
     OutRequest.Viewport = Viewport;
     OutRequest.ViewInfo = ViewCamera.GetCameraState();
     OutRequest.Scene = &PreviewScene.GetScene();

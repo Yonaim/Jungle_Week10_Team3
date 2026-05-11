@@ -1,4 +1,4 @@
-#include "Common/Viewport/EditorViewportClient.h"
+﻿#include "Common/Viewport/EditorViewportClient.h"
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Viewport/Viewport.h"
@@ -59,13 +59,29 @@ void FEditorViewportClient::Tick(float DeltaTime)
 
 void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
 {
-    if (InWidth > 0.0f)
+    bool bSizeChanged = false;
+
+    if (InWidth > 0.0f && WindowWidth != InWidth)
     {
         WindowWidth = InWidth;
+        bSizeChanged = true;
     }
-    if (InHeight > 0.0f)
+    if (InHeight > 0.0f && WindowHeight != InHeight)
     {
         WindowHeight = InHeight;
+        bSizeChanged = true;
+    }
+
+    // Editor viewport camera is not a UCameraComponent anymore, so resize notifications
+    // are not delivered through component/World paths. Keep the shared viewport camera
+    // aspect ratio synchronized with the actual ImGui viewport rect here.
+    //
+    // Without this, Asset Preview viewports can render helper scene data such as grid/gizmo
+    // against the current render target size while the mesh camera still keeps the old
+    // aspect ratio, which makes the scene range and mesh range look different.
+    if (bSizeChanged && WindowWidth > 0.0f && WindowHeight > 0.0f)
+    {
+        ViewCamera.OnResize(static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));
     }
 }
 
