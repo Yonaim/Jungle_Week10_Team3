@@ -1,6 +1,6 @@
 #include "Common/Menu/EditorMenuBar.h"
 
-#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/Style/AccentColor.h"
 #include "Common/Menu/EditorMenuProvider.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Resource/ResourceManager.h"
@@ -101,8 +101,8 @@ void FEditorMenuBar::Render(const FEditorMenuBarContext &Context)
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, UnrealPanelSurface);
         ImGui::PushStyleColor(ImGuiCol_Header, UnrealPanelSurface);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, UIAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, UIAccentColor::Value);
 
         if (ImGui::BeginMenu("File"))
         {

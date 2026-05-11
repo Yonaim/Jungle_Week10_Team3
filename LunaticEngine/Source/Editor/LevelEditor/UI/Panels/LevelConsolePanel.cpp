@@ -1,8 +1,8 @@
 #include "LevelEditor/UI/Panels/LevelConsolePanel.h"
 #include "Component/CameraComponent.h"
 #include "Core/AsciiUtils.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
@@ -295,7 +295,7 @@ void FLevelConsolePanel::AddLog(const char *fmt, ...)
 
 void FLevelConsolePanel::Init(UEditorEngine *InEditorEngine)
 {
-    FEditorUIElement::Init(InEditorEngine);
+    FUIElement::Init(InEditorEngine);
 
     // 에디터 콘솔을 로그 출력 디바이스로 등록
     FLogManager::Get().AddOutputDevice(&ConsoleDevice);
@@ -437,16 +437,16 @@ void FLevelConsolePanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Console";
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Console";
     PanelDesc.StableId = "LevelConsolePanel";
     PanelDesc.IconKey = PanelIconKey;
     PanelDesc.bClosable = true;
     PanelDesc.bOpen = &Settings.Panels.bConsole;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -456,7 +456,7 @@ void FLevelConsolePanel::Render(float DeltaTime)
     ImGui::Separator();
     RenderInputLine("Input");
 
-    FEditorPanel::End();
+    FPanel::End();
 }
 
 void FLevelConsolePanel::RenderDrawerToolbar()

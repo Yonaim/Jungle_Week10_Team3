@@ -1,7 +1,7 @@
 #pragma once
 
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/Panel.h"
 
 #include "ImGui/imgui.h"
 
@@ -23,7 +23,7 @@ class USkeletalMesh;
 class FSkeletonTreePanel
 {
   public:
-    void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, const FEditorPanelDesc &PanelDesc);
+    void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, const FPanelDesc &PanelDesc);
 
   private:
     char SearchBuffer[128] = "";

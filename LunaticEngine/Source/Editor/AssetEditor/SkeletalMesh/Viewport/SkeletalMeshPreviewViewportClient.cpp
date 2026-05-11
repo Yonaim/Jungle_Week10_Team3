@@ -263,6 +263,11 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
     }
 }
 
+const char *FSkeletalMeshPreviewViewportClient::GetViewportTooltipBarText() const
+{
+    return nullptr;
+}
+
 void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
 {
     if (!PreviewCamera)
@@ -442,6 +447,5 @@ void FSkeletalMeshPreviewViewportClient::RenderFallbackOverlay()
         }
     }
 
-    ImGui::TextDisabled("RMB Drag: Orbit / MMB Drag: Pan / Wheel: Zoom / Toolbar: Frame");
     ImGui::EndGroup();
 }

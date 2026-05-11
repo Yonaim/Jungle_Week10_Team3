@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 
 #include "Core/ProjectSettings.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
@@ -27,7 +27,7 @@
 #include "Component/StaticMeshComponent.h"
 #include "Component/UIImageComponent.h"
 #include "Component/UIScreenTextComponent.h"
-#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/Style/AccentColor.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "GameFramework/AActor.h"
@@ -41,6 +41,11 @@
 UWorld *FLevelEditorViewportClient::GetWorld() const
 {
     return GEngine ? GEngine->GetWorld() : nullptr;
+}
+
+const char *FLevelEditorViewportClient::GetViewportTooltipBarText() const
+{
+    return nullptr;
 }
 
 namespace
@@ -2019,7 +2024,7 @@ void FLevelEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
         {
             if (EditorEngine->IsPlayingInEditor())
             {
-                BorderColor = EditorEngine->IsGamePaused() ? EditorAccentColor::ToU32() : IM_COL32(52, 199, 89, 255);
+                BorderColor = EditorEngine->IsGamePaused() ? UIAccentColor::ToU32() : IM_COL32(52, 199, 89, 255);
             }
         }
         if (R.Width > ActiveBorderThickness && R.Height > ActiveBorderThickness)

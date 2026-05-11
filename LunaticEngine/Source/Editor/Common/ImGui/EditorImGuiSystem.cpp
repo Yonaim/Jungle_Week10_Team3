@@ -1,7 +1,7 @@
 #include "Common/ImGui/EditorImGuiSystem.h"
 
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Engine/Render/Device/D3DDevice.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "MainFrame/ImGuiSetting.h"
@@ -70,7 +70,7 @@ void FEditorImGuiSystem::Shutdown()
     }
 
     MakeCurrentContext();
-    EditorPanelTitleUtils::ReleasePanelChromeIconFontForCurrentContext();
+    PanelTitleUtils::ReleasePanelChromeIconFontForCurrentContext();
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext(Context);
@@ -172,7 +172,7 @@ void FEditorImGuiSystem::ApplyEditorColorTheme()
     Style.Colors[ImGuiCol_FrameBg] = UnrealDockEmpty;
     Style.Colors[ImGuiCol_FrameBgHovered] = UnrealPanelSurfaceHover;
     Style.Colors[ImGuiCol_FrameBgActive] = UnrealPanelSurfaceActive;
-    Style.Colors[ImGuiCol_CheckMark] = EditorAccentColor::Value;
+    Style.Colors[ImGuiCol_CheckMark] = UIAccentColor::Value;
     Style.Colors[ImGuiCol_Button] = UnrealPanelSurface;
     Style.Colors[ImGuiCol_ButtonHovered] = UnrealPanelSurfaceHover;
     Style.Colors[ImGuiCol_ButtonActive] = UnrealPanelSurfaceActive;
@@ -225,7 +225,7 @@ void FEditorImGuiSystem::LoadFonts()
     IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
     TitleBarFont = IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
 
-    EditorPanelTitleUtils::EnsurePanelChromeIconFontLoaded();
+    PanelTitleUtils::EnsurePanelChromeIconFontLoaded();
 
     if (std::filesystem::exists("C:/Windows/Fonts/segmdl2.ttf"))
     {

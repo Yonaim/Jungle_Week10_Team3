@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
-#include "Common/UI/EditorUIElement.h"
+#include "Common/UI/Base/UIElement.h"
 #include "Render/Resource/Buffer.h"
 #include "Render/Types/RenderConstants.h"
 #include <d3d11.h>
 
-class FShadowMapDebugPanel : public FEditorUIElement
+class FShadowMapDebugPanel : public FUIElement
 {
   public:
     virtual ~FShadowMapDebugPanel() override

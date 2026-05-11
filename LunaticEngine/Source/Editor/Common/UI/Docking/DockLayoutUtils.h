@@ -66,7 +66,7 @@ struct FLevelEditorDockLayoutDesc
     float RightBottomRatio = 0.52f;
 };
 
-class FEditorDockLayoutUtils
+class FDockLayoutUtils
 {
   public:
     static void ClearDockspaceForAssetEditor(ImGuiID DockspaceId)

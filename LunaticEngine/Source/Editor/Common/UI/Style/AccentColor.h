@@ -2,7 +2,7 @@
 
 #include "ImGui/imgui.h"
 
-namespace EditorAccentColor
+namespace UIAccentColor
 {
     inline constexpr ImVec4 Value = ImVec4(0.10f, 0.54f, 0.96f, 1.0f);
 

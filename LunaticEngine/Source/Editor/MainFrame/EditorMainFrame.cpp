@@ -1,7 +1,7 @@
 #include "MainFrame/EditorMainFrame.h"
 
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Core/ProjectSettings.h"
 #include "EditorEngine.h"
 #include "Engine/Input/InputManager.h"
@@ -105,7 +105,7 @@ namespace
         Style.Colors[ImGuiCol_FrameBg] = UnrealDockEmpty;
         Style.Colors[ImGuiCol_FrameBgHovered] = UnrealPanelSurfaceHover;
         Style.Colors[ImGuiCol_FrameBgActive] = UnrealPanelSurfaceActive;
-        Style.Colors[ImGuiCol_CheckMark] = EditorAccentColor::Value;
+        Style.Colors[ImGuiCol_CheckMark] = UIAccentColor::Value;
         Style.Colors[ImGuiCol_Button] = UnrealPanelSurface;
         Style.Colors[ImGuiCol_ButtonHovered] = UnrealPanelSurfaceHover;
         Style.Colors[ImGuiCol_ButtonActive] = UnrealPanelSurfaceActive;
@@ -154,7 +154,7 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
     const FString UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
     IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
     TitleBarFont = IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
-    EditorPanelTitleUtils::EnsurePanelChromeIconFontLoaded();
+    PanelTitleUtils::EnsurePanelChromeIconFontLoaded();
     if (std::filesystem::exists("C:/Windows/Fonts/segmdl2.ttf"))
     {
         ImFontConfig IconFontConfig{};
@@ -169,7 +169,7 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
 void FEditorMainFrame::Release()
 {
     MakeCurrentContext();
-    EditorPanelTitleUtils::ReleasePanelChromeIconFontForCurrentContext();
+    PanelTitleUtils::ReleasePanelChromeIconFontForCurrentContext();
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
@@ -313,9 +313,9 @@ void FEditorMainFrame::RenderProjectSettingsWindow()
     if (ProjectSettings.Game.WindowHeight < 240)
         ProjectSettings.Game.WindowHeight = 240;
 
-    ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::WithAlpha(0.92f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::WithAlpha(0.92f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.97f, 0.98f, 1.0f, 1.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 8.0f));

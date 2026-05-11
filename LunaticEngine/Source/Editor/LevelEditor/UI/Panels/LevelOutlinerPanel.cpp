@@ -1,8 +1,8 @@
 #include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
@@ -23,11 +23,11 @@
 namespace
 {
 constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
-constexpr ImVec4 OutlinerSelectionHeaderColor = EditorAccentColor::Value;
-constexpr ImVec4 OutlinerSelectionHeaderHoveredColor = EditorAccentColor::Value;
-constexpr ImVec4 OutlinerSelectionHeaderActiveColor = EditorAccentColor::Value;
-constexpr ImVec4 PopupMenuItemHoverColor = EditorAccentColor::Value;
-constexpr ImVec4 PopupMenuItemActiveColor = EditorAccentColor::Value;
+constexpr ImVec4 OutlinerSelectionHeaderColor = UIAccentColor::Value;
+constexpr ImVec4 OutlinerSelectionHeaderHoveredColor = UIAccentColor::Value;
+constexpr ImVec4 OutlinerSelectionHeaderActiveColor = UIAccentColor::Value;
+constexpr ImVec4 PopupMenuItemHoverColor = UIAccentColor::Value;
+constexpr ImVec4 PopupMenuItemActiveColor = UIAccentColor::Value;
 constexpr ImVec4 OutlinerFolderArrowColor = ImVec4(0.66f, 0.66f, 0.68f, 1.0f);
 constexpr ImVec4 OutlinerItemLabelColor = ImVec4(0.86f, 0.86f, 0.88f, 1.0f);
 constexpr ImU32 OutlinerFolderIconTint = IM_COL32(184, 140, 58, 255);
@@ -39,14 +39,14 @@ constexpr float OutlinerToolbarButtonHeight = 0.0f;
 constexpr float OutlinerFooterButtonHeight = 24.0f;
 constexpr size_t OutlinerFolderNameCapacity = 128;
 
-FString GetEditorPathResource(const char *Key)
+FString GetIconResourcePath(const char *Key)
 {
     return FResourceManager::Get().ResolvePath(FName(Key));
 }
 
-ID3D11ShaderResourceView *GetEditorIcon(const char *Key)
+ID3D11ShaderResourceView *GetIcon(const char *Key)
 {
-    return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource(Key)).Get();
+    return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath(Key)).Get();
 }
 
 void DrawPopupSectionHeader(const char *Label)
@@ -103,7 +103,7 @@ bool DrawSearchInputWithIcon(const char *Id, const char *Hint, char *Buffer, siz
                                               ImVec2(Min.x + LeadingSlotWidth, Max.y - 1.0f), IM_COL32(5, 5, 5, 255),
                                               11.0f, ImDrawFlags_RoundCornersLeft);
 
-    if (ID3D11ShaderResourceView *SearchIcon = GetEditorIcon("Editor.Icon.Search"))
+    if (ID3D11ShaderResourceView *SearchIcon = GetIcon("Editor.Icon.Search"))
     {
         const float IconSize = ImGui::GetFrameHeight() - 12.0f;
         const float IconY = Min.y + (ImGui::GetFrameHeight() - IconSize) * 0.5f;
@@ -117,7 +117,7 @@ bool DrawSearchInputWithIcon(const char *Id, const char *Hint, char *Buffer, siz
 
 void DrawCenteredButtonIcon(const char *IconKey, float IconSize, ImU32 Tint = IM_COL32_WHITE)
 {
-    if (ID3D11ShaderResourceView *Icon = GetEditorIcon(IconKey))
+    if (ID3D11ShaderResourceView *Icon = GetIcon(IconKey))
     {
         const ImVec2 Min = ImGui::GetItemRectMin();
         const ImVec2 Size = ImGui::GetItemRectSize();
@@ -171,7 +171,7 @@ bool DrawIconLabelButton(const char *Id, const char *IconKey, const char *Label,
     float CursorX = Min.x + 8.0f;
     const float CenterY = Min.y + (Max.y - Min.y) * 0.5f;
 
-    if (ID3D11ShaderResourceView *Icon = GetEditorIcon(IconKey))
+    if (ID3D11ShaderResourceView *Icon = GetIcon(IconKey))
     {
         const float IconSize = (std::min)(ImGui::GetItemRectSize().y - 8.0f, 14.0f);
         DrawList->AddImage(reinterpret_cast<ImTextureID>(Icon), ImVec2(CursorX, CenterY - IconSize * 0.5f),
@@ -200,7 +200,7 @@ bool DrawLockToggle(const char *Id, bool bLocked)
 
     if (bLocked)
     {
-        if (ID3D11ShaderResourceView *Icon = GetEditorIcon("Editor.Icon.Locked"))
+        if (ID3D11ShaderResourceView *Icon = GetIcon("Editor.Icon.Locked"))
         {
             ImGui::GetWindowDrawList()->AddImage(reinterpret_cast<ImTextureID>(Icon), ImVec2(IconX, IconY),
                                                  ImVec2(IconX + IconSize, IconY + IconSize), ImVec2(0.0f, 0.0f),
@@ -255,7 +255,7 @@ bool IsFolderNameUsed(const UWorld *World, const FString &FolderName, const FStr
 
 void FLevelOutlinerPanel::Init(UEditorEngine *InEditorEngine)
 {
-    FEditorUIElement::Init(InEditorEngine);
+    FUIElement::Init(InEditorEngine);
 }
 
 void FLevelOutlinerPanel::Render(float DeltaTime)
@@ -275,16 +275,16 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Outliner";
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Outliner";
     PanelDesc.StableId = "LevelOutlinerPanel";
     PanelDesc.IconKey = PanelIconKey;
     PanelDesc.bClosable = true;
     PanelDesc.bOpen = &Settings.Panels.bOutliner;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -306,7 +306,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     {
         ImGui::OpenPopup("##OutlinerTypeFilterPopup");
     }
-    if (ID3D11ShaderResourceView *FilterIcon = GetEditorIcon("Editor.Icon.Filter"))
+    if (ID3D11ShaderResourceView *FilterIcon = GetIcon("Editor.Icon.Filter"))
     {
         const ImVec2 Min = ImGui::GetItemRectMin();
         const ImVec2 Size = ImGui::GetItemRectSize();
@@ -476,7 +476,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     {
         ImGui::EndDisabled();
     }
-    FEditorPanel::End();
+    FPanel::End();
 }
 
 void FLevelOutlinerPanel::SelectAllVisibleActors()
@@ -753,7 +753,7 @@ void FLevelOutlinerPanel::RenderActorOutliner()
         const ImVec2 HeaderMin = ImGui::GetCursorScreenPos();
         const float HeaderWidth = ImGui::GetColumnWidth();
         const float IconX = HeaderMin.x + floorf((HeaderWidth - LockCellWidth) * 0.5f);
-        if (ID3D11ShaderResourceView *LockIcon = GetEditorIcon("Editor.Icon.Locked"))
+        if (ID3D11ShaderResourceView *LockIcon = GetIcon("Editor.Icon.Locked"))
         {
             ImGui::GetWindowDrawList()->AddImage(reinterpret_cast<ImTextureID>(LockIcon),
                                                  ImVec2(IconX + 3.0f, HeaderMin.y + 2.0f),
@@ -1032,7 +1032,7 @@ void FLevelOutlinerPanel::RenderActorOutliner()
             }
 
             if (ID3D11ShaderResourceView *FolderIcon =
-                    GetEditorIcon(bOpen ? "Editor.Icon.FolderOpen" : "Editor.Icon.FolderClosed"))
+                    GetIcon(bOpen ? "Editor.Icon.FolderOpen" : "Editor.Icon.FolderClosed"))
             {
                 const ImVec2 Min = ImGui::GetItemRectMin();
                 const float IconSize = 14.0f;

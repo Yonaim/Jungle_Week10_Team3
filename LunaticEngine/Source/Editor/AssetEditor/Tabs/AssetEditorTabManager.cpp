@@ -1,5 +1,5 @@
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/Panel.h"
 
 #include "AssetEditor/IAssetEditor.h"
 #include "AssetEditor/Tabs/AssetEditorTab.h"
@@ -124,7 +124,7 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 
         bool bOpen = true;
         const std::string StableId = std::string("AssetEditorTab_") + std::to_string(Index);
-        FEditorPanelDesc PanelDesc;
+        FPanelDesc PanelDesc;
         PanelDesc.DisplayName = Tab->GetTitle();
         PanelDesc.StableId = StableId.c_str();
         PanelDesc.IconKey = "Editor.Icon.Panel.Asset";
@@ -133,7 +133,7 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
         PanelDesc.bOpen = &bOpen;
         PanelDesc.WindowFlags = ImGuiWindowFlags_NoCollapse;
 
-        if (FEditorPanel::Begin(PanelDesc))
+        if (FPanel::Begin(PanelDesc))
         {
             if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
             {
@@ -142,7 +142,7 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 
             Tab->Render(DeltaTime);
         }
-        FEditorPanel::End();
+        FPanel::End();
 
         if (!bOpen)
         {

@@ -49,6 +49,15 @@
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\UI">
       <UniqueIdentifier>{accfc712-9ed3-719e-74bb-d8a2da9d6b40}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport">
+      <UniqueIdentifier>{f4ebbe4b-54b3-774e-4a3c-56c5747380ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\AssetEditor\Tabs">
+      <UniqueIdentifier>{7790b76b-6afe-a8cb-1d02-e6d7f1af6b64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\AssetEditor\Window">
+      <UniqueIdentifier>{06bec244-cde2-d5d2-be1c-7f54aed72e4a}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\AssetTools">
       <UniqueIdentifier>{8bfde865-2372-9bbf-d164-11fd9688e5f8}</UniqueIdentifier>
     </Filter>
@@ -58,8 +67,35 @@
     <Filter Include="Source\Editor\Common\File">
       <UniqueIdentifier>{6bd0395d-78bb-436b-cff4-aa13d466cdca}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\Common\ImGui">
+      <UniqueIdentifier>{8b650b22-ad07-3e1a-7517-f0fd18b084c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\Menu">
+      <UniqueIdentifier>{a4a91f25-6bb1-65a2-e2cb-c114a78f8ca8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Common\UI">
       <UniqueIdentifier>{b19d3ea7-10cc-ed04-a4e3-19dc58b04fec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\Base">
+      <UniqueIdentifier>{9f9f98bd-1115-0cc8-56ae-5017c670f8cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\Docking">
+      <UniqueIdentifier>{e6f446a4-0492-a61a-c87e-5c59f6fec508}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\DragDrop">
+      <UniqueIdentifier>{d49a79cc-29e0-8922-aeb1-9eb79df46ec9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\Notifications">
+      <UniqueIdentifier>{09d6437c-a740-9f2a-eb88-2d047f31b289}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\Panels">
+      <UniqueIdentifier>{51ee9c00-6fd7-4085-feec-aac8c9e29554}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\Style">
+      <UniqueIdentifier>{923facfc-da32-1bce-ab95-9da8418232c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\Viewport">
+      <UniqueIdentifier>{315bc4ff-3a25-a257-693b-b9448fc7301a}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\Common\Viewport">
       <UniqueIdentifier>{1b224187-db21-2228-660f-bef94109b8f6}</UniqueIdentifier>
@@ -108,6 +144,9 @@
     </Filter>
     <Filter Include="Source\Editor\LevelEditor\Viewport">
       <UniqueIdentifier>{433d9f00-926f-7fc0-355e-ae8489c39b2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\LevelEditor\Window">
+      <UniqueIdentifier>{b72b16d3-35dc-b5c5-a1b4-3f2b3eb365cf}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\MainFrame">
       <UniqueIdentifier>{a22e312b-6905-0adf-9b01-d4fad0c0f77a}</UniqueIdentifier>
@@ -213,6 +252,9 @@
     </Filter>
     <Filter Include="Source\Engine\Render\Types">
       <UniqueIdentifier>{c71201cc-114f-5096-1729-b7f43b4e5a08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Engine\Render\Window">
+      <UniqueIdentifier>{a9a80adb-055e-f64e-a031-39cb909b0463}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Resource">
       <UniqueIdentifier>{571528ee-9d22-22f5-991f-d5aec8f58351}</UniqueIdentifier>
@@ -381,9 +423,6 @@
     <FxCompile Include="Shaders\Editor\Editor.hlsl">
       <Filter>Shaders\Editor</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\Editor\Grid.hlsl">
-      <Filter>Shaders\Editor</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\Editor\Gizmo.hlsl">
       <Filter>Shaders\Editor</Filter>
     </FxCompile>
@@ -503,22 +542,49 @@
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletonTreePanel.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Viewport</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.cpp">
+      <Filter>Source\Editor\AssetEditor\Tabs</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.cpp">
+      <Filter>Source\Editor\AssetEditor\Tabs</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp">
+      <Filter>Source\Editor\AssetEditor\Window</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp">
       <Filter>Source\Editor\AssetTools</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\UI\EditorDragSource.cpp">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClCompile Include="Source\Editor\Common\ImGui\EditorImGuiSystem.cpp">
+      <Filter>Source\Editor\Common\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\UI\EditorUIElement.cpp">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp">
+      <Filter>Source\Editor\Common\Menu</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\UI\NotificationToast.cpp">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp">
+      <Filter>Source\Editor\Common\UI\Base</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.cpp">
+      <Filter>Source\Editor\Common\UI\Docking</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\UI\DragDrop\DragSource.cpp">
+      <Filter>Source\Editor\Common\UI\DragDrop</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp">
+      <Filter>Source\Editor\Common\UI\Notifications</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\UI\Panels\Panel.cpp">
+      <Filter>Source\Editor\Common\UI\Panels</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportPanel.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp">
@@ -592,6 +658,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.cpp">
       <Filter>Source\Editor\LevelEditor\Viewport</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.cpp">
+      <Filter>Source\Editor\LevelEditor\Window</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp">
       <Filter>Source\Editor\MainFrame</Filter>
@@ -959,9 +1028,6 @@
     <ClCompile Include="Source\Engine\Render\Command\DrawCommandBuilder.cpp">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Command\EditorGridRenderer.cpp">
-      <Filter>Source\Engine\Render\Command</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Command\DrawCommandList.cpp">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClCompile>
@@ -1135,6 +1201,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Types\FrameContext.cpp">
       <Filter>Source\Engine\Render\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Window\WindowRenderContext.cpp">
+      <Filter>Source\Engine\Render\Window</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Resource\ResourceManager.cpp">
       <Filter>Source\Engine\Resource</Filter>
@@ -1343,28 +1412,61 @@
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletonTreePanel.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.h">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.h">
+      <Filter>Source\Editor\AssetEditor\Tabs</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.h">
+      <Filter>Source\Editor\AssetEditor\Tabs</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h">
+      <Filter>Source\Editor\AssetEditor\Window</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h">
       <Filter>Source\Editor\AssetTools</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\UI\EditorAccentColor.h">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClInclude Include="Source\Editor\Common\ImGui\EditorImGuiSystem.h">
+      <Filter>Source\Editor\Common\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\UI\EditorDragSource.h">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h">
+      <Filter>Source\Editor\Common\Menu</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\UI\EditorPanelTitleUtils.h">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h">
+      <Filter>Source\Editor\Common\Menu</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\UI\EditorUIElement.h">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClInclude Include="Source\Editor\Common\UI\Base\UIElement.h">
+      <Filter>Source\Editor\Common\UI\Base</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\UI\NotificationToast.h">
-      <Filter>Source\Editor\Common\UI</Filter>
+    <ClInclude Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.h">
+      <Filter>Source\Editor\Common\UI\Docking</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\DragDrop\DragSource.h">
+      <Filter>Source\Editor\Common\UI\DragDrop</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Notifications\NotificationToast.h">
+      <Filter>Source\Editor\Common\UI\Notifications</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Panels\Panel.h">
+      <Filter>Source\Editor\Common\UI\Panels</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Panels\PanelTitleUtils.h">
+      <Filter>Source\Editor\Common\UI\Panels</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Style\AccentColor.h">
+      <Filter>Source\Editor\Common\UI\Style</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h">
+      <Filter>Source\Editor\Common\UI\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h">
@@ -1450,6 +1552,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.h">
       <Filter>Source\Editor\LevelEditor\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.h">
+      <Filter>Source\Editor\LevelEditor\Window</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h">
       <Filter>Source\Editor\MainFrame</Filter>
@@ -1907,9 +2012,6 @@
     <ClInclude Include="Source\Engine\Render\Command\DrawCommandBuilder.h">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Command\EditorGridRenderer.h">
-      <Filter>Source\Engine\Render\Command</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Engine\Render\Command\DrawCommandList.h">
       <Filter>Source\Engine\Render\Command</Filter>
     </ClInclude>
@@ -2128,6 +2230,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Types\ViewTypes.h">
       <Filter>Source\Engine\Render\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Window\WindowRenderContext.h">
+      <Filter>Source\Engine\Render\Window</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Resource\ResourceManager.h">
       <Filter>Source\Engine\Resource</Filter>

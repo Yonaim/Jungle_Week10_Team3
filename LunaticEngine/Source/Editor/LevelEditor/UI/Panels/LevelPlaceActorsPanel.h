@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 
-#include "Common/UI/EditorUIElement.h"
+#include "Common/UI/Base/UIElement.h"
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 
-class FLevelPlaceActorsPanel : public FEditorUIElement
+class FLevelPlaceActorsPanel : public FUIElement
 {
   public:
     enum class EPlaceActorCategory : uint8

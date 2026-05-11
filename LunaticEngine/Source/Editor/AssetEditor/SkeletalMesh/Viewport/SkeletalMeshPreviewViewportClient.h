@@ -42,6 +42,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void SetEditorState(FSkeletalMeshEditorState *InState) { State = InState; }
 
     void RenderViewportImage(bool bIsActiveViewport) override;
+    const char *GetViewportTooltipBarText() const override;
     bool BuildRenderRequest(FEditorViewportRenderRequest &OutRequest) override;
 
     USkeletalMeshComponent *GetPreviewComponent() const { return PreviewComponent; }

@@ -1,7 +1,7 @@
 #include "LevelEditor/UI/Panels/LevelStatPanel.h"
 
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "ImGui/imgui.h"
 #include "Profiling/GPUProfiler.h"
@@ -25,16 +25,16 @@ void FLevelStatPanel::Render(float DeltaTime)
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     ImGui::SetNextWindowSize(ImVec2(700.0f, 500.0f), ImGuiCond_Once);
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Stat";
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Stat Profiler";
     PanelDesc.StableId = "LevelStatPanel";
     PanelDesc.IconKey = PanelIconKey;
     PanelDesc.bClosable = true;
     PanelDesc.bOpen = &Settings.Panels.bStats;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -116,7 +116,7 @@ void FLevelStatPanel::Render(float DeltaTime)
         RenderStatTable("GPUStatTable", GPUSource, GPUSortColumn, bGPUSortDescending, HalfHeight);
     }
 
-    FEditorPanel::End();
+    FPanel::End();
 #endif
 }
 

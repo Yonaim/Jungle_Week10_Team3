@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Window/LevelEditorWindow.h"
+#include "LevelEditor/Window/LevelEditorWindow.h"
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
@@ -21,11 +21,11 @@
 
 #include "Common/File/EditorFileUtils.h"
 #include "Common/ImGui/EditorImGuiSystem.h"
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorDockLayoutUtils.h"
-#include "Common/UI/EditorPanel.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/NotificationToast.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Docking/DockLayoutUtils.h"
+#include "Common/UI/Panels/Panel.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Notifications/NotificationToast.h"
 #include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
 #include "Engine/Serialization/SceneSaveManager.h"
@@ -150,7 +150,7 @@ namespace
         Style.Colors[ImGuiCol_FrameBg] = UnrealDockEmpty;
         Style.Colors[ImGuiCol_FrameBgHovered] = UnrealPanelSurfaceHover;
         Style.Colors[ImGuiCol_FrameBgActive] = UnrealPanelSurfaceActive;
-        Style.Colors[ImGuiCol_CheckMark] = EditorAccentColor::Value;
+        Style.Colors[ImGuiCol_CheckMark] = UIAccentColor::Value;
         Style.Colors[ImGuiCol_Button] = UnrealPanelSurface;
         Style.Colors[ImGuiCol_ButtonHovered] = UnrealPanelSurfaceHover;
         Style.Colors[ImGuiCol_ButtonActive] = UnrealPanelSurfaceActive;
@@ -198,11 +198,11 @@ namespace
 
     std::string MakeLevelPanelTitle(const char *DisplayName, const char *StableId, const char *IconKey = nullptr)
     {
-        FEditorPanelDesc Desc;
+        FPanelDesc Desc;
         Desc.DisplayName = DisplayName;
         Desc.StableId = StableId;
         Desc.IconKey = IconKey;
-        return FEditorPanel::MakeTitle(Desc);
+        return FPanel::MakeTitle(Desc);
     }
 
 } // namespace
@@ -266,7 +266,7 @@ void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
     LayoutDesc.RightBottomWindow = MakeLevelPanelTitle("Details", "LevelDetailsPanel", "Editor.Icon.Panel.Details");
     LayoutDesc.BottomWindow = MakeLevelPanelTitle("Content Browser", "LevelContentBrowser", "Editor.Icon.Panel.ContentBrowser");
 
-    FEditorDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
+    FDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
     bPendingDefaultDockLayout = false;
 }
 
@@ -361,7 +361,7 @@ void FLevelEditorWindow::FlushPendingMenuAction()
 
 void FLevelEditorWindow::RenderContent(float DeltaTime)
 {
-    EditorPanelTitleUtils::BeginPanelDecorationFrame();
+    PanelTitleUtils::BeginPanelDecorationFrame();
 
     FEditorMenuBarContext MenuContext{};
     MenuContext.Id = "##LevelEditorMenuBar";
@@ -1118,9 +1118,9 @@ void FLevelEditorWindow::RenderProjectSettingsWindow()
     if (ProjectSettings.Game.WindowHeight < 240)
         ProjectSettings.Game.WindowHeight = 240;
 
-    ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::WithAlpha(0.92f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::WithAlpha(0.92f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.97f, 0.98f, 1.0f, 1.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 8.0f));

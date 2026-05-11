@@ -6,7 +6,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 #include "ImGui/imgui.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
 
 void FAssetEditorWindow::Initialize(UEditorEngine *InEditorEngine, FAssetEditorManager *InOwnerManager)
 {
@@ -107,8 +107,8 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
     if (TabManager.HasOpenTabs())
     {
         // Asset Editor도 Level Editor와 같은 panel chrome / surface 색을 사용한다.
-        // 개별 패널의 body 색은 FEditorPanel::Begin()에서 공통으로 적용한다.
-        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::ColorConvertU32ToFloat4(EditorPanelTitleUtils::GetDockTabBarGapColor()));
+        // 개별 패널의 body 색은 FPanel::Begin()에서 공통으로 적용한다.
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::ColorConvertU32ToFloat4(PanelTitleUtils::GetDockTabBarGapColor()));
         TabManager.Render(DeltaTime, DockspaceId);
         ImGui::PopStyleColor();
 

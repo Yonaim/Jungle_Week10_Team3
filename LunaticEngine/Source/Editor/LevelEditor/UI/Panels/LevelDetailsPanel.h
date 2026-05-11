@@ -1,13 +1,13 @@
-﻿#pragma once
+#pragma once
 
-#include "Common/UI/EditorUIElement.h"
+#include "Common/UI/Base/UIElement.h"
 #include "Object/Object.h"
 
 class UActorComponent;
 class UClass;
 class AActor;
 
-class FLevelDetailsPanel : public FEditorUIElement
+class FLevelDetailsPanel : public FUIElement
 {
   public:
     virtual void Render(float DeltaTime) override;

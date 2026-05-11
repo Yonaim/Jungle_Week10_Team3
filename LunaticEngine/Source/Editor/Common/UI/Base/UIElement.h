@@ -1,13 +1,13 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreTypes.h"
 
 class UEditorEngine;
 
-class FEditorUIElement
+class FUIElement
 {
 public:
-	virtual ~FEditorUIElement() = default;
+	virtual ~FUIElement() = default;
 
 	virtual void Init(UEditorEngine* InEditorEngine);
 	virtual void Render(float DeltaTime) = 0;
