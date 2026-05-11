@@ -207,6 +207,22 @@ void FAssetEditorWindow::BuildEditMenu()
 
 void FAssetEditorWindow::BuildWindowMenu()
 {
+    if (EditorEngine)
+    {
+        const bool bIsLevelContext = EditorEngine->IsLevelEditorContextActive();
+        if (ImGui::MenuItem("Level Editor", nullptr, bIsLevelContext))
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+        }
+
+        const bool bIsAssetContext = EditorEngine->IsAssetEditorContextActive();
+        if (ImGui::MenuItem("Asset Editor", nullptr, bIsAssetContext))
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+        }
+        ImGui::Separator();
+    }
+
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
     {
         ActiveEditor->BuildWindowMenu();

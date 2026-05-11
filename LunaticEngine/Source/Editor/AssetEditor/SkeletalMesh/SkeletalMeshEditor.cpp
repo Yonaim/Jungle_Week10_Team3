@@ -139,9 +139,17 @@ void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *>
 
 void FSkeletalMeshEditor::BuildWindowMenu()
 {
-    ImGui::Checkbox("Preview Viewport", &bPreviewPanelOpen);
-    ImGui::Checkbox("Skeleton Tree", &bSkeletonTreePanelOpen);
-    ImGui::Checkbox("Details", &bDetailsPanelOpen);
+    auto DrawPanelMenuItem = [](const char *Label, bool &bOpen)
+    {
+        if (ImGui::MenuItem(Label, nullptr, bOpen))
+        {
+            bOpen = !bOpen;
+        }
+    };
+
+    DrawPanelMenuItem("Preview Viewport", bPreviewPanelOpen);
+    DrawPanelMenuItem("Skeleton Tree", bSkeletonTreePanelOpen);
+    DrawPanelMenuItem("Details", bDetailsPanelOpen);
 
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Skeletal Mesh Editor Layout"))

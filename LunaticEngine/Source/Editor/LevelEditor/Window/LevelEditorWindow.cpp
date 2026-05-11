@@ -618,6 +618,39 @@ void FLevelEditorWindow::BuildWindowMenu()
 {
     FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
 
+    auto DrawPanelMenuItem = [](const char *Label, bool &bOpen)
+    {
+        if (ImGui::MenuItem(Label, nullptr, bOpen))
+        {
+            bOpen = !bOpen;
+        }
+    };
+
+    if (EditorEngine)
+    {
+        const bool bIsLevelContext = EditorEngine->IsLevelEditorContextActive();
+        if (ImGui::MenuItem("Level Editor", nullptr, bIsLevelContext))
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+        }
+
+        const bool bHasAssetEditor = EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().IsOpen();
+        if (!bHasAssetEditor)
+        {
+            ImGui::BeginDisabled();
+        }
+        const bool bIsAssetContext = EditorEngine->IsAssetEditorContextActive();
+        if (ImGui::MenuItem("Asset Editor", nullptr, bIsAssetContext))
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+        }
+        if (!bHasAssetEditor)
+        {
+            ImGui::EndDisabled();
+        }
+        ImGui::Separator();
+    }
+
     if (bHideEditorWindows)
     {
         if (ImGui::MenuItem("Restore Level Editor Panels"))
@@ -627,17 +660,17 @@ void FLevelEditorWindow::BuildWindowMenu()
         ImGui::Separator();
     }
 
-    ImGui::Checkbox("Viewport", &Settings.Panels.bViewport);
+    DrawPanelMenuItem("Viewport", Settings.Panels.bViewport);
     ImGui::Separator();
-    ImGui::Checkbox("Console", &Settings.Panels.bConsole);
-    ImGui::Checkbox("Details", &Settings.Panels.bDetails);
-    ImGui::Checkbox("Outliner", &Settings.Panels.bOutliner);
-    ImGui::Checkbox("Place Actors", &Settings.Panels.bPlaceActors);
-    ImGui::Checkbox("Stat Profiler", &Settings.Panels.bStats);
-    ImGui::Checkbox("Content Browser", &Settings.Panels.bContentBrowser);
-    ImGui::Checkbox("Shadow Map Debug", &Settings.Panels.bShadowMapDebug);
+    DrawPanelMenuItem("Console", Settings.Panels.bConsole);
+    DrawPanelMenuItem("Details", Settings.Panels.bDetails);
+    DrawPanelMenuItem("Outliner", Settings.Panels.bOutliner);
+    DrawPanelMenuItem("Place Actors", Settings.Panels.bPlaceActors);
+    DrawPanelMenuItem("Stat Profiler", Settings.Panels.bStats);
+    DrawPanelMenuItem("Content Browser", Settings.Panels.bContentBrowser);
+    DrawPanelMenuItem("Shadow Map Debug", Settings.Panels.bShadowMapDebug);
     ImGui::Separator();
-    ImGui::Checkbox("ImGui Style Settings", &Settings.Panels.bImGuiSettings);
+    DrawPanelMenuItem("ImGui Style Settings", Settings.Panels.bImGuiSettings);
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Default Layout"))
     {

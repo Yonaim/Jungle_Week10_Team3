@@ -66,7 +66,7 @@ class FEditorViewportClient : public FViewportClient
     bool IsHovered() const { return bIsHovered; }
 
     void SetViewportSize(float InWidth, float InHeight);
-    void SetViewportScreenRect(const FRect &InRect);
+    virtual void SetViewportScreenRect(const FRect &InRect);
 
     const FRect &GetViewportScreenRect() const { return ViewportScreenRect; }
 

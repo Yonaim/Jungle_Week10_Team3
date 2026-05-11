@@ -63,6 +63,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     int32 GetPointLightFaceIndex() const { return PointLightFaceIndex; }
     void  SetPointLightFaceIndex(int32 Index) { PointLightFaceIndex = (Index < 0) ? 0 : (Index > 5) ? 5 : Index; }
 
+    void SetViewportScreenRect(const FRect &InRect) override;
     void UpdateLayoutRect() override;
     void RenderViewportImage(bool bIsActiveViewport) override;
     const char *GetViewportTooltipBarText() const override;

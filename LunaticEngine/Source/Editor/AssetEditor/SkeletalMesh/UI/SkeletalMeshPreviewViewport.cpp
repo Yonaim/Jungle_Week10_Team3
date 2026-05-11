@@ -2,7 +2,6 @@
 
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
 #include "Common/UI/Panels/Panel.h"
-#include "Common/UI/Viewport/ViewportToolbar.h"
 #include "Common/Viewport/EditorViewportPanel.h"
 
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -92,16 +91,15 @@ void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSke
     PreviewViewportClient->SetPreviewMesh(Mesh);
     PreviewViewportClient->SetEditorState(&State);
 
-    const bool bActive = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-    const FRect ViewportRect = FEditorViewportPanel::RenderViewportClient(*PreviewViewportClient, bActive);
-
     if (Toolbar)
     {
-        const float ToolbarHeight = FViewportToolbar::GetHeight(ViewportRect.Width);
-        if (FViewportToolbar::BeginInRect("##SkeletalMeshViewportToolbar", ViewportRect, ToolbarHeight))
+        if (FEditorViewportPanel::BeginTopToolbar("##SkeletalMeshViewportToolbar"))
         {
             Toolbar->RenderViewportToolbar(Mesh, State);
-            FViewportToolbar::EndInRect();
         }
+        FEditorViewportPanel::EndTopToolbar();
     }
+
+    const bool bActive = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    FEditorViewportPanel::RenderViewportClient(*PreviewViewportClient, bActive);
 }

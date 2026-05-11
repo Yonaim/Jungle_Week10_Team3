@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
+#include "Common/UI/Viewport/ViewportToolbar.h"
 
 #include "ImGui/imgui.h"
 
@@ -35,6 +36,16 @@ class FEditorViewportPanel
         Rect.Width = Size.x;
         Rect.Height = Size.y;
         return Rect;
+    }
+
+    static bool BeginTopToolbar(const char *Id, float Height = 0.0f)
+    {
+        return FViewportToolbar::Begin(Id, Height);
+    }
+
+    static void EndTopToolbar()
+    {
+        FViewportToolbar::End();
     }
 
     static FRect RenderViewportClient(FEditorViewportClient &Client, bool bActiveFromOwner)
