@@ -46,6 +46,9 @@
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh">
       <UniqueIdentifier>{9cf86e78-2e49-3a26-1b21-b6951b7f242f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\Selection">
+      <UniqueIdentifier>{22c777ed-6b28-ae7e-a15a-8ca07c7ed198}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\UI">
       <UniqueIdentifier>{accfc712-9ed3-719e-74bb-d8a2da9d6b40}</UniqueIdentifier>
     </Filter>
@@ -513,7 +516,6 @@
     <FxCompile Include="Shaders\UI\SubUV.hlsl">
       <Filter>Shaders\UI</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\Editor\Grid.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Editor\EditorEngine.cpp">
@@ -533,6 +535,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Selection</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
@@ -1372,15 +1377,6 @@
       <Filter>ThirdParty\miniaudio</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.cpp" />
-    <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.cpp" />
-    <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.cpp" />
-    <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp" />
-    <ClCompile Include="Source\Editor\Common\ImGui\EditorImGuiSystem.cpp" />
-    <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
-    <ClCompile Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.cpp" />
-    <ClCompile Include="Source\Engine\Render\Command\EditorGridRenderer.cpp" />
-    <ClCompile Include="Source\Engine\Render\Window\WindowRenderContext.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1415,6 +1411,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.h">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Selection</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\UI</Filter>
@@ -3636,16 +3635,6 @@
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\ImGui\EditorImGuiSystem.h" />
-    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
-    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
-    <ClInclude Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.h" />
-    <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.h" />
-    <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.h" />
-    <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h" />
-    <ClInclude Include="Source\Engine\Render\Command\EditorGridRenderer.h" />
-    <ClInclude Include="Source\Engine\Render\Window\WindowRenderContext.h" />
-    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LunaticEngine.rc" />

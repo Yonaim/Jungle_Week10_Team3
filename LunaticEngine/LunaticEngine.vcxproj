@@ -327,6 +327,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshPreviewViewport.cpp" />
@@ -609,7 +610,6 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
     <ClInclude Include="Source\Editor\AssetEditor\AssetEditorManager.h" />
     <ClInclude Include="Source\Editor\AssetEditor\IAssetEditor.h" />
@@ -621,6 +621,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshPreviewViewport.h" />

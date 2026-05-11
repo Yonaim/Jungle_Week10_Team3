@@ -381,6 +381,7 @@ namespace
         TranslateSnap,
         RotateSnap,
         ScaleSnap,
+        SnapSettings,
         CameraSettings,
         ShowFlag,
         ViewModeLit,
@@ -426,6 +427,8 @@ namespace
             return "Editor.ToolIcon.RotateSnap";
         case EToolbarIcon::ScaleSnap:
             return "Editor.ToolIcon.ScaleSnap";
+        case EToolbarIcon::SnapSettings:
+            return "Editor.ToolIcon.SnapSettings";
         case EToolbarIcon::CameraSettings:
             return "Editor.ToolIcon.Camera";
         case EToolbarIcon::ShowFlag:
@@ -870,10 +873,10 @@ namespace
         snprintf(ButtonId, sizeof(ButtonId), "##SnapSettings_%d", SlotIndex);
         snprintf(PopupId, sizeof(PopupId), "SnapPopup_%d", SlotIndex);
 
-        Width = (std::max)(Width, GetToolbarIconDropdownButtonWidth(EToolbarIcon::TranslateSnap, FallbackSize, MaxIconSize));
+        Width = (std::max)(Width, GetToolbarIconDropdownButtonWidth(EToolbarIcon::SnapSettings, FallbackSize, MaxIconSize));
 
         const bool bAnySnapEnabled = Settings.bEnableTranslationSnap || Settings.bEnableRotationSnap || Settings.bEnableScaleSnap;
-        if (DrawSelectedToolbarIconDropdownButton(ButtonId, EToolbarIcon::TranslateSnap, bAnySnapEnabled, Width, 26.0f, FallbackSize,
+        if (DrawSelectedToolbarIconDropdownButton(ButtonId, EToolbarIcon::SnapSettings, bAnySnapEnabled, Width, 26.0f, FallbackSize,
                                                   MaxIconSize))
         {
             if (GSnapPopupTab[SlotIndex] == ESnapPopupType::None)
@@ -2127,22 +2130,12 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
 
     ImGui::SameLine(0.0f, GroupSpacing);
     const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
-    if (bWorldCoord)
-    {
-        ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
-    }
     if (DrawToolbarIconButton("##SharedCoordSystemIcon", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace,
                               bWorldCoord ? "World" : "Local", ToolbarFallbackIconSize, ToolbarMaxIconSize))
     {
         Editor->ToggleCoordSystem();
     }
     ShowItemTooltip(bWorldCoord ? "World Space" : "Local Space");
-    if (bWorldCoord)
-    {
-        ImGui::PopStyleColor(3);
-    }
 
     // 스냅 토글과 수치 변경을 같은 줄에서 처리하고 즉시 Gizmo 설정에 반영합니다.
     auto DrawSnapControl = [&](const char *Id, EToolbarIcon Icon, const char *FallbackLabel, bool &bEnabled, float &Value, float MinValue)
@@ -2313,7 +2306,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                 {
                     BeginToolbarItem(bUseCompactToolbarLayout ? 5.0f : 10.0f);
                     if (DrawSelectedToolbarIcon("##CoordSystem", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace,
-                                                bWorldCoord, bWorldCoord ? "World Space" : "Local Space"))
+                                                false, bWorldCoord ? "World Space" : "Local Space"))
                     {
                         Editor->ToggleCoordSystem();
                     }
@@ -2773,7 +2766,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
 
             const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
             ImGui::SameLine(0.0f, 10.0f);
-            if (DrawSelectedToolbarIcon("##CoordSystem", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace, bWorldCoord,
+            if (DrawSelectedToolbarIcon("##CoordSystem", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace, false,
                                         bWorldCoord ? "World Space" : "Local Space"))
             {
                 Editor->ToggleCoordSystem();

@@ -34,6 +34,30 @@ bool ContainsCaseInsensitive(const std::string& Text, const char* Pattern)
     return LowerText.find(LowerPattern) != std::string::npos;
 }
 
+
+void DrawBoneIconForLastTreeItem(int32 Depth, float CellStartScreenX, bool bSelected)
+{
+    ID3D11ShaderResourceView* BoneIcon = FEditorUIStyle::GetIcon("Editor.Icon.Bone");
+    if (!BoneIcon)
+    {
+        return;
+    }
+
+    const ImVec2 RowMin = ImGui::GetItemRectMin();
+    const ImVec2 RowMax = ImGui::GetItemRectMax();
+    constexpr float IconSize = 14.0f;
+    const float IconX = CellStartScreenX + FEditorUIStyle::SkeletonTreeIndentWidth * static_cast<float>(Depth) + 18.0f;
+    const float IconY = RowMin.y + ((RowMax.y - RowMin.y) - IconSize) * 0.5f;
+    const ImU32 Tint = bSelected ? IM_COL32(0, 0, 0, 255) : IM_COL32(210, 210, 210, 255);
+
+    ImGui::GetWindowDrawList()->AddImage(reinterpret_cast<ImTextureID>(BoneIcon),
+                                         ImVec2(IconX, IconY),
+                                         ImVec2(IconX + IconSize, IconY + IconSize),
+                                         ImVec2(0.0f, 0.0f),
+                                         ImVec2(1.0f, 1.0f),
+                                         Tint);
+}
+
 void CollectTreeVisibleBoneOrder(const TArray<TArray<int32>>& BoneChildren, int32 BoneIndex, TArray<int32>& OutOrder)
 {
     if (BoneIndex < 0 || BoneIndex >= static_cast<int32>(BoneChildren.size()))
@@ -253,12 +277,13 @@ bool FSkeletonTreePanel::DrawBoneRow(const FBoneInfo& Bone, int32 BoneIndex, int
     }
 
     char Label[256];
-    snprintf(Label, sizeof(Label), "%s  %s", FEditorUIStyle::GetSkeletonBoneIcon(bSelected), BoneName);
+    snprintf(Label, sizeof(Label), "    %s", BoneName);
 
     FEditorUIStyle::PushSkeletonTreeRowStyle(bSelected);
     const bool bOpen = ImGui::TreeNodeEx("##BoneNode", Flags, "%s", Label);
     FEditorUIStyle::PopSkeletonTreeRowStyle();
 
+    DrawBoneIconForLastTreeItem(Depth, CellStartScreenX, bSelected);
     FEditorUIStyle::DrawSkeletonTreeGuides(Depth, Depth > 0, CellStartScreenX);
 
     if (ImGui::IsItemClicked())
