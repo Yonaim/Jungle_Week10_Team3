@@ -29,6 +29,20 @@ namespace
 		return Node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton;
 	}
 
+	FbxNode* FindParentSkeletonNode(FbxNode* Node)
+	{
+		FbxNode* ParentNode = Node ? Node->GetParent() : nullptr;
+		while (ParentNode)
+		{
+			if (IsSkeletonNode(ParentNode))
+			{
+				return ParentNode;
+			}
+			ParentNode = ParentNode->GetParent();
+		}
+		return nullptr;
+	}
+
 	FMatrix ConvertFbxAMatrixToFMatrix(const FbxAMatrix& Matrix)
 	{
 		// Points can be converted as Remap(Source * M), but matrices must operate
@@ -421,8 +435,8 @@ namespace
 		FBoneInfo NewBone;
 		NewBone.Name = BoneName;
 
-		FbxNode* ParentNode = BoneNode->GetParent();
-		if (IsSkeletonNode(ParentNode))
+		FbxNode* ParentNode = FindParentSkeletonNode(BoneNode);
+		if (ParentNode)
 		{
 			NewBone.ParentIndex = FindOrAddBone(OutMesh, ParentNode, nullptr, BindGlobalMatrices);
 		}
@@ -437,6 +451,25 @@ namespace
 		OutMesh.Bones.push_back(NewBone);
 		BindGlobalMatrices.push_back(BindGlobalMatrix);
 		return static_cast<int32>(OutMesh.Bones.size() - 1);
+	}
+
+	void RegisterSkeletonHierarchyBones(FbxNode* Node, FSkeletalMesh& OutMesh, TArray<FMatrix>& BindGlobalMatrices)
+	{
+		if (!Node)
+		{
+			return;
+		}
+
+		if (IsSkeletonNode(Node))
+		{
+			FindOrAddBone(OutMesh, Node, nullptr, BindGlobalMatrices);
+		}
+
+		const int32 ChildCount = Node->GetChildCount();
+		for (int32 ChildIndex = 0; ChildIndex < ChildCount; ++ChildIndex)
+		{
+			RegisterSkeletonHierarchyBones(Node->GetChild(ChildIndex), OutMesh, BindGlobalMatrices);
+		}
 	}
 
 	void AddBoneInfluence(FSkinWeight& SkinWeight, int32 BoneIndex, float Weight)
@@ -481,10 +514,10 @@ namespace
 		}
 	}
 
-void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
-{
-	// 정점별 총합을 1로 맞춰 스키닝 시 가중치 에너지 보존을 유지한다.
-	for (FSkinWeight& SkinWeight : OutMesh.SkinWeights)
+	void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
+	{
+		// 정점별 총합을 1로 맞춰 스키닝 시 가중치 에너지 보존을 유지한다.
+		for (FSkinWeight& SkinWeight : OutMesh.SkinWeights)
 		{
 			float TotalWeight = 0.0f;
 			for (int32 InfluenceIndex = 0; InfluenceIndex < MaxBoneInfluences; ++InfluenceIndex)
@@ -508,20 +541,6 @@ void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
 	bool HasSkinDeformer(FbxMesh* Mesh)
 	{
 		return Mesh && Mesh->GetDeformerCount(FbxDeformer::eSkin) > 0;
-	}
-
-	FbxNode* FindParentSkeletonNode(FbxNode* Node)
-	{
-		FbxNode* ParentNode = Node ? Node->GetParent() : nullptr;
-		while (ParentNode)
-		{
-			if (IsSkeletonNode(ParentNode))
-			{
-				return ParentNode;
-			}
-			ParentNode = ParentNode->GetParent();
-		}
-		return nullptr;
 	}
 
 	void AssignRigidBoneInfluence(FSkinWeight& SkinWeight, int32 BoneIndex)
@@ -580,9 +599,12 @@ void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
 
 	void FillSkinWeights(FFbxInfo& Context, TArray<FbxNode*>& MeshNodes, const FControlPointVertexMap& ControlPointToVertices, const FMeshNodeVertexMap& MeshNodeVertices, FSkeletalMesh& OutMesh)
 	{
-		(void)Context;
 		OutMesh.SkinWeights.resize(OutMesh.Vertices.size());
 		TArray<FMatrix> BindGlobalMatrices;
+
+		// Cluster에 weight가 없는 leaf/end bone은 Cluster->GetLink()로 등장하지 않는다.
+		// Skin weight 처리 전에 scene skeleton hierarchy 전체를 등록해 head_end 같은 말단 본도 보존한다.
+		RegisterSkeletonHierarchyBones(Context.Scene ? Context.Scene->GetRootNode() : nullptr, OutMesh, BindGlobalMatrices);
 
 		for (FbxNode* Node : MeshNodes)
 		{
