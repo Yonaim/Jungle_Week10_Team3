@@ -1,4 +1,4 @@
-#include "LevelEditor/Viewport/LevelViewportLayout.h"
+﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
@@ -276,6 +276,7 @@ namespace
         {
             DrawCompactPopupSectionLabel("COMMON SHOW FLAGS");
             ImGui::Checkbox("Primitives", &Opts.ShowFlags.bPrimitives);
+			ImGui::Checkbox("SkeletalMesh", &Opts.ShowFlags.bSkeletalMesh);
             ImGui::Checkbox("Billboard Text", &Opts.ShowFlags.bBillboardText);
 
             DrawCompactPopupSectionLabel("ACTOR HELPERS");

@@ -1,4 +1,4 @@
-#include "SkeletalMeshProxy.h"
+﻿#include "SkeletalMeshProxy.h"
 #include "Component/SkinnedMeshComponent.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/StaticMeshCommon.h"
@@ -36,7 +36,7 @@ FSkeletalMeshProxy::FSkeletalMeshProxy(USkinnedMeshComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent)
 {
 	// CPU Skinning 결과는 매 프레임 뷰포트 기준으로 갱신될 수 있어 플래그를 활성화한다.
-	ProxyFlags |= EPrimitiveProxyFlags::PerViewportUpdate;
+	ProxyFlags |= EPrimitiveProxyFlags::PerViewportUpdate | EPrimitiveProxyFlags::SkeletalMesh;
 }
 
 USkinnedMeshComponent* FSkeletalMeshProxy::GetSkinnedMeshComponent() const

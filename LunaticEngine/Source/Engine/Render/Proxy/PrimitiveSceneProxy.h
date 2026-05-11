@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Render/Proxy/DirtyFlag.h"
@@ -26,6 +26,7 @@ enum class EPrimitiveProxyFlags : uint16
 	SupportsOutline = 1 << 4,		// 선택 시 아웃라인 지원
 	ShowAABB        = 1 << 5,		// 선택 시 AABB 표시
 	EditorOnly      = 1 << 6,		// 에디터 전용 — PIE/Game 월드에서 비가시
+	SkeletalMesh    = 1 << 7
 };
 
 inline EPrimitiveProxyFlags  operator|(EPrimitiveProxyFlags A, EPrimitiveProxyFlags B)  { return static_cast<EPrimitiveProxyFlags>(static_cast<uint16>(A) | static_cast<uint16>(B)); }
