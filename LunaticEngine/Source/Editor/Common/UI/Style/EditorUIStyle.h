@@ -272,7 +272,7 @@ inline constexpr ImVec4 SkeletonTreeSelectionColor = UIAccentColor::Value;
 inline constexpr ImVec4 SkeletonTreeSelectionHoveredColor = UIAccentColor::Value;
 inline constexpr ImVec4 SkeletonTreeSelectionActiveColor = UIAccentColor::Value;
 inline constexpr float SkeletonTreeIndentWidth = 18.0f;
-inline constexpr float SkeletonTreeRowHeight = 20.0f;
+inline constexpr float SkeletonTreeRowHeight = 18.0f;
 
 inline bool BeginSkeletonTreeTable(const char* Id)
 {
@@ -287,8 +287,7 @@ inline bool BeginSkeletonTreeTable(const char* Id)
         1,
         ImGuiTableFlags_RowBg |
         ImGuiTableFlags_ScrollY |
-        ImGuiTableFlags_SizingStretchProp |
-        ImGuiTableFlags_BordersInnerH);
+        ImGuiTableFlags_SizingStretchProp);
 
     if (!bOpen)
     {
@@ -330,30 +329,11 @@ inline void PopSkeletonTreeRowStyle()
 
 inline void DrawSkeletonTreeGuides(int32 Depth, bool bHasParent, float CellStartScreenX)
 {
-    if (Depth <= 0)
-    {
-        return;
-    }
-
-    ImDrawList* DrawList = ImGui::GetWindowDrawList();
-    const ImVec2 RowMin = ImGui::GetItemRectMin();
-    const ImVec2 RowMax = ImGui::GetItemRectMax();
-    const float RowMidY = (RowMin.y + RowMax.y) * 0.5f;
-    const float BaseX = CellStartScreenX + 8.0f;
-    const ImU32 LineColor = ImGui::GetColorU32(SkeletonTreeLineColor);
-
-    for (int32 Level = 0; Level < Depth; ++Level)
-    {
-        const float X = BaseX + static_cast<float>(Level) * SkeletonTreeIndentWidth;
-        DrawList->AddLine(ImVec2(X, RowMin.y), ImVec2(X, RowMax.y), LineColor, 1.0f);
-    }
-
-    if (bHasParent)
-    {
-        const float ParentX = BaseX + static_cast<float>(Depth - 1) * SkeletonTreeIndentWidth;
-        const float ChildX = ParentX + SkeletonTreeIndentWidth - 4.0f;
-        DrawList->AddLine(ImVec2(ParentX, RowMidY), ImVec2(ChildX, RowMidY), LineColor, 1.0f);
-    }
+    // Skeleton Tree는 행 전체에 반복되는 세로 가이드선을 그리지 않는다.
+    // 계층 표현은 TreeNode 화살표, Bone 아이콘, 들여쓰기만으로 처리한다.
+    (void)Depth;
+    (void)bHasParent;
+    (void)CellStartScreenX;
 }
 
 inline const char* GetSkeletonBoneIcon(bool bSelected)

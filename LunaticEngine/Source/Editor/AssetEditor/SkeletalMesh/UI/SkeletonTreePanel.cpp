@@ -11,6 +11,7 @@
 #include <cctype>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -32,30 +33,6 @@ bool ContainsCaseInsensitive(const std::string& Text, const char* Pattern)
         Ch = static_cast<char>(::tolower(static_cast<unsigned char>(Ch)));
     }
     return LowerText.find(LowerPattern) != std::string::npos;
-}
-
-
-void DrawBoneIconForLastTreeItem(int32 Depth, float CellStartScreenX, bool bSelected)
-{
-    ID3D11ShaderResourceView* BoneIcon = FEditorUIStyle::GetIcon("Editor.Icon.Bone");
-    if (!BoneIcon)
-    {
-        return;
-    }
-
-    const ImVec2 RowMin = ImGui::GetItemRectMin();
-    const ImVec2 RowMax = ImGui::GetItemRectMax();
-    constexpr float IconSize = 14.0f;
-    const float IconX = CellStartScreenX + FEditorUIStyle::SkeletonTreeIndentWidth * static_cast<float>(Depth) + 18.0f;
-    const float IconY = RowMin.y + ((RowMax.y - RowMin.y) - IconSize) * 0.5f;
-    const ImU32 Tint = bSelected ? IM_COL32(0, 0, 0, 255) : IM_COL32(210, 210, 210, 255);
-
-    ImGui::GetWindowDrawList()->AddImage(reinterpret_cast<ImTextureID>(BoneIcon),
-                                         ImVec2(IconX, IconY),
-                                         ImVec2(IconX + IconSize, IconY + IconSize),
-                                         ImVec2(0.0f, 0.0f),
-                                         ImVec2(1.0f, 1.0f),
-                                         Tint);
 }
 
 void CollectTreeVisibleBoneOrder(const TArray<TArray<int32>>& BoneChildren, int32 BoneIndex, TArray<int32>& OutOrder)
@@ -190,9 +167,12 @@ void FSkeletonTreePanel::Render(USkeletalMesh* Mesh, FSkeletalMeshEditorState& S
         }
         else
         {
-            for (int32 RootBoneIndex : RootBoneIndices)
+            std::vector<bool> AncestorHasNextSibling;
+            for (int32 RootIndex = 0; RootIndex < static_cast<int32>(RootBoneIndices.size()); ++RootIndex)
             {
-                DrawBoneTreeNode(Bones, BoneChildren, RootBoneIndex, 0, State, SelectionManager, VisibleBoneOrder);
+                const bool bIsLastRoot = RootIndex == static_cast<int32>(RootBoneIndices.size()) - 1;
+                DrawBoneTreeNode(Bones, BoneChildren, RootBoneIndices[RootIndex], 0, bIsLastRoot, AncestorHasNextSibling,
+                                 State, SelectionManager, VisibleBoneOrder);
             }
         }
     }
@@ -202,7 +182,9 @@ void FSkeletonTreePanel::Render(USkeletalMesh* Mesh, FSkeletalMeshEditorState& S
 }
 
 void FSkeletonTreePanel::DrawBoneTreeNode(const TArray<FBoneInfo>& Bones, const TArray<TArray<int32>>& BoneChildren,
-                                          int32 BoneIndex, int32 Depth, FSkeletalMeshEditorState& State,
+                                          int32 BoneIndex, int32 Depth, bool bIsLastSibling,
+                                          const std::vector<bool>& AncestorHasNextSibling,
+                                          FSkeletalMeshEditorState& State,
                                           FSkeletalMeshSelectionManager& SelectionManager,
                                           const TArray<int32>& VisibleBoneOrder)
 {
@@ -215,16 +197,22 @@ void FSkeletonTreePanel::DrawBoneTreeNode(const TArray<FBoneInfo>& Bones, const 
     }
 
     const bool bHasChildren = !BoneChildren[BoneIndex].empty();
-    const bool bOpen = DrawBoneRow(Bones[BoneIndex], BoneIndex, Depth, bHasChildren, false, State, SelectionManager, VisibleBoneOrder);
+
+    const bool bOpen = DrawBoneRow(Bones[BoneIndex], BoneIndex, Depth, bHasChildren, false, bIsLastSibling,
+                                   AncestorHasNextSibling, State, SelectionManager, VisibleBoneOrder);
 
     if (bHasChildren && bOpen)
     {
-        for (int32 ChildBoneIndex : BoneChildren[BoneIndex])
-        {
-            DrawBoneTreeNode(Bones, BoneChildren, ChildBoneIndex, Depth + 1, State, SelectionManager, VisibleBoneOrder);
-        }
+        std::vector<bool> ChildAncestorHasNextSibling = AncestorHasNextSibling;
+        ChildAncestorHasNextSibling.push_back(!bIsLastSibling);
 
-        ImGui::TreePop();
+        const TArray<int32>& Children = BoneChildren[BoneIndex];
+        for (int32 ChildIndex = 0; ChildIndex < static_cast<int32>(Children.size()); ++ChildIndex)
+        {
+            const bool bIsLastChild = ChildIndex == static_cast<int32>(Children.size()) - 1;
+            DrawBoneTreeNode(Bones, BoneChildren, Children[ChildIndex], Depth + 1, bIsLastChild,
+                             ChildAncestorHasNextSibling, State, SelectionManager, VisibleBoneOrder);
+        }
     }
 }
 
@@ -239,12 +227,14 @@ void FSkeletonTreePanel::DrawFilteredBoneList(const TArray<FBoneInfo>& Bones, FS
             continue;
         }
 
-        DrawBoneRow(Bones[BoneIndex], BoneIndex, 0, false, true, State, SelectionManager, VisibleBoneOrder);
+        DrawBoneRow(Bones[BoneIndex], BoneIndex, 0, false, true, true, std::vector<bool>(), State, SelectionManager, VisibleBoneOrder);
     }
 }
 
 bool FSkeletonTreePanel::DrawBoneRow(const FBoneInfo& Bone, int32 BoneIndex, int32 Depth, bool bHasChildren,
-                                     bool bFilteredList, FSkeletalMeshEditorState& State,
+                                     bool bFilteredList, bool bIsLastSibling,
+                                     const std::vector<bool>& AncestorHasNextSibling,
+                                     FSkeletalMeshEditorState& State,
                                      FSkeletalMeshSelectionManager& SelectionManager,
                                      const TArray<int32>& VisibleBoneOrder)
 {
@@ -256,47 +246,149 @@ bool FSkeletonTreePanel::DrawBoneRow(const FBoneInfo& Bone, int32 BoneIndex, int
 
     ImGui::PushID(BoneIndex);
 
-    const float CellStartScreenX = ImGui::GetCursorScreenPos().x;
-    const float IndentWidth = FEditorUIStyle::SkeletonTreeIndentWidth * static_cast<float>(Depth);
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + IndentWidth);
+    ImDrawList* DrawList = ImGui::GetWindowDrawList();
+    const ImVec2 RowMin = ImGui::GetCursorScreenPos();
+    const float RowWidth = ImGui::GetContentRegionAvail().x;
+    const ImVec2 RowMax(RowMin.x + RowWidth, RowMin.y + FEditorUIStyle::SkeletonTreeRowHeight);
+    const float RowCenterY = (RowMin.y + RowMax.y) * 0.5f;
 
-    ImGuiTreeNodeFlags Flags =
-        ImGuiTreeNodeFlags_OpenOnArrow |
-        ImGuiTreeNodeFlags_OpenOnDoubleClick |
-        ImGuiTreeNodeFlags_SpanAvailWidth |
-        ImGuiTreeNodeFlags_DefaultOpen;
+    const ImU32 TextColor = ImGui::GetColorU32(bSelected ? FEditorUIStyle::SkeletonTreeSelectedTextColor
+                                                         : FEditorUIStyle::SkeletonTreeTextColor);
+    const ImU32 IconTint = TextColor;
+    const ImU32 LineColor = ImGui::GetColorU32(FEditorUIStyle::SkeletonTreeLineColor);
+    const ImU32 RowHoverColor = ImGui::GetColorU32(ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+    const ImU32 RowSelectedColor = ImGui::GetColorU32(FEditorUIStyle::SkeletonTreeSelectionColor);
+
+    ImGui::InvisibleButton("##BoneRowHit", ImVec2(RowWidth, FEditorUIStyle::SkeletonTreeRowHeight));
+    const bool bHovered = ImGui::IsItemHovered();
+    const bool bClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+    const bool bDoubleClicked = ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
 
     if (bSelected)
     {
-        Flags |= ImGuiTreeNodeFlags_Selected;
+        DrawList->AddRectFilled(RowMin, RowMax, RowSelectedColor);
     }
-
-    if (!bHasChildren || bFilteredList)
+    else if (bHovered)
     {
-        Flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        DrawList->AddRectFilled(RowMin, RowMax, RowHoverColor);
     }
 
-    char Label[256];
-    snprintf(Label, sizeof(Label), "    %s", BoneName);
+    const float LeftPadding = 4.0f;
+    const float IndentWidth = FEditorUIStyle::SkeletonTreeIndentWidth;
+    const float BranchX = RowMin.x + LeftPadding + IndentWidth * static_cast<float>(Depth) + IndentWidth * 0.5f;
+    const float ArrowSize = 8.0f;
+    const float ConnectorLength = 11.0f;
+    const float ConnectorEndX = BranchX + ConnectorLength;
+    const float ConnectorToArrowGap = 4.0f;
+    const float ArrowX = ConnectorEndX + ConnectorToArrowGap;
+    const float IconSize = 13.0f;
+    const float ArrowToIconGap = 9.0f;
+    const float LeafConnectorToIconGap = 8.0f;
+    const float IconToTextGap = 8.0f;
+    const float IconX = bFilteredList
+                            ? RowMin.x + LeftPadding
+                            : (bHasChildren ? ArrowX + ArrowSize + ArrowToIconGap
+                                            : ConnectorEndX + LeafConnectorToIconGap);
+    const float IconY = RowCenterY - IconSize * 0.5f;
+    const float TextX = IconX + IconSize + IconToTextGap;
+    const float TextY = RowCenterY - ImGui::GetTextLineHeight() * 0.5f;
 
-    FEditorUIStyle::PushSkeletonTreeRowStyle(bSelected);
-    const bool bOpen = ImGui::TreeNodeEx("##BoneNode", Flags, "%s", Label);
-    FEditorUIStyle::PopSkeletonTreeRowStyle();
-
-    DrawBoneIconForLastTreeItem(Depth, CellStartScreenX, bSelected);
-    FEditorUIStyle::DrawSkeletonTreeGuides(Depth, Depth > 0, CellStartScreenX);
-
-    if (ImGui::IsItemClicked())
+    if (!bFilteredList)
     {
-        ApplyBoneClickSelection(BoneIndex, State, SelectionManager, VisibleBoneOrder);
+        for (int32 AncestorDepth = 0; AncestorDepth < static_cast<int32>(AncestorHasNextSibling.size()); ++AncestorDepth)
+        {
+            if (!AncestorHasNextSibling[AncestorDepth])
+            {
+                continue;
+            }
+
+            const float GuideX = RowMin.x + LeftPadding + IndentWidth * static_cast<float>(AncestorDepth) + IndentWidth * 0.5f;
+            DrawList->AddLine(ImVec2(GuideX, RowMin.y), ImVec2(GuideX, RowMax.y), LineColor, 1.0f);
+        }
+
+        if (Depth > 0)
+        {
+            DrawList->AddLine(ImVec2(BranchX, RowMin.y), ImVec2(BranchX, RowCenterY), LineColor, 1.0f);
+            if (!bIsLastSibling)
+            {
+                DrawList->AddLine(ImVec2(BranchX, RowCenterY), ImVec2(BranchX, RowMax.y), LineColor, 1.0f);
+            }
+            // 현재 row의 가지선은 왼쪽 부모 줄에서 오른쪽 아이콘 방향으로만 짧게 뻗는다.
+            // Bone 아이콘과 너무 붙어 보이지 않도록 ConnectorEndX에서 끊고, 이후에 공백을 둔다.
+            DrawList->AddLine(ImVec2(BranchX, RowCenterY), ImVec2(ConnectorEndX, RowCenterY), LineColor, 1.0f);
+        }
     }
 
-    // 선택된 행에서는 아이콘과 글자를 검정색으로 보이게 하기 위해 Text 색상을 검정으로 밀어 넣는다.
-    // TreeNodeEx가 라벨을 직접 그리므로 별도 후처리는 필요 없다.
+    const bool bOpen = !bHasChildren || bFilteredList || IsBoneExpanded(BoneIndex);
+
+    if (bHasChildren && !bFilteredList)
+    {
+        if (bOpen)
+        {
+            DrawList->AddTriangleFilled(
+                ImVec2(ArrowX, RowCenterY - 2.0f),
+                ImVec2(ArrowX + ArrowSize, RowCenterY - 2.0f),
+                ImVec2(ArrowX + ArrowSize * 0.5f, RowCenterY + 4.0f),
+                TextColor);
+        }
+        else
+        {
+            DrawList->AddTriangleFilled(
+                ImVec2(ArrowX + 2.0f, RowCenterY - 4.0f),
+                ImVec2(ArrowX + 2.0f, RowCenterY + 4.0f),
+                ImVec2(ArrowX + 7.0f, RowCenterY),
+                TextColor);
+        }
+    }
+
+    if (ID3D11ShaderResourceView* BoneIcon = FEditorUIStyle::GetIcon("Editor.Icon.Bone"))
+    {
+        DrawList->AddImage(reinterpret_cast<ImTextureID>(BoneIcon), ImVec2(IconX, IconY),
+                           ImVec2(IconX + IconSize, IconY + IconSize), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f),
+                           IconTint);
+    }
+    else
+    {
+        DrawList->AddText(ImVec2(IconX, TextY), TextColor, "*");
+    }
+
+    DrawList->AddText(ImVec2(TextX, TextY), TextColor, BoneName);
+
+    if (bClicked || bDoubleClicked)
+    {
+        const float MouseX = ImGui::GetIO().MousePos.x;
+        const bool bClickedDisclosure = bHasChildren && !bFilteredList && MouseX >= ArrowX - 4.0f && MouseX <= IconX;
+
+        if (bClickedDisclosure || bDoubleClicked)
+        {
+            ToggleBoneExpanded(BoneIndex);
+        }
+        else
+        {
+            ApplyBoneClickSelection(BoneIndex, State, SelectionManager, VisibleBoneOrder);
+        }
+    }
 
     ImGui::PopID();
-
     return bOpen;
+}
+
+bool FSkeletonTreePanel::IsBoneExpanded(int32 BoneIndex) const
+{
+    return CollapsedBoneIndices.find(BoneIndex) == CollapsedBoneIndices.end();
+}
+
+void FSkeletonTreePanel::ToggleBoneExpanded(int32 BoneIndex)
+{
+    auto It = CollapsedBoneIndices.find(BoneIndex);
+    if (It != CollapsedBoneIndices.end())
+    {
+        CollapsedBoneIndices.erase(It);
+    }
+    else
+    {
+        CollapsedBoneIndices.insert(BoneIndex);
+    }
 }
 
 void FSkeletonTreePanel::ApplyBoneClickSelection(int32 BoneIndex, FSkeletalMeshEditorState& State,

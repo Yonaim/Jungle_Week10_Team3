@@ -5,6 +5,9 @@
 
 #include "ImGui/imgui.h"
 
+#include <vector>
+#include <unordered_set>
+
 class FSkeletalMeshSelectionManager;
 class USkeletalMesh;
 struct FBoneInfo;
@@ -21,13 +24,15 @@ public:
 
 private:
     void DrawBoneTreeNode(const TArray<FBoneInfo>& Bones, const TArray<TArray<int32>>& BoneChildren, int32 BoneIndex,
-                          int32 Depth, FSkeletalMeshEditorState& State, FSkeletalMeshSelectionManager& SelectionManager,
+                          int32 Depth, bool bIsLastSibling, const std::vector<bool>& AncestorHasNextSibling,
+                          FSkeletalMeshEditorState& State, FSkeletalMeshSelectionManager& SelectionManager,
                           const TArray<int32>& VisibleBoneOrder);
 
     void DrawFilteredBoneList(const TArray<FBoneInfo>& Bones, FSkeletalMeshEditorState& State,
                               FSkeletalMeshSelectionManager& SelectionManager, const TArray<int32>& VisibleBoneOrder);
 
     bool DrawBoneRow(const FBoneInfo& Bone, int32 BoneIndex, int32 Depth, bool bHasChildren, bool bFilteredList,
+                     bool bIsLastSibling, const std::vector<bool>& AncestorHasNextSibling,
                      FSkeletalMeshEditorState& State, FSkeletalMeshSelectionManager& SelectionManager,
                      const TArray<int32>& VisibleBoneOrder);
 
@@ -37,5 +42,10 @@ private:
     void SyncLegacySelectedBoneIndex(FSkeletalMeshEditorState& State, const FSkeletalMeshSelectionManager& SelectionManager);
 
 private:
+    bool IsBoneExpanded(int32 BoneIndex) const;
+    void ToggleBoneExpanded(int32 BoneIndex);
+
+private:
     char SearchBuffer[128] = "";
+    std::unordered_set<int32> CollapsedBoneIndices;
 };
