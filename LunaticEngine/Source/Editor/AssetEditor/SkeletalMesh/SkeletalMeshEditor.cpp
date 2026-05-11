@@ -110,8 +110,18 @@ void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
 
     RenderPanelsInternal(DeltaTime, DockspaceId);
 
-    bCapturingInput = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) ||
-                      ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
+    FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient();
+    bCapturingInput = PreviewClient && (PreviewClient->IsHovered() || PreviewClient->IsActive());
+}
+
+FEditorViewportClient *FSkeletalMeshEditor::GetActiveViewportClient()
+{
+    if (!bOpen || !bPreviewPanelOpen)
+    {
+        return nullptr;
+    }
+
+    return PreviewViewport.GetViewportClient();
 }
 
 void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients)

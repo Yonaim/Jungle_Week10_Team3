@@ -57,6 +57,7 @@ class IAssetEditor
 
     /** Asset Editor 내부에 있는 렌더 가능한 Preview Viewport들을 수집한다. */
     virtual void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) { (void)OutClients; }
+    virtual FEditorViewportClient *GetActiveViewportClient() { return nullptr; }
 
     virtual const char *GetEditorName() const = 0;
     virtual const std::filesystem::path &GetAssetPath() const = 0;

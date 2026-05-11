@@ -367,7 +367,9 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.Id = "##LevelEditorMenuBar";
     MenuContext.Window = Window;
     MenuContext.EditorEngine = EditorEngine;
-    MenuContext.MenuProvider = this;
+    MenuContext.MenuProvider = (EditorEngine && EditorEngine->IsAssetEditorContextActive())
+                                  ? static_cast<IEditorMenuProvider *>(&EditorEngine->GetAssetEditorManager().GetAssetEditorWindow())
+                                  : static_cast<IEditorMenuProvider *>(this);
     MenuContext.TitleBarFont = ImGuiSystem ? ImGuiSystem->GetTitleBarFont() : nullptr;
     MenuContext.WindowControlIconFont = ImGuiSystem ? ImGuiSystem->GetWindowControlIconFont() : nullptr;
     MenuContext.bShowProjectSettingsMenu = true;

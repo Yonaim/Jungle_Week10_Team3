@@ -61,6 +61,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     bool IsDirty() const override { return bDirty; }
     bool IsCapturingInput() const override { return bCapturingInput; }
+    FEditorViewportClient *GetActiveViewportClient() override;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) override;
     const char *GetEditorName() const override { return "Skeletal Mesh"; }
     const std::filesystem::path &GetAssetPath() const override { return EditingAssetPath; }

@@ -53,6 +53,7 @@ class FAssetEditorWindow : public IEditorMenuProvider
     void RenderContent(float DeltaTime, ImGuiID DockspaceId = 0);
 
     bool IsCapturingInput() const;
+    FEditorViewportClient *GetActiveViewportClient() const;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
 
     // IEditorMenuProvider: 공통 EditorMenuBar가 호출하는 메뉴 구성 함수들.

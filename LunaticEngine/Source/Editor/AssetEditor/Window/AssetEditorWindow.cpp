@@ -132,6 +132,17 @@ bool FAssetEditorWindow::IsCapturingInput() const
     return IsOpen() && (bCapturingInput || TabManager.IsCapturingInput());
 }
 
+
+FEditorViewportClient *FAssetEditorWindow::GetActiveViewportClient() const
+{
+    if (!IsOpen())
+    {
+        return nullptr;
+    }
+
+    return TabManager.GetActiveViewportClient();
+}
+
 void FAssetEditorWindow::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
 {
     if (!IsOpen())
@@ -145,6 +156,13 @@ void FAssetEditorWindow::CollectViewportClients(TArray<FEditorViewportClient *> 
 
 void FAssetEditorWindow::BuildFileMenu()
 {
+    if (ImGui::MenuItem("Back to Level Editor") && EditorEngine)
+    {
+        EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+    }
+
+    ImGui::Separator();
+
     if (ImGui::MenuItem("Open Asset...") && OwnerManager)
     {
         OwnerManager->OpenAssetWithDialog(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
@@ -172,6 +190,10 @@ void FAssetEditorWindow::BuildFileMenu()
     if (ImGui::MenuItem("Close Window"))
     {
         Hide();
+        if (EditorEngine)
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+        }
     }
 }
 

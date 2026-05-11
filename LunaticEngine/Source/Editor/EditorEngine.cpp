@@ -124,6 +124,8 @@ void UEditorEngine::Tick(float DeltaTime)
         PendingSceneLoadReference.clear();
         LoadScene(SceneToLoad);
     }
+    // Level world / editor subsystems are still ticked even while an Asset Editor context is active.
+    // The active context only owns viewport input/render focus; it does not suspend the editor world.
     LevelEditor.Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
@@ -136,11 +138,18 @@ void UEditorEngine::Tick(float DeltaTime)
     FAudioManager::Get().Update();
     AssetEditorManager.Tick(DeltaTime);
     LevelEditorWindow.Update();
-    LevelEditorWindow.UpdateInputState(IsMouseOverViewport(), AssetEditorManager.IsCapturingInput(), IsScoreSavePopupOpen());
 
-    for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
+    // Input capture is decided by the active editor context, not by every visible panel.
+    // This prevents Asset Editor panels from stealing Level Viewport input, and lets the
+    // Asset Preview Viewport release ImGui capture while the cursor is over it.
+    LevelEditorWindow.UpdateInputState(IsMouseOverActiveViewport(), false, IsScoreSavePopupOpen());
+
+    if (IsLevelEditorContextActive())
     {
-        VC->Tick(DeltaTime);
+        for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
+        {
+            VC->Tick(DeltaTime);
+        }
     }
 
     WorldTick(DeltaTime);
@@ -175,12 +184,74 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
     return false;
 }
 
+void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
+{
+    if (ActiveEditorContextType == InContextType)
+    {
+        if (InContextType == EEditorContextType::AssetEditor)
+        {
+            HideLevelEditorUIForAssetEditor();
+        }
+        else
+        {
+            RestoreLevelEditorUIAfterAssetEditor();
+        }
+        return;
+    }
+
+    ActiveEditorContextType = InContextType;
+
+    if (IsAssetEditorContextActive())
+    {
+        HideLevelEditorUIForAssetEditor();
+        if (FEditorViewportClient *ViewportClient = AssetEditorManager.GetActiveViewportClient())
+        {
+            ViewportClient->SetActive(true);
+        }
+    }
+    else
+    {
+        RestoreLevelEditorUIAfterAssetEditor();
+        if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
+        {
+            LevelViewportClient->SetActive(true);
+        }
+    }
+}
+
+FEditorViewportClient *UEditorEngine::GetActiveEditorViewportClient() const
+{
+    if (IsAssetEditorContextActive())
+    {
+        return AssetEditorManager.GetActiveViewportClient();
+    }
+
+    return GetViewportLayout().GetActiveViewport();
+}
+
+bool UEditorEngine::IsMouseOverActiveViewport() const
+{
+    if (IsAssetEditorContextActive())
+    {
+        if (FEditorViewportClient *ViewportClient = AssetEditorManager.GetActiveViewportClient())
+        {
+            return ViewportClient->IsHovered();
+        }
+        return false;
+    }
+
+    return IsMouseOverViewport();
+}
+
 void UEditorEngine::RenderUI(float DeltaTime)
 {
     ImGuiSystem.BeginFrame();
 
     LevelEditorWindow.RenderContent(DeltaTime);
-    AssetEditorManager.RenderContent(DeltaTime, LevelEditorWindow.GetMainDockspaceId());
+    if (IsAssetEditorContextActive())
+    {
+        AssetEditorManager.RenderContent(DeltaTime, LevelEditorWindow.GetMainDockspaceId());
+    }
 
     // Level Editor 패널과 Asset/SkeletalMesh Editor 패널을 모두 렌더링한 뒤 한 번만 flush한다.
     // PanelTitleUtils는 이 시점에 dock tab bar의 빈 영역 fill과 선택 탭 accent line을 그린다.

@@ -40,6 +40,7 @@ class FAssetEditorTabManager
     int32 GetTabCount() const;
     bool IsCapturingInput() const;
     IAssetEditor *GetActiveEditor() const;
+    FEditorViewportClient *GetActiveViewportClient() const;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
 
   private:
