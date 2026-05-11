@@ -1,5 +1,8 @@
 ﻿#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
+#include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformProxy.h"
+#include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
+
 #include "Component/CameraComponent.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -12,6 +15,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace
 {
@@ -161,6 +165,8 @@ void FSkeletalMeshPreviewViewportClient::SetPreviewMesh(USkeletalMesh *InMesh)
     }
 
     PreviewMesh = InMesh;
+    GizmoManager.ClearTarget();
+    GizmoTargetBoneIndex = -1;
     if (PreviewComponent)
     {
         PreviewComponent->SetSkeletalMesh(PreviewMesh);
@@ -250,6 +256,7 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
 void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 {
     EnsurePreviewObjects();
+    SyncGizmoTargetFromSelection();
     TickViewportInput(DeltaTime);
 
     if (State && State->bFramePreviewRequested)
@@ -389,6 +396,7 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
         FEditorViewportClient::RenderViewportImage(bIsActiveViewport);
 
 		RenderSkeletonDebugOverlay();   // 추가
+        RenderBoneGizmoOverlay();
         RenderFallbackOverlay();
         return;
     }
@@ -413,6 +421,7 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
     DrawList->AddLine(Center, ImVec2(Center.x - AxisLength * 0.55f, Center.y + AxisLength * 0.55f), IM_COL32(80, 120, 240, 255), 2.0f);
 
 	RenderSkeletonDebugOverlay();
+    RenderBoneGizmoOverlay();
     RenderFallbackOverlay();
 }
 
@@ -636,6 +645,69 @@ void FSkeletalMeshPreviewViewportClient::RenderSkeletonDebugOverlay()
 			bSelected ? IM_COL32(255, 220, 40, 255) : IM_COL32(0, 255, 0, 255)
 		);
 	}
+}
+
+
+void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
+{
+    if (!State || !PreviewComponent || !State->bEnablePoseEditMode)
+    {
+        GizmoManager.ClearTarget();
+        GizmoTargetBoneIndex = -1;
+        return;
+    }
+
+    const int32 SelectedBoneIndex = SelectionManager ? SelectionManager->GetPrimaryBoneIndex() : State->SelectedBoneIndex;
+    if (SelectedBoneIndex < 0)
+    {
+        GizmoManager.ClearTarget();
+        GizmoTargetBoneIndex = -1;
+        return;
+    }
+
+    GizmoManager.SetMode(State->GizmoMode);
+    GizmoManager.SetSpace(State->GizmoSpace);
+
+    if (GizmoTargetBoneIndex == SelectedBoneIndex && GizmoManager.HasValidTarget())
+    {
+        return;
+    }
+
+    GizmoTargetBoneIndex = SelectedBoneIndex;
+    GizmoManager.SetTarget(std::make_shared<FBoneTransformProxy>(PreviewComponent, SelectedBoneIndex));
+}
+
+void FSkeletalMeshPreviewViewportClient::RenderBoneGizmoOverlay()
+{
+    if (!State || !State->bEnablePoseEditMode || !PreviewCamera)
+    {
+        return;
+    }
+
+    SyncGizmoTargetFromSelection();
+    if (!GizmoManager.HasValidTarget())
+    {
+        return;
+    }
+
+    const bool bConsumed = GizmoManager.DrawAndHandle(
+        ViewportScreenRect.X,
+        ViewportScreenRect.Y,
+        ViewportScreenRect.Width,
+        ViewportScreenRect.Height,
+        [this](const FVector& WorldPos, ImVec2& OutScreen) -> bool
+        {
+            return ProjectWorldToViewport(WorldPos, OutScreen);
+        },
+        PreviewCamera->GetRightVector(),
+        PreviewCamera->GetUpVector(),
+        OrbitDistance
+    );
+
+    if (bConsumed)
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    }
 }
 
 bool FSkeletalMeshPreviewViewportClient::ProjectWorldToViewport(
