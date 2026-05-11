@@ -1,309 +1,306 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
 
+#include "Common/UI/Viewport/EditorViewportToolbar.h"
+
 #include "Engine/Mesh/SkeletalMesh.h"
-#include "Platform/Paths.h"
 #include "Render/Pipeline/Renderer.h"
-#include "Resource/ResourceManager.h"
-#include "WICTextureLoader.h"
 #include "ImGui/imgui.h"
 
-#include <algorithm>
+#include <cstdio>
 
 namespace
 {
-    enum class EPreviewToolbarIcon : int32
+    FEditorViewportToolbar::EToolMode ToCommonToolMode(EGizmoMode Mode)
     {
-        AddActor = 0,
-        Translate,
-        Rotate,
-        Scale,
-        WorldSpace,
-        LocalSpace,
-        TranslateSnap,
-        CameraSettings,
-        ShowFlag,
-        ViewModeLit,
-        ViewModeUnlit,
-        ViewModeWireframe,
-        ViewportPerspective,
-        ViewportTop,
-        ViewportFront,
-        ViewportRight,
-        Menu,
-        Count
-    };
-
-    const char *GetPreviewToolbarIconResourceKey(EPreviewToolbarIcon Icon)
-    {
-        switch (Icon)
+        switch (Mode)
         {
-        case EPreviewToolbarIcon::AddActor: return "Editor.ToolIcon.AddActor";
-        case EPreviewToolbarIcon::Translate: return "Editor.ToolIcon.Translate";
-        case EPreviewToolbarIcon::Rotate: return "Editor.ToolIcon.Rotate";
-        case EPreviewToolbarIcon::Scale: return "Editor.ToolIcon.Scale";
-        case EPreviewToolbarIcon::WorldSpace: return "Editor.ToolIcon.WorldSpace";
-        case EPreviewToolbarIcon::LocalSpace: return "Editor.ToolIcon.LocalSpace";
-        case EPreviewToolbarIcon::TranslateSnap: return "Editor.ToolIcon.TranslateSnap";
-        case EPreviewToolbarIcon::CameraSettings: return "Editor.ToolIcon.Camera";
-        case EPreviewToolbarIcon::ShowFlag: return "Editor.ToolIcon.ShowFlag";
-        case EPreviewToolbarIcon::ViewModeLit: return "Editor.ToolIcon.ViewMode.Lit";
-        case EPreviewToolbarIcon::ViewModeUnlit: return "Editor.ToolIcon.ViewMode.Unlit";
-        case EPreviewToolbarIcon::ViewModeWireframe: return "Editor.ToolIcon.ViewMode.Wireframe";
-        case EPreviewToolbarIcon::ViewportPerspective: return "Editor.ToolIcon.Viewport.Perspective";
-        case EPreviewToolbarIcon::ViewportTop: return "Editor.ToolIcon.Viewport.Top";
-        case EPreviewToolbarIcon::ViewportFront: return "Editor.ToolIcon.Viewport.Front";
-        case EPreviewToolbarIcon::ViewportRight: return "Editor.ToolIcon.Viewport.Right";
-        case EPreviewToolbarIcon::Menu: return "Editor.ToolIcon.Menu";
-        default: return "";
+        case EGizmoMode::Rotate: return FEditorViewportToolbar::EToolMode::Rotate;
+        case EGizmoMode::Scale: return FEditorViewportToolbar::EToolMode::Scale;
+        case EGizmoMode::Translate:
+        default: return FEditorViewportToolbar::EToolMode::Translate;
         }
     }
 
-    ID3D11ShaderResourceView **GetPreviewToolbarIconTable()
+    EGizmoMode ToGizmoMode(FEditorViewportToolbar::EToolMode Mode)
     {
-        static ID3D11ShaderResourceView *Icons[static_cast<int32>(EPreviewToolbarIcon::Count)] = {};
-        return Icons;
-    }
-
-    bool bPreviewToolbarIconsLoaded = false;
-
-    void EnsurePreviewToolbarIconsLoaded(FRenderer *Renderer)
-    {
-        if (bPreviewToolbarIconsLoaded || !Renderer)
+        switch (Mode)
         {
-            return;
-        }
-
-        ID3D11Device *Device = Renderer->GetFD3DDevice().GetDevice();
-        if (!Device)
-        {
-            return;
-        }
-
-        ID3D11ShaderResourceView **Icons = GetPreviewToolbarIconTable();
-        for (int32 i = 0; i < static_cast<int32>(EPreviewToolbarIcon::Count); ++i)
-        {
-            const FString Path = FResourceManager::Get().ResolvePath(FName(GetPreviewToolbarIconResourceKey(static_cast<EPreviewToolbarIcon>(i))));
-            DirectX::CreateWICTextureFromFile(Device, FPaths::ToWide(Path).c_str(), nullptr, &Icons[i]);
-        }
-
-        bPreviewToolbarIconsLoaded = true;
-    }
-
-    ImVec2 GetIconSize(EPreviewToolbarIcon Icon, float FallbackSize, float MaxIconSize)
-    {
-        ID3D11ShaderResourceView *SRV = GetPreviewToolbarIconTable()[static_cast<int32>(Icon)];
-        if (!SRV)
-        {
-            return ImVec2(FallbackSize, FallbackSize);
-        }
-
-        ID3D11Resource *Resource = nullptr;
-        SRV->GetResource(&Resource);
-        if (!Resource)
-        {
-            return ImVec2(FallbackSize, FallbackSize);
-        }
-
-        ImVec2 Size(FallbackSize, FallbackSize);
-        D3D11_RESOURCE_DIMENSION Dimension = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-        Resource->GetType(&Dimension);
-        if (Dimension == D3D11_RESOURCE_DIMENSION_TEXTURE2D)
-        {
-            ID3D11Texture2D *Texture = static_cast<ID3D11Texture2D *>(Resource);
-            D3D11_TEXTURE2D_DESC Desc{};
-            Texture->GetDesc(&Desc);
-            Size = ImVec2(static_cast<float>(Desc.Width), static_cast<float>(Desc.Height));
-        }
-        Resource->Release();
-
-        if (Size.x > MaxIconSize || Size.y > MaxIconSize)
-        {
-            const float Scale = (Size.x > Size.y) ? (MaxIconSize / Size.x) : (MaxIconSize / Size.y);
-            Size.x *= Scale;
-            Size.y *= Scale;
-        }
-        return Size;
-    }
-
-    void ShowTooltip(const char *Text)
-    {
-        if (Text && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-        {
-            ImGui::SetTooltip("%s", Text);
+        case FEditorViewportToolbar::EToolMode::Rotate: return EGizmoMode::Rotate;
+        case FEditorViewportToolbar::EToolMode::Scale: return EGizmoMode::Scale;
+        case FEditorViewportToolbar::EToolMode::Translate:
+        default: return EGizmoMode::Translate;
         }
     }
 
-    bool DrawIconButton(const char *Id, EPreviewToolbarIcon Icon, const char *FallbackLabel, const char *Tooltip,
-                        bool bSelected = false)
+    const char *GetViewportTypeLabel(ESkeletalMeshPreviewViewportType Type)
     {
-        constexpr float FallbackSize = 14.0f;
-        constexpr float MaxIconSize = 16.0f;
-        ID3D11ShaderResourceView *SRV = GetPreviewToolbarIconTable()[static_cast<int32>(Icon)];
-        bool bClicked = false;
-        if (SRV)
+        switch (Type)
         {
-            const ImU32 Tint = bSelected ? IM_COL32(70, 150, 255, 255) : IM_COL32_WHITE;
-            bClicked = ImGui::ImageButton(Id, reinterpret_cast<ImTextureID>(SRV), GetIconSize(Icon, FallbackSize, MaxIconSize),
-                                          ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), ImVec4(0, 0, 0, 0),
-                                          ImGui::ColorConvertU32ToFloat4(Tint));
+        case ESkeletalMeshPreviewViewportType::Top: return "Top";
+        case ESkeletalMeshPreviewViewportType::Bottom: return "Bottom";
+        case ESkeletalMeshPreviewViewportType::Left: return "Left";
+        case ESkeletalMeshPreviewViewportType::Right: return "Right";
+        case ESkeletalMeshPreviewViewportType::Front: return "Front";
+        case ESkeletalMeshPreviewViewportType::Back: return "Back";
+        case ESkeletalMeshPreviewViewportType::FreeOrtho: return "Free Ortho";
+        case ESkeletalMeshPreviewViewportType::Perspective:
+        default: return "Perspective";
         }
-        else
-        {
-            bClicked = ImGui::Button(FallbackLabel);
-        }
-        ShowTooltip(Tooltip);
-        return bClicked;
     }
 
-    bool DrawIconLabelButton(const char *Id, EPreviewToolbarIcon Icon, const char *Label, float Width, const char *Tooltip)
+    FEditorViewportToolbar::EIcon GetViewportTypeIcon(ESkeletalMeshPreviewViewportType Type)
     {
-        constexpr float Height = 26.0f;
-        constexpr float FallbackSize = 14.0f;
-        constexpr float MaxIconSize = 16.0f;
-        const bool bClicked = ImGui::Button(Id, ImVec2(Width, Height));
-
-        ImDrawList *DrawList = ImGui::GetWindowDrawList();
-        const ImVec2 Min = ImGui::GetItemRectMin();
-        const ImVec2 Max = ImGui::GetItemRectMax();
-        const ImVec2 IconSize = GetIconSize(Icon, FallbackSize, MaxIconSize);
-        const float IconX = Min.x + 7.0f;
-        const float IconY = Min.y + ((Max.y - Min.y) - IconSize.y) * 0.5f;
-        if (ID3D11ShaderResourceView *SRV = GetPreviewToolbarIconTable()[static_cast<int32>(Icon)])
+        switch (Type)
         {
-            DrawList->AddImage(reinterpret_cast<ImTextureID>(SRV), ImVec2(IconX, IconY), ImVec2(IconX + IconSize.x, IconY + IconSize.y));
+        case ESkeletalMeshPreviewViewportType::Top: return FEditorViewportToolbar::EIcon::ViewportTop;
+        case ESkeletalMeshPreviewViewportType::Bottom: return FEditorViewportToolbar::EIcon::ViewportBottom;
+        case ESkeletalMeshPreviewViewportType::Left: return FEditorViewportToolbar::EIcon::ViewportLeft;
+        case ESkeletalMeshPreviewViewportType::Right: return FEditorViewportToolbar::EIcon::ViewportRight;
+        case ESkeletalMeshPreviewViewportType::Front: return FEditorViewportToolbar::EIcon::ViewportFront;
+        case ESkeletalMeshPreviewViewportType::Back: return FEditorViewportToolbar::EIcon::ViewportBack;
+        case ESkeletalMeshPreviewViewportType::FreeOrtho: return FEditorViewportToolbar::EIcon::ViewportFreeOrtho;
+        case ESkeletalMeshPreviewViewportType::Perspective:
+        default: return FEditorViewportToolbar::EIcon::ViewportPerspective;
         }
-        DrawList->AddText(ImVec2(IconX + IconSize.x + 5.0f, Min.y + 5.0f), ImGui::GetColorU32(ImGuiCol_Text), Label);
-        DrawList->AddText(ImVec2(Max.x - 14.0f, Min.y + 5.0f), ImGui::GetColorU32(ImGuiCol_TextDisabled), "v");
-        ShowTooltip(Tooltip);
-        return bClicked;
+    }
+
+    const char *GetViewModeLabel(ESkeletalMeshPreviewViewMode Mode)
+    {
+        // LevelViewportLayout.cpp의 ViewModeNames와 동일하게 Lit 계열은 toolbar label을 Lit으로 보이게 둔다.
+        switch (Mode)
+        {
+        case ESkeletalMeshPreviewViewMode::Unlit: return "Unlit";
+        case ESkeletalMeshPreviewViewMode::Wireframe: return "Wireframe";
+        case ESkeletalMeshPreviewViewMode::SceneDepth: return "Scene Depth";
+        case ESkeletalMeshPreviewViewMode::WorldNormal: return "World Normal";
+        case ESkeletalMeshPreviewViewMode::LightCulling: return "Light Culling";
+        case ESkeletalMeshPreviewViewMode::LitGouraud:
+        case ESkeletalMeshPreviewViewMode::LitLambert:
+        case ESkeletalMeshPreviewViewMode::Lit:
+        default: return "Lit";
+        }
+    }
+
+    FEditorViewportToolbar::EIcon GetViewModeIcon(ESkeletalMeshPreviewViewMode Mode)
+    {
+        switch (Mode)
+        {
+        case ESkeletalMeshPreviewViewMode::Unlit: return FEditorViewportToolbar::EIcon::ViewModeUnlit;
+        case ESkeletalMeshPreviewViewMode::Wireframe: return FEditorViewportToolbar::EIcon::ViewModeWireframe;
+        case ESkeletalMeshPreviewViewMode::SceneDepth: return FEditorViewportToolbar::EIcon::ViewModeSceneDepth;
+        case ESkeletalMeshPreviewViewMode::WorldNormal: return FEditorViewportToolbar::EIcon::ViewModeWorldNormal;
+        case ESkeletalMeshPreviewViewMode::LightCulling: return FEditorViewportToolbar::EIcon::ViewModeLightCulling;
+        case ESkeletalMeshPreviewViewMode::LitGouraud:
+        case ESkeletalMeshPreviewViewMode::LitLambert:
+        case ESkeletalMeshPreviewViewMode::Lit:
+        default: return FEditorViewportToolbar::EIcon::ViewModeLit;
+        }
+    }
+
+    void DrawViewportTypeOption(FSkeletalMeshEditorState &State, const char *Label, ESkeletalMeshPreviewViewportType Type)
+    {
+        if (FEditorViewportToolbar::DrawIconSelectable(Label, GetViewportTypeIcon(Type), Label, State.PreviewViewportType == Type, 220.0f))
+        {
+            State.PreviewViewportType = Type;
+            ImGui::CloseCurrentPopup();
+        }
+    }
+
+    void DrawViewModeOption(FSkeletalMeshEditorState &State, const char *Label, ESkeletalMeshPreviewViewMode Mode)
+    {
+        if (FEditorViewportToolbar::DrawIconSelectable(Label, GetViewModeIcon(Mode), Label, State.PreviewViewMode == Mode, 260.0f))
+        {
+            State.PreviewViewMode = Mode;
+            ImGui::CloseCurrentPopup();
+        }
+    }
+
+    void DrawSnapValueRow(const char *Label, bool &bEnabled, float &Value, const float *Values, int32 Count, const char *Format)
+    {
+        ImGui::Checkbox(Label, &bEnabled);
+        ImGui::BeginDisabled(!bEnabled);
+        ImGui::Indent(12.0f);
+        for (int32 i = 0; i < Count; ++i)
+        {
+            ImGui::PushID(i);
+            char ButtonLabel[32];
+            snprintf(ButtonLabel, sizeof(ButtonLabel), Format, Values[i]);
+            const bool bSelected = Value == Values[i];
+            if (ImGui::Selectable(ButtonLabel, bSelected, 0, ImVec2(88.0f, 22.0f)))
+            {
+                Value = Values[i];
+            }
+            if ((i + 1) % 3 != 0 && i + 1 < Count)
+            {
+                ImGui::SameLine();
+            }
+            ImGui::PopID();
+        }
+        ImGui::Unindent(12.0f);
+        ImGui::EndDisabled();
+    }
+
+    void DrawShowFlagSliderFloat(const char *Label, float &Value, float Min, float Max, const char *Format = "%.2f")
+    {
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::SliderFloat(Label, &Value, Min, Max, Format);
+    }
+
+    void DrawShowFlagSliderInt(const char *Label, int32 &Value, int32 Min, int32 Max)
+    {
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::SliderInt(Label, &Value, Min, Max);
     }
 }
 
 void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FRenderer *Renderer)
 {
-    EnsurePreviewToolbarIconsLoaded(Renderer);
+    FEditorViewportToolbar::FDesc Desc;
+    Desc.IdPrefix = "SkeletalMeshViewportToolbar";
+    Desc.ToolbarWidth = ImGui::GetWindowWidth();
+    Desc.Renderer = Renderer;
+    Desc.bEnabled = Mesh != nullptr;
+    Desc.ToolMode = ToCommonToolMode(State.GizmoMode);
+    Desc.CoordSpace = State.GizmoSpace == EGizmoSpace::World ? FEditorViewportToolbar::ECoordSpace::World
+                                                             : FEditorViewportToolbar::ECoordSpace::Local;
+    Desc.bSnapEnabled = State.bEnableTranslationSnap || State.bEnableRotationSnap || State.bEnableScaleSnap;
+    Desc.ViewportTypeIcon = GetViewportTypeIcon(State.PreviewViewportType);
+    Desc.ViewportTypeLabel = GetViewportTypeLabel(State.PreviewViewportType);
+    Desc.ViewModeIcon = GetViewModeIcon(State.PreviewViewMode);
+    Desc.ViewModeLabel = GetViewModeLabel(State.PreviewViewMode);
 
-    const bool bHasMesh = Mesh != nullptr;
-    constexpr float ButtonSpacing = 6.0f;
-
-    ImGui::BeginDisabled(!bHasMesh);
-
-    if (DrawIconButton("##PreviewAddActor", EPreviewToolbarIcon::AddActor, "Add", "Add / Place"))
-    {
-    }
-
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconButton("##PreviewTranslate", EPreviewToolbarIcon::Translate, "T", "Translate", State.bEnablePoseEditMode))
-    {
-        State.bEnablePoseEditMode = true;
-    }
-
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconButton("##PreviewRotate", EPreviewToolbarIcon::Rotate, "R", "Rotate", false))
+    Desc.OnToolModeChanged = [&](FEditorViewportToolbar::EToolMode Mode)
     {
         State.bEnablePoseEditMode = true;
-    }
+        State.GizmoMode = ToGizmoMode(Mode);
+    };
+    Desc.OnCoordSpaceToggled = [&]()
+    {
+        State.GizmoSpace = State.GizmoSpace == EGizmoSpace::World ? EGizmoSpace::Local : EGizmoSpace::World;
+    };
 
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconButton("##PreviewScale", EPreviewToolbarIcon::Scale, "S", "Scale", false))
+    Desc.DrawSnapPopup = [&]()
     {
-        State.bEnablePoseEditMode = true;
-    }
+        static const float TranslationSnapSizes[] = {1.0f, 5.0f, 10.0f, 50.0f, 100.0f, 500.0f, 1000.0f, 5000.0f, 10000.0f};
+        static const float RotationSnapSizes[] = {1.0f, 5.0f, 10.0f, 15.0f, 30.0f, 45.0f, 60.0f, 90.0f};
+        static const float ScaleSnapSizes[] = {0.0625f, 0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
 
-    ImGui::SameLine(0.0f, ButtonSpacing + 4.0f);
-    DrawIconButton("##PreviewWorldSpace", EPreviewToolbarIcon::WorldSpace, "World", "World Space", true);
+        FEditorViewportToolbar::DrawPopupSectionHeader("SNAP SETTINGS");
+        DrawSnapValueRow("Location", State.bEnableTranslationSnap, State.TranslationSnapSize, TranslationSnapSizes, 9, "%.0f");
+        ImGui::Spacing();
+        DrawSnapValueRow("Rotation", State.bEnableRotationSnap, State.RotationSnapSize, RotationSnapSizes, 8, "%.0f deg");
+        ImGui::Spacing();
+        DrawSnapValueRow("Scale", State.bEnableScaleSnap, State.ScaleSnapSize, ScaleSnapSizes, 8, "%.5g");
+    };
 
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconButton("##PreviewSnap", EPreviewToolbarIcon::TranslateSnap, "Snap", "Snap Settings"))
+    Desc.DrawCameraPopup = [&]()
     {
-        ImGui::OpenPopup("##PreviewSnapSettings");
-    }
-    if (ImGui::BeginPopup("##PreviewSnapSettings"))
-    {
-        ImGui::TextDisabled("Preview snap settings are not used yet.");
-        ImGui::EndPopup();
-    }
-
-    const float RightGroupWidth = 350.0f;
-    const float RightStartX = ImGui::GetWindowWidth() - RightGroupWidth;
-    if (RightStartX > ImGui::GetCursorPosX() + 12.0f)
-    {
-        ImGui::SameLine(RightStartX);
-    }
-    else
-    {
-        ImGui::SameLine(0.0f, ButtonSpacing);
-    }
-
-    if (DrawIconLabelButton("##PreviewCamera", EPreviewToolbarIcon::CameraSettings, "", 36.0f, "Camera Settings"))
-    {
-        ImGui::OpenPopup("##PreviewCameraSettings");
-    }
-    if (ImGui::BeginPopup("##PreviewCameraSettings"))
-    {
+        FEditorViewportToolbar::DrawPopupSectionHeader("CAMERA");
+        ImGui::TextDisabled("Preview camera settings");
+        ImGui::Spacing();
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::DragFloat("Speed", &State.CameraSpeed, 0.1f, 0.1f, 1000.0f, "%.1f");
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::DragFloat("FOV", &State.CameraFOV, 0.5f, 1.0f, 170.0f, "%.1f");
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::DragFloat("Ortho Width", &State.CameraOrthoWidth, 0.1f, 0.1f, 100000.0f, "%.1f");
+        FEditorViewportToolbar::DrawPopupSeparator(4.0f, 6.0f);
         if (ImGui::MenuItem("Frame Selected"))
         {
             State.bFramePreviewRequested = true;
         }
-        ImGui::MenuItem("Perspective", nullptr, true, false);
-        ImGui::EndPopup();
-    }
+        if (ImGui::MenuItem("Perspective", nullptr, State.PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective))
+        {
+            State.PreviewViewportType = ESkeletalMeshPreviewViewportType::Perspective;
+        }
+    };
 
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconLabelButton("##PreviewViewportType", EPreviewToolbarIcon::ViewportPerspective, "Perspective", 116.0f, "Viewport Type"))
+    Desc.DrawViewportTypePopup = [&]()
     {
-        ImGui::OpenPopup("##PreviewViewportTypePopup");
-    }
-    if (ImGui::BeginPopup("##PreviewViewportTypePopup"))
-    {
-        ImGui::MenuItem("Perspective", nullptr, true, false);
-        ImGui::MenuItem("Top", nullptr, false, false);
-        ImGui::MenuItem("Front", nullptr, false, false);
-        ImGui::MenuItem("Right", nullptr, false, false);
-        ImGui::EndPopup();
-    }
+        FEditorViewportToolbar::DrawPopupSectionHeader("PERSPECTIVE");
+        DrawViewportTypeOption(State, "Perspective", ESkeletalMeshPreviewViewportType::Perspective);
+        FEditorViewportToolbar::DrawPopupSectionHeader("ORTHOGRAPHIC");
+        DrawViewportTypeOption(State, "Top", ESkeletalMeshPreviewViewportType::Top);
+        DrawViewportTypeOption(State, "Bottom", ESkeletalMeshPreviewViewportType::Bottom);
+        DrawViewportTypeOption(State, "Left", ESkeletalMeshPreviewViewportType::Left);
+        DrawViewportTypeOption(State, "Right", ESkeletalMeshPreviewViewportType::Right);
+        DrawViewportTypeOption(State, "Front", ESkeletalMeshPreviewViewportType::Front);
+        DrawViewportTypeOption(State, "Back", ESkeletalMeshPreviewViewportType::Back);
+        DrawViewportTypeOption(State, "Free Ortho", ESkeletalMeshPreviewViewportType::FreeOrtho);
+    };
 
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconLabelButton("##PreviewViewMode", EPreviewToolbarIcon::ViewModeLit, "Lit", 72.0f, "View Mode"))
+    Desc.DrawViewModePopup = [&]()
     {
-        ImGui::OpenPopup("##PreviewViewModePopup");
-    }
-    if (ImGui::BeginPopup("##PreviewViewModePopup"))
-    {
-        ImGui::MenuItem("Lit", nullptr, true, false);
-        ImGui::MenuItem("Unlit", nullptr, false, false);
-        ImGui::MenuItem("Wireframe", nullptr, false, false);
-        ImGui::MenuItem("World Normal", nullptr, false, false);
-        ImGui::EndPopup();
-    }
+        FEditorViewportToolbar::DrawPopupSectionHeader("VIEW MODE");
+        DrawViewModeOption(State, "Lit", ESkeletalMeshPreviewViewMode::Lit);
+        DrawViewModeOption(State, "Unlit", ESkeletalMeshPreviewViewMode::Unlit);
+        DrawViewModeOption(State, "Wireframe", ESkeletalMeshPreviewViewMode::Wireframe);
+        DrawViewModeOption(State, "Lit Gouraud", ESkeletalMeshPreviewViewMode::LitGouraud);
+        DrawViewModeOption(State, "Lit Lambert", ESkeletalMeshPreviewViewMode::LitLambert);
+        DrawViewModeOption(State, "Scene Depth", ESkeletalMeshPreviewViewMode::SceneDepth);
+        DrawViewModeOption(State, "World Normal", ESkeletalMeshPreviewViewMode::WorldNormal);
+        DrawViewModeOption(State, "Light Culling", ESkeletalMeshPreviewViewMode::LightCulling);
+    };
 
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconLabelButton("##PreviewShow", EPreviewToolbarIcon::ShowFlag, "", 36.0f, "Show"))
+    Desc.DrawShowPopup = [&]()
     {
-        ImGui::OpenPopup("##PreviewShowFlags");
-    }
-    if (ImGui::BeginPopup("##PreviewShowFlags"))
-    {
-        ImGui::MenuItem("Grid", nullptr, &State.bShowGrid);
-        ImGui::MenuItem("Bones", nullptr, &State.bShowBones);
-        ImGui::MenuItem("Mesh Stats", nullptr, &State.bShowMeshStatsOverlay);
-        ImGui::Separator();
-        ImGui::MenuItem("Reference Pose", nullptr, &State.bShowReferencePose);
-        ImGui::EndPopup();
-    }
+        FEditorViewportToolbar::DrawPopupSectionHeader("COMMON SHOW FLAGS");
+        ImGui::Checkbox("Primitives", &State.bShowPrimitives);
+        ImGui::Checkbox("SkeletalMesh", &State.bShowSkeletalMesh);
+        ImGui::Checkbox("Billboard Text", &State.bShowBillboardText);
 
-    ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconLabelButton("##PreviewLayout", EPreviewToolbarIcon::Menu, "", 36.0f, "Viewport Layout"))
-    {
-        ImGui::OpenPopup("##PreviewLayoutPopup");
-    }
-    if (ImGui::BeginPopup("##PreviewLayoutPopup"))
-    {
-        ImGui::MenuItem("One Pane", nullptr, true, false);
-        ImGui::MenuItem("Two Panes", nullptr, false, false);
-        ImGui::MenuItem("Four Panes", nullptr, false, false);
-        ImGui::EndPopup();
-    }
+        FEditorViewportToolbar::DrawPopupSectionHeader("ACTOR HELPERS");
+        ImGui::Checkbox("Grid", &State.bShowGrid);
+        if (State.bShowGrid)
+        {
+            DrawShowFlagSliderFloat("Spacing", State.GridSpacing, 0.1f, 10.0f, "%.1f");
+            DrawShowFlagSliderInt("Half Line Count", State.GridHalfLineCount, 10, 500);
+            DrawShowFlagSliderFloat("Grid Line", State.GridLineThickness, 0.0f, 4.0f);
+            DrawShowFlagSliderFloat("Major Line", State.GridMajorLineThickness, 0.0f, 6.0f);
+            DrawShowFlagSliderInt("Major Interval", State.GridMajorLineInterval, 1, 50);
+            DrawShowFlagSliderFloat("Minor Intensity", State.GridMinorIntensity, 0.0f, 2.0f);
+            DrawShowFlagSliderFloat("Major Intensity", State.GridMajorIntensity, 0.0f, 2.0f);
+        }
+        ImGui::Checkbox("World Axis", &State.bShowWorldAxis);
+        if (State.bShowWorldAxis)
+        {
+            DrawShowFlagSliderFloat("Axis Thickness", State.AxisThickness, 0.0f, 8.0f);
+            DrawShowFlagSliderFloat("Axis Intensity", State.AxisIntensity, 0.0f, 2.0f);
+        }
+        ImGui::Checkbox("Gizmo", &State.bShowGizmo);
+        ImGui::Checkbox("Bones", &State.bShowBones);
+        DrawShowFlagSliderFloat("Billboard Icon Scale", State.BillboardIconScale, 0.1f, 5.0f);
 
-    ImGui::EndDisabled();
+        FEditorViewportToolbar::DrawPopupSectionHeader("SKELETAL PREVIEW");
+        ImGui::Checkbox("Reference Pose", &State.bShowReferencePose);
+        ImGui::Checkbox("Mesh Stats", &State.bShowMeshStatsOverlay);
+
+        FEditorViewportToolbar::DrawPopupSectionHeader("DEBUG");
+        DrawShowFlagSliderFloat("Line Thickness", State.DebugLineThickness, 1.0f, 12.0f, "%.1f");
+        ImGui::Checkbox("Scene BVH (Green)", &State.bShowSceneBVH);
+        ImGui::Checkbox("Scene Octree (Cyan)", &State.bShowOctree);
+        ImGui::Checkbox("World Bound (Magenta)", &State.bShowWorldBound);
+        ImGui::Checkbox("Light Visualization", &State.bShowLightVisualization);
+    };
+
+    Desc.DrawLayoutPopup = [&]()
+    {
+        FEditorViewportToolbar::DrawPopupSectionHeader("VIEWPORT LAYOUT");
+        auto DrawLayoutItem = [&](const char *Label, ESkeletalMeshPreviewLayout Layout)
+        {
+            if (ImGui::MenuItem(Label, nullptr, State.PreviewLayout == Layout))
+            {
+                State.PreviewLayout = Layout;
+                ImGui::CloseCurrentPopup();
+            }
+        };
+        DrawLayoutItem("One Pane", ESkeletalMeshPreviewLayout::OnePane);
+        DrawLayoutItem("Two Panes - Horizontal", ESkeletalMeshPreviewLayout::TwoPanesHorizontal);
+        DrawLayoutItem("Two Panes - Vertical", ESkeletalMeshPreviewLayout::TwoPanesVertical);
+        DrawLayoutItem("Four Panes 2 x 2", ESkeletalMeshPreviewLayout::FourPanes2x2);
+        FEditorViewportToolbar::DrawPopupSeparator(4.0f, 6.0f);
+        ImGui::TextDisabled("Skeletal Mesh Editor viewport still renders a single pane until split layout is wired.");
+    };
+
+    FEditorViewportToolbar::RenderViewportToolbar(Desc);
 }

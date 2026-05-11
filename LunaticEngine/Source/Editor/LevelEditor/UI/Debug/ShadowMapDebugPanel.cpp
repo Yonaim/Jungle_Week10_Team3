@@ -23,7 +23,7 @@
 
 static const char *FaceNames[] = {"+X", "-X", "+Y", "-Y", "+Z", "-Z"};
 
-// ?? Helper: ?좏깮??Actor?먯꽌 LightComponent瑜?李얘퀬 SceneEnvironment ?몃뜳??諛섑솚 ??
+// Helper: find the SceneEnvironment light index for the current selection.
 
 enum class ESelectedLightType
 {
@@ -36,7 +36,7 @@ enum class ESelectedLightType
 struct FSelectedLightInfo
 {
     ESelectedLightType Type = ESelectedLightType::None;
-    int32 EnvIndex = -1; // SceneEnvironment ???몃뜳??
+    int32 EnvIndex = -1; // Light index inside SceneEnvironment
 };
 
 static FSelectedLightInfo FindSelectedLight()
@@ -54,7 +54,7 @@ static FSelectedLightInfo FindSelectedLight()
     const FSceneEnvironment &Env = World->GetScene().GetEnvironment();
     FSelectionManager &Sel = Editor->GetSelectionManager();
 
-    // 1) SelectedComponent ?곗꽑 寃??(?뺢?留??ъ씤??諛⑹뼱)
+    // 1) Prefer the selected component when one is available.
     if (USceneComponent *SelComp = Sel.GetSelectedComponent())
     {
         if (!IsAliveObject(SelComp))
@@ -104,7 +104,7 @@ static FSelectedLightInfo FindSelectedLight()
     return Info;
 }
 
-// ?? 怨듭슜 Region ?ㅻ쾭?덉씠 洹몃━湲???
+// Draw each atlas region boundary on top of the preview image.
 
 static const ImU32 RegionColors[] = {
     IM_COL32(255, 80, 80, 220),  IM_COL32(80, 220, 80, 220),  IM_COL32(80, 140, 255, 220), IM_COL32(255, 220, 50, 220),
@@ -140,7 +140,7 @@ static void DrawRegionOverlay(const TArray<FAtlasRegion> &Regions, float Preview
     }
 }
 
-// ?? Viz CB data ??
+// Constant buffer data for the ShadowMapVis shader
 
 struct FShadowVisCBData
 {
@@ -154,7 +154,7 @@ struct FShadowVisCBData
     float _pad[3];
 };
 
-// ?? Viz RT 愿由???
+// Ensure the offscreen render target used by the visualization pass.
 
 void FShadowMapDebugPanel::EnsureVizRT(ID3D11Device *Dev, uint32 Size)
 {
@@ -203,7 +203,7 @@ void FShadowMapDebugPanel::ReleaseVizRT()
     VizSize = 0;
 }
 
-// ?? Viz Pass: shadow depth ??inverted grayscale RT ??
+// Viz pass: render shadow depth into an inverted grayscale RT.
 
 void FShadowMapDebugPanel::RenderVizPass(ID3D11DeviceContext *DC, ID3D11ShaderResourceView *SrcSRV, bool bIsArray,
                                                uint32 SliceIndex, float UVMinX, float UVMinY, float UVMaxX,
@@ -264,7 +264,7 @@ void FShadowMapDebugPanel::RenderVizPass(ID3D11DeviceContext *DC, ID3D11ShaderRe
         DC->PSSetShaderResources(1, 1, &NullSRV);
     }
 
-    // Bind shader + draw fullscreen triangle (no vertex input ??SV_VertexID only)
+    // Bind the shader and draw a fullscreen triangle using SV_VertexID only.
     Shader->Bind(DC);
     DC->IASetInputLayout(nullptr); // override: no vertex input
     DC->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -320,7 +320,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
     ID3D11Device *Dev = D3DDev.GetDevice();
     ID3D11DeviceContext *DC = D3DDev.GetDeviceContext();
 
-    // ?? ?좏깮???쇱씠?멸? ?덉쑝硫??먮룞 ???꾪솚 ??
+    // Auto-switch to the tab that matches the selected light type.
     if (SelLight.Type == ESelectedLightType::Directional)
         SelectedTab = 0;
     else if (SelLight.Type == ESelectedLightType::Spot)
@@ -328,7 +328,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
     else if (SelLight.Type == ESelectedLightType::Point)
         SelectedTab = 2;
 
-    // ?? ?곷떒 ?쇰뵒??踰꾪듉: t21 / t22 / t23 ??
+    // Select which shadow resource to inspect: t21 / t22 / t23
     ImGui::RadioButton("CSM (t21)", &SelectedTab, 0);
     ImGui::SameLine();
     ImGui::RadioButton("Spot Atlas (t22)", &SelectedTab, 1);
@@ -336,7 +336,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
     ImGui::RadioButton("Point (t23)", &SelectedTab, 2);
     ImGui::Separator();
 
-    // ?? ?쒓컖??紐⑤뱶 ??
+    // Select the depth visualization mode.
     ImGui::RadioButton("Linear", &VizMode, 0);
     ImGui::SameLine();
     ImGui::RadioButton("Pow", &VizMode, 1);
@@ -351,9 +351,9 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
     float AvailWidth = ImGui::GetContentRegionAvail().x;
     float PreviewSize = (AvailWidth > 0.0f) ? AvailWidth : 256.0f;
 
-    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
+    // ============================================================
     // CSM (t21)
-    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
+    // ============================================================
     if (SelectedTab == 0)
     {
         if (!SR.CSM.IsValid())
@@ -367,7 +367,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
         ImGui::Text("C%d range: %.3f - %.3f", CSMCascadeIndex, SR.CSM.DebugCascadeNear.Data[CSMCascadeIndex],
                     SR.CSM.DebugCascadeFar.Data[CSMCascadeIndex]);
 
-        // Cascade ?좏깮 踰꾪듉
+        // Cascade selection
         for (int32 i = 0; i < (int32)MAX_SHADOW_CASCADES; ++i)
         {
             if (i > 0)
@@ -385,7 +385,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
         if (ImGui::SmallButton("Reset##csm"))
             CSMDepthBrightness = 1.0f;
 
-        // ?좏깮??cascade ?꾨━酉???VizPass濡?諛섏쟾 ?뚮뜑留?
+        // Render the selected cascade through the visualization pass.
         if (CSMCascadeIndex >= 0 && CSMCascadeIndex < (int32)MAX_SHADOW_CASCADES && SR.CSM.SRV)
         {
             uint32 VizRes = SR.CSM.Resolution > 0 ? SR.CSM.Resolution : 512;
@@ -397,9 +397,9 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
                          ImVec4(1, 1, 1, 1), ImVec4(0.3f, 0.3f, 0.3f, 1));
         }
     }
-    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
+    // ============================================================
     // Spot Atlas (t22)
-    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
+    // ============================================================
     else if (SelectedTab == 1)
     {
         if (!SR.Spot.IsValid())
@@ -411,7 +411,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
 
         ImGui::Text("Resolution: %u x %u, Pages: %u", SR.Spot.Resolution, SR.Spot.Resolution, SR.Spot.PageCount);
 
-        // Page ?좏깮
+        // Page selection
         if (SpotPageIndex >= (int32)SR.Spot.PageCount)
             SpotPageIndex = 0;
 
@@ -436,7 +436,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
         uint32 VizRes = SR.Spot.Resolution > 0 ? SR.Spot.Resolution : 512;
         EnsureVizRT(Dev, VizRes);
 
-        // ?? ?좏깮??SpotLight媛 ?덉쑝硫??대떦 ?곸뿭留?crop ?쒖떆 ??
+        // If a spot light is selected, crop and show only its atlas region.
         const TArray<FAtlasRegion> *pRegions = ShadowPass ? &ShadowPass->GetLastSpotAtlasRegions() : nullptr;
         bool bShowCropped = false;
 
@@ -465,7 +465,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
             }
         }
 
-        // ?? ?좏깮 ?녾굅??紐?李얠쑝硫?湲곗〈: ?꾪??쇱뒪 ?꾩껜 ?쒖떆 ??
+        // Otherwise show the currently selected atlas page.
         if (!bShowCropped && SR.Spot.SRV)
         {
             if (SpotPageIndex >= 0 && SpotPageIndex < (int32)SR.Spot.PageCount)
@@ -482,9 +482,9 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
             }
         }
     }
-    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
+    // ============================================================
     // Point Atlas (t23)
-    // ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
+    // ============================================================
     else if (SelectedTab == 2)
     {
         if (!SR.Point.IsValid())
@@ -496,7 +496,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
 
         ImGui::Text("Atlas: %u x %u, Pages: %u", SR.Point.Resolution, SR.Point.Resolution, SR.Point.PageCount);
 
-        // Page ?좏깮
+        // Page selection
         if (PointPageIndex >= (int32)SR.Point.PageCount)
             PointPageIndex = 0;
 
@@ -520,13 +520,13 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
         uint32 VizRes = SR.Point.Resolution > 0 ? SR.Point.Resolution : 512;
         EnsureVizRT(Dev, VizRes);
 
-        // ?? ?좏깮??PointLight媛 ?덉쑝硫??대떦 6 face ?곸뿭留?crop ?쒖떆 ??
+        // If a point light is selected, show the six face regions for that light.
         const TArray<FAtlasRegion> *pRegions = ShadowPass ? &ShadowPass->GetLastPointAtlasRegions() : nullptr;
         bool bShowCropped = false;
 
         if (SelLight.Type == ESelectedLightType::Point && SelLight.EnvIndex >= 0 && pRegions && SR.Point.SRV)
         {
-            // ?대떦 ?쇱씠?몄쓽 face ?곸뿭 ?섏쭛
+            // Collect every face region that belongs to the selected light.
             TArray<const FAtlasRegion *> FaceRegions;
             for (const FAtlasRegion &R : *pRegions)
             {
@@ -542,7 +542,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
                 ImGui::Text("Selected: L%d (%u x %u px, %u faces, Page %u)", SelLight.EnvIndex, FaceSize, FaceSize,
                             (uint32)FaceRegions.size(), LightPageIdx);
 
-                // ?꾩껜 atlas瑜???踰?蹂??(?쇱씠?멸? ?ㅼ젣濡??좊떦??page)
+                // Render the full atlas page first, then crop each face with UVs.
                 RenderVizPass(DC, SR.Point.SRV, true, LightPageIdx, 0, 0, 1, 1, PointDepthBrightness, (uint32)VizMode,
                               VizExponent);
 
@@ -569,7 +569,7 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
             }
         }
 
-        // ?? ?좏깮 ?녾굅??紐?李얠쑝硫?湲곗〈: ?꾪??쇱뒪 ?꾩껜 ?쒖떆 ??
+        // Otherwise show the currently selected atlas page.
         if (!bShowCropped && SR.Point.SRV)
         {
             RenderVizPass(DC, SR.Point.SRV, true, PointPageIndex, 0, 0, 1, 1, PointDepthBrightness, (uint32)VizMode,

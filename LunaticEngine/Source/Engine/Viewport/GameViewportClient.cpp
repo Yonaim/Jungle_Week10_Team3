@@ -203,7 +203,8 @@ bool UGameViewportClient::Tick(float DeltaTime)
 
 	bool bChanged = false;
 
-	// Script-driven game cameras keep ownership of movement. Spectator cameras are moved here.
+	// Keep the cursor visible in PIE. We only move the camera here for ejected spectator control;
+	// gameplay-owned cameras continue to be driven by the game side.
 	const bool bScriptDrivesCamera = !bSpectatorCameraMovementEnabled;
 	SetCursorCaptured(false);
 

@@ -33,6 +33,11 @@ void FAssetEditorWindow::Show()
 {
     bOpen = true;
     bVisible = true;
+
+    // 같은 메인 DockSpace를 Level Editor / Asset Editor가 번갈아 쓰므로,
+    // Level Editor로 돌아갔다가 다시 FBX를 열면 기존 DockBuilder node가 Level layout로 바뀐 상태일 수 있다.
+    // Asset Editor가 다시 보일 때 외부 패널형 에디터(SkeletalMeshEditor 등)의 layout을 강제로 재빌드한다.
+    TabManager.InvalidateEditorLayouts();
 }
 
 void FAssetEditorWindow::Hide()

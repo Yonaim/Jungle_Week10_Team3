@@ -32,7 +32,7 @@ class PrefabDragSource final : public FDragSource
     ImVec2 Size;
     ID3D11Texture2D *ActorImage;
 
-    // ToDo:Renderer에서 Direct로 ActorImage 생성
+    // TODO: Renderer에서 ActorImage를 직접 생성
 };
 
 class FPrefabElement : public ContentBrowserElement

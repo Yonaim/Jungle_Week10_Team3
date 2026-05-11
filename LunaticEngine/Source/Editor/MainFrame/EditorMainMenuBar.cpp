@@ -1,6 +1,7 @@
 #include "MainFrame/EditorMainMenuBar.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "MainFrame/EditorMenuProvider.h"
 #include "Resource/ResourceManager.h"
@@ -124,7 +125,7 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
             {
                 if (ImGui::GetCursorPosY() > 0.0f)
                 {
-                    ImGui::Separator();
+                    FEditorUIStyle::DrawPopupSeparator(4.0f, 6.0f);
                 }
                 if (ImGui::MenuItem("Project Settings..."))
                 {

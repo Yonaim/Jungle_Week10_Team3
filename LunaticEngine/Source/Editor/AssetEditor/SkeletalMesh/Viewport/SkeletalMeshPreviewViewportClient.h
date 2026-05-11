@@ -1,13 +1,16 @@
-﻿#pragma once
+#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
-#include "Render/Scene/FScene.h"
+#include "Common/Gizmo/GizmoManager.h"
+#include "Common/Viewport/EditorViewportCamera.h"
+#include "Common/Viewport/PreviewScene.h"
 
-class UCameraComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
+class UGizmoComponent;
 class FPrimitiveSceneProxy;
+class FSkeletalMeshSelectionManager;
 
 struct ImVec2;
 
@@ -42,13 +45,15 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     USkeletalMesh *GetPreviewMesh() const { return PreviewMesh; }
 
     void SetEditorState(FSkeletalMeshEditorState *InState) { State = InState; }
+    void SetSelectionManager(FSkeletalMeshSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
 
     void RenderViewportImage(bool bIsActiveViewport) override;
     const char *GetViewportTooltipBarText() const override;
     bool BuildRenderRequest(FEditorViewportRenderRequest &OutRequest) override;
 
     USkeletalMeshComponent *GetPreviewComponent() const { return PreviewComponent; }
-    UCameraComponent *GetPreviewCamera() const { return PreviewCamera; }
+    FEditorViewportCamera *GetPreviewCamera() { return &ViewCamera; }
+    const FEditorViewportCamera *GetPreviewCamera() const { return &ViewCamera; }
 
   private:
     void EnsurePreviewObjects();
@@ -58,24 +63,33 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void ResetPreviewCamera();
     void FramePreviewMesh();
     void TickViewportInput(float DeltaTime);
+    void CycleGizmoModeFromShortcut();
     void RenderFallbackOverlay();
+    void RenderPoseEditDebugControls();
+    void ApplyEditorStateToViewport();
+    void SyncRenderOptionsFromState();
+    void ApplyViewportTypeToCamera();
 
-	// 임시 Bone 회전 테스트용 함수
-	void RenderPoseEditDebugControls();
 	void RenderSkeletonDebugOverlay();
+    void SyncGizmoTargetFromSelection();
 	bool ProjectWorldToViewport(const FVector& WorldPos, ImVec2& OutScreen) const;
 
   private:
     USkeletalMesh *PreviewMesh = nullptr;
     FSkeletalMeshEditorState *State = nullptr;
+    FSkeletalMeshSelectionManager *SelectionManager = nullptr;
 
     // Asset Preview 전용 렌더 Scene. LevelEditor World / Selection / PIE와 분리한다.
-    FScene PreviewScene;
+    FPreviewScene PreviewScene;
     USkeletalMeshComponent *PreviewComponent = nullptr;
-    UCameraComponent *PreviewCamera = nullptr;
-    FPrimitiveSceneProxy *PreviewProxy = nullptr;
+        FPrimitiveSceneProxy *PreviewProxy = nullptr;
+    UGizmoComponent *PreviewGizmoComponent = nullptr;
 
     FViewportRenderOptions RenderOptions;
+    int32 GizmoTargetBoneIndex = -1;
+
+    ESkeletalMeshPreviewViewportType LastAppliedViewportType = ESkeletalMeshPreviewViewportType::Perspective;
+    bool bHasAppliedViewportType = false;
 
     FVector OrbitTarget = FVector::ZeroVector;
     float OrbitDistance = 6.0f;

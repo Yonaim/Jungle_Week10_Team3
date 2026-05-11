@@ -1,36 +1,22 @@
-﻿#include "LevelEditor/Selection/SelectionManager.h"
-#include "Component/GizmoComponent.h"
+#include "LevelEditor/Selection/SelectionManager.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Object/Object.h"
 #include "Render/Scene/FScene.h"
+#include "Common/Gizmo/TransformGizmoTargets.h"
 
 
 void FSelectionManager::Init()
 {
-    Gizmo = UObjectManager::Get().CreateObject<UGizmoComponent>();
-    Gizmo->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
-    Gizmo->Deactivate();
+    // SelectionManager는 선택 상태만 소유한다.
+    // 시각적 기즈모의 생명주기는 각 FEditorViewportClient/FGizmoManager가 소유한다.
 }
 
 void FSelectionManager::SetWorld(UWorld *InWorld)
 {
-    // 기존 Scene에서 Gizmo 프록시 해제
-    if (Gizmo && World)
-        Gizmo->DestroyRenderState();
-
     World = InWorld;
-
-    // 새 Scene에 Gizmo 프록시 등록
-    if (Gizmo && World)
-    {
-        Gizmo->SetScene(&World->GetScene());
-        Gizmo->CreateRenderState();
-    }
-
-    SyncGizmo();
     if (World)
     {
         World->GetScene().SetSelectedComponent(SelectedComponent);
@@ -40,12 +26,7 @@ void FSelectionManager::SetWorld(UWorld *InWorld)
 void FSelectionManager::Shutdown()
 {
     ClearSelection();
-
-    if (Gizmo)
-    {
-        UObjectManager::Get().DestroyObject(Gizmo);
-        Gizmo = nullptr;
-    }
+    World = nullptr;
 }
 
 void FSelectionManager::Select(AActor *Actor)
@@ -158,7 +139,7 @@ void FSelectionManager::SelectRange(AActor *ClickedActor, const TArray<AActor *>
     if (!ClickedActor)
         return;
 
-    // Find index of clicked actor
+    // 클릭된 액터의 인덱스를 찾는다.
     int32 ClickedIdx = -1;
     for (int32 i = 0; i < static_cast<int32>(ActorList.size()); ++i)
     {
@@ -171,7 +152,7 @@ void FSelectionManager::SelectRange(AActor *ClickedActor, const TArray<AActor *>
     if (ClickedIdx == -1)
         return;
 
-    // Find nearest already-selected actor's index in ActorList
+    // 이미 선택된 액터 중 ActorList에서 가장 가까운 인덱스를 찾는다.
     int32 AnchorIdx = ClickedIdx;
     int32 MinDist = INT_MAX;
     for (AActor *Sel : SelectedActors)
@@ -191,7 +172,7 @@ void FSelectionManager::SelectRange(AActor *ClickedActor, const TArray<AActor *>
         }
     }
 
-    // Replace selection with range [min, max]
+    // 선택 범위를 [min, max] 구간으로 교체한다.
     int32 Lo = std::min(AnchorIdx, ClickedIdx);
     int32 Hi = std::max(AnchorIdx, ClickedIdx);
 
@@ -338,24 +319,7 @@ int32 FSelectionManager::DeleteSelectedActors()
 
 void FSelectionManager::Tick()
 {
-    if (!Gizmo || !bGizmoEnabled)
-    {
-        return;
-    }
-
-    USceneComponent *Primary = SelectedComponent;
-    if (!Primary)
-    {
-        return;
-    }
-
-    if (Gizmo->GetTarget() != Primary)
-    {
-        SyncGizmo();
-        return;
-    }
-
-    Gizmo->UpdateGizmoTransform();
+    // 여기서는 선택 상태만 다룬다. 기즈모의 변환/표시는 FGizmoManager가 동기화한다.
 }
 
 void FSelectionManager::SetGizmoEnabled(bool bEnabled)
@@ -414,6 +378,21 @@ void FSelectionManager::SelectComponent(USceneComponent *Component)
     SyncGizmo();
 }
 
+std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarget() const
+{
+    if (!bGizmoEnabled || !SelectedComponent)
+    {
+        return nullptr;
+    }
+
+    if (SelectedComponent->SupportsUIScreenPicking() || !SelectedComponent->SupportsWorldGizmo())
+    {
+        return nullptr;
+    }
+
+    return std::make_shared<FSceneComponentTransformGizmoTarget>(SelectedComponent);
+}
+
 void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
 {
     if (!Actor || !World)
@@ -431,31 +410,6 @@ void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
 
 void FSelectionManager::SyncGizmo()
 {
-    if (!Gizmo)
-        return;
-
-    if (!bGizmoEnabled)
-    {
-        Gizmo->Deactivate();
-        return;
-    }
-
-    USceneComponent *Primary = SelectedComponent;
-    if (Primary)
-    {
-        if (Primary->SupportsUIScreenPicking() || !Primary->SupportsWorldGizmo())
-        {
-            Gizmo->Deactivate();
-            Gizmo->SetSelectedActors(&SelectedActors);
-            return;
-        }
-
-        Gizmo->SetTarget(Primary);
-        Gizmo->SetSelectedActors(&SelectedActors);
-    }
-    else
-    {
-        Gizmo->SetSelectedActors(nullptr);
-        Gizmo->Deactivate();
-    }
+    // 의도된 no-op이다. SelectionManager는 더 이상 UGizmoComponent를 소유하지 않는다.
+    // FLevelEditorViewportClient가 MakeTransformGizmoTarget()을 읽어 FGizmoManager를 갱신한다.
 }

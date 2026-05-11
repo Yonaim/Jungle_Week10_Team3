@@ -14,6 +14,7 @@
 #include "GameFramework/World.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "Object/Object.h"
 #include "Viewport/GameViewportClient.h"
 #include <filesystem>
@@ -141,6 +142,18 @@ namespace
         }
 
         return false;
+    }
+
+    UCameraComponent* EnsurePIEActiveCamera(UWorld* World, const FPIEViewportCameraSnapshot& CameraSnapshot)
+    {
+        FPerspectiveCameraData CameraData;
+        CameraData.Location = CameraSnapshot.Location;
+        CameraData.Rotation = CameraSnapshot.Rotation.ToVector();
+        CameraData.FOV = CameraSnapshot.CameraState.FOV;
+        CameraData.NearClip = CameraSnapshot.CameraState.NearZ;
+        CameraData.FarClip = CameraSnapshot.CameraState.FarZ;
+        CameraData.bValid = CameraSnapshot.bValid;
+        return EnsurePIEActiveCamera(World, CameraData);
     }
 }
 
@@ -512,7 +525,7 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
     Info.PreviousActiveWorldHandle = EditorEngine->GetActiveWorldHandle();
     if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
     {
-        if (UCameraComponent* VCCamera = ActiveVC->GetCamera())
+        if (FEditorViewportCamera* VCCamera = ActiveVC->GetCamera())
         {
             Info.SavedViewportCamera.Location = VCCamera->GetWorldLocation();
             Info.SavedViewportCamera.Rotation = VCCamera->GetRelativeRotation();
@@ -529,14 +542,11 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
         Pipeline->OnSceneCleared();
     }
 
-    FPerspectiveCameraData FallbackCameraData;
-    FallbackCameraData.Location = Info.SavedViewportCamera.Location;
-    FallbackCameraData.Rotation = Info.SavedViewportCamera.Rotation.ToVector();
-    FallbackCameraData.FOV = Info.SavedViewportCamera.CameraState.FOV;
-    FallbackCameraData.NearClip = Info.SavedViewportCamera.CameraState.NearZ;
-    FallbackCameraData.FarClip = Info.SavedViewportCamera.CameraState.FarZ;
-    FallbackCameraData.bValid = Info.SavedViewportCamera.bValid;
-    UCameraComponent* PIEFallbackCamera = EnsurePIEActiveCamera(PIEWorld, FallbackCameraData);
+    UCameraComponent* PIEFallbackCamera = nullptr;
+    if (PlayInEditorSessionInfo && PlayInEditorSessionInfo->SavedViewportCamera.bValid)
+    {
+        PIEFallbackCamera = EnsurePIEActiveCamera(PIEWorld, PlayInEditorSessionInfo->SavedViewportCamera);
+    }
 
     EditorEngine->GetSelectionManager().ClearSelection();
     EditorEngine->GetSelectionManager().SetGizmoEnabled(false);
@@ -611,7 +621,7 @@ void FLevelPIEManager::EndPlayMap()
 
         if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
         {
-            if (UCameraComponent* VCCamera = ActiveVC->GetCamera())
+            if (FEditorViewportCamera* VCCamera = ActiveVC->GetCamera())
             {
                 if (PlayInEditorSessionInfo->SavedViewportCamera.bValid)
                 {
@@ -621,7 +631,7 @@ void FLevelPIEManager::EndPlayMap()
                     VCCamera->SetCameraState(SavedCamera.CameraState);
                 }
 
-                EditorWorld->SetActiveCamera(VCCamera);
+                // 에디터 뷰포트 카메라는 UCameraComponent가 아니므로 World의 활성 카메라 슬롯 밖에 유지한다.
             }
         }
     }
@@ -720,8 +730,4 @@ void FLevelPIEManager::SyncGameViewportPIEControlState(bool bPossessedMode)
         }
     }
 
-    if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
-    {
-        PIEViewportClient->Possess(ActiveVC->GetCamera());
-    }
 }

@@ -35,6 +35,7 @@ class FAssetEditorTabManager
 
     void Tick(float DeltaTime);
     void Render(float DeltaTime, ImGuiID DockspaceId = 0);
+    void InvalidateEditorLayouts();
 
     bool HasOpenTabs() const;
     int32 GetTabCount() const;

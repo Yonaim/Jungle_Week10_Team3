@@ -46,6 +46,9 @@
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh">
       <UniqueIdentifier>{9cf86e78-2e49-3a26-1b21-b6951b7f242f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo">
+      <UniqueIdentifier>{740570f3-3590-ed5b-eab7-6c73b84dc310}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\Selection">
       <UniqueIdentifier>{22c777ed-6b28-ae7e-a15a-8ca07c7ed198}</UniqueIdentifier>
     </Filter>
@@ -69,6 +72,9 @@
     </Filter>
     <Filter Include="Source\Editor\Common\File">
       <UniqueIdentifier>{6bd0395d-78bb-436b-cff4-aa13d466cdca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\Gizmo">
+      <UniqueIdentifier>{7c56f807-2eeb-f84f-df26-45bc997b6125}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\Common\Menu">
       <UniqueIdentifier>{a4a91f25-6bb1-65a2-e2cb-c114a78f8ca8}</UniqueIdentifier>
@@ -171,6 +177,9 @@
     </Filter>
     <Filter Include="Source\Engine\Component">
       <UniqueIdentifier>{9f82130a-2cb8-550b-2cd5-fd5f36ea9619}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Engine\Component\Gizmo">
+      <UniqueIdentifier>{001aa080-0063-c709-5fe9-b6aff0bcc640}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Engine\Component\Light">
       <UniqueIdentifier>{78caf1fd-8899-87cc-0a93-8e540a5681a0}</UniqueIdentifier>
@@ -536,6 +545,9 @@
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Gizmo</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\Selection</Filter>
     </ClCompile>
@@ -569,14 +581,14 @@
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp">
       <Filter>Source\Editor\Common\Menu</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp">
       <Filter>Source\Editor\Common\UI\Base</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.cpp">
-      <Filter>Source\Editor\Common\UI\Docking</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\UI\DragDrop\DragSource.cpp">
       <Filter>Source\Editor\Common\UI\DragDrop</Filter>
@@ -590,13 +602,10 @@
     <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp">
       <Filter>Source\Editor\Common\UI\Notifications</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\UI\Panels\Panel.cpp">
-      <Filter>Source\Editor\Common\UI\Panels</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
+    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportCamera.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportPanel.cpp">
+    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp">
@@ -1412,6 +1421,9 @@
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.h">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Gizmo</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\Selection</Filter>
     </ClInclude>
@@ -1444,6 +1456,12 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\TransformGizmoTargets.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h">
       <Filter>Source\Editor\Common\Menu</Filter>
@@ -1481,13 +1499,22 @@
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h">
       <Filter>Source\Editor\Common\UI\Style</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h">
+      <Filter>Source\Editor\Common\UI\Viewport</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h">
       <Filter>Source\Editor\Common\UI\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportCamera.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\PreviewScene.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h">
@@ -1723,6 +1750,12 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h">
       <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\TransformGizmoTarget.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h">
       <Filter>Source\Engine\Component\Light</Filter>

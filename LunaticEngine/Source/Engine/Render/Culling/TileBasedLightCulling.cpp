@@ -110,14 +110,14 @@ void FTileCullingVisualizer::ReadbackData(ID3D11DeviceContext* Ctx)
 
 void FTileCullingVisualizer::SubmitDebugLines(ID3D11DeviceContext* Ctx, UWorld* World)
 {
-	// 이전 프레임에 Dispatch가 호출됐는지 확인 후 플래그 리셋
+	// Update the frame flags so we know whether Dispatch ran last frame.
 	bDispatchedLastFrame = bDispatchedThisFrame;
 	bDispatchedThisFrame = false;
 
 	ReadbackData(Ctx);
 
-	// 이전 프레임에 Dispatch가 ���출되지 않았으면 (Cluster ���드 등)
-	// stale bDataReady로 매 프레임 라인이 누적되는 것을 방지
+	// If Dispatch did not run last frame, for example in cluster mode,
+	// do not draw stale readback data again.
 	if (!bDispatchedLastFrame)
 	{
 		bDataReady = false;
@@ -128,7 +128,7 @@ void FTileCullingVisualizer::SubmitDebugLines(ID3D11DeviceContext* Ctx, UWorld* 
 
 	constexpr uint32 kBoundaries = 33; // NUM_SLICES + 1
 
-	// 각 슬라이스 경계에 사각형(quad) 외곽선
+	// Draw a quad outline for each slice boundary.
 	for (uint32 b = 0; b < kBoundaries; b++)
 	{
 		uint32 off = b * 4;
@@ -139,7 +139,7 @@ void FTileCullingVisualizer::SubmitDebugLines(ID3D11DeviceContext* Ctx, UWorld* 
 		FVector BL(ReadbackData_[off + 2].X, ReadbackData_[off + 2].Y, ReadbackData_[off + 2].Z);
 		FVector BR(ReadbackData_[off + 3].X, ReadbackData_[off + 3].Y, ReadbackData_[off + 3].Z);
 
-		// 8슬라이스 간격마다 노란색, 나머지 시안
+		// Change color every 8 slices to make the depth bands easier to read.
 		FColor Color = (b % 8 == 0) ? FColor::Yellow() : FColor(0, 255, 255);
 		DrawDebugLine(World, TL, TR, Color);
 		DrawDebugLine(World, TR, BR, Color);
@@ -147,7 +147,7 @@ void FTileCullingVisualizer::SubmitDebugLines(ID3D11DeviceContext* Ctx, UWorld* 
 		DrawDebugLine(World, BL, TL, Color);
 	}
 
-	// 코너끼리 수직 연결선 (슬라이스 깊이 방향)
+	// Connect matching corners vertically across slice depth.
 	for (uint32 c = 0; c < 4; c++)
 	{
 		for (uint32 b = 0; b < kBoundaries - 1; b++)
@@ -163,9 +163,9 @@ void FTileCullingVisualizer::SubmitDebugLines(ID3D11DeviceContext* Ctx, UWorld* 
 	}
 }
 
-// ════════════════════════════════════════════════════════════════
+// ============================================================
 // FTileBasedLightCulling
-// ════════════════════════════════════════════════════════════════
+// ============================================================
 
 void FTileBasedLightCulling::Initialize(ID3D11Device* InDevice)
 {
@@ -191,7 +191,7 @@ void FTileBasedLightCulling::Initialize(ID3D11Device* InDevice)
 
 void FTileBasedLightCulling::Release()
 {
-	TileLightCullingCS = nullptr;  // FShaderManager가 소유
+	TileLightCullingCS = nullptr;  // Lifetime is owned by FShaderManager.
 	if (TileCullingCB) { TileCullingCB->Release(); TileCullingCB = nullptr; }
 
 	Visualizer.Release();
@@ -214,7 +214,7 @@ void FTileBasedLightCulling::Dispatch(
 	ID3D11ShaderResourceView* NullSRVs[2] = { nullptr, nullptr };
 	Ctx->PSSetShaderResources(9, 2, NullSRVs);
 
-	// ── Step 1: 뷰포트 크기 바뀌면 타일 버퍼 재생성 ──────────────────
+	// Step 1: recreate the tile buffers if the viewport size changed.
 	const uint32 TileCountX = (ViewportWidth  + ETileCulling::TileSize - 1) / ETileCulling::TileSize;
 	const uint32 TileCountY = (ViewportHeight + ETileCulling::TileSize - 1) / ETileCulling::TileSize;
 

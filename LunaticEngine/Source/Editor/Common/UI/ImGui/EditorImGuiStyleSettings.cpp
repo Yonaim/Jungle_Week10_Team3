@@ -1,6 +1,7 @@
 #include "Common/UI/ImGui/EditorImGuiStyleSettings.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Core/CoreTypes.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 #include "Math/Vector.h"
@@ -16,7 +17,6 @@ namespace
     constexpr ImVec4 UnrealPanelSurface = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
     constexpr ImVec4 UnrealPanelSurfaceHover = ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
     constexpr ImVec4 UnrealBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
-    constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
 
     FString GetImGuiStyleSettingsPath()
     {
@@ -53,10 +53,7 @@ namespace
 
     void DrawSettingsSectionHeader(const char *Label)
     {
-        ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
-        ImGui::TextUnformatted(Label);
-        ImGui::Separator();
-        ImGui::PopStyleColor();
+        FEditorUIStyle::DrawPopupSectionHeader(Label);
     }
 }
 

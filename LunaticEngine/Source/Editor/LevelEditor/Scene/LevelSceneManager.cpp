@@ -2,6 +2,7 @@
 
 #include "Common/File/EditorFileUtils.h"
 #include "EditorEngine.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "Engine/Platform/Paths.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
@@ -182,7 +183,8 @@ bool FLevelSceneManager::SaveSceneAs(const FString& InScenePath)
     }
     else
     {
-        FSceneSaveManager::SaveSceneAsJSON(InScenePath, *Context, EditorEngine->FindSceneViewportCamera());
+        FEditorViewportCamera* SaveCamera = EditorEngine->FindSceneViewportCamera();
+        FSceneSaveManager::SaveSceneAsJSON(InScenePath, *Context, SaveCamera ? &SaveCamera->GetCameraState() : nullptr);
     }
 
     CurrentLevelFilePath = InScenePath;

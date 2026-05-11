@@ -56,6 +56,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     // SkeletalMeshEditor는 단일 탭 내부 content가 아니라 여러 도킹 패널을 직접 렌더링한다.
     bool UsesExternalPanels() const override { return true; }
+    void InvalidateDockLayout() override;
     void RenderPanels(float DeltaTime, ImGuiID DockspaceId) override;
     void BuildWindowMenu() override;
     void BuildCustomMenus() override;

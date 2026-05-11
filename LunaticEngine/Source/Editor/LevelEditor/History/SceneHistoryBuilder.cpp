@@ -1,6 +1,6 @@
 ﻿#include "LevelEditor/History/SceneHistoryBuilder.h"
 
-#include "Component/CameraComponent.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "EditorEngine.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -27,7 +27,7 @@ FTrackedSceneSnapshot FSceneHistoryBuilder::CaptureSnapshot(const UEditorEngine 
         return Snapshot;
     }
 
-    if (UCameraComponent *Camera = EditorEngine.GetCamera())
+    if (FEditorViewportCamera *Camera = EditorEngine.GetCamera())
     {
         Snapshot.CameraData.Location = Camera->GetWorldLocation();
         const FRotator Rotation = Camera->GetRelativeRotation();

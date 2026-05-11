@@ -1,6 +1,7 @@
-#include "LevelEditor/Viewport/LevelViewportLayout.h"
+﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Common/UI/Panels/Panel.h"
 #include "Common/UI/Viewport/ViewportToolbar.h"
@@ -30,6 +31,7 @@
 #include "ImGui/imgui.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "Math/MathUtils.h"
 #include "Platform/Paths.h"
 #include "Render/Pipeline/Renderer.h"
@@ -40,6 +42,8 @@
 #include "WICTextureLoader.h"
 
 #include <algorithm>
+#include <cstring>
+#include <filesystem>
 #include <string>
 
 namespace
@@ -181,7 +185,7 @@ namespace
         return bChanged;
     }
 
-    void DrawCameraPopupContent(UCameraComponent *Camera, FLevelEditorSettings &Settings)
+    void DrawCameraPopupContent(FEditorViewportCamera *Camera, FLevelEditorSettings &Settings)
     {
         DrawPopupSectionHeader("CAMERA");
         ImGui::PushStyleColor(ImGuiCol_Text, CameraPopupHintColor);
@@ -243,9 +247,7 @@ namespace
 
     void DrawPopupSectionHeader(const char *Label)
     {
-        ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
-        ImGui::SeparatorText(Label);
-        ImGui::PopStyleColor();
+        FEditorUIStyle::DrawPopupSectionHeader(Label);
     }
 
     bool BeginPopupSection(const char *Label, ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_DefaultOpen)
@@ -845,9 +847,7 @@ namespace
         ImGui::SameLine(0.0f, 8.0f);
         DrawSnapTabButton("##SnapTabScale", EToolbarIcon::ScaleSnap, "Scale", ESnapPopupType::Scale, ScaleWidth);
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+        FEditorUIStyle::DrawPopupSeparator(4.0f, 6.0f);
 
         switch (GSnapPopupTab[SlotIndex])
         {
@@ -932,8 +932,96 @@ namespace
 
     float GetViewportPaneToolbarHeight(float PaneWidth) { return FViewportToolbar::GetHeight(PaneWidth); }
 
+    const char* GetBasicShapeFileStemFromKey(const char* MeshKey)
+    {
+        if (!MeshKey) return nullptr;
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Cube") == 0) return "Cube";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Sphere") == 0) return "Sphere";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Cylinder") == 0) return "Cylinder";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Cone") == 0) return "Cone";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Plane") == 0) return "Plane";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.SphereLowpoly") == 0) return "SphereLowpoly";
+        return nullptr;
+    }
+
+    FString FindBasicShapeObjPath(const char* MeshKey)
+    {
+        const char* Stem = GetBasicShapeFileStemFromKey(MeshKey);
+        if (!Stem) return "";
+
+        const std::filesystem::path RootPath(FPaths::RootDir());
+        const std::filesystem::path ContentPath(FPaths::ContentDir());
+        const std::filesystem::path AssetPath(FPaths::AssetDir());
+        const std::wstring StemW = FPaths::ToWide(Stem);
+        const std::wstring ObjFileName = StemW + L".obj";
+
+        const std::filesystem::path Candidates[] = {
+            ContentPath / L"BasicShape" / ObjFileName,
+            ContentPath / L"Mesh" / L"BasicShape" / ObjFileName,
+            ContentPath / L"Meshes" / L"BasicShape" / ObjFileName,
+            AssetPath / L"BasicShape" / ObjFileName,
+            RootPath / L"BasicShape" / ObjFileName,
+        };
+
+        for (const std::filesystem::path& Candidate : Candidates)
+        {
+            if (std::filesystem::exists(Candidate))
+            {
+                return FPaths::ToUtf8(Candidate.lexically_relative(RootPath).generic_wstring());
+            }
+        }
+
+        // Last-resort scan. This keeps Place Actors working even when the resource scan
+        // file only registered cached .bin files and the original BasicShape .obj files
+        // live in a slightly different content subdirectory.
+        const std::filesystem::path ScanRoots[] = { ContentPath, AssetPath };
+        for (const std::filesystem::path& ScanRoot : ScanRoots)
+        {
+            if (!std::filesystem::exists(ScanRoot) || !std::filesystem::is_directory(ScanRoot))
+            {
+                continue;
+            }
+
+            std::filesystem::directory_options Options = std::filesystem::directory_options::skip_permission_denied;
+            for (const auto& Entry : std::filesystem::recursive_directory_iterator(ScanRoot, Options))
+            {
+                if (!Entry.is_regular_file()) continue;
+                if (_wcsicmp(Entry.path().filename().c_str(), ObjFileName.c_str()) != 0) continue;
+
+                std::filesystem::path Parent = Entry.path().parent_path();
+                bool bInsideBasicShapeDirectory = false;
+                while (!Parent.empty())
+                {
+                    if (_wcsicmp(Parent.filename().c_str(), L"BasicShape") == 0)
+                    {
+                        bInsideBasicShapeDirectory = true;
+                        break;
+                    }
+                    const std::filesystem::path Next = Parent.parent_path();
+                    if (Next == Parent) break;
+                    Parent = Next;
+                }
+
+                if (bInsideBasicShapeDirectory)
+                {
+                    return FPaths::ToUtf8(Entry.path().lexically_relative(RootPath).generic_wstring());
+                }
+            }
+        }
+
+        return "";
+    }
+
     FString GetRegisteredMeshPath(const char *MeshKey)
     {
+        // BasicShape place actors should be sourced from the authoring .obj files when
+        // they exist. FObjManager can still use/rebuild the Cache/*.bin internally, but
+        // passing the source path lets timestamp invalidation and material sidecar lookup work.
+        if (FString BasicShapeObjPath = FindBasicShapeObjPath(MeshKey); !BasicShapeObjPath.empty())
+        {
+            return BasicShapeObjPath;
+        }
+
         if (const FMeshResource *MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
         {
             return MeshResource->Path;
@@ -1081,7 +1169,6 @@ void FLevelViewportLayout::Init(UEditorEngine *InEditor, FWindowsWindow *InWindo
     LevelVC->SetSettings(&FLevelEditorSettings::Get());
     LevelVC->Init(Window);
     LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
-    LevelVC->SetGizmo(SelectionManager->GetGizmo());
     LevelVC->SetSelectionManager(SelectionManager);
 
     auto *VP = new FViewport();
@@ -1090,7 +1177,7 @@ void FLevelViewportLayout::Init(UEditorEngine *InEditor, FWindowsWindow *InWindo
     VP->SetClient(LevelVC);
     LevelVC->SetViewport(VP);
 
-    LevelVC->CreateCamera();
+    LevelVC->InitializeCameraState();
     LevelVC->ResetCamera();
     ApplyProjectViewportSettings(LevelVC->GetRenderOptions());
 
@@ -1146,11 +1233,7 @@ void FLevelViewportLayout::SetActiveViewport(FLevelEditorViewportClient *InClien
     if (ActiveViewportClient)
     {
         ActiveViewportClient->SetActive(true);
-        UWorld *World = Editor->GetWorld();
-        if (World && ActiveViewportClient->GetCamera())
-        {
-            World->SetActiveCamera(ActiveViewportClient->GetCamera());
-        }
+        // Editor viewport cameras are not UCameraComponent instances and are not registered as World active cameras.
     }
 }
 
@@ -1158,13 +1241,13 @@ void FLevelViewportLayout::ResetViewport(UWorld *InWorld)
 {
     for (FLevelEditorViewportClient *VC : LevelViewportClients)
     {
-        VC->CreateCamera();
+        VC->InitializeCameraState();
         VC->ResetCamera();
 
         // 카메라 재생성 후 현재 뷰포트 크기로 AspectRatio 동기화
         if (FViewport *VP = VC->GetViewport())
         {
-            UCameraComponent *Cam = VC->GetCamera();
+            FEditorViewportCamera *Cam = VC->GetCamera();
             if (Cam && VP->GetWidth() > 0 && VP->GetHeight() > 0)
             {
                 Cam->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
@@ -1174,15 +1257,14 @@ void FLevelViewportLayout::ResetViewport(UWorld *InWorld)
         // 기존 뷰포트 타입(Ortho 방향 등)을 새 카메라에 재적용
         VC->SetViewportType(VC->GetRenderOptions().ViewportType);
     }
-    if (ActiveViewportClient && InWorld)
-        InWorld->SetActiveCamera(ActiveViewportClient->GetCamera());
+    // Editor viewport cameras are kept outside UWorld. PIE creates/uses real UCameraComponent instances separately.
 }
 
 void FLevelViewportLayout::DestroyAllCameras()
 {
     for (FLevelEditorViewportClient *VC : LevelViewportClients)
     {
-        VC->DestroyCamera();
+        VC->ReleaseCameraState();
     }
 }
 
@@ -1246,8 +1328,7 @@ void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
         LevelVC->SetSettings(&FLevelEditorSettings::Get());
         LevelVC->Init(Window);
         LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
-        LevelVC->SetGizmo(SelectionManager->GetGizmo());
-        LevelVC->SetSelectionManager(SelectionManager);
+            LevelVC->SetSelectionManager(SelectionManager);
 
         auto *VP = new FViewport();
         VP->Initialize(RendererPtr->GetFD3DDevice().GetDevice(), static_cast<uint32>(Window->GetWidth()),
@@ -1255,7 +1336,7 @@ void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
         VP->SetClient(LevelVC);
         LevelVC->SetViewport(VP);
 
-        LevelVC->CreateCamera();
+        LevelVC->InitializeCameraState();
         LevelVC->ResetCamera();
         ApplyProjectViewportSettings(LevelVC->GetRenderOptions());
 
@@ -1292,7 +1373,7 @@ void FLevelViewportLayout::ShrinkViewportSlots(int32 RequiredCount)
             VP->Release();
             delete VP;
         }
-        VC->DestroyCamera();
+        VC->ReleaseCameraState();
         delete VC;
 
         delete ViewportWindows[Idx];
@@ -2217,7 +2298,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             {
                 FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
                 FViewportRenderOptions     &Opts = VC->GetRenderOptions();
-                UCameraComponent           *Camera = VC->GetCamera();
+                FEditorViewportCamera      *Camera = VC->GetCamera();
                 UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
                 FLevelEditorSettings            &Settings = Editor->GetSettings();
                 const bool                  bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
@@ -2713,7 +2794,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         {
             FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
             FViewportRenderOptions     &Opts = VC->GetRenderOptions();
-            UCameraComponent           *Camera = VC->GetCamera();
+            FEditorViewportCamera      *Camera = VC->GetCamera();
             UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
             FLevelEditorSettings            &Settings = Editor->GetSettings();
 
@@ -2804,7 +2885,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             PushCommonPopupBgColor();
             if (ImGui::BeginPopup(ViewModePopupID))
             {
-                ImGui::SeparatorText("View Mode");
+                DrawPopupSectionHeader("View Mode");
                 int32 CurrentMode = static_cast<int32>(Opts.ViewMode);
 
                 auto DrawViewModeOption = [&](const char *Label, EViewMode Mode, EToolbarIcon Icon)
@@ -3552,7 +3633,7 @@ void FLevelViewportLayout::SaveToSettings()
     // Perspective 카메라(slot 0) 저장
     if (!LevelViewportClients.empty())
     {
-        UCameraComponent *Cam = LevelViewportClients[0]->GetCamera();
+        FEditorViewportCamera *Cam = LevelViewportClients[0]->GetCamera();
         if (Cam)
         {
             S.PerspCamLocation = Cam->GetWorldLocation();
@@ -3615,7 +3696,7 @@ void FLevelViewportLayout::LoadFromSettings()
     // Perspective 카메라(slot 0) 복원
     if (!LevelViewportClients.empty())
     {
-        UCameraComponent *Cam = LevelViewportClients[0]->GetCamera();
+        FEditorViewportCamera *Cam = LevelViewportClients[0]->GetCamera();
         if (Cam)
         {
             Cam->SetRelativeLocation(S.PerspCamLocation);

@@ -85,7 +85,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     }
     ApplyTransformSettingsToGizmo();
 
-    // Editor render pipeline
+    // 에디터 렌더 파이프라인
     {
         SCOPE_STARTUP_STAT("EditorRenderPipeline::Create");
         SetRenderPipeline(std::make_unique<FEditorRenderPipeline>(this, Renderer));
@@ -126,8 +126,8 @@ void UEditorEngine::Tick(float DeltaTime)
         PendingSceneLoadReference.clear();
         LoadScene(SceneToLoad);
     }
-    // Level world / editor subsystems are still ticked even while an Asset Editor context is active.
-    // The active context only owns viewport input/render focus; it does not suspend the editor world.
+    // Asset Editor 컨텍스트가 활성화되어 있어도 Level 월드와 에디터 서브시스템은 계속 Tick된다.
+    // 활성 컨텍스트는 뷰포트 입력/렌더 포커스만 가지며, 에디터 월드 자체를 멈추지는 않는다.
     LevelEditor.Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
@@ -141,9 +141,9 @@ void UEditorEngine::Tick(float DeltaTime)
     AssetEditorManager.Tick(DeltaTime);
     LevelEditorWindow.Update();
 
-    // Input capture is decided by the active editor context, not by every visible panel.
-    // This prevents Asset Editor panels from stealing Level Viewport input, and lets the
-    // Asset Preview Viewport release ImGui capture while the cursor is over it.
+    // 입력 캡처 여부는 보이는 모든 패널이 아니라 현재 활성 에디터 컨텍스트가 결정한다.
+    // 이렇게 하면 Asset Editor 패널이 Level Viewport 입력을 가로채지 않고,
+    // 커서가 Asset Preview Viewport 위에 있을 때는 해당 뷰포트가 ImGui 캡처를 적절히 해제할 수 있다.
     LevelEditorWindow.UpdateInputState(IsMouseOverActiveViewport(), false, IsScoreSavePopupOpen());
 
     if (IsLevelEditorContextActive())
@@ -168,7 +168,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
     return LevelEditor.GetPIEManager().LoadScene(InSceneReference);
 }
 
-UCameraComponent *UEditorEngine::GetCamera() const
+FEditorViewportCamera *UEditorEngine::GetCamera() const
 {
     if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
@@ -290,6 +290,19 @@ void UEditorEngine::ToggleCoordSystem()
     ApplyTransformSettingsToGizmo();
 }
 
+UGizmoComponent *UEditorEngine::GetGizmo() const
+{
+    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    {
+        return ActiveClient->GetGizmoManager().GetVisualComponent();
+    }
+    if (FLevelEditorViewportClient *LevelClient = GetActiveViewport())
+    {
+        return LevelClient->GetGizmo();
+    }
+    return nullptr;
+}
+
 void UEditorEngine::ApplyTransformSettingsToGizmo()
 {
     UGizmoComponent *Gizmo = GetGizmo();
@@ -299,8 +312,21 @@ void UEditorEngine::ApplyTransformSettingsToGizmo()
     }
 
     const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    const bool             bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
-    Gizmo->SetWorldSpace(bForceLocalForScale ? false : (Settings.CoordSystem == EEditorCoordSystem::World));
+    const bool bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
+    const EGizmoSpace DesiredSpace =
+        bForceLocalForScale || Settings.CoordSystem != EEditorCoordSystem::World
+            ? EGizmoSpace::Local
+            : EGizmoSpace::World;
+
+    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    {
+        ActiveClient->GetGizmoManager().SetSpace(DesiredSpace);
+    }
+    else
+    {
+        Gizmo->SetGizmoSpace(DesiredSpace);
+    }
+
     // 에디터 설정의 좌표계/스냅 값을 매 프레임 Gizmo 상태와 동기화한다.
     Gizmo->SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, Settings.bEnableRotationSnap,
                            Settings.RotationSnapSize, Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
@@ -403,7 +429,7 @@ void UEditorEngine::RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs)
 
 void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { LevelEditor.GetHistoryManager().InvalidateTrackedSceneSnapshotCache(); }
 
-UCameraComponent *UEditorEngine::FindSceneViewportCamera() const
+FEditorViewportCamera *UEditorEngine::FindSceneViewportCamera() const
 {
     for (FLevelEditorViewportClient *VC : GetViewportLayout().GetLevelViewportClients())
     {
@@ -429,7 +455,7 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData &CamData)
         return;
     }
 
-    if (UCameraComponent *Camera = FindSceneViewportCamera())
+    if (FEditorViewportCamera *Camera = FindSceneViewportCamera())
     {
         Camera->SetWorldLocation(CamData.Location);
         Camera->SetRelativeRotation(CamData.Rotation);

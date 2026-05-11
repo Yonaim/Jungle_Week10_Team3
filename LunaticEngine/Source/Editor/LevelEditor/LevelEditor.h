@@ -24,7 +24,7 @@ class FLevelEditorViewportClient;
  * - SceneManager: Level 생성/저장/로드/삭제
  * - PIEManager: Play In Editor 시작/종료/오버레이
  * - HistoryManager: Scene/Transform Undo/Redo
- * - SelectionManager: Actor/Component 선택 및 Gizmo 연결
+ * - SelectionManager: Actor/Component 선택 상태 관리
  * - ViewportLayout: Level Viewport 생성/배치
  * - OverlayStatSystem: Viewport 통계 표시용 데이터
  */

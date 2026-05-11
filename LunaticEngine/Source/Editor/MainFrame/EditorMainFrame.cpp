@@ -1,6 +1,7 @@
 #include "MainFrame/EditorMainFrame.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Core/ProjectSettings.h"
 #include "EditorEngine.h"
 #include "Engine/Input/InputManager.h"
@@ -35,9 +36,7 @@ namespace
 
     void DrawPopupSectionHeader(const char *Label)
     {
-        ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
-        ImGui::SeparatorText(Label);
-        ImGui::PopStyleColor();
+        FEditorUIStyle::DrawPopupSectionHeader(Label);
     }
 
     void SetNextPopupWindowPosition(ImGuiCond Condition = ImGuiCond_Appearing)

@@ -105,6 +105,11 @@ void FSkeletalMeshEditor::RenderContent(float DeltaTime)
     RenderPanels(DeltaTime, 0);
 }
 
+void FSkeletalMeshEditor::InvalidateDockLayout()
+{
+    BuiltDockspaceId = 0;
+}
+
 void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
 {
     if (!bOpen)
@@ -264,7 +269,7 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
 
     if (bPreviewPanelOpen)
     {
-        PreviewViewport.Render(EditingAsset, State, &Toolbar, DeltaTime, PreviewDesc);
+        PreviewViewport.Render(EditingAsset, State, &SelectionManager, &Toolbar, DeltaTime, PreviewDesc);
     }
     if (bSkeletonTreePanelOpen)
     {

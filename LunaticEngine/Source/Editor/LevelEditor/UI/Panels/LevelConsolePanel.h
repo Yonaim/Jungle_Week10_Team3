@@ -84,7 +84,7 @@ class FLevelConsolePanel : public FUIElement
 
     FConsoleLogOutputDevice ConsoleDevice;
 
-    // Command Dispatch System
+    // 명령 디스패치 시스템
     using CommandFn = std::function<void(const TArray<FString> &args)>;
     struct FConsoleCommand
     {

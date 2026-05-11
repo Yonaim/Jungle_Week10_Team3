@@ -40,6 +40,12 @@ class IAssetEditor
     virtual void RenderContent(float DeltaTime) = 0;
 
     virtual bool UsesExternalPanels() const { return false; }
+
+    // Asset Editor가 Level Editor DockSpace 안에 임시로 붙는 구조에서는,
+    // Level Editor로 돌아갔다가 다시 Asset Editor를 보여줄 때 기존 dock node가 재사용되어
+    // 패널 배치가 깨질 수 있다. 다시 활성화될 때 각 에디터가 자기 layout을 재빌드하도록 한다.
+    virtual void InvalidateDockLayout() {}
+
     virtual void RenderPanels(float DeltaTime, ImGuiID DockspaceId)
     {
         (void)DockspaceId;

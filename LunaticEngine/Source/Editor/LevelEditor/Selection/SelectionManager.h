@@ -2,10 +2,12 @@
 
 #include "Core/CoreTypes.h"
 
+#include <memory>
+
 class AActor;
 class USceneComponent;
-class UGizmoComponent;
 class UWorld;
+class ITransformGizmoTarget;
 
 class FSelectionManager
 {
@@ -39,7 +41,7 @@ public:
 	const TArray<AActor*>& GetSelectedActors() const { return SelectedActors; }
 	bool IsEmpty() const { return SelectedActors.empty(); }
 
-	UGizmoComponent* GetGizmo() const { return Gizmo; }
+	std::shared_ptr<ITransformGizmoTarget> MakeTransformGizmoTarget() const;
 
 	void SetGizmoEnabled(bool bEnabled);
 	void SetWorld(UWorld* InWorld);
@@ -50,7 +52,6 @@ private:
 
 	TArray<AActor*> SelectedActors;
 	USceneComponent* SelectedComponent = nullptr;
-	UGizmoComponent* Gizmo = nullptr;
 	UWorld* World = nullptr;
 	bool bGizmoEnabled = true;
 };

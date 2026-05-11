@@ -10,6 +10,7 @@
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "LevelEditor/Window/LevelEditorWindow.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -37,7 +38,7 @@ class UEditorEngine : public UEngine
     UEditorEngine() = default;
     ~UEditorEngine() override = default;
 
-    // Lifecycle overrides
+    // 생명주기 오버라이드
     void Init(FWindowsWindow *InWindow) override;
     void Shutdown() override;
     void Tick(float DeltaTime) override;
@@ -52,9 +53,9 @@ class UEditorEngine : public UEngine
     void OpenTitleCreditsPopup() override;
     bool IsScoreSavePopupOpen() const override;
 
-    // Editor-specific API
-    UGizmoComponent  *GetGizmo() const { return GetSelectionManager().GetGizmo(); }
-    UCameraComponent *GetCamera() const;
+    // 에디터 전용 API
+    UGizmoComponent  *GetGizmo() const;
+    FEditorViewportCamera *GetCamera() const;
     bool              FocusActorInViewport(AActor *Actor);
 
     void SetActiveEditorContext(EEditorContextType InContextType);
@@ -150,7 +151,7 @@ class UEditorEngine : public UEngine
     FOverlayStatSystem       &GetOverlayStatSystem() { return LevelEditor.GetOverlayStatSystem(); }
     const FOverlayStatSystem &GetOverlayStatSystem() const { return LevelEditor.GetOverlayStatSystem(); }
 
-    // --- PIE (Play In Editor) ---
+    // --- PIE (에디터 내 플레이) ---
     void RequestPlaySession(const FRequestPlaySessionParams &InParams);
     void CancelRequestPlaySession();
     bool HasPlaySessionRequest() const { return LevelEditor.GetPIEManager().HasPlaySessionRequest(); }
@@ -198,7 +199,7 @@ class UEditorEngine : public UEngine
     friend class FLevelEditorHistoryManager;
     friend class FLevelPIEManager;
 
-    UCameraComponent *FindSceneViewportCamera() const;
+    FEditorViewportCamera *FindSceneViewportCamera() const;
     void              RestoreViewportCamera(const FPerspectiveCameraData &CamData);
     void              ClearTrackedTransformHistory();
     void              ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo);

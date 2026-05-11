@@ -9,6 +9,28 @@
 #include "Core/Log.h"
 IMPLEMENT_CLASS(AGameModeBase, AActor)
 
+namespace
+{
+	APawnActor* FindAutoPossessPawn(UWorld* World, int32 PlayerIndex)
+	{
+		if (!World)
+		{
+			return nullptr;
+		}
+
+		for (AActor* Actor : World->GetActors())
+		{
+			APawnActor* Pawn = Cast<APawnActor>(Actor);
+			if (Pawn && IsAliveObject(Pawn) && Pawn->ShouldAutoPossessPlayer(PlayerIndex))
+			{
+				return Pawn;
+			}
+		}
+
+		return nullptr;
+	}
+}
+
 void AGameModeBase::StartPlay()
 {
 	UWorld* World = GetTypedOuter<UWorld>();
@@ -34,23 +56,26 @@ void AGameModeBase::StartPlay()
 		}
 	}
 
-	//  DefaultPawn 스폰 후 PlayerController가 Possess
-	if (!DefaultPawnClassName.empty())
+	//  AutoPossessPlayer == Player0인 배치 Pawn이 있으면 먼저 Possess한다.
+	//  없으면 GameMode의 DefaultPawnClass로 새 Pawn을 스폰한다.
+	SpawnedPawn = FindAutoPossessPawn(World, 0);
+	if (!SpawnedPawn && !DefaultPawnClassName.empty())
 	{
 		UObject* Obj = FObjectFactory::Get().Create(DefaultPawnClassName, World->GetCurrentLevel());
 		SpawnedPawn = Cast<APawnActor>(Obj);
 		if (SpawnedPawn)
 		{
 			World->AddActor(SpawnedPawn);
-			if (SpawnedController)
-			{
-				SpawnedController->Possess(SpawnedPawn);
-			}
 		}
 		else if (Obj)
 		{
 			UObjectManager::Get().DestroyObject(Obj);
 		}
+	}
+
+	if (SpawnedController && SpawnedPawn)
+	{
+		SpawnedController->Possess(SpawnedPawn);
 	}
 
 	if (!PlayerCameraManagerClassName.empty()) {

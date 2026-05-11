@@ -222,6 +222,11 @@ void PushPopupMenuStyle()
     FEditorUIStyle::PushPopupMenuStyle();
 }
 
+void PopPopupMenuStyle()
+{
+    FEditorUIStyle::PopPopupMenuStyle();
+}
+
 const char *GetActorHeaderIconKey(const AActor *Actor)
 {
     if (!Actor)
@@ -2024,7 +2029,7 @@ void FLevelDetailsPanel::RenderAddComponentButton(AActor *Actor)
     PushPopupMenuStyle();
     if (!ImGui::BeginPopup("##AddComponentPopup"))
     {
-        ImGui::PopStyleColor(4);
+        PopPopupMenuStyle();
         return;
     }
 
@@ -2036,9 +2041,7 @@ void FLevelDetailsPanel::RenderAddComponentButton(AActor *Actor)
             continue;
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Text, AddComponentGroupHeaderTextColor);
-        ImGui::SeparatorText(Group.Label);
-        ImGui::PopStyleColor();
+        FEditorUIStyle::DrawTitleTextWithLine(Group.Label);
         for (UClass *Cls : Group.Classes)
         {
             const FString DisplayClassName = GetDisplayClassLabel(Cls);
@@ -2106,7 +2109,7 @@ void FLevelDetailsPanel::RenderAddComponentButton(AActor *Actor)
     }
 
     ImGui::EndPopup();
-    ImGui::PopStyleColor(4);
+    PopPopupMenuStyle();
 }
 
 void FLevelDetailsPanel::RenderDetails(AActor *PrimaryActor, const TArray<AActor *> &SelectedActors)

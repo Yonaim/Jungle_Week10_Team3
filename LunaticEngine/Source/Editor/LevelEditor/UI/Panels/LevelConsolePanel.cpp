@@ -1093,7 +1093,7 @@ void FLevelConsolePanel::PrintCSMCascadeRanges()
         return;
     }
 
-    UCameraComponent *Camera = EditorEngine->GetCamera();
+    FEditorViewportCamera *Camera = EditorEngine->GetCamera();
     if (!Camera)
     {
         AddLog("[ERROR] Camera is null.\n");

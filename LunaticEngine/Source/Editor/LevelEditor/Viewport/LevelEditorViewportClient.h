@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "Core/CollisionTypes.h"
 #include "Core/CoreTypes.h"
 #include "Core/RayTypes.h"
@@ -14,14 +15,15 @@
 #include "imgui.h"
 
 class UWorld;
-class UCameraComponent;
 class UGizmoComponent;
 class ULightComponentBase;
 class AActor;
 class FLevelEditorSettings;
 class FWindowsWindow;
 class FSelectionManager;
+class USceneComponent;
 class FOverlayStatSystem;
+class FScene;
 
 // Level Editor ?꾩슜 Viewport Client.
 // 移대찓??議곗옉, Actor picking, Gizmo 議곗옉, View mode, PIE shortcut ?깆쓣 ?대떦?쒕떎.
@@ -38,7 +40,6 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     UWorld *GetWorld() const;
 
     void             SetOverlayStatSystem(FOverlayStatSystem *InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
-    void             SetGizmo(UGizmoComponent *InGizmo) { Gizmo = InGizmo; }
     void             SetSettings(const FLevelEditorSettings *InSettings) { Settings = InSettings; }
     void             SetSelectionManager(FSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
     UGizmoComponent *GetGizmo() { return Gizmo; }
@@ -49,10 +50,11 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void SetViewportType(ELevelViewportType NewType);
     void SetViewportSize(float InWidth, float InHeight);
 
-    void              CreateCamera();
-    void              DestroyCamera();
+    void              InitializeCameraState();
+    void              ReleaseCameraState();
     void              ResetCamera();
-    UCameraComponent *GetCamera() const { return Camera; }
+    FEditorViewportCamera *GetCamera() { return FEditorViewportClient::GetCamera(); }
+    const FEditorViewportCamera *GetCamera() const { return FEditorViewportClient::GetCamera(); }
     bool              FocusActor(AActor *Actor);
 
     void                 SetLightViewOverride(ULightComponentBase *Light);
@@ -66,6 +68,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void UpdateLayoutRect() override;
     void RenderViewportImage(bool bIsActiveViewport) override;
     const char *GetViewportTooltipBarText() const override;
+    bool BuildRenderRequest(FEditorViewportRenderRequest &OutRequest) override;
 
   private:
     void SetupInput();
@@ -84,9 +87,14 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void OnEditorEscape(const FInputActionValue &Value);
     void OnEditorTogglePIE(const FInputActionValue &Value);
 
+    void  EnsureEditorGizmo();
+    void  ReleaseEditorGizmo();
+    void  RegisterGizmoToScene(FScene* Scene);
+    void  UnregisterGizmoFromScene();
     void  TickEditorShortcuts();
     void  TickInput(float DeltaTime);
     void  TickInteraction(float DeltaTime);
+    void  SyncGizmoTargetFromSelection();
     void  HandleDragStart(const FRay &Ray);
     void  DrawUIScreenTranslateGizmo();
     bool  HasUIScreenTranslateGizmo() const;
@@ -99,10 +107,11 @@ class FLevelEditorViewportClient : public FEditorViewportClient
 
   private:
     FOverlayStatSystem    *OverlayStatSystem = nullptr;
-    UCameraComponent      *Camera = nullptr;
     UGizmoComponent       *Gizmo = nullptr;
+    FScene                *RegisteredGizmoScene = nullptr;
     const FLevelEditorSettings *Settings = nullptr;
     FSelectionManager     *SelectionManager = nullptr;
+    USceneComponent        *CurrentGizmoTargetComponent = nullptr;
     FViewportRenderOptions RenderOptions;
     ULightComponentBase   *LightViewOverride = nullptr;
     int32                  PointLightFaceIndex = 0;
