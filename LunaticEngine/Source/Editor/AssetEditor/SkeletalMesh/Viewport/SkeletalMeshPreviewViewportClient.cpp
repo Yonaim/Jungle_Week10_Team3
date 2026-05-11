@@ -390,6 +390,7 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
 
 		RenderSkeletonDebugOverlay();   // 추가
         RenderFallbackOverlay();
+		RenderPoseEditDebugControls();
         return;
     }
 
@@ -414,50 +415,11 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
 
 	RenderSkeletonDebugOverlay();
     RenderFallbackOverlay();
+	RenderPoseEditDebugControls();
 }
 
 void FSkeletalMeshPreviewViewportClient::RenderFallbackOverlay()
 {
-  //  const FRect &R = ViewportScreenRect;
-  //  if (R.Width <= 0.0f || R.Height <= 0.0f)
-  //  {
-  //      return;
-  //  }
-
-  //  ImGui::SetCursorScreenPos(ImVec2(R.X + 16.0f, R.Y + 16.0f));
-  //  ImGui::BeginGroup();
-  //  ImGui::TextUnformatted("Skeletal Mesh Preview Viewport");
-
-  //  if (!PreviewMesh)
-  //  {
-  //      ImGui::TextDisabled("No SkeletalMesh loaded.");
-  //  }
-  //  else if (!State || State->bShowMeshStatsOverlay)
-  //  {
-  //      ImGui::Text("Preview Mode: %s", State ? PreviewModeToText(State->PreviewMode) : "Unknown");
-  //      ImGui::Text("Bones: %d", PreviewMesh->GetBoneCount());
-  //      ImGui::Text("Vertices: %d", PreviewMesh->GetVertexCount());
-  //      ImGui::Text("Indices: %d", PreviewMesh->GetIndexCount());
-  //      if (PreviewComponent)
-  //      {
-  //          TArray<FNormalVertex> *Skinned = PreviewComponent->GetCPUSkinnedVertices();
-  //          ImGui::Text("CPU Skinned Vertices: %d", Skinned ? static_cast<int32>(Skinned->size()) : 0);
-  //      }
-  //      if (State)
-  //      {
-  //          ImGui::Text("Selected Bone: %d", State->SelectedBoneIndex);
-  //          ImGui::Text("LOD: %d", State->CurrentLODIndex);
-  //          ImGui::Text("Show Bones: %s", State->bShowBones ? "true" : "false");
-		//	ImGui::Text("Pose Edit Mode: %s", State->bEnablePoseEditMode ? "true" : "false");
-  //      }
-
-		//// 임시 Bone 회전 테스트용 함수 호출
-		//RenderPoseEditDebugControls();
-  //  }
-
-  //  ImGui::TextDisabled("RMB Drag: Orbit / MMB Drag: Pan / Wheel: Zoom / Toolbar: Frame");
-  //  ImGui::EndGroup();
-
 	const FRect& R = ViewportScreenRect;
 	if (R.Width <= 0.0f || R.Height <= 0.0f)
 	{
@@ -529,36 +491,68 @@ void FSkeletalMeshPreviewViewportClient::RenderPoseEditDebugControls()
 		return;
 	}
 
+	const FRect& R = ViewportScreenRect;
+	if (R.Width <= 0.0f || R.Height <= 0.0f)
+	{
+		return;
+	}
+
+	ImGui::SetNextWindowPos(ImVec2(R.X + 12.0f, R.Y + 12.0f), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(320.0f, 0.0f), ImGuiCond_Always);
+
+	const ImGuiWindowFlags Flags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_AlwaysAutoResize;
+
+	if (!ImGui::Begin("##SkeletalMeshPoseEditDebugControls", nullptr, Flags))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextUnformatted("Pose Edit Debug");
+
 	if (!PreviewComponent || State->SelectedBoneIndex < 0)
 	{
 		ImGui::TextDisabled("Select a bone.");
+		ImGui::End();
 		return;
 	}
+
+	ImGui::Text("Selected Bone: %d", State->SelectedBoneIndex);
 
 	if (ImGui::Button("Rotate Selected Bone Local Z +10 deg"))
 	{
 		const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
 		const int32 BoneIndex = State->SelectedBoneIndex;
 
-		if (BoneIndex < 0 || BoneIndex >= static_cast<int32>(Pose.LocalTransforms.size()))
+		if (BoneIndex >= 0 && BoneIndex < static_cast<int32>(Pose.LocalTransforms.size()))
 		{
-			return;
+			FTransform Local = Pose.LocalTransforms[BoneIndex];
+
+			constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
+			const FQuat AddRot = FQuat::FromAxisAngle(
+				FVector(0.0f, 0.0f, 1.0f),
+				10.0f * DegToRad
+			);
+
+			Local.Rotation = Local.Rotation * AddRot;
+			Local.Rotation.Normalize();
+
+			PreviewComponent->SetBoneLocalTransform(BoneIndex, Local);
+			PreviewComponent->RefreshSkinningForEditor(0.0f);
 		}
+	}
 
-		FTransform Local = Pose.LocalTransforms[BoneIndex];
-
-		constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
-		const FQuat AddRot = FQuat::FromAxisAngle(
-			FVector(0.0f, 0.0f, 1.0f),
-			10.0f * DegToRad
-		);
-
-		Local.Rotation = Local.Rotation * AddRot;
-		Local.Rotation.Normalize();
-
-		PreviewComponent->SetBoneLocalTransform(BoneIndex, Local);
+	if (ImGui::Button("Reset Preview Pose"))
+	{
+		PreviewComponent->SetSkeletalMesh(PreviewMesh);
 		PreviewComponent->RefreshSkinningForEditor(0.0f);
 	}
+
+	ImGui::End();
 }
 
 void FSkeletalMeshPreviewViewportClient::RenderSkeletonDebugOverlay()
