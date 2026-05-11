@@ -56,6 +56,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     // SkeletalMeshEditor는 단일 탭 내부 content가 아니라 여러 도킹 패널을 직접 렌더링한다.
     bool UsesExternalPanels() const override { return true; }
     void RenderPanels(float DeltaTime, ImGuiID DockspaceId) override;
+    void BuildWindowMenu() override;
     void BuildCustomMenus() override;
 
     bool IsDirty() const override { return bDirty; }
@@ -89,6 +90,12 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     bool bOpen = false;
     bool bDirty = false;
+
+    // 패널별 close button 상태. FBX를 다시 열면 기본 레이아웃과 함께 모두 열린 상태로 복구한다.
+    bool bToolbarPanelOpen = true;
+    bool bPreviewPanelOpen = true;
+    bool bSkeletonTreePanelOpen = true;
+    bool bDetailsPanelOpen = true;
 
     // 동일 타입 에디터를 여러 개 열었을 때 ImGui ID 충돌을 피하기 위한 인스턴스 ID.
     uint32 EditorInstanceId = 0;

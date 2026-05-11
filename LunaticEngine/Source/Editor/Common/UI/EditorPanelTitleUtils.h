@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Common/UI/EditorAccentColor.h"
 #include "Object/FName.h"
@@ -108,6 +108,44 @@ inline void ReleasePanelChromeIconFontForCurrentContext()
 inline ImU32 GetDockTabBarGapColor()
 {
     return IM_COL32(5, 5, 5, 255);
+}
+
+inline ImVec4 GetEditorPanelSurfaceColor()
+{
+    return ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
+}
+
+inline ImVec4 GetEditorPanelSurfaceHoverColor()
+{
+    return ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
+}
+
+inline ImVec4 GetEditorPanelSurfaceActiveColor()
+{
+    return ImVec4(52.0f / 255.0f, 52.0f / 255.0f, 52.0f / 255.0f, 1.0f);
+}
+
+inline ImVec4 GetEditorPanelBorderColor()
+{
+    return ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
+}
+
+inline void PushEditorPanelStyle()
+{
+    // Level Editor와 Asset Editor 패널이 같은 회색 surface를 사용하도록 여기서 통일한다.
+    // Asset Editor 쪽에서 별도로 WindowBg를 덮어쓰면 탭/패널 body 색이 어긋나므로,
+    // 모든 dockable editor panel은 이 공통 스타일을 먼저 탄다.
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, GetEditorPanelSurfaceColor());
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, GetEditorPanelSurfaceColor());
+    ImGui::PushStyleColor(ImGuiCol_Border, GetEditorPanelBorderColor());
+    ImGui::PushStyleColor(ImGuiCol_Header, GetEditorPanelSurfaceColor());
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, GetEditorPanelSurfaceHoverColor());
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, GetEditorPanelSurfaceActiveColor());
+}
+
+inline void PopEditorPanelStyle()
+{
+    ImGui::PopStyleColor(6);
 }
 
 inline float GetPanelTitleTopGapHeight()
@@ -355,9 +393,12 @@ inline void DrawPanelTitleIcon(const char *IconKey, float IconSize = 16.0f)
 
 inline bool DrawSmallPanelCloseButton(const char *DisplayTitle, bool &bVisible, const char *Id)
 {
+    // Docked editor panels now rely on ImGui's native close button from
+    // ImGui::Begin(title, &bOpen, flags).
+    // Keep this function as a compatibility no-op for older call sites.
     (void)DisplayTitle;
+    (void)bVisible;
     (void)Id;
-    QueuePanelDecoration(nullptr, &bVisible);
     return false;
 }
 
@@ -473,38 +514,9 @@ inline void FlushPanelDecorations()
                                ImVec2(IconX + IconSize, IconY + IconSize));
         }
 
-        if (Decoration.VisibleFlag)
-        {
-            const float ButtonSize = (std::max)(TitleRect.GetHeight() - 8.0f, 16.0f);
-            const ImVec2 ButtonPos(TitleRect.Max.x - ButtonSize - 6.0f,
-                                   TitleRect.Min.y + (TitleRect.GetHeight() - ButtonSize) * 0.5f);
-            const ImRect ButtonRect(ButtonPos, ImVec2(ButtonPos.x + ButtonSize, ButtonPos.y + ButtonSize));
-            const ImVec2 MousePos = ImGui::GetIO().MousePos;
-            const bool bHovered = ButtonRect.Contains(MousePos);
-            const bool bClicked = bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-
-            if (bHovered)
-            {
-                DrawList->AddRectFilled(ButtonRect.Min, ButtonRect.Max, IM_COL32(66, 66, 74, 242), 4.0f);
-            }
-
-            const ImU32 GlyphColor = bHovered ? IM_COL32(240, 240, 240, 255) : IM_COL32(190, 190, 190, 255);
-            const char *Glyph = GetChromeCloseGlyph();
-            if (ImFont *IconFont = GetPanelChromeIconFont())
-            {
-                const float FontSize = 11.0f;
-                const ImVec2 GlyphSize = IconFont->CalcTextSizeA(FontSize, FLT_MAX, 0.0f, Glyph);
-                DrawList->AddText(IconFont, FontSize,
-                                  ImVec2(ButtonRect.Min.x + (ButtonSize - GlyphSize.x) * 0.5f,
-                                         ButtonRect.Min.y + (ButtonSize - GlyphSize.y) * 0.5f + 0.5f),
-                                  GlyphColor, Glyph);
-            }
-
-            if (bClicked)
-            {
-                *Decoration.VisibleFlag = false;
-            }
-        }
+        // Close buttons are intentionally not drawn here.
+        // ImGui dock tabs already draw the close button when p_open is passed to ImGui::Begin().
+        // Drawing another button in the decoration pass causes duplicated/overlapped X buttons.
 
         DrawList->PopClipRect();
     }

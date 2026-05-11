@@ -32,6 +32,42 @@ float ClampFloat(float Value, float MinValue, float MaxValue)
     return (std::max)(MinValue, (std::min)(Value, MaxValue));
 }
 
+bool IsLegacyImGuiKeyDown(int Key)
+{
+    const ImGuiKey ImKey = [&]() {
+        switch (Key)
+        {
+        case 'A': return ImGuiKey_A;
+        case 'D': return ImGuiKey_D;
+        case 'E': return ImGuiKey_E;
+        case 'F': return ImGuiKey_F;
+        case 'Q': return ImGuiKey_Q;
+        case 'S': return ImGuiKey_S;
+        case 'W': return ImGuiKey_W;
+        default: return ImGuiKey_None;
+        }
+    }();
+    return ImKey != ImGuiKey_None && ImGui::IsKeyDown(ImKey);
+}
+
+bool IsLegacyImGuiKeyPressed(int Key)
+{
+    const ImGuiKey ImKey = [&]() {
+        switch (Key)
+        {
+        case 'A': return ImGuiKey_A;
+        case 'D': return ImGuiKey_D;
+        case 'E': return ImGuiKey_E;
+        case 'F': return ImGuiKey_F;
+        case 'Q': return ImGuiKey_Q;
+        case 'S': return ImGuiKey_S;
+        case 'W': return ImGuiKey_W;
+        default: return ImGuiKey_None;
+        }
+    }();
+    return ImKey != ImGuiKey_None && ImGui::IsKeyPressed(ImKey, false);
+}
+
 FVector MakeOrbitCameraLocation(const FVector &Target, float Distance, float YawDeg, float PitchDeg)
 {
     constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
@@ -229,14 +265,30 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 
 void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
 {
-    (void)DeltaTime;
-
-    if (!PreviewCamera || (!IsHovered() && !IsActive()))
+    if (!PreviewCamera)
     {
         return;
     }
 
     ImGuiIO &IO = ImGui::GetIO();
+    const bool bRightMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+    const bool bMiddleMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+    const bool bAcceptViewportInput = IsHovered() || IsActive() || bRightMouseDown || bMiddleMouseDown;
+    if (!bAcceptViewportInput)
+    {
+        return;
+    }
+
+    // 기존 Level Editor viewport와 비슷하게 Preview Viewport도 최소한의 카메라 입력을 처리한다.
+    // - RMB Drag: orbit rotate
+    // - MMB Drag: pan
+    // - Wheel: zoom
+    // - RMB + WASD/QE: orbit target 이동
+    // - F: frame mesh
+    if (IsLegacyImGuiKeyPressed('F'))
+    {
+        FramePreviewMesh();
+    }
 
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
     {
@@ -254,9 +306,48 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         OrbitTarget = OrbitTarget - Right * (Delta.x * PanScale) + Up * (Delta.y * PanScale);
     }
 
-    if (IO.MouseWheel != 0.0f)
+    if (IO.MouseWheel != 0.0f && IsHovered())
     {
         OrbitDistance = (std::max)(0.15f, OrbitDistance * (1.0f - IO.MouseWheel * 0.08f));
+    }
+
+    if (bRightMouseDown)
+    {
+        FVector Move = FVector::ZeroVector;
+        if (IsLegacyImGuiKeyDown('W'))
+        {
+            Move += PreviewCamera->GetForwardVector();
+        }
+        if (IsLegacyImGuiKeyDown('S'))
+        {
+            Move -= PreviewCamera->GetForwardVector();
+        }
+        if (IsLegacyImGuiKeyDown('D'))
+        {
+            Move += PreviewCamera->GetRightVector();
+        }
+        if (IsLegacyImGuiKeyDown('A'))
+        {
+            Move -= PreviewCamera->GetRightVector();
+        }
+        if (IsLegacyImGuiKeyDown('E'))
+        {
+            Move += PreviewCamera->GetUpVector();
+        }
+        if (IsLegacyImGuiKeyDown('Q'))
+        {
+            Move -= PreviewCamera->GetUpVector();
+        }
+
+        if (!Move.IsNearlyZero())
+        {
+            const float MoveLength = std::sqrt(Move.X * Move.X + Move.Y * Move.Y + Move.Z * Move.Z);
+            if (MoveLength > 0.0001f)
+            {
+                const float MoveSpeed = (std::max)(0.5f, OrbitDistance) * 1.5f;
+                OrbitTarget += Move * ((MoveSpeed * DeltaTime) / MoveLength);
+            }
+        }
     }
 
     const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);

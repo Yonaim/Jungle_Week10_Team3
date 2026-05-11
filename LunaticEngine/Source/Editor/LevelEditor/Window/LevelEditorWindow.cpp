@@ -362,7 +362,10 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     BackgroundDrawList->AddRectFilled(FrameMin, FrameMax, IM_COL32(5, 5, 5, 255), CornerRadius);
 
     ImGuiWindowClass DockspaceWindowClass{};
-    DockspaceWindowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton;
+    // Dock node 오른쪽 끝에 뜨는 전역 X 버튼은 패널별 tab close와 별개라서
+    // Asset Editor 패널을 다시 켤 때 불필요한 닫기 버튼처럼 보인다.
+    // 패널 닫기는 각 panel window의 p_open / Window 메뉴에서만 처리한다.
+    DockspaceWindowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton;
     ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x + OuterPadding, MainViewport->Pos.y + TopFrameInset + TitleBarHeight + OuterPadding),
                             ImGuiCond_Always);
     ImGui::SetNextWindowSize(

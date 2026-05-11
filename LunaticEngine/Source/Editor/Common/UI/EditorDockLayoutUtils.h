@@ -8,8 +8,11 @@
 /**
  * 여러 에디터에서 재사용할 수 있는 DockBuilder layout 유틸.
  *
- * 현재는 SkeletalMeshEditor의 기본 배치에 맞춘 4분할 레이아웃을 제공한다.
- * 이후 MaterialEditor / AnimationEditor 같은 에셋 에디터도 같은 형태를 재사용할 수 있다.
+ * 주의:
+ * - Asset Editor 집중 모드에서는 Level Editor 패널이 숨겨진 상태이므로,
+ *   dockspace child node를 비우고 에셋 에디터 기본 레이아웃을 다시 구성한다.
+ * - 이렇게 해야 FBX를 열었을 때 Preview Viewport가 floating window가 아니라
+ *   중앙 dock node에 안정적으로 들어간다.
  */
 struct FFourPanelDockLayoutDesc
 {
@@ -23,9 +26,40 @@ struct FFourPanelDockLayoutDesc
     float RightRatio = 0.28f;
 };
 
+/**
+ * Unreal 계열 Asset Editor 기본 배치.
+ *
+ * ┌──────────┬────────────────────┬─────────────────┐
+ * │ Toolbar  │ Preview Viewport   │ Skeleton Tree   │
+ * │          │                    ├─────────────────┤
+ * │          │                    │ Asset Details   │
+ * └──────────┴────────────────────┴─────────────────┘
+ */
+struct FAssetPreviewDockLayoutDesc
+{
+    std::string ToolbarWindow;
+    std::string CenterWindow;
+    std::string RightTopWindow;
+    std::string RightBottomWindow;
+
+    float LeftToolbarRatio = 0.12f;
+    float RightColumnRatio = 0.28f;
+    float RightBottomRatio = 0.48f;
+};
+
 class FEditorDockLayoutUtils
 {
   public:
+    static void ClearDockspaceForAssetEditor(ImGuiID DockspaceId)
+    {
+        if (DockspaceId == 0)
+        {
+            return;
+        }
+
+        ImGui::DockBuilderRemoveNodeChildNodes(DockspaceId);
+    }
+
     static void DockFourPanelLayout(ImGuiID DockspaceId, const FFourPanelDockLayoutDesc &Desc)
     {
         if (DockspaceId == 0)
@@ -33,8 +67,8 @@ class FEditorDockLayoutUtils
             return;
         }
 
-        // Level Editor 메인 DockSpace를 통째로 재생성하면 기존 레벨 패널이 날아간다.
-        // 따라서 DockBuilderRemoveNode()는 호출하지 않고, 열린 에셋 에디터 패널만 현재 DockSpace에 추가한다.
+        ClearDockspaceForAssetEditor(DockspaceId);
+
         ImGuiID MainId = DockspaceId;
         ImGuiID ToolbarId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Up, Desc.ToolbarRatio, nullptr, &MainId);
         ImGuiID LeftId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, Desc.LeftRatio, nullptr, &MainId);
@@ -56,6 +90,42 @@ class FEditorDockLayoutUtils
         if (!Desc.RightWindow.empty())
         {
             ImGui::DockBuilderDockWindow(Desc.RightWindow.c_str(), RightId);
+        }
+
+        ImGui::DockBuilderFinish(DockspaceId);
+    }
+
+    static void DockAssetPreviewLayout(ImGuiID DockspaceId, const FAssetPreviewDockLayoutDesc &Desc)
+    {
+        if (DockspaceId == 0)
+        {
+            return;
+        }
+
+        ClearDockspaceForAssetEditor(DockspaceId);
+
+        ImGuiID MainId = DockspaceId;
+        ImGuiID ToolbarId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, Desc.LeftToolbarRatio, nullptr, &MainId);
+        ImGuiID RightColumnId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Right, Desc.RightColumnRatio, nullptr, &MainId);
+        ImGuiID RightBottomId = ImGui::DockBuilderSplitNode(RightColumnId, ImGuiDir_Down, Desc.RightBottomRatio, nullptr, &RightColumnId);
+        ImGuiID CenterId = MainId;
+        ImGuiID RightTopId = RightColumnId;
+
+        if (!Desc.ToolbarWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.ToolbarWindow.c_str(), ToolbarId);
+        }
+        if (!Desc.CenterWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.CenterWindow.c_str(), CenterId);
+        }
+        if (!Desc.RightTopWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.RightTopWindow.c_str(), RightTopId);
+        }
+        if (!Desc.RightBottomWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.RightBottomWindow.c_str(), RightBottomId);
         }
 
         ImGui::DockBuilderFinish(DockspaceId);

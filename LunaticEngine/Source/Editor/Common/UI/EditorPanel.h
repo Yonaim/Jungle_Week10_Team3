@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "Core/CoreTypes.h"
@@ -7,6 +7,7 @@
 #include "ImGui/imgui_internal.h"
 
 #include <string>
+#include <vector>
 
 /**
  * Editor panel 공통 descriptor.
@@ -45,38 +46,68 @@ struct FEditorPanelDesc
  */
 class FEditorPanel
 {
+  private:
+    struct FBeginState
+    {
+        bool bDidBeginWindow = false;
+        bool bPushedStyle = false;
+    };
+
+    static std::vector<FBeginState> &GetBeginStateStack()
+    {
+        static std::vector<FBeginState> Stack;
+        return Stack;
+    }
+
   public:
     static std::string MakeTitle(const FEditorPanelDesc &Desc)
     {
         const char *StableId = (Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName;
         const bool bHasIcon = Desc.IconKey && EditorPanelTitleUtils::GetEditorIcon(Desc.IconKey) != nullptr;
         const char *Prefix = bHasIcon ? "     " : "";
-        return std::string(Prefix) + (Desc.DisplayName ? Desc.DisplayName : "") + "          ###" + StableId;
+        return std::string(Prefix) + (Desc.DisplayName ? Desc.DisplayName : "") + "###" + StableId;
     }
 
     static bool Begin(const FEditorPanelDesc &Desc)
     {
+        FBeginState BeginState;
+
+        // Window 메뉴에서 패널을 끈 상태라면 ImGui::Begin 자체를 호출하지 않는다.
+        // 닫힌 p_open=false 상태로 Begin/End를 강제로 호출하면 docking 경로에서
+        // style stack sanity check가 깨지거나 End mismatch가 발생할 수 있다.
+        if (Desc.bClosable && Desc.bOpen && !*Desc.bOpen)
+        {
+            GetBeginStateStack().push_back(BeginState);
+            return false;
+        }
+
         if (Desc.DockspaceId != 0)
         {
             ImGui::SetNextWindowDockID(Desc.DockspaceId, Desc.DockCond);
         }
 
+        // DockNode 오른쪽 끝의 전역 X / menu 버튼은 제거한다.
+        // 각 패널 탭의 닫기 X는 ImGui::Begin(..., p_open, ...) 경로에 맡긴다.
+        ImGuiWindowClass PanelWindowClass{};
+        PanelWindowClass.DockNodeFlagsOverrideSet =
+            ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton;
+        ImGui::SetNextWindowClass(&PanelWindowClass);
+
         bool bTempOpen = true;
         bool *OpenPtr = Desc.bClosable ? (Desc.bOpen ? Desc.bOpen : &bTempOpen) : nullptr;
         const std::string Title = MakeTitle(Desc);
+
         const bool bVisible = ImGui::Begin(Title.c_str(), OpenPtr, Desc.WindowFlags);
+        BeginState.bDidBeginWindow = true;
+
+        EditorPanelTitleUtils::PushEditorPanelStyle();
+        BeginState.bPushedStyle = true;
+        GetBeginStateStack().push_back(BeginState);
 
         if (bVisible)
         {
-            // 모든 공통 패널은 decoration queue에 등록한다.
-            // 이유:
-            // - EditorPanelTitleUtils::FlushPanelDecorations()가 dock tab bar의 빈 영역 fill과
-            //   선택된 탭의 accent line을 그리기 위해 현재 패널의 DockNode/Tab 정보를 필요로 한다.
-            // - IconKey가 없는 패널(예: Preview Viewport)도 기존 Level Editor 패널과 같은 tab chrome을 써야 한다.
-            // - bOpen이 없는 임시 OpenPtr은 Flush 시점에 수명이 끝나므로 close button용 VisibleFlag로 넘기지 않는다.
             const char *DecorationIconKey = (Desc.bDrawTitleIcon && Desc.IconKey) ? Desc.IconKey : nullptr;
-            bool *DecorationVisibleFlag = (Desc.bClosable && Desc.bOpen) ? Desc.bOpen : nullptr;
-            EditorPanelTitleUtils::QueuePanelDecoration(DecorationIconKey, DecorationVisibleFlag);
+            EditorPanelTitleUtils::QueuePanelDecoration(DecorationIconKey, nullptr);
 
             if (Desc.bApplyContentTopInset)
             {
@@ -89,6 +120,24 @@ class FEditorPanel
 
     static void End()
     {
+        std::vector<FBeginState> &Stack = GetBeginStateStack();
+        if (Stack.empty())
+        {
+            return;
+        }
+
+        const FBeginState BeginState = Stack.back();
+        Stack.pop_back();
+
+        if (!BeginState.bDidBeginWindow)
+        {
+            return;
+        }
+
+        if (BeginState.bPushedStyle)
+        {
+            EditorPanelTitleUtils::PopEditorPanelStyle();
+        }
         ImGui::End();
     }
 };

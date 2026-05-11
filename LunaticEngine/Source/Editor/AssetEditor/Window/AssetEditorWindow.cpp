@@ -6,13 +6,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 #include "ImGui/imgui.h"
-
-namespace
-{
-    constexpr ImVec4 AssetEditorSurface = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
-    constexpr ImVec4 AssetEditorFrameBg = ImVec4(5.0f / 255.0f, 5.0f / 255.0f, 5.0f / 255.0f, 1.0f);
-    constexpr ImVec4 AssetEditorBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
-} // namespace
+#include "Common/UI/EditorPanelTitleUtils.h"
 
 void FAssetEditorWindow::Initialize(UEditorEngine *InEditorEngine, FAssetEditorManager *InOwnerManager)
 {
@@ -112,11 +106,11 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
     //   Skeleton Tree / Details를 각각 독립 panel로 렌더링한다.
     if (TabManager.HasOpenTabs())
     {
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, AssetEditorFrameBg);
-        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, AssetEditorSurface);
-        ImGui::PushStyleColor(ImGuiCol_Border, AssetEditorBorder);
+        // Asset Editor도 Level Editor와 같은 panel chrome / surface 색을 사용한다.
+        // 개별 패널의 body 색은 FEditorPanel::Begin()에서 공통으로 적용한다.
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::ColorConvertU32ToFloat4(EditorPanelTitleUtils::GetDockTabBarGapColor()));
         TabManager.Render(DeltaTime, DockspaceId);
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor();
 
         bCapturingInput = TabManager.IsCapturingInput();
         return;
