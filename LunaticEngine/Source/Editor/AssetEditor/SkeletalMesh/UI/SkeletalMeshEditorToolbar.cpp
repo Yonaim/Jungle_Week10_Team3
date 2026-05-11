@@ -204,7 +204,7 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
         ImGui::DragFloat("FOV", &State.CameraFOV, 0.5f, 1.0f, 170.0f, "%.1f");
         ImGui::SetNextItemWidth(150.0f);
         ImGui::DragFloat("Ortho Width", &State.CameraOrthoWidth, 0.1f, 0.1f, 100000.0f, "%.1f");
-        ImGui::Separator();
+        FEditorViewportToolbar::DrawPopupSeparator(4.0f, 6.0f);
         if (ImGui::MenuItem("Frame Selected"))
         {
             State.bFramePreviewRequested = true;
@@ -298,7 +298,7 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
         DrawLayoutItem("Two Panes - Horizontal", ESkeletalMeshPreviewLayout::TwoPanesHorizontal);
         DrawLayoutItem("Two Panes - Vertical", ESkeletalMeshPreviewLayout::TwoPanesVertical);
         DrawLayoutItem("Four Panes 2 x 2", ESkeletalMeshPreviewLayout::FourPanes2x2);
-        ImGui::Separator();
+        FEditorViewportToolbar::DrawPopupSeparator(4.0f, 6.0f);
         ImGui::TextDisabled("Skeletal Mesh Editor viewport still renders a single pane until split layout is wired.");
     };
 

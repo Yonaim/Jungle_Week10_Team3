@@ -20,6 +20,8 @@ inline constexpr ImVec4 PopupMenuItemColor = ImVec4(0.18f, 0.18f, 0.20f, 0.96f);
 inline constexpr ImVec4 PopupMenuItemHoverColor = UIAccentColor::Value;
 inline constexpr ImVec4 PopupMenuItemActiveColor = UIAccentColor::Value;
 inline constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
+inline constexpr ImVec4 PopupSectionLineColor = PopupSectionHeaderTextColor;
+inline constexpr float PopupSectionLineThickness = 1.0f;
 
 inline constexpr ImVec4 HeaderButtonColor = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
 inline constexpr ImVec4 HeaderButtonHoveredColor = ImVec4(0.24f, 0.24f, 0.24f, 1.0f);
@@ -69,21 +71,30 @@ inline void DrawTitleTextWithLine(const char *Label)
         return;
     }
 
-    const ImVec2 TextStart = ImGui::GetCursorScreenPos();
+    ImDrawList *DrawList = ImGui::GetWindowDrawList();
+
+    const ImVec2 Cursor = ImGui::GetCursorScreenPos();
     const ImVec2 TextSize = ImGui::CalcTextSize(Label);
-    const ImU32  LineColor = ImGui::GetColorU32(PopupSectionHeaderTextColor);
+    const ImU32  TextColor = ImGui::GetColorU32(PopupSectionHeaderTextColor);
+    const ImU32  LineColor = ImGui::GetColorU32(PopupSectionLineColor);
 
-    ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
-    ImGui::TextUnformatted(Label);
-    ImGui::PopStyleColor();
+    // Text()가 가진 baseline/line-height 차이 때문에 선과 글자가 살짝 어긋나 보일 수 있다.
+    // 직접 AddText/AddLine으로 그려서 둘 다 같은 CenterY를 기준으로 정렬한다.
+    const float HeaderHeight = std::max(TextSize.y, ImGui::GetTextLineHeight());
+    const float CenterY = Cursor.y + HeaderHeight * 0.5f;
+    const float TextY = CenterY - TextSize.y * 0.5f;
 
-    const float LineStartX = TextStart.x + TextSize.x + 8.0f;
+    DrawList->AddText(ImVec2(Cursor.x, TextY), TextColor, Label);
+
+    const float LineStartX = Cursor.x + TextSize.x + 8.0f;
     const float LineEndX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-    const float LineY = TextStart.y + TextSize.y * 0.5f + 0.5f;
+    const float LineY = CenterY + 0.5f;
     if (LineEndX > LineStartX)
     {
-        ImGui::GetWindowDrawList()->AddLine(ImVec2(LineStartX, LineY), ImVec2(LineEndX, LineY), LineColor, 1.0f);
+        DrawList->AddLine(ImVec2(LineStartX, LineY), ImVec2(LineEndX, LineY), LineColor, PopupSectionLineThickness);
     }
+
+    ImGui::Dummy(ImVec2(0.0f, HeaderHeight));
 }
 
 inline void DrawPopupSectionHeader(const char *Label)
@@ -92,12 +103,35 @@ inline void DrawPopupSectionHeader(const char *Label)
     ImGui::Dummy(ImVec2(0.0f, 3.0f));
 }
 
+inline void DrawPopupSeparator(float SpacingBefore = 4.0f, float SpacingAfter = 6.0f)
+{
+    if (SpacingBefore > 0.0f)
+    {
+        ImGui::Dummy(ImVec2(0.0f, SpacingBefore));
+    }
+
+    const ImVec2 Cursor = ImGui::GetCursorScreenPos();
+    const float LineStartX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMin().x;
+    const float LineEndX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    const float LineY = Cursor.y + 0.5f;
+    if (LineEndX > LineStartX)
+    {
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(LineStartX, LineY), ImVec2(LineEndX, LineY),
+                                            ImGui::GetColorU32(PopupSectionLineColor), PopupSectionLineThickness);
+    }
+
+    ImGui::Dummy(ImVec2(0.0f, PopupSectionLineThickness + SpacingAfter));
+}
+
 inline void PushPopupWindowStyle()
 {
     ImGui::PushStyleColor(ImGuiCol_PopupBg, PopupBg);
     ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+    ImGui::PushStyleColor(ImGuiCol_Separator, PopupSectionLineColor);
+    ImGui::PushStyleColor(ImGuiCol_SeparatorHovered, PopupSectionLineColor);
+    ImGui::PushStyleColor(ImGuiCol_SeparatorActive, PopupSectionLineColor);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7.0f, 5.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
@@ -108,7 +142,7 @@ inline void PushPopupWindowStyle()
 inline void PopPopupWindowStyle()
 {
     ImGui::PopStyleVar(5);
-    ImGui::PopStyleColor(4);
+    ImGui::PopStyleColor(7);
 }
 
 inline void PushHeaderButtonStyle(float FrameRounding = 6.0f)
@@ -133,11 +167,14 @@ inline void PushPopupMenuStyle()
     ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+    ImGui::PushStyleColor(ImGuiCol_Separator, PopupSectionLineColor);
+    ImGui::PushStyleColor(ImGuiCol_SeparatorHovered, PopupSectionLineColor);
+    ImGui::PushStyleColor(ImGuiCol_SeparatorActive, PopupSectionLineColor);
 }
 
 inline void PopPopupMenuStyle()
 {
-    ImGui::PopStyleColor(4);
+    ImGui::PopStyleColor(7);
 }
 
 inline bool DrawSearchInputWithIcon(const char *Id, const char *Hint, char *Buffer, size_t BufferSize, float Width)

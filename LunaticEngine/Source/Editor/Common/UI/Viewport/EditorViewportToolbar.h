@@ -318,6 +318,11 @@ class FEditorViewportToolbar
         FEditorUIStyle::DrawPopupSectionHeader(Label);
     }
 
+    static void DrawPopupSeparator(float SpacingBefore = 4.0f, float SpacingAfter = 6.0f)
+    {
+        FEditorUIStyle::DrawPopupSeparator(SpacingBefore, SpacingAfter);
+    }
+
     static bool DrawIconSelectable(const char *Id, EIcon Icon, const char *Label, bool bSelected, float Width = 240.0f)
     {
         ImGui::PushID(Id);

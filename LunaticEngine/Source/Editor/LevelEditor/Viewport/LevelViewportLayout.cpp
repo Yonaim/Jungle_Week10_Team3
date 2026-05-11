@@ -844,9 +844,7 @@ namespace
         ImGui::SameLine(0.0f, 8.0f);
         DrawSnapTabButton("##SnapTabScale", EToolbarIcon::ScaleSnap, "Scale", ESnapPopupType::Scale, ScaleWidth);
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+        FEditorUIStyle::DrawPopupSeparator(4.0f, 6.0f);
 
         switch (GSnapPopupTab[SlotIndex])
         {

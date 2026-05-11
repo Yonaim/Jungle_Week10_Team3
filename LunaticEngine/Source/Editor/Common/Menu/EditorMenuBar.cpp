@@ -118,7 +118,7 @@ void FEditorMenuBar::Render(const FEditorMenuBarContext &Context)
             {
                 if (ImGui::GetCursorPosY() > 0.0f)
                 {
-                    ImGui::Separator();
+                    FEditorUIStyle::DrawPopupSeparator(4.0f, 6.0f);
                 }
                 if (ImGui::MenuItem("Project Settings...") && Context.OnOpenProjectSettings)
                 {
