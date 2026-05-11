@@ -63,7 +63,11 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void ResetPreviewCamera();
     void FramePreviewMesh();
     void TickViewportInput(float DeltaTime);
+    void CycleGizmoModeFromShortcut();
     void RenderFallbackOverlay();
+    void ApplyEditorStateToViewport();
+    void SyncRenderOptionsFromState();
+    void ApplyViewportTypeToCamera();
 
 	void RenderSkeletonDebugOverlay();
     void SyncGizmoTargetFromSelection();
@@ -80,7 +84,11 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
         FPrimitiveSceneProxy *PreviewProxy = nullptr;
     UGizmoComponent *PreviewGizmoComponent = nullptr;
 
-    FViewportRenderOptions RenderOptions;    int32 GizmoTargetBoneIndex = -1;
+    FViewportRenderOptions RenderOptions;
+    int32 GizmoTargetBoneIndex = -1;
+
+    ESkeletalMeshPreviewViewportType LastAppliedViewportType = ESkeletalMeshPreviewViewportType::Perspective;
+    bool bHasAppliedViewportType = false;
 
     FVector OrbitTarget = FVector::ZeroVector;
     float OrbitDistance = 6.0f;

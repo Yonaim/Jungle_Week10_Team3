@@ -46,6 +46,7 @@ bool IsLegacyImGuiKeyDown(int Key)
         case 'D': return ImGuiKey_D;
         case 'E': return ImGuiKey_E;
         case 'F': return ImGuiKey_F;
+        case ' ': return ImGuiKey_Space;
         case 'Q': return ImGuiKey_Q;
         case 'S': return ImGuiKey_S;
         case 'W': return ImGuiKey_W;
@@ -64,6 +65,7 @@ bool IsLegacyImGuiKeyPressed(int Key)
         case 'D': return ImGuiKey_D;
         case 'E': return ImGuiKey_E;
         case 'F': return ImGuiKey_F;
+        case ' ': return ImGuiKey_Space;
         case 'Q': return ImGuiKey_Q;
         case 'S': return ImGuiKey_S;
         case 'W': return ImGuiKey_W;
@@ -86,6 +88,54 @@ FVector MakeOrbitCameraLocation(const FVector &Target, float Distance, float Yaw
 
     const FVector Forward(CP * CY, CP * SY, SP);
     return Target - Forward * Distance;
+}
+
+EViewMode ToRuntimeViewMode(ESkeletalMeshPreviewViewMode Mode)
+{
+    switch (Mode)
+    {
+    case ESkeletalMeshPreviewViewMode::Unlit: return EViewMode::Unlit;
+    case ESkeletalMeshPreviewViewMode::LitGouraud: return EViewMode::Lit_Gouraud;
+    case ESkeletalMeshPreviewViewMode::LitLambert: return EViewMode::Lit_Lambert;
+    case ESkeletalMeshPreviewViewMode::Wireframe: return EViewMode::Wireframe;
+    case ESkeletalMeshPreviewViewMode::SceneDepth: return EViewMode::SceneDepth;
+    case ESkeletalMeshPreviewViewMode::WorldNormal: return EViewMode::WorldNormal;
+    case ESkeletalMeshPreviewViewMode::LightCulling: return EViewMode::LightCulling;
+    case ESkeletalMeshPreviewViewMode::Lit:
+    default: return EViewMode::Lit_Phong;
+    }
+}
+
+ELevelViewportType ToRuntimeViewportType(ESkeletalMeshPreviewViewportType Type)
+{
+    switch (Type)
+    {
+    case ESkeletalMeshPreviewViewportType::Top: return ELevelViewportType::Top;
+    case ESkeletalMeshPreviewViewportType::Bottom: return ELevelViewportType::Bottom;
+    case ESkeletalMeshPreviewViewportType::Left: return ELevelViewportType::Left;
+    case ESkeletalMeshPreviewViewportType::Right: return ELevelViewportType::Right;
+    case ESkeletalMeshPreviewViewportType::Front: return ELevelViewportType::Front;
+    case ESkeletalMeshPreviewViewportType::Back: return ELevelViewportType::Back;
+    case ESkeletalMeshPreviewViewportType::FreeOrtho: return ELevelViewportType::FreeOrthographic;
+    case ESkeletalMeshPreviewViewportType::Perspective:
+    default: return ELevelViewportType::Perspective;
+    }
+}
+
+FRotator GetFixedViewportRotation(ESkeletalMeshPreviewViewportType Type)
+{
+    switch (Type)
+    {
+    case ESkeletalMeshPreviewViewportType::Top: return FRotator(90.0f, 0.0f, 0.0f);
+    case ESkeletalMeshPreviewViewportType::Bottom: return FRotator(-90.0f, 0.0f, 0.0f);
+    case ESkeletalMeshPreviewViewportType::Left: return FRotator(0.0f, 90.0f, 0.0f);
+    case ESkeletalMeshPreviewViewportType::Right: return FRotator(0.0f, -90.0f, 0.0f);
+    case ESkeletalMeshPreviewViewportType::Front: return FRotator(0.0f, 180.0f, 0.0f);
+    case ESkeletalMeshPreviewViewportType::Back: return FRotator(0.0f, 0.0f, 0.0f);
+    case ESkeletalMeshPreviewViewportType::FreeOrtho:
+    case ESkeletalMeshPreviewViewportType::Perspective:
+    default: return FRotator::ZeroRotator;
+    }
 }
 } // namespace
 
@@ -206,6 +256,100 @@ void FSkeletalMeshPreviewViewportClient::RebuildPreviewProxy()
     PreviewProxy = PreviewScene.AddPrimitive(PreviewComponent);
 }
 
+
+void FSkeletalMeshPreviewViewportClient::ApplyEditorStateToViewport()
+{
+    SyncRenderOptionsFromState();
+    ApplyViewportTypeToCamera();
+
+    if (PreviewGizmoComponent && State)
+    {
+        PreviewGizmoComponent->SetSnapSettings(
+            State->bEnableTranslationSnap, State->TranslationSnapSize,
+            State->bEnableRotationSnap, State->RotationSnapSize,
+            State->bEnableScaleSnap, State->ScaleSnapSize);
+    }
+}
+
+void FSkeletalMeshPreviewViewportClient::SyncRenderOptionsFromState()
+{
+    if (!State)
+    {
+        return;
+    }
+
+    RenderOptions.ViewMode = ToRuntimeViewMode(State->PreviewViewMode);
+    RenderOptions.ViewportType = ToRuntimeViewportType(State->PreviewViewportType);
+
+    RenderOptions.ShowFlags.bPrimitives = State->bShowPrimitives;
+    RenderOptions.ShowFlags.bGrid = State->bShowGrid;
+    RenderOptions.ShowFlags.bWorldAxis = State->bShowWorldAxis;
+    RenderOptions.ShowFlags.bGizmo = State->bShowGizmo;
+    RenderOptions.ShowFlags.bBillboardText = State->bShowBillboardText;
+    RenderOptions.ShowFlags.bSkeletalMesh = State->bShowSkeletalMesh;
+    RenderOptions.ShowFlags.bSceneBVH = State->bShowSceneBVH;
+    RenderOptions.ShowFlags.bOctree = State->bShowOctree;
+    RenderOptions.ShowFlags.bWorldBound = State->bShowWorldBound;
+    RenderOptions.ShowFlags.bLightVisualization = State->bShowLightVisualization;
+    RenderOptions.ShowFlags.bViewLightCulling = State->PreviewViewMode == ESkeletalMeshPreviewViewMode::LightCulling;
+
+    RenderOptions.GridSpacing = State->GridSpacing;
+    RenderOptions.GridHalfLineCount = State->GridHalfLineCount;
+    RenderOptions.GridRenderSettings.LineThickness = State->GridLineThickness;
+    RenderOptions.GridRenderSettings.MajorLineThickness = State->GridMajorLineThickness;
+    RenderOptions.GridRenderSettings.MajorLineInterval = State->GridMajorLineInterval;
+    RenderOptions.GridRenderSettings.MinorIntensity = State->GridMinorIntensity;
+    RenderOptions.GridRenderSettings.MajorIntensity = State->GridMajorIntensity;
+    RenderOptions.GridRenderSettings.AxisThickness = State->AxisThickness;
+    RenderOptions.GridRenderSettings.AxisIntensity = State->AxisIntensity;
+    RenderOptions.DebugLineThickness = State->DebugLineThickness;
+    RenderOptions.ActorHelperBillboardScale = State->BillboardIconScale;
+    RenderOptions.CameraMoveSensitivity = State->CameraSpeed;
+}
+
+void FSkeletalMeshPreviewViewportClient::ApplyViewportTypeToCamera()
+{
+    if (!State)
+    {
+        return;
+    }
+
+    const bool bViewportTypeChanged = !bHasAppliedViewportType || LastAppliedViewportType != State->PreviewViewportType;
+    bHasAppliedViewportType = true;
+    LastAppliedViewportType = State->PreviewViewportType;
+
+    constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
+    ViewCamera.SetFOV(State->CameraFOV * DegToRad);
+    ViewCamera.SetOrthoWidth((std::max)(0.1f, State->CameraOrthoWidth));
+
+    const bool bOrtho = State->PreviewViewportType != ESkeletalMeshPreviewViewportType::Perspective;
+    ViewCamera.SetOrthographic(bOrtho);
+
+    if (!bOrtho)
+    {
+        return;
+    }
+
+    if (State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho)
+    {
+        // Free Ortho는 현재 orbit 회전은 유지하고 projection만 ortho로 바꾼다.
+        return;
+    }
+
+    const FRotator Rotation = GetFixedViewportRotation(State->PreviewViewportType);
+    ViewCamera.SetWorldRotation(Rotation);
+    const FVector Forward = ViewCamera.GetForwardVector();
+    const float Distance = (std::max)(1.0f, OrbitDistance);
+    ViewCamera.SetWorldLocation(OrbitTarget - Forward * Distance);
+
+    if (bViewportTypeChanged)
+    {
+        // 고정 ortho 전환 시 기존 orbit 각도와 상관없이 대상 중심을 유지한다.
+        State->CameraOrthoWidth = (std::max)(State->CameraOrthoWidth, OrbitDistance * 2.0f);
+        ViewCamera.SetOrthoWidth(State->CameraOrthoWidth);
+    }
+}
+
 void FSkeletalMeshPreviewViewportClient::ResetPreviewCamera()
 {
     OrbitTarget = FVector::ZeroVector;
@@ -260,6 +404,7 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
 void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 {
     EnsurePreviewObjects();
+    ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
     TickViewportInput(DeltaTime);
 
@@ -285,6 +430,35 @@ const char *FSkeletalMeshPreviewViewportClient::GetViewportTooltipBarText() cons
     return nullptr;
 }
 
+
+void FSkeletalMeshPreviewViewportClient::CycleGizmoModeFromShortcut()
+{
+    if (!State)
+    {
+        return;
+    }
+
+    switch (State->GizmoMode)
+    {
+    case EGizmoMode::Translate:
+        State->GizmoMode = EGizmoMode::Rotate;
+        break;
+    case EGizmoMode::Rotate:
+        State->GizmoMode = EGizmoMode::Scale;
+        break;
+    case EGizmoMode::Scale:
+    default:
+        State->GizmoMode = EGizmoMode::Translate;
+        break;
+    }
+
+    GizmoManager.SetMode(State->GizmoMode);
+    if (PreviewGizmoComponent)
+    {
+        PreviewGizmoComponent->UpdateGizmoMode(State->GizmoMode);
+    }
+}
+
 void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
 {
     ImGuiIO &IO = ImGui::GetIO();
@@ -302,41 +476,28 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
     // - Wheel: zoom
     // - RMB + WASD/QE: orbit target 이동
     // - F: frame mesh
+    // - Space: gizmo mode cycle
     if (IsLegacyImGuiKeyPressed('F'))
     {
         FramePreviewMesh();
     }
 
-    if ((IsHovered() || GizmoManager.IsDragging()) && Viewport)
+    if (IsLegacyImGuiKeyPressed(' '))
     {
-        const float LocalMouseX = IO.MousePos.x - ViewportScreenRect.X;
-        const float LocalMouseY = IO.MousePos.y - ViewportScreenRect.Y;
-        const float VPWidth = static_cast<float>(Viewport->GetWidth());
-        const float VPHeight = static_cast<float>(Viewport->GetHeight());
-        const FRay Ray = ViewCamera.DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
-
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left, false))
-        {
-            GizmoManager.BeginDrag(Ray);
-        }
-        else if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && GizmoManager.IsDragging())
-        {
-            GizmoManager.UpdateDrag(Ray);
-            return;
-        }
-        else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && GizmoManager.IsDragging())
-        {
-            GizmoManager.EndDrag();
-            return;
-        }
+        CycleGizmoModeFromShortcut();
     }
 
+    // 김형도 담당 예정:
+    // Bone gizmo의 실제 피킹/드래그/pose transform 적용은 Skeleton/Pose/Bone Gizmo 파트에서 구현한다.
+    // 김연하 담당 범위에서는 선택한 bone 위치에 UGizmoComponent를 렌더링하고,
+    // toolbar/shortcut으로 표시 모드만 바꾸는 데서 멈춘다.
+    // 따라서 SkeletalMeshEditor preview에서는 BeginDrag / UpdateDrag / EndDrag를 호출하지 않는다.
     if (GizmoManager.IsDragging())
     {
-        return;
+        GizmoManager.CancelDrag();
     }
 
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && (!State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho))
     {
         const ImVec2 Delta = IO.MouseDelta;
         OrbitYaw += Delta.x * 0.25f;
@@ -390,15 +551,20 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
             const float MoveLength = std::sqrt(Move.X * Move.X + Move.Y * Move.Y + Move.Z * Move.Z);
             if (MoveLength > 0.0001f)
             {
-                const float MoveSpeed = (std::max)(0.5f, OrbitDistance) * 1.5f;
+                const float CameraSpeed = State ? State->CameraSpeed : 5.0f;
+                const float MoveSpeed = (std::max)(0.5f, OrbitDistance) * (std::max)(0.1f, CameraSpeed);
                 OrbitTarget += Move * ((MoveSpeed * DeltaTime) / MoveLength);
             }
         }
     }
 
-    const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-    ViewCamera.SetWorldLocation(CameraLocation);
-    ViewCamera.LookAt(OrbitTarget);
+    if (!State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho)
+    {
+        const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+        ViewCamera.SetWorldLocation(CameraLocation);
+        ViewCamera.LookAt(OrbitTarget);
+    }
+    ApplyViewportTypeToCamera();
 }
 
 bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRenderRequest &OutRequest)
@@ -410,6 +576,7 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
         return false;
     }
 
+    ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
 
     OutRequest.Viewport = Viewport;
@@ -417,7 +584,7 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     OutRequest.Scene = &PreviewScene.GetScene();
     OutRequest.RenderOptions = RenderOptions;
     OutRequest.CursorProvider = this;
-    OutRequest.bRenderGrid = State ? State->bShowGrid : true;
+    OutRequest.bRenderGrid = RenderOptions.ShowFlags.bGrid;
     OutRequest.bEnableGPUOcclusion = false;
     OutRequest.bAllowLevelDebugVisuals = false;
     return true;
@@ -571,7 +738,7 @@ void FSkeletalMeshPreviewViewportClient::RenderSkeletonDebugOverlay()
 
 void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
 {
-    if (!State || !PreviewComponent || !State->bEnablePoseEditMode)
+    if (!State || !PreviewComponent || !State->bShowGizmo)
     {
         GizmoManager.ClearTarget();
         GizmoTargetBoneIndex = -1;
@@ -588,6 +755,13 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
 
     GizmoManager.SetMode(State->GizmoMode);
     GizmoManager.SetSpace(State->GizmoSpace);
+    if (PreviewGizmoComponent)
+    {
+        PreviewGizmoComponent->SetSnapSettings(
+            State->bEnableTranslationSnap, State->TranslationSnapSize,
+            State->bEnableRotationSnap, State->RotationSnapSize,
+            State->bEnableScaleSnap, State->ScaleSnapSize);
+    }
 
     if (GizmoTargetBoneIndex == SelectedBoneIndex && GizmoManager.HasValidTarget())
     {
@@ -596,6 +770,10 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
     }
 
     GizmoTargetBoneIndex = SelectedBoneIndex;
+
+    // 김형도 담당 예정:
+    // 이 target은 현재 "선택 bone 위치에 기즈모를 렌더하기 위한 transform source"로만 사용한다.
+    // 실제 SetWorldTransform 기반 pose edit / drag 적용은 Bone Gizmo 담당 파트에서 연결한다.
     GizmoManager.SetTarget(std::make_shared<FBoneTransformGizmoTarget>(PreviewComponent, SelectedBoneIndex));
 }
 
