@@ -113,7 +113,7 @@ bool IsSubPath(const std::filesystem::path &parent, const std::filesystem::path 
             return false;
     }
 
-    return pIt == p.end(); // parent ?앷퉴吏 ??留욎븯?쇰㈃ ?ы븿??
+    return pIt == p.end(); // If all parent path elements match, treat child as a descendant.
 }
 std::filesystem::path GetContentBrowserVirtualRoot()
 {

@@ -38,7 +38,7 @@ void FLevelStatPanel::Render(float DeltaTime)
         return;
     }
 
-    // Pause / Resume 踰꾪듉
+    // Pause / resume controls
     if (bPaused)
     {
         if (ImGui::Button("Resume"))
@@ -50,7 +50,7 @@ void FLevelStatPanel::Render(float DeltaTime)
         {
             std::ostringstream oss;
             auto FormatTable = [&](const char *Title, const TArray<FStatEntry> &Entries) {
-                // 移댄뀒怨좊━ 湲곗? ?뺣젹
+                // Sort by category first.
                 TArray<FStatEntry> Sorted = Entries;
                 std::sort(Sorted.begin(), Sorted.end(), [](const FStatEntry &A, const FStatEntry &B) {
                     int cmp = strcmp(A.Category, B.Category);
@@ -96,7 +96,7 @@ void FLevelStatPanel::Render(float DeltaTime)
                 FLODStats::GetLOD2(), FLODStats::GetLOD3());
     ImGui::Separator();
 
-    // ?⑥? 怨듦컙??CPU/GPU ?뚯씠釉붿씠 諛섏뵫 ?ъ슜
+    // Split the remaining height evenly between the CPU and GPU tables.
     float AvailableHeight = ImGui::GetContentRegionAvail().y;
     float HalfHeight = (AvailableHeight - ImGui::GetFrameHeightWithSpacing() * 2.0f) * 0.5f;
     if (HalfHeight < 100.0f)
@@ -132,7 +132,7 @@ void FLevelStatPanel::RenderStatTable(const char *TableID, const TArray<FStatEnt
 
     TArray<FStatEntry> Entries = Source;
 
-    // Category ?곗꽑 ?뺣젹 ?? ?좏깮??而щ읆?쇰줈 2李??뺣젹
+    // Sort by category first, then by the currently selected column.
     auto SortPredicate = [&](const FStatEntry &A, const FStatEntry &B) -> bool {
         int catCmp = strcmp(A.Category, B.Category);
         if (catCmp != 0)
@@ -210,7 +210,7 @@ void FLevelStatPanel::RenderStatTable(const char *TableID, const TArray<FStatEnt
             if (E.CallCount == 0)
                 continue;
 
-            // 移댄뀒怨좊━ 援щ텇??
+            // Category separator row
             if (!LastCategory || strcmp(LastCategory, E.Category) != 0)
             {
                 LastCategory = E.Category;

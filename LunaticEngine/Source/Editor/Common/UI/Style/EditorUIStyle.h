@@ -80,7 +80,7 @@ inline void DrawTitleTextWithLine(const char *Label)
 
     // Text()가 가진 baseline/line-height 차이 때문에 선과 글자가 살짝 어긋나 보일 수 있다.
     // 직접 AddText/AddLine으로 그려서 둘 다 같은 CenterY를 기준으로 정렬한다.
-    const float HeaderHeight = std::max(TextSize.y, ImGui::GetTextLineHeight());
+    const float HeaderHeight = (std::max)(TextSize.y, ImGui::GetTextLineHeight());
     const float CenterY = Cursor.y + HeaderHeight * 0.5f;
     const float TextY = CenterY - TextSize.y * 0.5f;
 
