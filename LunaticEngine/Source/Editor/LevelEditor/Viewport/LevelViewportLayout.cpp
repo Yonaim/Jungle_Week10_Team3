@@ -2016,7 +2016,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
     RenderViewportPlaceActorPopup();
 
-    ImGui::End();
+    FEditorPanel::End();
     ImGui::PopStyleVar();
 }
 

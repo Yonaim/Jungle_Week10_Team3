@@ -476,7 +476,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     {
         ImGui::EndDisabled();
     }
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FLevelOutlinerPanel::SelectAllVisibleActors()

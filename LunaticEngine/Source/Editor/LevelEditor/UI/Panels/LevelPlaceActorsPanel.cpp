@@ -206,7 +206,7 @@ void FLevelPlaceActorsPanel::Render(float DeltaTime)
 
     ImGui::PopStyleColor(3);
     ImGui::PopStyleVar(3);
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FLevelPlaceActorsPanel::RenderCategorySidebar()
