@@ -45,6 +45,8 @@ public:
 	void SetCursorClipRect(const FRect& InViewportScreenRect);
 	void SetDrivingCamera(UCameraComponent* InCamera) { Possess(InCamera); }
 	UCameraComponent* GetDrivingCamera() const;
+	void SetSpectatorCameraMovementEnabled(bool bEnabled);
+	bool IsSpectatorCameraMovementEnabled() const { return bSpectatorCameraMovementEnabled; }
 	bool TryGetCursorViewportPosition(float& OutViewportX, float& OutViewportY) const;
 
 	void SetPIEPossessedInputEnabled(bool bEnabled);
@@ -79,6 +81,7 @@ private:
 	bool bHasCursorClipRect = false;
 	bool bPIEPossessedInputEnabled = false;
 	bool bCursorCaptured = false;
+	bool bSpectatorCameraMovementEnabled = false;
 
 	// Enhanced Input
 	FEnhancedInputManager EnhancedInputManager;

@@ -1,4 +1,4 @@
-#include "LevelEditor/PIE/LevelPIEManager.h"
+﻿#include "LevelEditor/PIE/LevelPIEManager.h"
 
 #include "Audio/AudioManager.h"
 #include "Component/CameraComponent.h"
@@ -9,6 +9,8 @@
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/AActor.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/PawnActor.h"
 #include "GameFramework/World.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
@@ -114,6 +116,31 @@ namespace
 
         World->SetActiveCamera(Cam);
         return Cam;
+    }
+
+    bool HasGameplayCamera(UWorld* World)
+    {
+        if (!World)
+        {
+            return false;
+        }
+
+        AGameModeBase* GameMode = World->GetAuthGameMode();
+        APawnActor* SpawnedPawn = GameMode ? GameMode->GetSpawnedPawn() : nullptr;
+        if (!SpawnedPawn)
+        {
+            return false;
+        }
+
+        for (UActorComponent* Comp : SpawnedPawn->GetComponents())
+        {
+            if (Cast<UCameraComponent>(Comp))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -294,6 +321,7 @@ bool FLevelPIEManager::LoadScene(const FString& InSceneReference)
         {
             PIEViewportClient->Possess(GameCamera);
         }
+        PIEViewportClient->SetSpectatorCameraMovementEnabled(!HasGameplayCamera(Context->World));
     }
 
     FNotificationManager::Get().AddNotification("Loaded scene: " + InSceneReference, ENotificationType::Success, 2.0f);
@@ -501,15 +529,14 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
         Pipeline->OnSceneCleared();
     }
 
-    UCameraComponent* PlaceholderCamera = nullptr;
-    if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
-    {
-        if (UCameraComponent* VCCamera = ActiveVC->GetCamera())
-        {
-            PlaceholderCamera = VCCamera;
-            PIEWorld->SetActiveCamera(VCCamera);
-        }
-    }
+    FPerspectiveCameraData FallbackCameraData;
+    FallbackCameraData.Location = Info.SavedViewportCamera.Location;
+    FallbackCameraData.Rotation = Info.SavedViewportCamera.Rotation.ToVector();
+    FallbackCameraData.FOV = Info.SavedViewportCamera.CameraState.FOV;
+    FallbackCameraData.NearClip = Info.SavedViewportCamera.CameraState.NearZ;
+    FallbackCameraData.FarClip = Info.SavedViewportCamera.CameraState.FarZ;
+    FallbackCameraData.bValid = Info.SavedViewportCamera.bValid;
+    UCameraComponent* PIEFallbackCamera = EnsurePIEActiveCamera(PIEWorld, FallbackCameraData);
 
     EditorEngine->GetSelectionManager().ClearSelection();
     EditorEngine->GetSelectionManager().SetGizmoEnabled(false);
@@ -531,7 +558,6 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
         FViewport* InitialViewport = nullptr;
         if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
         {
-            InitialTargetCamera = ActiveVC->GetCamera() ? ActiveVC->GetCamera() : InitialTargetCamera;
             InitialViewport = ActiveVC->GetViewport();
             PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
         }
@@ -541,11 +567,14 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
 
     PIEWorld->BeginPlay();
 
-    if (PIEWorld->GetActiveCamera() == PlaceholderCamera)
+    if (PIEWorld->GetActiveCamera() == PIEFallbackCamera)
     {
         if (UCameraComponent* SceneCamera = FindFirstCameraComponent(PIEWorld))
         {
-            PIEWorld->SetActiveCamera(SceneCamera);
+            if (SceneCamera != PIEFallbackCamera)
+            {
+                PIEWorld->SetActiveCamera(SceneCamera);
+            }
         }
     }
 
@@ -555,6 +584,7 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
         {
             PIEViewportClient->Possess(GameCamera);
         }
+        PIEViewportClient->SetSpectatorCameraMovementEnabled(!HasGameplayCamera(PIEWorld));
     }
 }
 
@@ -658,9 +688,15 @@ void FLevelPIEManager::SyncGameViewportPIEControlState(bool bPossessedMode)
     }
 
     PIEViewportClient->SetPIEPossessedInputEnabled(bPossessedMode);
+    PIEViewportClient->SetSpectatorCameraMovementEnabled(false);
     if (!bPossessedMode)
     {
         return;
+    }
+
+    if (!IsScoreSavePopupOpen())
+    {
+        FInputManager::Get().SetGuiCaptureOverride(false, false, false);
     }
 
     if (EditorEngine->GetWindow())
@@ -676,6 +712,7 @@ void FLevelPIEManager::SyncGameViewportPIEControlState(bool bPossessedMode)
 
     if (UWorld* World = EditorEngine->GetWorld())
     {
+        PIEViewportClient->SetSpectatorCameraMovementEnabled(!HasGameplayCamera(World));
         if (UCameraComponent* GameCamera = World->GetActiveCamera())
         {
             PIEViewportClient->Possess(GameCamera);

@@ -25,6 +25,7 @@ void UGameViewportClient::OnBeginPIE(UCameraComponent* InitialTarget, FViewport*
 void UGameViewportClient::OnEndPIE()
 {
 	SetPossessed(false);
+	SetSpectatorCameraMovementEnabled(false);
 	UnPossess();
 	ResetInputState();
 	bHasCursorClipRect = false;
@@ -60,6 +61,17 @@ bool UGameViewportClient::ProcessPIEInput(float DeltaTime)
 void UGameViewportClient::SetPIEPossessedInputEnabled(bool bEnabled)
 {
 	SetPossessed(bEnabled);
+}
+
+void UGameViewportClient::SetSpectatorCameraMovementEnabled(bool bEnabled)
+{
+	if (bSpectatorCameraMovementEnabled == bEnabled)
+	{
+		return;
+	}
+
+	bSpectatorCameraMovementEnabled = bEnabled;
+	ResetInputState();
 }
 
 UCameraComponent* UGameViewportClient::GetDrivingCamera() const
@@ -191,8 +203,8 @@ bool UGameViewportClient::Tick(float DeltaTime)
 
 	bool bChanged = false;
 
-	// 본 프로젝트는 마우스 입력을 사용하지 않으므로 항상 커서 노출 (캡처/클립 해제)
-	const bool bScriptDrivesCamera = true;
+	// Script-driven game cameras keep ownership of movement. Spectator cameras are moved here.
+	const bool bScriptDrivesCamera = !bSpectatorCameraMovementEnabled;
 	SetCursorCaptured(false);
 
 	if (bPIEPossessedInputEnabled)
@@ -202,7 +214,7 @@ bool UGameViewportClient::Tick(float DeltaTime)
 		LookInputAccumulator = FVector::ZeroVector;
 
 		// Process Enhanced Input
-		EnhancedInputManager.ProcessInput(&FInputManager::Get(), DeltaTime);
+		EnhancedInputManager.ProcessInput(&FInputManager::Get(), DeltaTime, bSpectatorCameraMovementEnabled);
 
 		// Apply Accumulated Input
 		UCameraComponent* TargetCamera = GetDrivingCamera();
