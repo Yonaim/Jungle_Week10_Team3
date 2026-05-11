@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "SkinnedMeshComponent.h"
 
 // USkeletalMeshComponent:
@@ -12,13 +12,14 @@ public:
 	USkeletalMeshComponent() = default;
 	~USkeletalMeshComponent() override = default;
 
-	void SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform);
+	bool SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform);
 	void SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform);
 
 	TArray<FNormalVertex>* GetCPUSkinnedVertices() override { return &SkinBuffer; }
 
 	void SetSkeletalMesh(USkeletalMesh* Mesh);
 	void RefreshSkinningForEditor(float DeltaTime);
+	void RefreshSkinningNow();
 
 	void BeginPlay() override;
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;

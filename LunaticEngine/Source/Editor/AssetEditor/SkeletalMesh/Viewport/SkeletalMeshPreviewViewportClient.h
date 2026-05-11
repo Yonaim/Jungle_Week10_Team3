@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
@@ -8,6 +8,8 @@ class UCameraComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
 class FPrimitiveSceneProxy;
+
+struct ImVec2;
 
 /**
  * SkeletalMesh Editor 전용 Preview Viewport Client.
@@ -56,6 +58,11 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void FramePreviewMesh();
     void TickViewportInput(float DeltaTime);
     void RenderFallbackOverlay();
+
+	// 임시 Bone 회전 테스트용 함수
+	void RenderPoseEditDebugControls();
+	void RenderSkeletonDebugOverlay();
+	bool ProjectWorldToViewport(const FVector& WorldPos, ImVec2& OutScreen) const;
 
   private:
     USkeletalMesh *PreviewMesh = nullptr;

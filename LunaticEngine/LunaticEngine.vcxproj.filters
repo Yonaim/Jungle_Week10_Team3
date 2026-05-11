@@ -474,6 +474,7 @@
     <FxCompile Include="Shaders\UI\SubUV.hlsl">
       <Filter>Shaders\UI</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\Editor\Grid.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Editor\EditorEngine.cpp">
@@ -592,12 +593,6 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.cpp">
       <Filter>Source\Editor\LevelEditor\Viewport</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp">
-      <Filter>Source\Editor\MainFrame</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\MainFrame\EditorMainMenuBar.cpp">
-      <Filter>Source\Editor\MainFrame</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp">
       <Filter>Source\Editor\MainFrame</Filter>
@@ -1299,6 +1294,15 @@
       <Filter>ThirdParty\miniaudio</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp" />
+    <ClCompile Include="Source\Editor\Common\ImGui\EditorImGuiSystem.cpp" />
+    <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
+    <ClCompile Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.cpp" />
+    <ClCompile Include="Source\Engine\Render\Command\EditorGridRenderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\Window\WindowRenderContext.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Editor\EditorEngine.h">
@@ -1450,15 +1454,6 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\Viewport\LevelViewportLayout.h">
       <Filter>Source\Editor\LevelEditor\Viewport</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h">
-      <Filter>Source\Editor\MainFrame</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\MainFrame\EditorMainMenuBar.h">
-      <Filter>Source\Editor\MainFrame</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\MainFrame\EditorMenuProvider.h">
-      <Filter>Source\Editor\MainFrame</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h">
       <Filter>Source\Editor\MainFrame</Filter>
@@ -3512,6 +3507,16 @@
     <ClInclude Include="ThirdParty\sol2\sol\utility\to_string.hpp">
       <Filter>ThirdParty\sol2\sol\utility</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\Common\ImGui\EditorImGuiSystem.h" />
+    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
+    <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
+    <ClInclude Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTab.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\Tabs\AssetEditorTabManager.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h" />
+    <ClInclude Include="Source\Engine\Render\Command\EditorGridRenderer.h" />
+    <ClInclude Include="Source\Engine\Render\Window\WindowRenderContext.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LunaticEngine.rc" />

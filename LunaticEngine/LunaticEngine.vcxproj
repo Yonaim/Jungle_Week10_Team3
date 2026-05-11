@@ -604,6 +604,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Viewport\SkeletalMeshPreviewViewportClient.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
     <ClInclude Include="Source\Editor\AssetEditor\AssetEditorManager.h" />
     <ClInclude Include="Source\Editor\AssetEditor\IAssetEditor.h" />

@@ -29,6 +29,8 @@ public:
 	FTransform GetBoneWorldTransform(int32 BoneIndex) const;
 	FTransform GetBoneWorldTransformByName(const FString& BoneName) const;
 
+	const FTransform* GetBoneLocalTransform(int32 BoneIndex) const;
+
 	int32 GetBoneCount() const;
 
 	// CPU Skinning 결과 정점 버퍼 접근점.

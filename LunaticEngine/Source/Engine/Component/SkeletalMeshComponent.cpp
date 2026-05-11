@@ -1,13 +1,13 @@
-#include "SkeletalMeshComponent.h"
+﻿#include "SkeletalMeshComponent.h"
 #include "Serialization/Archive.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/SkeletalMeshCommon.h"
 
 IMPLEMENT_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 
-void USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
+bool USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
 {
-	CurrentPose.SetLocalTransform(BoneIndex, LocalTransform);
+	return CurrentPose.SetLocalTransform(BoneIndex, LocalTransform);
 }
 
 void USkeletalMeshComponent::SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform)
@@ -79,6 +79,13 @@ void USkeletalMeshComponent::RefreshSkinningForEditor(float DeltaTime)
     FinalizeRenderState();
 }
 
+void USkeletalMeshComponent::RefreshSkinningNow()
+{
+	RebuildComponentSpace();
+	PerformCPUSkinning(CurrentPose);
+	FinalizeRenderState();
+}
+
 void USkeletalMeshComponent::EvaluatePose(float DeltaTime)
 {
 	(void)DeltaTime;
@@ -110,9 +117,9 @@ void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 	const TArray<FSkinWeight>& SkinWeights = MeshAsset->SkinWeights;
 	const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
 	const TArray<FMatrix>& ComponentSpaceTransforms = Pose.ComponentTransforms;
-	const int32 VertexCount = (int32)BindVerts.size();
+	const int32 VertexCount = static_cast<int32>(BindVerts.size());
 
-	if ((int32)SkinBuffer.size() != VertexCount)
+	if (static_cast<int32>(SkinBuffer.size()) != VertexCount)
 	{
 		SkinBuffer.resize(VertexCount);
 	}
