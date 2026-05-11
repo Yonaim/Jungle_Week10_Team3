@@ -470,13 +470,13 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         return;
     }
 
-    // 기존 Level Editor viewport와 비슷하게 Preview Viewport도 최소한의 카메라 입력을 처리한다.
-    // - RMB Drag: orbit rotate
-    // - MMB Drag: pan
-    // - Wheel: zoom
-    // - RMB + WASD/QE: orbit target 이동
-    // - F: frame mesh
-    // - Space: gizmo mode cycle
+    // 기존 Level Editor 뷰포트처럼 Preview Viewport도 최소한의 카메라 입력을 처리한다.
+    // - RMB 드래그: 오비트 회전
+    // - MMB 드래그: 팬 이동
+    // - 휠: 줌
+    // - RMB + WASD/QE: 오비트 타깃 이동
+    // - F: 메시 프레이밍
+    // - Space: 기즈모 모드 순환
     if (IsLegacyImGuiKeyPressed('F'))
     {
         FramePreviewMesh();
@@ -579,8 +579,8 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
 
-    // Make the preview camera use the same render range as the preview scene render target.
-    // The ImGui panel rect is the source of truth for Asset Preview viewport size.
+    // 프리뷰 카메라가 프리뷰 씬 렌더 타깃과 동일한 렌더 범위를 사용하도록 맞춘다.
+    // Asset Preview 뷰포트 크기의 기준값은 ImGui 패널 사각형이다.
     if (ViewportScreenRect.Width > 0.0f && ViewportScreenRect.Height > 0.0f)
     {
         ViewCamera.OnResize(static_cast<int32>(ViewportScreenRect.Width),

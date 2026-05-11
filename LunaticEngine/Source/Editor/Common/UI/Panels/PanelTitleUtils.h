@@ -393,9 +393,9 @@ inline void DrawPanelTitleIcon(const char *IconKey, float IconSize = 16.0f)
 
 inline bool DrawSmallPanelCloseButton(const char *DisplayTitle, bool &bVisible, const char *Id)
 {
-    // Docked editor panels now rely on ImGui's native close button from
-    // ImGui::Begin(title, &bOpen, flags).
-    // Keep this function as a compatibility no-op for older call sites.
+    // 도킹된 에디터 패널은 이제 ImGui::Begin(title, &bOpen, flags)가 제공하는
+    // 기본 닫기 버튼에 의존한다.
+    // 이 함수는 기존 호출부와의 호환을 위해 아무 동작도 하지 않는 형태로 유지한다.
     (void)DisplayTitle;
     (void)bVisible;
     (void)Id;
@@ -514,9 +514,9 @@ inline void FlushPanelDecorations()
                                ImVec2(IconX + IconSize, IconY + IconSize));
         }
 
-        // Close buttons are intentionally not drawn here.
-        // ImGui dock tabs already draw the close button when p_open is passed to ImGui::Begin().
-        // Drawing another button in the decoration pass causes duplicated/overlapped X buttons.
+        // 닫기 버튼은 여기서 의도적으로 그리지 않는다.
+        // ImGui dock 탭은 ImGui::Begin()에 p_open을 넘기면 자체적으로 닫기 버튼을 그린다.
+        // 장식 단계에서 버튼을 하나 더 그리면 X 버튼이 중복되거나 겹쳐 보이게 된다.
 
         DrawList->PopClipRect();
     }

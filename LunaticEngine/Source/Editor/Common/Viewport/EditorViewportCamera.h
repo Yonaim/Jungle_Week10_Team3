@@ -8,8 +8,8 @@
 #include "Collision/ConvexVolume.h"
 #include "Math/MathUtils.h"
 
-// Editor-only viewport camera state.
-// This is intentionally not a UCameraComponent and must not be registered to a World.
+// 에디터 전용 뷰포트 카메라 상태.
+// 의도적으로 UCameraComponent가 아니며 World에 등록해서도 안 된다.
 class FEditorViewportCamera
 {
 public:

@@ -72,13 +72,13 @@ void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
         bSizeChanged = true;
     }
 
-    // Editor viewport camera is not a UCameraComponent anymore, so resize notifications
-    // are not delivered through component/World paths. Keep the shared viewport camera
-    // aspect ratio synchronized with the actual ImGui viewport rect here.
+    // 에디터 뷰포트 카메라는 더 이상 UCameraComponent가 아니므로 리사이즈 알림이
+    // 컴포넌트/World 경로로 전달되지 않는다. 여기서 공유 뷰포트 카메라의 종횡비를
+    // 실제 ImGui 뷰포트 사각형과 동기화한다.
     //
-    // Without this, Asset Preview viewports can render helper scene data such as grid/gizmo
-    // against the current render target size while the mesh camera still keeps the old
-    // aspect ratio, which makes the scene range and mesh range look different.
+    // 이 처리가 없으면 Asset Preview 뷰포트는 grid/gizmo 같은 헬퍼 씬 데이터를 현재
+    // 렌더 타깃 크기에 맞춰 그리지만, 메시 카메라는 이전 종횡비를 유지해서
+    // 씬 범위와 메시 범위가 서로 다르게 보일 수 있다.
     if (bSizeChanged && WindowWidth > 0.0f && WindowHeight > 0.0f)
     {
         ViewCamera.OnResize(static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));

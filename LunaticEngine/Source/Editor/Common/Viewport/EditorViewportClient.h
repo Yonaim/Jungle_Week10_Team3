@@ -38,7 +38,7 @@ class FLevelEditorViewportClient;
 struct FEditorViewportRenderRequest
 {
     FViewport *Viewport = nullptr;
-    // Editor viewports should pass a plain POV, not an editor-owned UCameraComponent.
+    // 에디터 뷰포트는 에디터 소유 UCameraComponent가 아니라 순수 POV를 넘겨야 한다.
     FMinimalViewInfo ViewInfo;
     FScene *Scene = nullptr;
     FViewportRenderOptions RenderOptions;
@@ -110,7 +110,7 @@ class FEditorViewportClient : public FViewportClient
 
     FRect ViewportScreenRect;
 
-    // Editor-only camera/gizmo state shared by Level and Asset Preview viewports.
+    // Level/Asset Preview 뷰포트가 공유하는 에디터 전용 카메라/기즈모 상태.
     FEditorViewportCamera ViewCamera;
     FGizmoManager GizmoManager;
 };

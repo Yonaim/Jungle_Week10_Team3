@@ -1,3 +1,3 @@
 #include "Common/UI/Docking/DockLayoutUtils.h"
 
-// FDockLayoutUtils is intentionally header-only for now.
+// FDockLayoutUtils는 현재 의도적으로 헤더 전용으로 유지한다.

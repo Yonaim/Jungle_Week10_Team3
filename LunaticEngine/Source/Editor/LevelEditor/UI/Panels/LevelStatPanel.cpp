@@ -38,7 +38,7 @@ void FLevelStatPanel::Render(float DeltaTime)
         return;
     }
 
-    // Pause / resume controls
+    // 일시정지 / 재개 컨트롤
     if (bPaused)
     {
         if (ImGui::Button("Resume"))
@@ -50,7 +50,7 @@ void FLevelStatPanel::Render(float DeltaTime)
         {
             std::ostringstream oss;
             auto FormatTable = [&](const char *Title, const TArray<FStatEntry> &Entries) {
-                // Sort by category first.
+                // 먼저 카테고리 기준으로 정렬한다.
                 TArray<FStatEntry> Sorted = Entries;
                 std::sort(Sorted.begin(), Sorted.end(), [](const FStatEntry &A, const FStatEntry &B) {
                     int cmp = strcmp(A.Category, B.Category);
@@ -89,27 +89,27 @@ void FLevelStatPanel::Render(float DeltaTime)
         }
     }
 
-    // --- Draw Call Count ---
+    // --- 드로우 콜 수 ---
     uint32 DrawCalls = bPaused ? FrozenDrawCalls : FDrawCallStats::Get();
     ImGui::Text("Draw Calls: %u", DrawCalls);
     ImGui::Text("LOD0: %u  LOD1: %u  LOD2: %u  LOD3: %u", FLODStats::GetLOD0(), FLODStats::GetLOD1(),
                 FLODStats::GetLOD2(), FLODStats::GetLOD3());
     ImGui::Separator();
 
-    // Split the remaining height evenly between the CPU and GPU tables.
+    // 남은 높이를 CPU/GPU 테이블에 균등하게 나눈다.
     float AvailableHeight = ImGui::GetContentRegionAvail().y;
     float HalfHeight = (AvailableHeight - ImGui::GetFrameHeightWithSpacing() * 2.0f) * 0.5f;
     if (HalfHeight < 100.0f)
         HalfHeight = 100.0f;
 
-    // --- CPU Stats ---
+    // --- CPU 통계 ---
     const TArray<FStatEntry> &CPUSource = bPaused ? FrozenCPUEntries : FStatManager::Get().GetSnapshot();
     if (ImGui::CollapsingHeader("CPU Stats", ImGuiTreeNodeFlags_DefaultOpen))
     {
         RenderStatTable("CPUStatTable", CPUSource, CPUSortColumn, bCPUSortDescending, HalfHeight);
     }
 
-    // --- GPU Stats ---
+    // --- GPU 통계 ---
     const TArray<FStatEntry> &GPUSource = bPaused ? FrozenGPUEntries : FGPUProfiler::Get().GetGPUSnapshot();
     if (ImGui::CollapsingHeader("GPU Stats", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -132,7 +132,7 @@ void FLevelStatPanel::RenderStatTable(const char *TableID, const TArray<FStatEnt
 
     TArray<FStatEntry> Entries = Source;
 
-    // Sort by category first, then by the currently selected column.
+    // 먼저 카테고리 기준으로, 그다음 현재 선택된 열 기준으로 정렬한다.
     auto SortPredicate = [&](const FStatEntry &A, const FStatEntry &B) -> bool {
         int catCmp = strcmp(A.Category, B.Category);
         if (catCmp != 0)
@@ -210,7 +210,7 @@ void FLevelStatPanel::RenderStatTable(const char *TableID, const TArray<FStatEnt
             if (E.CallCount == 0)
                 continue;
 
-            // Category separator row
+            // 카테고리 구분 행
             if (!LastCategory || strcmp(LastCategory, E.Category) != 0)
             {
                 LastCategory = E.Category;

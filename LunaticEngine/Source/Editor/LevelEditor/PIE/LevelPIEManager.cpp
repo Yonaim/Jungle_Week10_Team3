@@ -600,7 +600,7 @@ void FLevelPIEManager::EndPlayMap()
                     VCCamera->SetCameraState(SavedCamera.CameraState);
                 }
 
-                // Editor viewport camera is not a UCameraComponent; keep it outside the World active camera slot.
+                // 에디터 뷰포트 카메라는 UCameraComponent가 아니므로 World의 활성 카메라 슬롯 밖에 유지한다.
             }
         }
     }

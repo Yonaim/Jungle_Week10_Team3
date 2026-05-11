@@ -38,7 +38,7 @@ class UEditorEngine : public UEngine
     UEditorEngine() = default;
     ~UEditorEngine() override = default;
 
-    // Lifecycle overrides
+    // 생명주기 오버라이드
     void Init(FWindowsWindow *InWindow) override;
     void Shutdown() override;
     void Tick(float DeltaTime) override;
@@ -53,7 +53,7 @@ class UEditorEngine : public UEngine
     void OpenTitleCreditsPopup() override;
     bool IsScoreSavePopupOpen() const override;
 
-    // Editor-specific API
+    // 에디터 전용 API
     UGizmoComponent  *GetGizmo() const;
     FEditorViewportCamera *GetCamera() const;
     bool              FocusActorInViewport(AActor *Actor);
@@ -151,7 +151,7 @@ class UEditorEngine : public UEngine
     FOverlayStatSystem       &GetOverlayStatSystem() { return LevelEditor.GetOverlayStatSystem(); }
     const FOverlayStatSystem &GetOverlayStatSystem() const { return LevelEditor.GetOverlayStatSystem(); }
 
-    // --- PIE (Play In Editor) ---
+    // --- PIE (에디터 내 플레이) ---
     void RequestPlaySession(const FRequestPlaySessionParams &InParams);
     void CancelRequestPlaySession();
     bool HasPlaySessionRequest() const { return LevelEditor.GetPIEManager().HasPlaySessionRequest(); }

@@ -10,8 +10,8 @@
 
 void FSelectionManager::Init()
 {
-    // SelectionManager owns selection state only.
-    // Visual gizmo lifetime is owned by each FEditorViewportClient/FGizmoManager.
+    // SelectionManager는 선택 상태만 소유한다.
+    // 시각적 기즈모의 생명주기는 각 FEditorViewportClient/FGizmoManager가 소유한다.
 }
 
 void FSelectionManager::SetWorld(UWorld *InWorld)
@@ -139,7 +139,7 @@ void FSelectionManager::SelectRange(AActor *ClickedActor, const TArray<AActor *>
     if (!ClickedActor)
         return;
 
-    // Find index of clicked actor
+    // 클릭된 액터의 인덱스를 찾는다.
     int32 ClickedIdx = -1;
     for (int32 i = 0; i < static_cast<int32>(ActorList.size()); ++i)
     {
@@ -152,7 +152,7 @@ void FSelectionManager::SelectRange(AActor *ClickedActor, const TArray<AActor *>
     if (ClickedIdx == -1)
         return;
 
-    // Find nearest already-selected actor's index in ActorList
+    // 이미 선택된 액터 중 ActorList에서 가장 가까운 인덱스를 찾는다.
     int32 AnchorIdx = ClickedIdx;
     int32 MinDist = INT_MAX;
     for (AActor *Sel : SelectedActors)
@@ -172,7 +172,7 @@ void FSelectionManager::SelectRange(AActor *ClickedActor, const TArray<AActor *>
         }
     }
 
-    // Replace selection with range [min, max]
+    // 선택 범위를 [min, max] 구간으로 교체한다.
     int32 Lo = std::min(AnchorIdx, ClickedIdx);
     int32 Hi = std::max(AnchorIdx, ClickedIdx);
 
@@ -319,7 +319,7 @@ int32 FSelectionManager::DeleteSelectedActors()
 
 void FSelectionManager::Tick()
 {
-    // Selection only. Gizmo transform/visibility is synchronized by FGizmoManager.
+    // 여기서는 선택 상태만 다룬다. 기즈모의 변환/표시는 FGizmoManager가 동기화한다.
 }
 
 void FSelectionManager::SetGizmoEnabled(bool bEnabled)
@@ -410,6 +410,6 @@ void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
 
 void FSelectionManager::SyncGizmo()
 {
-    // No-op by design. SelectionManager no longer owns a UGizmoComponent.
-    // FLevelEditorViewportClient reads MakeTransformGizmoTarget() and updates FGizmoManager.
+    // 의도된 no-op이다. SelectionManager는 더 이상 UGizmoComponent를 소유하지 않는다.
+    // FLevelEditorViewportClient가 MakeTransformGizmoTarget()을 읽어 FGizmoManager를 갱신한다.
 }
