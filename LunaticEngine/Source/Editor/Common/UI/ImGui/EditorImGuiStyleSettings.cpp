@@ -54,9 +54,12 @@ namespace
     void DrawSettingsSectionHeader(const char *Label)
     {
         ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
+        ImGui::PushStyleColor(ImGuiCol_Separator, PopupSectionHeaderTextColor);
+        ImGui::PushStyleColor(ImGuiCol_SeparatorHovered, PopupSectionHeaderTextColor);
+        ImGui::PushStyleColor(ImGuiCol_SeparatorActive, PopupSectionHeaderTextColor);
         ImGui::TextUnformatted(Label);
         ImGui::Separator();
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(4);
     }
 }
 

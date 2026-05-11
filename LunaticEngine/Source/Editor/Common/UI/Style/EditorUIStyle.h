@@ -16,7 +16,7 @@ struct ID3D11ShaderResourceView;
 // 에셋 에디터에서도 같은 형태로 재사용하기 위해 이 파일에 모은다.
 namespace FEditorUIStyle
 {
-inline constexpr ImVec4 PopupMenuItemColor = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
+inline constexpr ImVec4 PopupMenuItemColor = ImVec4(0.18f, 0.18f, 0.20f, 0.96f);
 inline constexpr ImVec4 PopupMenuItemHoverColor = UIAccentColor::Value;
 inline constexpr ImVec4 PopupMenuItemActiveColor = UIAccentColor::Value;
 inline constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
@@ -27,7 +27,7 @@ inline constexpr ImVec4 HeaderButtonActiveColor = ImVec4(0.18f, 0.18f, 0.18f, 1.
 inline constexpr ImVec4 HeaderButtonBorderColor = ImVec4(0.42f, 0.42f, 0.45f, 0.90f);
 
 inline constexpr ImVec4 SurfaceBg = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
-inline constexpr ImVec4 PopupBg = ImVec4(42.0f / 255.0f, 42.0f / 255.0f, 42.0f / 255.0f, 0.98f);
+inline constexpr ImVec4 PopupBg = ImVec4(0.12f, 0.13f, 0.15f, 0.98f);
 inline constexpr ImVec4 FieldBg = ImVec4(26.0f / 255.0f, 26.0f / 255.0f, 26.0f / 255.0f, 1.0f);
 inline constexpr ImVec4 FieldHoverBg = ImVec4(33.0f / 255.0f, 33.0f / 255.0f, 33.0f / 255.0f, 1.0f);
 inline constexpr ImVec4 FieldActiveBg = ImVec4(43.0f / 255.0f, 43.0f / 255.0f, 43.0f / 255.0f, 1.0f);
@@ -62,11 +62,53 @@ inline ID3D11ShaderResourceView *GetIcon(const char *Key)
     return FResourceManager::Get().FindLoadedTexture(FResourceManager::Get().ResolvePath(FName(Key))).Get();
 }
 
+inline void DrawTitleTextWithLine(const char *Label)
+{
+    if (!Label || Label[0] == '\0')
+    {
+        return;
+    }
+
+    const ImVec2 TextStart = ImGui::GetCursorScreenPos();
+    const ImVec2 TextSize = ImGui::CalcTextSize(Label);
+    const ImU32  LineColor = ImGui::GetColorU32(PopupSectionHeaderTextColor);
+
+    ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
+    ImGui::TextUnformatted(Label);
+    ImGui::PopStyleColor();
+
+    const float LineStartX = TextStart.x + TextSize.x + 8.0f;
+    const float LineEndX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    const float LineY = TextStart.y + TextSize.y * 0.5f + 0.5f;
+    if (LineEndX > LineStartX)
+    {
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(LineStartX, LineY), ImVec2(LineEndX, LineY), LineColor, 1.0f);
+    }
+}
+
 inline void DrawPopupSectionHeader(const char *Label)
 {
-    ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
-    ImGui::SeparatorText(Label);
-    ImGui::PopStyleColor();
+    DrawTitleTextWithLine(Label);
+    ImGui::Dummy(ImVec2(0.0f, 3.0f));
+}
+
+inline void PushPopupWindowStyle()
+{
+    ImGui::PushStyleColor(ImGuiCol_PopupBg, PopupBg);
+    ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7.0f, 5.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(5.0f, 4.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+}
+
+inline void PopPopupWindowStyle()
+{
+    ImGui::PopStyleVar(5);
+    ImGui::PopStyleColor(4);
 }
 
 inline void PushHeaderButtonStyle(float FrameRounding = 6.0f)

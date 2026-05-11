@@ -98,7 +98,7 @@ void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSke
 
     if (Toolbar)
     {
-        if (FViewportToolbar::Begin("##SkeletalMeshViewportToolbar"))
+        if (FViewportToolbar::Begin("##SkeletalMeshViewportToolbar", FViewportToolbar::GetHeight(ImGui::GetContentRegionAvail().x)))
         {
             Toolbar->RenderViewportToolbar(Mesh, State, Renderer);
         }

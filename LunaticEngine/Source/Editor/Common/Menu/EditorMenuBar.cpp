@@ -1,6 +1,7 @@
 #include "Common/Menu/EditorMenuBar.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Common/Menu/EditorMenuProvider.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Resource/ResourceManager.h"
@@ -95,14 +96,7 @@ void FEditorMenuBar::Render(const FEditorMenuBarContext &Context)
         }
 
         ImGui::SetCursorPos(ImVec2(MenuStartX, ContentStartY));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
-        ImGui::PushStyleColor(ImGuiCol_PopupBg, UnrealPanelSurface);
-        ImGui::PushStyleColor(ImGuiCol_Header, UnrealPanelSurface);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, UIAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, UIAccentColor::Value);
+        FEditorUIStyle::PushPopupWindowStyle();
 
         if (ImGui::BeginMenu("File"))
         {
@@ -161,8 +155,7 @@ void FEditorMenuBar::Render(const FEditorMenuBarContext &Context)
             ImGui::EndMenu();
         }
 
-        ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar(4);
+        FEditorUIStyle::PopPopupWindowStyle();
 
         MenuEndX = ImGui::GetCursorPosX();
 

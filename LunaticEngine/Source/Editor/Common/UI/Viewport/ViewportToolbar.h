@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreTypes.h"
 #include "ImGui/imgui.h"
@@ -35,7 +35,7 @@ class FViewportToolbar
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.075f, 0.075f, 0.085f, 1.0f));
 
         return ImGui::BeginChild(Id, ImVec2(0.0f, Height), false,
                                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
@@ -69,7 +69,7 @@ class FViewportToolbar
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 6.0f));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.10f, 0.10f, 0.11f, 0.92f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.065f, 0.065f, 0.075f, 0.96f));
 
         const bool bOpen = ImGui::Begin(Id, nullptr, ToolbarWindowFlags);
         if (!bOpen)

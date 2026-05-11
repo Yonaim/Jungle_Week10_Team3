@@ -2036,9 +2036,7 @@ void FLevelDetailsPanel::RenderAddComponentButton(AActor *Actor)
             continue;
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Text, AddComponentGroupHeaderTextColor);
-        ImGui::SeparatorText(Group.Label);
-        ImGui::PopStyleColor();
+        FEditorUIStyle::DrawTitleTextWithLine(Group.Label);
         for (UClass *Cls : Group.Classes)
         {
             const FString DisplayClassName = GetDisplayClassLabel(Cls);

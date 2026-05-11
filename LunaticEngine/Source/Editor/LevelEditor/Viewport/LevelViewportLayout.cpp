@@ -1,6 +1,7 @@
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Common/UI/Panels/Panel.h"
 #include "Common/UI/Viewport/ViewportToolbar.h"
@@ -243,9 +244,7 @@ namespace
 
     void DrawPopupSectionHeader(const char *Label)
     {
-        ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
-        ImGui::SeparatorText(Label);
-        ImGui::PopStyleColor();
+        FEditorUIStyle::DrawPopupSectionHeader(Label);
     }
 
     bool BeginPopupSection(const char *Label, ImGuiTreeNodeFlags Flags = ImGuiTreeNodeFlags_DefaultOpen)
@@ -2804,7 +2803,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             PushCommonPopupBgColor();
             if (ImGui::BeginPopup(ViewModePopupID))
             {
-                ImGui::SeparatorText("View Mode");
+                DrawPopupSectionHeader("View Mode");
                 int32 CurrentMode = static_cast<int32>(Opts.ViewMode);
 
                 auto DrawViewModeOption = [&](const char *Label, EViewMode Mode, EToolbarIcon Icon)
