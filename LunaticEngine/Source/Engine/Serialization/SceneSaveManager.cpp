@@ -240,7 +240,7 @@ static bool IsGameModeClassName(const string& ClassName)
 // Save
 // ============================================================
 
-void FSceneSaveManager::SaveSceneAsJSON(const FString& InScenePathOrName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam)
+void FSceneSaveManager::SaveSceneAsJSON(const FString& InScenePathOrName, FWorldContext& WorldContext, const FMinimalViewInfo* PerspectivePOV)
 {
 	using namespace json;
 
@@ -277,7 +277,7 @@ void FSceneSaveManager::SaveSceneAsJSON(const FString& InScenePathOrName, FWorld
 		std::filesystem::create_directories(ParentDir);
 	}
 
-	JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectiveCam);
+	JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectivePOV);
 	Root[SceneKeys::Version] = 2;
 	Root[SceneKeys::Name] = FinalName;
 
@@ -289,14 +289,14 @@ void FSceneSaveManager::SaveSceneAsJSON(const FString& InScenePathOrName, FWorld
 	}
 }
 
-string FSceneSaveManager::SerializeWorldToJSONString(FWorldContext& WorldContext, UCameraComponent* PerspectiveCam)
+string FSceneSaveManager::SerializeWorldToJSONString(FWorldContext& WorldContext, const FMinimalViewInfo* PerspectivePOV)
 {
 	if (!WorldContext.World)
 	{
 		return string();
 	}
 
-	json::JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectiveCam);
+	json::JSON Root = SerializeWorld(WorldContext.World, WorldContext, PerspectivePOV);
 	Root[SceneKeys::Version] = 2;
 	return Root.dump();
 }
@@ -313,7 +313,7 @@ string FSceneSaveManager::SerializeActorToJSONString(AActor* Actor)
 	return Root.dump();
 }
 
-json::JSON FSceneSaveManager::SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam)
+json::JSON FSceneSaveManager::SerializeWorld(UWorld* World, const FWorldContext& Ctx, const FMinimalViewInfo* PerspectivePOV)
 {
 	using namespace json;
 	JSON w = json::Object();
@@ -417,7 +417,7 @@ json::JSON FSceneSaveManager::SerializeWorld(UWorld* World, const FWorldContext&
 	w[SceneKeys::Actors] = Actors;
 
 	// ---- Perspective camera ----
-	JSON cam = SerializeCamera(PerspectiveCam);
+	JSON cam = SerializeCamera(PerspectivePOV);
 	if (cam.size() > 0) {
 		w["PerspectiveCamera"] = cam;
 	}
@@ -584,20 +584,17 @@ json::JSON FSceneSaveManager::SerializePropertyValue(const FPropertyDescriptor& 
 
 // ---- Camera helpers ----
 
-json::JSON FSceneSaveManager::SerializeCamera(UCameraComponent* Cam)
+json::JSON FSceneSaveManager::SerializeCamera(const FMinimalViewInfo* POV)
 {
 	using namespace json;
 	JSON cam = json::Object();
-	if (!Cam) return cam;
+	if (!POV) return cam;
 
-	const FMatrix& M = Cam->GetWorldMatrix();
-	WriteVec3(cam, "Location", M.GetLocation());
-	WriteVec3(cam, "Rotation", M.GetEuler());
-
-	const FMinimalViewInfo& S = Cam->GetCameraState();
-	cam["FOV"] = static_cast<double>(S.FOV);
-	cam["NearClip"] = static_cast<double>(S.NearZ);
-	cam["FarClip"] = static_cast<double>(S.FarZ);
+	WriteVec3(cam, "Location", POV->Location);
+	WriteVec3(cam, "Rotation", FVector(POV->Rotation.Roll, POV->Rotation.Pitch, POV->Rotation.Yaw));
+	cam["FOV"] = static_cast<double>(POV->FOV);
+	cam["NearClip"] = static_cast<double>(POV->NearZ);
+	cam["FarClip"] = static_cast<double>(POV->FarZ);
 
 	return cam;
 }

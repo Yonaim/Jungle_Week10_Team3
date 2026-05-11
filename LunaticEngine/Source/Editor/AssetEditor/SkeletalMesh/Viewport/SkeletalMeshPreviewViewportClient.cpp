@@ -3,7 +3,6 @@
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformProxy.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 
-#include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -114,12 +113,11 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
         return;
     }
 
-    PreviewCamera = UObjectManager::Get().CreateObject<UCameraComponent>();
     PreviewComponent = UObjectManager::Get().CreateObject<USkeletalMeshComponent>();
     PreviewGizmoComponent = UObjectManager::Get().CreateObject<UGizmoComponent>();
     if (PreviewGizmoComponent)
     {
-        PreviewGizmoComponent->SetScene(&PreviewScene);
+        PreviewGizmoComponent->SetScene(&PreviewScene.GetScene());
         PreviewGizmoComponent->SetGizmoSpace(EGizmoSpace::Local);
         PreviewGizmoComponent->CreateRenderState();
         PreviewGizmoComponent->ClearGizmoWorldTransform();
@@ -163,12 +161,6 @@ void FSkeletalMeshPreviewViewportClient::ReleasePreviewObjects()
     {
         UObjectManager::Get().DestroyObject(PreviewComponent);
         PreviewComponent = nullptr;
-    }
-
-    if (PreviewCamera)
-    {
-        UObjectManager::Get().DestroyObject(PreviewCamera);
-        PreviewCamera = nullptr;
     }
 
     PreviewMesh = nullptr;
@@ -221,16 +213,11 @@ void FSkeletalMeshPreviewViewportClient::ResetPreviewCamera()
     OrbitYaw = 180.0f;
     OrbitPitch = -10.0f;
 
-    if (!PreviewCamera)
-    {
-        return;
-    }
-
     const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-    PreviewCamera->SetWorldLocation(CameraLocation);
-    PreviewCamera->LookAt(OrbitTarget);
-    PreviewCamera->SetFOV(60.0f * 3.14159265358979323846f / 180.0f);
-    PreviewCamera->SetOrthographic(false);
+    ViewCamera.SetWorldLocation(CameraLocation);
+    ViewCamera.LookAt(OrbitTarget);
+    ViewCamera.SetFOV(60.0f * 3.14159265358979323846f / 180.0f);
+    ViewCamera.SetOrthographic(false);
 }
 
 void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
@@ -265,12 +252,9 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
     const float Radius = (std::max)(0.5f, std::sqrt(Extent.X * Extent.X + Extent.Y * Extent.Y + Extent.Z * Extent.Z));
     OrbitDistance = Radius * 2.8f;
 
-    if (PreviewCamera)
-    {
-        const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-        PreviewCamera->SetWorldLocation(CameraLocation);
-        PreviewCamera->LookAt(OrbitTarget);
-    }
+    const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+    ViewCamera.SetWorldLocation(CameraLocation);
+    ViewCamera.LookAt(OrbitTarget);
 }
 
 void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
@@ -289,6 +273,11 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
     {
         PreviewComponent->RefreshSkinningForEditor(DeltaTime);
     }
+
+    GizmoManager.ApplyScreenSpaceScaling(
+        ViewCamera.GetWorldLocation(),
+        ViewCamera.IsOrthogonal(),
+        ViewCamera.GetOrthoWidth());
 }
 
 const char *FSkeletalMeshPreviewViewportClient::GetViewportTooltipBarText() const
@@ -298,11 +287,6 @@ const char *FSkeletalMeshPreviewViewportClient::GetViewportTooltipBarText() cons
 
 void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
 {
-    if (!PreviewCamera)
-    {
-        return;
-    }
-
     ImGuiIO &IO = ImGui::GetIO();
     const bool bRightMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Right);
     const bool bMiddleMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
@@ -323,6 +307,35 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         FramePreviewMesh();
     }
 
+    if ((IsHovered() || GizmoManager.IsDragging()) && Viewport)
+    {
+        const float LocalMouseX = IO.MousePos.x - ViewportScreenRect.X;
+        const float LocalMouseY = IO.MousePos.y - ViewportScreenRect.Y;
+        const float VPWidth = static_cast<float>(Viewport->GetWidth());
+        const float VPHeight = static_cast<float>(Viewport->GetHeight());
+        const FRay Ray = ViewCamera.DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left, false))
+        {
+            GizmoManager.BeginDrag(Ray);
+        }
+        else if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && GizmoManager.IsDragging())
+        {
+            GizmoManager.UpdateDrag(Ray);
+            return;
+        }
+        else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && GizmoManager.IsDragging())
+        {
+            GizmoManager.EndDrag();
+            return;
+        }
+    }
+
+    if (GizmoManager.IsDragging())
+    {
+        return;
+    }
+
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
     {
         const ImVec2 Delta = IO.MouseDelta;
@@ -333,8 +346,8 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
     {
         const ImVec2 Delta = IO.MouseDelta;
-        const FVector Right = PreviewCamera->GetRightVector();
-        const FVector Up = PreviewCamera->GetUpVector();
+        const FVector Right = ViewCamera.GetRightVector();
+        const FVector Up = ViewCamera.GetUpVector();
         const float PanScale = OrbitDistance * 0.0015f;
         OrbitTarget = OrbitTarget - Right * (Delta.x * PanScale) + Up * (Delta.y * PanScale);
     }
@@ -349,27 +362,27 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         FVector Move = FVector::ZeroVector;
         if (IsLegacyImGuiKeyDown('W'))
         {
-            Move += PreviewCamera->GetForwardVector();
+            Move += ViewCamera.GetForwardVector();
         }
         if (IsLegacyImGuiKeyDown('S'))
         {
-            Move -= PreviewCamera->GetForwardVector();
+            Move -= ViewCamera.GetForwardVector();
         }
         if (IsLegacyImGuiKeyDown('D'))
         {
-            Move += PreviewCamera->GetRightVector();
+            Move += ViewCamera.GetRightVector();
         }
         if (IsLegacyImGuiKeyDown('A'))
         {
-            Move -= PreviewCamera->GetRightVector();
+            Move -= ViewCamera.GetRightVector();
         }
         if (IsLegacyImGuiKeyDown('E'))
         {
-            Move += PreviewCamera->GetUpVector();
+            Move += ViewCamera.GetUpVector();
         }
         if (IsLegacyImGuiKeyDown('Q'))
         {
-            Move -= PreviewCamera->GetUpVector();
+            Move -= ViewCamera.GetUpVector();
         }
 
         if (!Move.IsNearlyZero())
@@ -384,15 +397,15 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
     }
 
     const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-    PreviewCamera->SetWorldLocation(CameraLocation);
-    PreviewCamera->LookAt(OrbitTarget);
+    ViewCamera.SetWorldLocation(CameraLocation);
+    ViewCamera.LookAt(OrbitTarget);
 }
 
 bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRenderRequest &OutRequest)
 {
     EnsurePreviewObjects();
 
-    if (!Viewport || !PreviewCamera || !PreviewComponent || !PreviewMesh || !PreviewProxy)
+    if (!Viewport || !PreviewComponent || !PreviewMesh || !PreviewProxy)
     {
         return false;
     }
@@ -400,8 +413,8 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     SyncGizmoTargetFromSelection();
 
     OutRequest.Viewport = Viewport;
-    OutRequest.Camera = PreviewCamera;
-    OutRequest.Scene = &PreviewScene;
+    OutRequest.ViewInfo = ViewCamera.GetCameraState();
+    OutRequest.Scene = &PreviewScene.GetScene();
     OutRequest.RenderOptions = RenderOptions;
     OutRequest.CursorProvider = this;
     OutRequest.bRenderGrid = State ? State->bShowGrid : true;
@@ -692,6 +705,7 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
 
     if (GizmoTargetBoneIndex == SelectedBoneIndex && GizmoManager.HasValidTarget())
     {
+        GizmoManager.SyncVisualFromTarget();
         return;
     }
 
@@ -710,18 +724,13 @@ bool FSkeletalMeshPreviewViewportClient::ProjectWorldToViewport(
 	const FVector& WorldPos,
 	ImVec2& OutScreen) const
 {
-	if (!PreviewCamera)
-	{
-		return false;
-	}
-
-	const FRect& R = ViewportScreenRect;
+		const FRect& R = ViewportScreenRect;
 	if (R.Width <= 0.0f || R.Height <= 0.0f)
 	{
 		return false;
 	}
 
-	const FMatrix ViewProjection = PreviewCamera->GetViewProjectionMatrix();
+	const FMatrix ViewProjection = ViewCamera.GetViewProjectionMatrix();
 	const FVector Ndc = ViewProjection.TransformPositionWithW(WorldPos);
 
 	if (!std::isfinite(Ndc.X) || !std::isfinite(Ndc.Y) || !std::isfinite(Ndc.Z))

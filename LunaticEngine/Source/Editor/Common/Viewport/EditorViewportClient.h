@@ -3,12 +3,16 @@
 #include "Viewport/ViewportClient.h"
 #include "UI/SWindow.h"
 #include "Render/Types/ViewTypes.h"
+#include "Camera/MinimalViewInfo.h"
+#include "Common/Viewport/EditorViewportCamera.h"
+#include "Common/Gizmo/GizmoManager.h"
 
 class FWindowsWindow;
 class FViewport;
-class UCameraComponent;
 class FScene;
 class FEditorViewportClient;
+class UWorld;
+class FLevelEditorViewportClient;
 
 /**
  * 모든 Editor Viewport Client의 공통 베이스.
@@ -33,10 +37,13 @@ class FEditorViewportClient;
 struct FEditorViewportRenderRequest
 {
     FViewport *Viewport = nullptr;
-    UCameraComponent *Camera = nullptr;
+    // Editor viewports should pass a plain POV, not an editor-owned UCameraComponent.
+    FMinimalViewInfo ViewInfo;
     FScene *Scene = nullptr;
     FViewportRenderOptions RenderOptions;
     FEditorViewportClient *CursorProvider = nullptr;
+    UWorld *World = nullptr;
+    FLevelEditorViewportClient *LevelViewportClient = nullptr;
 
     bool bRenderGrid = true;
     bool bEnableGPUOcclusion = false;
@@ -80,6 +87,11 @@ class FEditorViewportClient : public FViewportClient
      */
     virtual bool BuildRenderRequest(FEditorViewportRenderRequest &OutRequest) { (void)OutRequest; return false; }
 
+    FEditorViewportCamera *GetCamera() { return &ViewCamera; }
+    const FEditorViewportCamera *GetCamera() const { return &ViewCamera; }
+    FGizmoManager &GetGizmoManager() { return GizmoManager; }
+    const FGizmoManager &GetGizmoManager() const { return GizmoManager; }
+
     bool GetCursorViewportPosition(uint32 &OutX, uint32 &OutY) const;
 
   protected:
@@ -96,4 +108,8 @@ class FEditorViewportClient : public FViewportClient
     bool bIsHovered = false;
 
     FRect ViewportScreenRect;
+
+    // Editor-only camera/gizmo state shared by Level and Asset Preview viewports.
+    FEditorViewportCamera ViewCamera;
+    FGizmoManager GizmoManager;
 };

@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Camera/MinimalViewInfo.h"
 #include <string>
 #include <filesystem>
 #include "Core/CoreTypes.h"
@@ -42,8 +43,8 @@ public:
 
 	static std::wstring GetSceneDirectory() { return FPaths::SceneDir(); }
 
-	static void SaveSceneAsJSON(const FString& ScenePathOrName, FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
-	static string SerializeWorldToJSONString(FWorldContext& WorldContext, UCameraComponent* PerspectiveCam = nullptr);
+	static void SaveSceneAsJSON(const FString& ScenePathOrName, FWorldContext& WorldContext, const FMinimalViewInfo* PerspectivePOV = nullptr);
+	static string SerializeWorldToJSONString(FWorldContext& WorldContext, const FMinimalViewInfo* PerspectivePOV = nullptr);
 	static string SerializeActorToJSONString(AActor* Actor);
 	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 	static void SaveWorldToBinary(const FString& FilePath, UWorld* World);
@@ -66,14 +67,14 @@ public:
 
 private:
 	// ---- Serialization ----
-	static json::JSON SerializeWorld(UWorld* World, const FWorldContext& Ctx, UCameraComponent* PerspectiveCam);
+	static json::JSON SerializeWorld(UWorld* World, const FWorldContext& Ctx, const FMinimalViewInfo* PerspectivePOV);
 	static json::JSON SerializeActor(AActor* Actor);
 	static json::JSON SerializeSceneComponentTree(USceneComponent* Comp);
 	static json::JSON SerializeProperties(UActorComponent* Comp);
 	static json::JSON SerializePropertyValue(const FPropertyDescriptor& Prop);
 
 	// ---- Camera ----
-	static json::JSON SerializeCamera(UCameraComponent* Cam);
+	static json::JSON SerializeCamera(const FMinimalViewInfo* POV);
 	static void DeserializeCamera(json::JSON& CamJSON, FPerspectiveCameraData& OutCam);
 
 	// ---- Primitives ----

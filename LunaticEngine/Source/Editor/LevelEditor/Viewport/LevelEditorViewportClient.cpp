@@ -11,7 +11,6 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 
-#include "Component/CameraComponent.h"
 #include "Engine/Runtime/Engine.h"
 #include "GameFramework/World.h"
 #include "Math/MathUtils.h"
@@ -373,7 +372,7 @@ void BuildBoundingBoxCorners(const FBoundingBox &Bounds, FVector OutCorners[8])
     OutCorners[7] = FVector(Max.X, Max.Y, Max.Z);
 }
 
-AActor *FindScreenSpacePrimitiveAt(UWorld *World, const UCameraComponent *Camera, float MouseViewportX,
+AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *Camera, float MouseViewportX,
                                    float MouseViewportY, float ViewportWidth, float ViewportHeight,
                                    UPrimitiveComponent *&OutPrimitive)
 {
@@ -784,24 +783,24 @@ void FLevelEditorViewportClient::SetupInput()
 
     EnhancedInputManager.BindAction(
         ActionEditorSetBookmark, ETriggerEvent::Started, [this](const FInputActionValue &V) {
-            if (FInputManager::Get().IsKeyDown(VK_CONTROL) && Camera)
+            if (FInputManager::Get().IsKeyDown(VK_CONTROL) && GetCamera())
             {
                 int32 Index = static_cast<int32>(V.Get());
                 if (Index >= 0 && Index < 10)
-                    GCameraBookmarks[Index] = {Camera->GetWorldLocation(), Camera->GetRelativeRotation(), true};
+                    GCameraBookmarks[Index] = {GetCamera()->GetWorldLocation(), GetCamera()->GetRelativeRotation(), true};
             }
         });
 
     EnhancedInputManager.BindAction(ActionEditorJumpToBookmark, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) {
-                                        if (!FInputManager::Get().IsKeyDown(VK_CONTROL) && Camera)
+                                        if (!FInputManager::Get().IsKeyDown(VK_CONTROL) && GetCamera())
                                         {
                                             int32 Index = static_cast<int32>(V.Get());
                                             if (Index >= 0 && Index < 10 && GCameraBookmarks[Index].bValid)
                                             {
                                                 const auto &BM = GCameraBookmarks[Index];
-                                                FocusStartLoc = Camera->GetWorldLocation();
-                                                FocusStartRot = Camera->GetRelativeRotation();
+                                                FocusStartLoc = GetCamera()->GetWorldLocation();
+                                                FocusStartRot = GetCamera()->GetRelativeRotation();
                                                 FocusEndLoc = BM.Location;
                                                 FocusEndRot = BM.Rotation;
                                                 bIsFocusAnimating = true;
@@ -915,18 +914,18 @@ void FLevelEditorViewportClient::OnEditorOrbit(const FInputActionValue &Value)
         // Alt + LMB = Selection Orbit
         if (Input.IsMouseButtonDown(VK_LBUTTON))
         {
-            if (SelectionManager && SelectionManager->GetPrimarySelection() && Camera)
+            if (SelectionManager && SelectionManager->GetPrimarySelection() && GetCamera())
             {
                 FVector Pivot = SelectionManager->GetPrimarySelection()->GetActorLocation();
-                FVector CameraPos = Camera->GetWorldLocation();
+                FVector CameraPos = GetCamera()->GetWorldLocation();
                 float Dist = FVector::Distance(CameraPos, Pivot);
                 const float Sensitivity = 0.25f;
-                FRotator Rotation = Camera->GetRelativeRotation();
+                FRotator Rotation = GetCamera()->GetRelativeRotation();
                 Rotation.Yaw += Value.GetVector().X * Sensitivity;
                 Rotation.Pitch = Clamp(Rotation.Pitch + Value.GetVector().Y * Sensitivity, -89.0f, 89.0f);
                 FVector NewPos = Pivot - Rotation.ToVector() * (Dist > 0.1f ? Dist : 5.0f);
-                Camera->SetWorldLocation(NewPos);
-                Camera->SetRelativeRotation(Rotation);
+                GetCamera()->SetWorldLocation(NewPos);
+                GetCamera()->SetRelativeRotation(Rotation);
                 SyncCameraSmoothingTarget();
             }
             else
@@ -937,10 +936,10 @@ void FLevelEditorViewportClient::OnEditorOrbit(const FInputActionValue &Value)
         // Alt + RMB = Scrub Zoom
         else if (Input.IsMouseButtonDown(VK_RBUTTON))
         {
-            if (Camera)
+            if (GetCamera())
             {
                 float ScrubSpeed = 0.05f;
-                TargetLocation += Camera->GetForwardVector() * (Value.GetVector().X * ScrubSpeed);
+                TargetLocation += GetCamera()->GetForwardVector() * (Value.GetVector().X * ScrubSpeed);
             }
         }
     }
@@ -950,15 +949,15 @@ void FLevelEditorViewportClient::OnEditorFocus(const FInputActionValue &Value)
 {
     if (FInputManager::Get().IsMouseButtonDown(VK_RBUTTON))
         return;
-    if (SelectionManager && Camera)
+    if (SelectionManager && GetCamera())
     {
         AActor *Selected = SelectionManager->GetPrimarySelection();
         if (Selected)
         {
             FVector TargetLoc = Selected->GetActorLocation();
-            FVector CameraForward = Camera->GetForwardVector();
-            FVector OriginalLoc = Camera->GetWorldLocation();
-            FRotator OriginalRot = Camera->GetRelativeRotation();
+            FVector CameraForward = GetCamera()->GetForwardVector();
+            FVector OriginalLoc = GetCamera()->GetWorldLocation();
+            FRotator OriginalRot = GetCamera()->GetRelativeRotation();
 
             float FocusDistance = 5.0f;
             if (UPrimitiveComponent *RootPrim = Cast<UPrimitiveComponent>(Selected->GetRootComponent()))
@@ -969,11 +968,11 @@ void FLevelEditorViewportClient::OnEditorFocus(const FInputActionValue &Value)
             }
 
             FVector NewCameraLoc = TargetLoc - CameraForward * FocusDistance;
-            Camera->SetWorldLocation(NewCameraLoc);
-            Camera->LookAt(TargetLoc);
-            FRotator TargetRot = Camera->GetRelativeRotation();
-            Camera->SetWorldLocation(OriginalLoc);
-            Camera->SetRelativeRotation(OriginalRot);
+            GetCamera()->SetWorldLocation(NewCameraLoc);
+            GetCamera()->LookAt(TargetLoc);
+            FRotator TargetRot = GetCamera()->GetRelativeRotation();
+            GetCamera()->SetWorldLocation(OriginalLoc);
+            GetCamera()->SetRelativeRotation(OriginalRot);
             bIsFocusAnimating = true;
             FocusAnimTimer = 0.0f;
             FocusStartLoc = OriginalLoc;
@@ -1029,7 +1028,7 @@ void FLevelEditorViewportClient::OnEditorToggleGizmoMode(const FInputActionValue
 
     if (Gizmo)
     {
-        const bool bHasGizmoTarget = SelectionManager && SelectionManager->GetSelectedComponent() && Gizmo->HasTarget();
+        const bool bHasGizmoTarget = SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
         if (!bHasGizmoTarget)
         {
             Gizmo->Deactivate();
@@ -1037,15 +1036,15 @@ void FLevelEditorViewportClient::OnEditorToggleGizmoMode(const FInputActionValue
         }
 
         if (Input.IsKeyPressed('W'))
-            Gizmo->UpdateGizmoMode(EGizmoMode::Translate);
+            GizmoManager.SetMode(EGizmoMode::Translate);
         else if (Input.IsKeyPressed('E'))
-            Gizmo->UpdateGizmoMode(EGizmoMode::Rotate);
+            GizmoManager.SetMode(EGizmoMode::Rotate);
         else if (Input.IsKeyPressed('R'))
-            Gizmo->UpdateGizmoMode(EGizmoMode::Scale);
+            GizmoManager.SetMode(EGizmoMode::Scale);
         else if (Input.IsKeyPressed('Q'))
-            Gizmo->UpdateGizmoMode(EGizmoMode::Select);
+            GizmoManager.SetMode(EGizmoMode::Select);
         else
-            Gizmo->SetNextMode();
+            GizmoManager.CycleMode();
 
         if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
             EditorEngine->ApplyTransformSettingsToGizmo();
@@ -1094,50 +1093,46 @@ void FLevelEditorViewportClient::ClearLightViewOverride()
 
 void FLevelEditorViewportClient::CreateCamera()
 {
-    DestroyCamera();
-    Camera = UObjectManager::Get().CreateObject<UCameraComponent>();
+    // Editor camera is owned by FEditorViewportClient as a value member.
+    ResetCamera();
 }
 
 void FLevelEditorViewportClient::DestroyCamera()
 {
-    if (Camera)
-    {
-        UObjectManager::Get().DestroyObject(Camera);
-        Camera = nullptr;
-    }
+    // No-op: editor camera is no longer heap/component owned.
 }
 
 void FLevelEditorViewportClient::ResetCamera()
 {
-    if (!Camera || !Settings)
+    if (!GetCamera() || !Settings)
         return;
-    Camera->SetWorldLocation(Settings->InitViewPos);
-    Camera->LookAt(Settings->InitLookAt);
+    GetCamera()->SetWorldLocation(Settings->InitViewPos);
+    GetCamera()->LookAt(Settings->InitLookAt);
     SyncCameraSmoothingTarget();
 }
 
 bool FLevelEditorViewportClient::FocusActor(AActor *Actor)
 {
-    if (!Actor || !Camera)
+    if (!Actor || !GetCamera())
     {
         return false;
     }
 
     const FVector TargetLoc = Actor->GetActorLocation();
-    const FVector CameraForward = Camera->GetForwardVector();
+    const FVector CameraForward = GetCamera()->GetForwardVector();
 
-    const FVector OriginalLoc = Camera->GetWorldLocation();
-    const FRotator OriginalRot = Camera->GetRelativeRotation();
+    const FVector OriginalLoc = GetCamera()->GetWorldLocation();
+    const FRotator OriginalRot = GetCamera()->GetRelativeRotation();
 
     constexpr float FocusDistance = 5.0f;
     const FVector NewCameraLoc = TargetLoc - CameraForward * FocusDistance;
 
-    Camera->SetWorldLocation(NewCameraLoc);
-    Camera->LookAt(TargetLoc);
-    const FRotator TargetRot = Camera->GetRelativeRotation();
+    GetCamera()->SetWorldLocation(NewCameraLoc);
+    GetCamera()->LookAt(TargetLoc);
+    const FRotator TargetRot = GetCamera()->GetRelativeRotation();
 
-    Camera->SetWorldLocation(OriginalLoc);
-    Camera->SetRelativeRotation(OriginalRot);
+    GetCamera()->SetWorldLocation(OriginalLoc);
+    GetCamera()->SetRelativeRotation(OriginalRot);
 
     bIsFocusAnimating = true;
     FocusAnimTimer = 0.0f;
@@ -1150,22 +1145,22 @@ bool FLevelEditorViewportClient::FocusActor(AActor *Actor)
 
 void FLevelEditorViewportClient::SetViewportType(ELevelViewportType NewType)
 {
-    if (!Camera)
+    if (!GetCamera())
         return;
     RenderOptions.ViewportType = NewType;
     if (NewType == ELevelViewportType::Perspective)
     {
-        Camera->SetOrthographic(false);
+        GetCamera()->SetOrthographic(false);
         SyncCameraSmoothingTarget();
         return;
     }
     if (NewType == ELevelViewportType::FreeOrthographic)
     {
-        Camera->SetOrthographic(true);
+        GetCamera()->SetOrthographic(true);
         SyncCameraSmoothingTarget();
         return;
     }
-    Camera->SetOrthographic(true);
+    GetCamera()->SetOrthographic(true);
     constexpr float OrthoDistance = 50.0f;
     FVector Position = FVector(0, 0, 0);
     FVector Rotation = FVector(0, 0, 0);
@@ -1198,8 +1193,8 @@ void FLevelEditorViewportClient::SetViewportType(ELevelViewportType NewType)
     default:
         break;
     }
-    Camera->SetRelativeLocation(Position);
-    Camera->SetRelativeRotation(Rotation);
+    GetCamera()->SetRelativeLocation(Position);
+    GetCamera()->SetRelativeRotation(Rotation);
     SyncCameraSmoothingTarget();
 }
 
@@ -1209,8 +1204,8 @@ void FLevelEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
         WindowWidth = InWidth;
     if (InHeight > 0.0f)
         WindowHeight = InHeight;
-    if (Camera)
-        Camera->OnResize(static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));
+    if (GetCamera())
+        GetCamera()->OnResize(static_cast<int32>(WindowWidth), static_cast<int32>(WindowHeight));
 }
 
 void FLevelEditorViewportClient::Tick(float DeltaTime)
@@ -1246,11 +1241,6 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
                         {
                             GameViewportClient->Possess(World->GetActiveCamera());
                         }
-
-                        if (!GameViewportClient->HasPossessedTarget())
-                        {
-                            GameViewportClient->Possess(Camera);
-                        }
                     }
 
                     GameViewportClient->ProcessPIEInput(DeltaTime);
@@ -1260,7 +1250,7 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
         }
     }
     SyncCameraSmoothingTarget();
-    if (bIsFocusAnimating && Camera)
+    if (bIsFocusAnimating && GetCamera())
     {
         FocusAnimTimer += DeltaTime;
         float Alpha = FocusAnimTimer / FocusAnimDuration;
@@ -1274,8 +1264,8 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
         FQuat StartQuat = FocusStartRot.ToQuaternion();
         FQuat EndQuat = FocusEndRot.ToQuaternion();
         FQuat BlendedQuat = FQuat::Slerp(StartQuat, EndQuat, SmoothAlpha);
-        Camera->SetWorldLocation(NewLoc);
-        Camera->SetRelativeRotation(FRotator::FromQuaternion(BlendedQuat));
+        GetCamera()->SetWorldLocation(NewLoc);
+        GetCamera()->SetRelativeRotation(FRotator::FromQuaternion(BlendedQuat));
         TargetLocation = NewLoc;
         LastAppliedCameraLocation = NewLoc;
         bLastAppliedCameraLocationInitialized = true;
@@ -1285,18 +1275,68 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
         ApplySmoothedCameraLocation(DeltaTime);
     }
     TickInput(DeltaTime);
+    SyncGizmoTargetFromSelection();
     TickInteraction(DeltaTime);
+}
+
+void FLevelEditorViewportClient::SyncGizmoTargetFromSelection()
+{
+    if (!SelectionManager)
+    {
+        CurrentGizmoTargetComponent = nullptr;
+        GizmoManager.ClearTarget();
+        return;
+    }
+
+    USceneComponent *SelectedComponent = SelectionManager->GetSelectedComponent();
+    auto Target = SelectionManager->MakeTransformGizmoTarget();
+    if (!Target)
+    {
+        CurrentGizmoTargetComponent = nullptr;
+        GizmoManager.ClearTarget();
+        return;
+    }
+
+    if (CurrentGizmoTargetComponent == SelectedComponent && GizmoManager.HasValidTarget())
+    {
+        GizmoManager.SyncVisualFromTarget();
+        return;
+    }
+
+    CurrentGizmoTargetComponent = SelectedComponent;
+    GizmoManager.SetTarget(Target);
+}
+
+bool FLevelEditorViewportClient::BuildRenderRequest(FEditorViewportRenderRequest &OutRequest)
+{
+    UWorld *World = GetWorld();
+    if (!Viewport || !World || !GetCamera())
+    {
+        return false;
+    }
+
+    OutRequest.Viewport = Viewport;
+    OutRequest.ViewInfo = GetCamera()->GetCameraState();
+    OutRequest.Scene = &World->GetScene();
+    OutRequest.RenderOptions = RenderOptions;
+    OutRequest.CursorProvider = this;
+    OutRequest.bRenderGrid = RenderOptions.ShowFlags.bGrid;
+    OutRequest.bEnableGPUOcclusion = true;
+    OutRequest.bAllowLevelDebugVisuals = true;
+    OutRequest.World = World;
+    OutRequest.LevelViewportClient = this;
+    return true;
 }
 
 void FLevelEditorViewportClient::SyncCameraSmoothingTarget()
 {
-    if (!Camera)
+    if (!GetCamera())
     {
         bTargetLocationInitialized = false;
         bLastAppliedCameraLocationInitialized = false;
         return;
     }
-    const FVector CurrentLocation = Camera->GetWorldLocation();
+    const FVector CurrentLocation = GetCamera()->GetWorldLocation();
     const bool bCameraMovedExternally = bLastAppliedCameraLocationInitialized &&
                                         FVector::DistSquared(CurrentLocation, LastAppliedCameraLocation) > 0.0001f;
     if (!bTargetLocationInitialized || bCameraMovedExternally)
@@ -1310,12 +1350,12 @@ void FLevelEditorViewportClient::SyncCameraSmoothingTarget()
 
 void FLevelEditorViewportClient::ApplySmoothedCameraLocation(float DeltaTime)
 {
-    if (!Camera)
+    if (!GetCamera())
         return;
-    const FVector CurrentLocation = Camera->GetWorldLocation();
+    const FVector CurrentLocation = GetCamera()->GetWorldLocation();
     const float LerpAlpha = Clamp(DeltaTime * SmoothLocationSpeed, 0.0f, 1.0f);
     const FVector NewLocation = CurrentLocation + (TargetLocation - CurrentLocation) * LerpAlpha;
-    Camera->SetWorldLocation(NewLocation);
+    GetCamera()->SetWorldLocation(NewLocation);
     LastAppliedCameraLocation = NewLocation;
     bLastAppliedCameraLocationInitialized = true;
 }
@@ -1396,7 +1436,7 @@ void FLevelEditorViewportClient::TickEditorShortcuts()
 
 void FLevelEditorViewportClient::TickInput(float DeltaTime)
 {
-    if (!Camera)
+    if (!GetCamera())
         return;
     if (IsViewingFromLight())
         return;
@@ -1407,22 +1447,22 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
     EditorZoomAccumulator = 0.0f;
     bool bForceInput = bIsHovered || bIsActive || Input.IsMouseButtonDown(VK_RBUTTON);
     EnhancedInputManager.ProcessInput(&Input, DeltaTime, bForceInput);
-    const FMinimalViewInfo &CameraState = Camera->GetCameraState();
+    const FMinimalViewInfo &CameraState = GetCamera()->GetCameraState();
     const bool bIsOrtho = CameraState.bIsOrthogonal;
     const float MoveSensitivity = RenderOptions.CameraMoveSensitivity;
     const float CameraSpeed = (Settings ? Settings->CameraSpeed : 10.f) * MoveSensitivity;
     const float PanMouseScale = CameraSpeed * 0.01f;
     if (!bIsOrtho)
     {
-        FVector DeltaMove = (Camera->GetForwardVector() * EditorMoveAccumulator.X +
-                             Camera->GetRightVector() * EditorMoveAccumulator.Y) *
+        FVector DeltaMove = (GetCamera()->GetForwardVector() * EditorMoveAccumulator.X +
+                             GetCamera()->GetRightVector() * EditorMoveAccumulator.Y) *
                             (CameraSpeed * DeltaTime);
         DeltaMove.Z += EditorMoveAccumulator.Z * (CameraSpeed * DeltaTime);
         TargetLocation += DeltaMove;
         if (!EditorPanAccumulator.IsNearlyZero())
         {
-            FVector PanDelta = (Camera->GetRightVector() * (-EditorPanAccumulator.X * PanMouseScale * 0.15f)) +
-                               (Camera->GetUpVector() * (EditorPanAccumulator.Y * PanMouseScale * 0.15f));
+            FVector PanDelta = (GetCamera()->GetRightVector() * (-EditorPanAccumulator.X * PanMouseScale * 0.15f)) +
+                               (GetCamera()->GetUpVector() * (EditorPanAccumulator.Y * PanMouseScale * 0.15f));
             TargetLocation += PanDelta;
         }
         if (!EditorRotateAccumulator.IsNearlyZero())
@@ -1441,7 +1481,7 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
                 Yaw = EditorRotateAccumulator.X * MouseRotationSpeed;
                 Pitch = EditorRotateAccumulator.Y * MouseRotationSpeed;
             }
-            Camera->Rotate(Yaw, Pitch);
+            GetCamera()->Rotate(Yaw, Pitch);
         }
     }
     else
@@ -1449,7 +1489,7 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
         if (!EditorRotateAccumulator.IsNearlyZero() && Input.IsMouseButtonDown(VK_RBUTTON))
         {
             float PanScale = CameraState.OrthoWidth * 0.002f * MoveSensitivity;
-            Camera->MoveLocal(FVector(0, -EditorRotateAccumulator.Y * PanScale, EditorRotateAccumulator.Z * PanScale));
+            GetCamera()->MoveLocal(FVector(0, -EditorRotateAccumulator.Y * PanScale, EditorRotateAccumulator.Z * PanScale));
         }
     }
 }
@@ -1498,15 +1538,20 @@ static FVector FindClosestVertex(UWorld *World, const FRay &Ray, float MaxDistan
 void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
 {
     (void)DeltaTime;
-    if (!Camera || !Gizmo || !GetWorld())
+    if (!GetCamera() || !Gizmo || !GetWorld())
         return;
-    Gizmo->ApplyScreenSpaceScaling(Camera->GetWorldLocation(), Camera->IsOrthogonal(), Camera->GetOrthoWidth());
-    Gizmo->SetAxisMask(UGizmoComponent::ComputeAxisMask(RenderOptions.ViewportType, Gizmo->GetMode()));
+    if (Gizmo->GetMode() != GizmoManager.GetMode())
+    {
+        GizmoManager.SetMode(Gizmo->GetMode());
+    }
+    GizmoManager.SetSpace(Gizmo->IsWorldSpace() ? EGizmoSpace::World : EGizmoSpace::Local);
+    GizmoManager.ApplyScreenSpaceScaling(GetCamera()->GetWorldLocation(), GetCamera()->IsOrthogonal(), GetCamera()->GetOrthoWidth());
+    GizmoManager.SetAxisMask(UGizmoComponent::ComputeAxisMask(RenderOptions.ViewportType, GizmoManager.GetMode()));
 
     uint32 CursorViewportX = 0;
     uint32 CursorViewportY = 0;
     const bool bCursorInViewport = GetCursorViewportPosition(CursorViewportX, CursorViewportY);
-    if (FInputManager::Get().IsGuiUsingMouse() && !bCursorInViewport && !Gizmo->IsHolding() && !bIsMarqueeSelecting)
+    if (FInputManager::Get().IsGuiUsingMouse() && !bCursorInViewport && !GizmoManager.IsDragging() && !bIsMarqueeSelecting)
     {
         return;
     }
@@ -1514,14 +1559,14 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     const float ZoomSpeed = Settings ? Settings->CameraZoomSpeed : 300.f;
     if (std::abs(EditorZoomAccumulator) > 1e-6f)
     {
-        if (Camera->IsOrthogonal())
+        if (GetCamera()->IsOrthogonal())
         {
-            float NewWidth = Camera->GetOrthoWidth() - EditorZoomAccumulator * ZoomSpeed * DeltaTime;
-            Camera->SetOrthoWidth(Clamp(NewWidth, 0.1f, 1000.0f));
+            float NewWidth = GetCamera()->GetOrthoWidth() - EditorZoomAccumulator * ZoomSpeed * DeltaTime;
+            GetCamera()->SetOrthoWidth(Clamp(NewWidth, 0.1f, 1000.0f));
         }
         else
         {
-            TargetLocation += Camera->GetForwardVector() * (EditorZoomAccumulator * ZoomSpeed * 0.015f);
+            TargetLocation += GetCamera()->GetForwardVector() * (EditorZoomAccumulator * ZoomSpeed * 0.015f);
         }
     }
     FInputManager &Input = FInputManager::Get();
@@ -1537,11 +1582,11 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         LocalMouseX = MousePos.x - ViewportScreenRect.X;
         LocalMouseY = MousePos.y - ViewportScreenRect.Y;
     }
-    FRay Ray = Camera->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
+    FRay Ray = GetCamera()->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
     FRayHitResult HitResult;
     const bool bCanInteractWithGizmo =
-        SelectionManager && SelectionManager->GetSelectedComponent() && Gizmo->HasTarget();
-    bool bGizmoHit = bCanInteractWithGizmo && FRayUtils::RaycastComponent(Gizmo, Ray, HitResult);
+        SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
+    bool bGizmoHit = bCanInteractWithGizmo && GizmoManager.HitTest(Ray, HitResult);
     if (Input.IsKeyPressed(FInputManager::MOUSE_LEFT) && bIsHovered)
     {
         if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyDown(VK_MENU))
@@ -1580,23 +1625,20 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         }
         else
         {
-            if (Gizmo->IsPressedOnHandle() && !Gizmo->IsHolding())
-                Gizmo->SetHolding(true);
-            if (Gizmo->IsHolding())
+            if (GizmoManager.IsDragging())
             {
                 if (Input.IsKeyDown('V'))
                 {
                     FVector BestV = FindClosestVertex(GetWorld(), Ray, 2.0f);
                     if (!BestV.IsNearlyZero())
                     {
-                        Gizmo->SetTargetLocation(BestV);
+                        GizmoManager.SetTargetWorldLocation(BestV);
                         TargetLocation = BestV;
                     }
                 }
-                Gizmo->UpdateDrag(Ray);
+                GizmoManager.UpdateDrag(Ray);
             }
-        }
-    }
+        }    }
     else if (Input.IsKeyReleased(FInputManager::MOUSE_LEFT))
     {
         if (bDraggingUIScreenGizmo)
@@ -1617,7 +1659,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
                 {
                     if (!Input.IsKeyDown(VK_CONTROL))
                         SelectionManager->ClearSelection();
-                    FMatrix VP = Camera->GetViewProjectionMatrix();
+                    FMatrix VP = GetCamera()->GetViewProjectionMatrix();
                     for (AActor *Actor : World->GetActors())
                     {
                         if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoComponent>())
@@ -1634,7 +1676,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         }
         else
         {
-            Gizmo->DragEnd();
+            GizmoManager.EndDrag();
             if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
             {
                 EditorEngine->CommitTrackedTransformChange();
@@ -1647,7 +1689,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         {
             EndUIScreenTranslateDrag(true);
         }
-        Gizmo->SetPressedOnHandle(false);
+        if (Gizmo) Gizmo->SetPressedOnHandle(false);
         if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
         {
             EditorEngine->CommitTrackedTransformChange();
@@ -1668,8 +1710,8 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
     FScopeCycleCounter PickCounter;
     FRayHitResult HitResult{};
     const bool bCanInteractWithGizmo =
-        SelectionManager && SelectionManager->GetSelectedComponent() && Gizmo->HasTarget();
-    if (bCanInteractWithGizmo && FRayUtils::RaycastComponent(Gizmo, Ray, HitResult))
+        SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
+    if (bCanInteractWithGizmo && GizmoManager.HitTest(Ray, HitResult))
     {
         if (SelectionManager)
         {
@@ -1677,7 +1719,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
             {
                 if (Actor && Actor->IsActorMovementLocked())
                 {
-                    Gizmo->SetPressedOnHandle(false);
+                    if (Gizmo) Gizmo->SetPressedOnHandle(false);
                     return;
                 }
             }
@@ -1686,7 +1728,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
         {
             EditorEngine->BeginTrackedTransformChange();
         }
-        Gizmo->SetPressedOnHandle(true);
+        GizmoManager.BeginDrag(Ray);
     }
     else
     {
@@ -1731,7 +1773,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
                 {
                     EditorRaycastAllVisiblePrimitives(W, Ray, HitResult, BestActor);
                 }
-                if (!BestActor && Camera)
+                if (!BestActor && GetCamera())
                 {
                     const ImVec2 MousePos = ImGui::GetIO().MousePos;
                     float LocalMouseX = 0.0f;
@@ -1742,7 +1784,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
                         UPrimitiveComponent *ScreenHitPrimitive = nullptr;
                         const float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
                         const float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
-                        BestActor = FindScreenSpacePrimitiveAt(W, Camera, LocalMouseX, LocalMouseY, VPWidth, VPHeight,
+                        BestActor = FindScreenSpacePrimitiveAt(W, GetCamera(), LocalMouseX, LocalMouseY, VPWidth, VPHeight,
                                                                ScreenHitPrimitive);
                         if (ScreenHitPrimitive)
                         {
@@ -1967,9 +2009,9 @@ void FLevelEditorViewportClient::UpdateLayoutRect()
     {
         const uint32 TargetW = (std::max)(320u, FProjectSettings::Get().Game.WindowWidth);
         const uint32 TargetH = (std::max)(240u, FProjectSettings::Get().Game.WindowHeight);
-        if (Camera)
+        if (GetCamera())
         {
-            Camera->OnResize(static_cast<int32>(TargetW), static_cast<int32>(TargetH));
+            GetCamera()->OnResize(static_cast<int32>(TargetW), static_cast<int32>(TargetH));
         }
         if (Viewport->GetWidth() != TargetW || Viewport->GetHeight() != TargetH)
         {
@@ -1993,9 +2035,9 @@ void FLevelEditorViewportClient::UpdateLayoutRect()
 
     uint32 SlotW = static_cast<uint32>(R.Width);
     uint32 SlotH = static_cast<uint32>(R.Height);
-    if (Camera && SlotW > 0 && SlotH > 0)
+    if (GetCamera() && SlotW > 0 && SlotH > 0)
     {
-        Camera->OnResize(static_cast<int32>(SlotW), static_cast<int32>(SlotH));
+        GetCamera()->OnResize(static_cast<int32>(SlotW), static_cast<int32>(SlotH));
     }
     if (SlotW > 0 && SlotH > 0 && (SlotW != Viewport->GetWidth() || SlotH != Viewport->GetHeight()))
     {

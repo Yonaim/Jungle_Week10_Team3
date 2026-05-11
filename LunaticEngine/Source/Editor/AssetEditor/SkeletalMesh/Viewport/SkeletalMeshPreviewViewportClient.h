@@ -3,9 +3,9 @@
 #include "Common/Viewport/EditorViewportClient.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
 #include "Common/Gizmo/GizmoManager.h"
-#include "Render/Scene/FScene.h"
+#include "Common/Viewport/EditorViewportCamera.h"
+#include "Common/Viewport/PreviewScene.h"
 
-class UCameraComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
 class UGizmoComponent;
@@ -52,7 +52,8 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     bool BuildRenderRequest(FEditorViewportRenderRequest &OutRequest) override;
 
     USkeletalMeshComponent *GetPreviewComponent() const { return PreviewComponent; }
-    UCameraComponent *GetPreviewCamera() const { return PreviewCamera; }
+    FEditorViewportCamera *GetPreviewCamera() { return &ViewCamera; }
+    const FEditorViewportCamera *GetPreviewCamera() const { return &ViewCamera; }
 
   private:
     void EnsurePreviewObjects();
@@ -77,15 +78,12 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     FSkeletalMeshSelectionManager *SelectionManager = nullptr;
 
     // Asset Preview 전용 렌더 Scene. LevelEditor World / Selection / PIE와 분리한다.
-    FScene PreviewScene;
+    FPreviewScene PreviewScene;
     USkeletalMeshComponent *PreviewComponent = nullptr;
-    UCameraComponent *PreviewCamera = nullptr;
-    FPrimitiveSceneProxy *PreviewProxy = nullptr;
+        FPrimitiveSceneProxy *PreviewProxy = nullptr;
     UGizmoComponent *PreviewGizmoComponent = nullptr;
 
-    FViewportRenderOptions RenderOptions;
-    FGizmoManager GizmoManager;
-    int32 GizmoTargetBoneIndex = -1;
+    FViewportRenderOptions RenderOptions;    int32 GizmoTargetBoneIndex = -1;
 
     FVector OrbitTarget = FVector::ZeroVector;
     float OrbitDistance = 6.0f;

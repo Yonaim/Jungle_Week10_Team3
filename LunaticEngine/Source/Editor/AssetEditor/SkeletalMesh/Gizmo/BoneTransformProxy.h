@@ -7,7 +7,7 @@ class USkeletalMeshComponent;
 
 // SkeletalMeshEditor 전용 Bone Transform Proxy.
 // Bone은 SceneComponent가 아니므로 BoneIndex를 통해 USkeletalMeshComponent의 Pose를 수정한다.
-class FBoneTransformProxy final : public ITransformProxy
+class FBoneTransformProxy final : public ITransformGizmoTarget
 {
 public:
     FBoneTransformProxy(USkeletalMeshComponent* InComponent, int32 InBoneIndex);

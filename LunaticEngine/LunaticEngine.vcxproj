@@ -348,6 +348,7 @@
     <ClCompile Include="Source\Editor\Common\UI\ImGui\EditorImGuiSystem.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Panels\Panel.cpp" />
+    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportCamera.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportPanel.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp" />
@@ -636,6 +637,7 @@
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h" />
+    <ClInclude Include="Source\Editor\Common\Gizmo\TransformGizmoTargets.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
     <ClInclude Include="Source\Editor\Common\UI\Base\UIElement.h" />
@@ -648,9 +650,12 @@
     <ClInclude Include="Source\Editor\Common\UI\Panels\PanelTitleUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\AccentColor.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h" />
+    <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h" />
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportCamera.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h" />
+    <ClInclude Include="Source\Editor\Common\Viewport\PreviewScene.h" />
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h" />
     <ClInclude Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.h" />
@@ -729,6 +734,8 @@
     <ClInclude Include="Source\Engine\Component\UIImageComponent.h" />
     <ClInclude Include="Source\Engine\Component\UIScreenTextComponent.h" />
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h" />
+    <ClInclude Include="Source\Engine\Component\Gizmo\TransformProxy.h" />
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h" />
     <ClInclude Include="Source\Engine\Component\Light\DirectionalLightComponent.h" />
     <ClInclude Include="Source\Engine\Component\Light\LightComponent.h" />

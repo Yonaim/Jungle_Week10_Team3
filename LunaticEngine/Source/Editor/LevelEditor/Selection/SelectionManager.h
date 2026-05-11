@@ -2,10 +2,13 @@
 
 #include "Core/CoreTypes.h"
 
+#include <memory>
+
 class AActor;
 class USceneComponent;
 class UGizmoComponent;
 class UWorld;
+class ITransformGizmoTarget;
 
 class FSelectionManager
 {
@@ -40,6 +43,7 @@ public:
 	bool IsEmpty() const { return SelectedActors.empty(); }
 
 	UGizmoComponent* GetGizmo() const { return Gizmo; }
+	std::shared_ptr<ITransformGizmoTarget> MakeTransformGizmoTarget() const;
 
 	void SetGizmoEnabled(bool bEnabled);
 	void SetWorld(UWorld* InWorld);

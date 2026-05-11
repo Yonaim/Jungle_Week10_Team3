@@ -31,6 +31,7 @@
 #include "ImGui/imgui.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "Math/MathUtils.h"
 #include "Platform/Paths.h"
 #include "Render/Pipeline/Renderer.h"
@@ -182,7 +183,7 @@ namespace
         return bChanged;
     }
 
-    void DrawCameraPopupContent(UCameraComponent *Camera, FLevelEditorSettings &Settings)
+    void DrawCameraPopupContent(FEditorViewportCamera *Camera, FLevelEditorSettings &Settings)
     {
         DrawPopupSectionHeader("CAMERA");
         ImGui::PushStyleColor(ImGuiCol_Text, CameraPopupHintColor);
@@ -1143,11 +1144,7 @@ void FLevelViewportLayout::SetActiveViewport(FLevelEditorViewportClient *InClien
     if (ActiveViewportClient)
     {
         ActiveViewportClient->SetActive(true);
-        UWorld *World = Editor->GetWorld();
-        if (World && ActiveViewportClient->GetCamera())
-        {
-            World->SetActiveCamera(ActiveViewportClient->GetCamera());
-        }
+        // Editor viewport cameras are not UCameraComponent instances and are not registered as World active cameras.
     }
 }
 
@@ -1161,7 +1158,7 @@ void FLevelViewportLayout::ResetViewport(UWorld *InWorld)
         // 카메라 재생성 후 현재 뷰포트 크기로 AspectRatio 동기화
         if (FViewport *VP = VC->GetViewport())
         {
-            UCameraComponent *Cam = VC->GetCamera();
+            FEditorViewportCamera *Cam = VC->GetCamera();
             if (Cam && VP->GetWidth() > 0 && VP->GetHeight() > 0)
             {
                 Cam->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
@@ -1171,8 +1168,7 @@ void FLevelViewportLayout::ResetViewport(UWorld *InWorld)
         // 기존 뷰포트 타입(Ortho 방향 등)을 새 카메라에 재적용
         VC->SetViewportType(VC->GetRenderOptions().ViewportType);
     }
-    if (ActiveViewportClient && InWorld)
-        InWorld->SetActiveCamera(ActiveViewportClient->GetCamera());
+    // Editor viewport cameras are kept outside UWorld. PIE creates/uses real UCameraComponent instances separately.
 }
 
 void FLevelViewportLayout::DestroyAllCameras()
@@ -2214,7 +2210,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             {
                 FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
                 FViewportRenderOptions     &Opts = VC->GetRenderOptions();
-                UCameraComponent           *Camera = VC->GetCamera();
+                FEditorViewportCamera      *Camera = VC->GetCamera();
                 UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
                 FLevelEditorSettings            &Settings = Editor->GetSettings();
                 const bool                  bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
@@ -2710,7 +2706,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         {
             FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
             FViewportRenderOptions     &Opts = VC->GetRenderOptions();
-            UCameraComponent           *Camera = VC->GetCamera();
+            FEditorViewportCamera      *Camera = VC->GetCamera();
             UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
             FLevelEditorSettings            &Settings = Editor->GetSettings();
 
@@ -3549,7 +3545,7 @@ void FLevelViewportLayout::SaveToSettings()
     // Perspective 카메라(slot 0) 저장
     if (!LevelViewportClients.empty())
     {
-        UCameraComponent *Cam = LevelViewportClients[0]->GetCamera();
+        FEditorViewportCamera *Cam = LevelViewportClients[0]->GetCamera();
         if (Cam)
         {
             S.PerspCamLocation = Cam->GetWorldLocation();
@@ -3612,7 +3608,7 @@ void FLevelViewportLayout::LoadFromSettings()
     // Perspective 카메라(slot 0) 복원
     if (!LevelViewportClients.empty())
     {
-        UCameraComponent *Cam = LevelViewportClients[0]->GetCamera();
+        FEditorViewportCamera *Cam = LevelViewportClients[0]->GetCamera();
         if (Cam)
         {
             Cam->SetRelativeLocation(S.PerspCamLocation);

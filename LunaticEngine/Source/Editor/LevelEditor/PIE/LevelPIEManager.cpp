@@ -12,6 +12,7 @@
 #include "GameFramework/World.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "Object/Object.h"
 #include "Viewport/GameViewportClient.h"
 #include <filesystem>
@@ -115,6 +116,19 @@ namespace
         World->SetActiveCamera(Cam);
         return Cam;
     }
+
+    UCameraComponent* EnsurePIEActiveCamera(UWorld* World, const FPIEViewportCameraSnapshot& CameraSnapshot)
+    {
+        FPerspectiveCameraData CameraData;
+        CameraData.Location = CameraSnapshot.Location;
+        CameraData.Rotation = CameraSnapshot.Rotation.ToVector();
+        CameraData.FOV = CameraSnapshot.CameraState.FOV;
+        CameraData.NearClip = CameraSnapshot.CameraState.NearZ;
+        CameraData.FarClip = CameraSnapshot.CameraState.FarZ;
+        CameraData.bValid = CameraSnapshot.bValid;
+        return EnsurePIEActiveCamera(World, CameraData);
+    }
+
 }
 
 void FLevelPIEManager::Init(UEditorEngine* InEditorEngine)
@@ -484,7 +498,7 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
     Info.PreviousActiveWorldHandle = EditorEngine->GetActiveWorldHandle();
     if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
     {
-        if (UCameraComponent* VCCamera = ActiveVC->GetCamera())
+        if (FEditorViewportCamera* VCCamera = ActiveVC->GetCamera())
         {
             Info.SavedViewportCamera.Location = VCCamera->GetWorldLocation();
             Info.SavedViewportCamera.Rotation = VCCamera->GetRelativeRotation();
@@ -502,13 +516,9 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
     }
 
     UCameraComponent* PlaceholderCamera = nullptr;
-    if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
+    if (PlayInEditorSessionInfo && PlayInEditorSessionInfo->SavedViewportCamera.bValid)
     {
-        if (UCameraComponent* VCCamera = ActiveVC->GetCamera())
-        {
-            PlaceholderCamera = VCCamera;
-            PIEWorld->SetActiveCamera(VCCamera);
-        }
+        PlaceholderCamera = EnsurePIEActiveCamera(PIEWorld, PlayInEditorSessionInfo->SavedViewportCamera);
     }
 
     EditorEngine->GetSelectionManager().ClearSelection();
@@ -531,7 +541,6 @@ void FLevelPIEManager::StartPlayInEditorSession(const FRequestPlaySessionParams&
         FViewport* InitialViewport = nullptr;
         if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
         {
-            InitialTargetCamera = ActiveVC->GetCamera() ? ActiveVC->GetCamera() : InitialTargetCamera;
             InitialViewport = ActiveVC->GetViewport();
             PIEViewportClient->SetCursorClipRect(ActiveVC->GetViewportScreenRect());
         }
@@ -581,7 +590,7 @@ void FLevelPIEManager::EndPlayMap()
 
         if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
         {
-            if (UCameraComponent* VCCamera = ActiveVC->GetCamera())
+            if (FEditorViewportCamera* VCCamera = ActiveVC->GetCamera())
             {
                 if (PlayInEditorSessionInfo->SavedViewportCamera.bValid)
                 {
@@ -591,7 +600,7 @@ void FLevelPIEManager::EndPlayMap()
                     VCCamera->SetCameraState(SavedCamera.CameraState);
                 }
 
-                EditorWorld->SetActiveCamera(VCCamera);
+                // Editor viewport camera is not a UCameraComponent; keep it outside the World active camera slot.
             }
         }
     }
@@ -683,8 +692,4 @@ void FLevelPIEManager::SyncGameViewportPIEControlState(bool bPossessedMode)
         }
     }
 
-    if (FLevelEditorViewportClient* ActiveVC = EditorEngine->GetViewportLayout().GetActiveViewport())
-    {
-        PIEViewportClient->Possess(ActiveVC->GetCamera());
-    }
 }

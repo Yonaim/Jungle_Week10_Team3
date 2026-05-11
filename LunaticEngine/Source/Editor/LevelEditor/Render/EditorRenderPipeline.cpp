@@ -5,6 +5,7 @@
 #include "EditorEngine.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Common/Viewport/EditorViewportClient.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 #include "Engine/Camera/PlayerCameraManager.h"
 #include "Engine/Render/Types/ForwardLightData.h"
 #include "GameFramework/GameModeBase.h"
@@ -74,8 +75,14 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer &Renderer)
             continue;
         }
 
+        FEditorViewportRenderRequest Request;
+        if (!ViewportClient->BuildRenderRequest(Request))
+        {
+            continue;
+        }
+
         SCOPE_STAT_CAT("RenderViewport", "2_Render");
-        RenderViewport(ViewportClient, Renderer);
+        RenderViewportRequest(Request, Renderer);
     }
 
     // Asset Editor Preview Viewport 렌더링.
@@ -117,96 +124,84 @@ void FEditorRenderPipeline::Execute(float DeltaTime, FRenderer &Renderer)
     }
 }
 
-void FEditorRenderPipeline::RenderViewport(FLevelEditorViewportClient *VC, FRenderer &Renderer)
+void FEditorRenderPipeline::RenderViewportRequest(const FEditorViewportRenderRequest &Request, FRenderer &Renderer)
 {
-    UCameraComponent *Camera = VC->GetCamera();
-    UWorld *World = Editor->GetWorld();
-    if (!World)
-        return;
-
-    // PIE 고려한 구조.
-    if (Editor && Editor->IsPIEPossessedMode())
+    if (!Request.Viewport || !Request.Scene)
     {
-        if (UGameViewportClient *GameViewportClient = Editor->GetGameViewportClient())
+        return;
+    }
+
+    ID3D11DeviceContext *Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
+    if (!Ctx)
+    {
+        return;
+    }
+
+    if (Request.LevelViewportClient && Request.World)
+    {
+        FLevelEditorViewportClient *VC = Request.LevelViewportClient;
+        UWorld *World = Request.World;
+        const FMinimalViewInfo *ViewInfo = &Request.ViewInfo;
+        UCameraComponent *RuntimeCamera = nullptr;
+
+        if (Editor && Editor->IsPIEPossessedMode())
         {
-            if (UCameraComponent *GameCamera = GameViewportClient->GetDrivingCamera())
+            if (UGameViewportClient *GameViewportClient = Editor->GetGameViewportClient())
             {
-                if (IsAliveObject(GameCamera) && GameCamera->GetWorld() == World)
+                if (UCameraComponent *GameCamera = GameViewportClient->GetDrivingCamera())
                 {
-                    Camera = GameCamera;
+                    if (IsAliveObject(GameCamera) && GameCamera->GetWorld() == World)
+                    {
+                        RuntimeCamera = GameCamera;
+                        ViewInfo = &RuntimeCamera->GetCameraState();
+                    }
+                }
+            }
+
+            if (!RuntimeCamera)
+            {
+                if (UCameraComponent *ActiveCamera = World->GetActiveCamera())
+                {
+                    if (IsAliveObject(ActiveCamera) && ActiveCamera->GetWorld() == World)
+                    {
+                        RuntimeCamera = ActiveCamera;
+                        ViewInfo = &RuntimeCamera->GetCameraState();
+                    }
                 }
             }
         }
 
-        if (!Camera || !IsAliveObject(Camera) || Camera->GetWorld() != World)
+        FGPUOcclusionCulling &GPUOcclusion = GetOcclusionForViewport(VC);
+        GPUOcclusion.ReadbackResults(Ctx);
+
+        PrepareViewport(Request.Viewport, Ctx);
+        BuildFrame(VC, *ViewInfo, RuntimeCamera, Request.Viewport, World);
+
+        FCollectOutput Output;
+        CollectCommands(VC, World, Renderer, Output);
+
         {
-            Camera = World->GetActiveCamera();
+            SCOPE_STAT_CAT("Renderer.Render", "4_ExecutePass");
+            Renderer.Render(Frame, *Request.Scene);
         }
-    }
 
-    if (!Camera || !IsAliveObject(Camera))
-        return;
-    if (Editor && Editor->IsPlayingInEditor() && Camera->GetWorld() != World)
-        return;
-    if (!Camera)
-        return;
-
-    FViewport *VP = VC->GetViewport();
-    if (!VP)
-        return;
-
-    ID3D11DeviceContext *Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
-    if (!Ctx)
-        return;
-
-    FGPUOcclusionCulling &GPUOcclusion = GetOcclusionForViewport(VC);
-
-    // GPU Occlusion — 이전 프레임 결과 읽기 (이 뷰포트 전용)
-    GPUOcclusion.ReadbackResults(Ctx);
-
-    PrepareViewport(VP, Camera, Ctx);
-    BuildFrame(VC, Camera, VP, World);
-
-    FCollectOutput Output;
-    CollectCommands(VC, World, Renderer, Output);
-
-    FScene &Scene = World->GetScene();
-
-    // GPU 정렬 + 제출
-    {
-        SCOPE_STAT_CAT("Renderer.Render", "4_ExecutePass");
-        Renderer.Render(Frame, Scene);
-    }
-
-    // GPU Occlusion — Render 후 DepthBuffer가 유효할 때 디스패치 (이 뷰포트 전용)
-    {
-        SCOPE_STAT_CAT("GPUOcclusion", "4_ExecutePass");
-        GPUOcclusion.DispatchOcclusionTest(Ctx, VP->GetDepthCopySRV(), Output.FrustumVisibleProxies, Frame.View,
-                                           Frame.Proj, VP->GetWidth(), VP->GetHeight());
-    }
-}
-
-void FEditorRenderPipeline::RenderViewportRequest(const FEditorViewportRenderRequest &Request, FRenderer &Renderer)
-{
-    if (!Request.Viewport || !Request.Camera || !Request.Scene)
-    {
+        if (Request.bEnableGPUOcclusion)
+        {
+            SCOPE_STAT_CAT("GPUOcclusion", "4_ExecutePass");
+            GPUOcclusion.DispatchOcclusionTest(Ctx, Request.Viewport->GetDepthCopySRV(), Output.FrustumVisibleProxies,
+                                               Frame.View, Frame.Proj, Request.Viewport->GetWidth(), Request.Viewport->GetHeight());
+        }
         return;
     }
 
-    ID3D11DeviceContext *Ctx = Renderer.GetFD3DDevice().GetDeviceContext();
-    if (!Ctx)
-    {
-        return;
-    }
-
-    PrepareViewport(Request.Viewport, Request.Camera, Ctx);
+    PrepareViewport(Request.Viewport, Ctx);
     BuildFrameFromRequest(Request);
 
     FCollectOutput Output;
     CollectSceneCommands(Request, Renderer, Output);
 
     {
-        SCOPE_STAT_CAT("Renderer.RenderAssetPreview", "4_ExecutePass");
+        SCOPE_STAT_CAT("Renderer.RenderViewportRequest", "4_ExecutePass");
         Renderer.Render(Frame, *Request.Scene);
     }
 }
@@ -214,12 +209,9 @@ void FEditorRenderPipeline::RenderViewportRequest(const FEditorViewportRenderReq
 // ============================================================
 // PrepareViewport — 지연 리사이즈 적용 + RT 클리어
 // ============================================================
-void FEditorRenderPipeline::PrepareViewport(FViewport *VP, UCameraComponent *Camera, ID3D11DeviceContext *Ctx)
+void FEditorRenderPipeline::PrepareViewport(FViewport *VP, ID3D11DeviceContext *Ctx)
 {
-    if (VP->ApplyPendingResize())
-    {
-        Camera->OnResize(static_cast<int32>(VP->GetWidth()), static_cast<int32>(VP->GetHeight()));
-    }
+    VP->ApplyPendingResize();
     const float ClearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     VP->BeginRender(Ctx, ClearColor);
 }
@@ -227,7 +219,7 @@ void FEditorRenderPipeline::PrepareViewport(FViewport *VP, UCameraComponent *Cam
 // ============================================================
 // BuildFrame — FFrameContext 일괄 설정
 // ============================================================
-void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, UCameraComponent *Camera, FViewport *VP,
+void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, const FMinimalViewInfo& ViewInfo, UCameraComponent *LightReferenceCamera, FViewport *VP,
                                        UWorld *World)
 {
     Frame.ClearViewportResources();
@@ -250,7 +242,7 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, UCameraCo
     }
     else
     {
-        Frame.SetCameraInfo(Camera);
+        Frame.SetCameraInfo(ViewInfo);
     }
 
     // Light View Override — 라이트 시점으로 View/Proj 교체
@@ -264,7 +256,7 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, UCameraCo
         else
         {
             FLightViewProjResult LVP;
-            if (Light->GetLightViewProj(LVP, Camera, VC->GetPointLightFaceIndex()))
+            if (Light->GetLightViewProj(LVP, LightReferenceCamera, VC->GetPointLightFaceIndex()))
             {
                 Frame.View = LVP.View;
                 Frame.Proj = LVP.Proj;
@@ -279,7 +271,7 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, UCameraCo
     Frame.bIsLightView = VC->IsViewingFromLight();
     Frame.SetRenderOptions(VC->GetRenderOptions());
     Frame.SetViewportInfo(VP);
-    const FMinimalViewInfo &CameraState = ActivePOV ? *ActivePOV : Camera->GetCameraState();
+    const FMinimalViewInfo &CameraState = ActivePOV ? *ActivePOV : ViewInfo;
     const float AR = CameraState.bConstrainAspectRatio
                          ? CameraState.LetterBoxingAspectW / CameraState.LetterBoxingAspectH
                          : CameraState.AspectRatio;
@@ -298,12 +290,12 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, UCameraCo
 void FEditorRenderPipeline::BuildFrameFromRequest(const FEditorViewportRenderRequest &Request)
 {
     Frame.ClearViewportResources();
-    Frame.SetCameraInfo(Request.Camera);
+    Frame.SetCameraInfo(Request.ViewInfo);
     Frame.SetRenderOptions(Request.RenderOptions);
     Frame.RenderOptions.ShowFlags.bGrid = Request.bRenderGrid;
     Frame.SetViewportInfo(Request.Viewport);
 
-    const FMinimalViewInfo &CameraState = Request.Camera->GetCameraState();
+    const FMinimalViewInfo &CameraState = Request.ViewInfo;
     const float AR = CameraState.bConstrainAspectRatio
                          ? CameraState.LetterBoxingAspectW / CameraState.LetterBoxingAspectH
                          : CameraState.AspectRatio;

@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Selection/SelectionManager.h"
+#include "LevelEditor/Selection/SelectionManager.h"
 #include "Component/GizmoComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
@@ -6,6 +6,7 @@
 #include "GameFramework/World.h"
 #include "Object/Object.h"
 #include "Render/Scene/FScene.h"
+#include "Common/Gizmo/TransformGizmoTargets.h"
 
 
 void FSelectionManager::Init()
@@ -338,24 +339,8 @@ int32 FSelectionManager::DeleteSelectedActors()
 
 void FSelectionManager::Tick()
 {
-    if (!Gizmo || !bGizmoEnabled)
-    {
-        return;
-    }
-
-    USceneComponent *Primary = SelectedComponent;
-    if (!Primary)
-    {
-        return;
-    }
-
-    if (Gizmo->GetTarget() != Primary)
-    {
-        SyncGizmo();
-        return;
-    }
-
-    Gizmo->UpdateGizmoTransform();
+    // Gizmo transform is now owned by FGizmoManager.
+    // SelectionManager only owns the visual component and selection state.
 }
 
 void FSelectionManager::SetGizmoEnabled(bool bEnabled)
@@ -414,6 +399,21 @@ void FSelectionManager::SelectComponent(USceneComponent *Component)
     SyncGizmo();
 }
 
+std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarget() const
+{
+    if (!bGizmoEnabled || !SelectedComponent)
+    {
+        return nullptr;
+    }
+
+    if (SelectedComponent->SupportsUIScreenPicking() || !SelectedComponent->SupportsWorldGizmo())
+    {
+        return nullptr;
+    }
+
+    return std::make_shared<FSceneComponentTransformGizmoTarget>(SelectedComponent);
+}
+
 void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
 {
     if (!Actor || !World)
@@ -450,7 +450,6 @@ void FSelectionManager::SyncGizmo()
             return;
         }
 
-        Gizmo->SetTarget(Primary);
         Gizmo->SetSelectedActors(&SelectedActors);
     }
     else

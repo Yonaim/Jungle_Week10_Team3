@@ -168,7 +168,7 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
     return LevelEditor.GetPIEManager().LoadScene(InSceneReference);
 }
 
-UCameraComponent *UEditorEngine::GetCamera() const
+FEditorViewportCamera *UEditorEngine::GetCamera() const
 {
     if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
     {
@@ -403,7 +403,7 @@ void UEditorEngine::RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs)
 
 void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { LevelEditor.GetHistoryManager().InvalidateTrackedSceneSnapshotCache(); }
 
-UCameraComponent *UEditorEngine::FindSceneViewportCamera() const
+FEditorViewportCamera *UEditorEngine::FindSceneViewportCamera() const
 {
     for (FLevelEditorViewportClient *VC : GetViewportLayout().GetLevelViewportClients())
     {
@@ -429,7 +429,7 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData &CamData)
         return;
     }
 
-    if (UCameraComponent *Camera = FindSceneViewportCamera())
+    if (FEditorViewportCamera *Camera = FindSceneViewportCamera())
     {
         Camera->SetWorldLocation(CamData.Location);
         Camera->SetRelativeRotation(CamData.Rotation);

@@ -178,6 +178,9 @@
     <Filter Include="Source\Engine\Component">
       <UniqueIdentifier>{9f82130a-2cb8-550b-2cd5-fd5f36ea9619}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Engine\Component\Gizmo">
+      <UniqueIdentifier>{001aa080-0063-c709-5fe9-b6aff0bcc640}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Engine\Component\Light">
       <UniqueIdentifier>{78caf1fd-8899-87cc-0a93-8e540a5681a0}</UniqueIdentifier>
     </Filter>
@@ -604,6 +607,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\UI\Panels\Panel.cpp">
       <Filter>Source\Editor\Common\UI\Panels</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportCamera.cpp">
+      <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
@@ -1463,6 +1469,9 @@
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h">
       <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\TransformGizmoTargets.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h">
       <Filter>Source\Editor\Common\Menu</Filter>
     </ClInclude>
@@ -1499,13 +1508,22 @@
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h">
       <Filter>Source\Editor\Common\UI\Style</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h">
+      <Filter>Source\Editor\Common\UI\Viewport</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h">
       <Filter>Source\Editor\Common\UI\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportCamera.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\PreviewScene.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h">
@@ -1741,6 +1759,12 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h">
       <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\TransformProxy.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h">
       <Filter>Source\Engine\Component\Light</Filter>

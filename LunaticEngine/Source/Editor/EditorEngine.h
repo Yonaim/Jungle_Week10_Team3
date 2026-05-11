@@ -10,6 +10,7 @@
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "LevelEditor/Window/LevelEditorWindow.h"
+#include "Common/Viewport/EditorViewportCamera.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -54,7 +55,7 @@ class UEditorEngine : public UEngine
 
     // Editor-specific API
     UGizmoComponent  *GetGizmo() const { return GetSelectionManager().GetGizmo(); }
-    UCameraComponent *GetCamera() const;
+    FEditorViewportCamera *GetCamera() const;
     bool              FocusActorInViewport(AActor *Actor);
 
     void SetActiveEditorContext(EEditorContextType InContextType);
@@ -198,7 +199,7 @@ class UEditorEngine : public UEngine
     friend class FLevelEditorHistoryManager;
     friend class FLevelPIEManager;
 
-    UCameraComponent *FindSceneViewportCamera() const;
+    FEditorViewportCamera *FindSceneViewportCamera() const;
     void              RestoreViewportCamera(const FPerspectiveCameraData &CamData);
     void              ClearTrackedTransformHistory();
     void              ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo);

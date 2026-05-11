@@ -350,7 +350,7 @@ void FLevelPlaceActorsPanel::SpawnActor(const FPlaceActorEntry &Entry)
     }
 
     UWorld *World = EditorEngine->GetWorld();
-    UCameraComponent *Camera = EditorEngine->GetCamera();
+    FEditorViewportCamera *Camera = EditorEngine->GetCamera();
     if (!World || !Camera)
     {
         return;
