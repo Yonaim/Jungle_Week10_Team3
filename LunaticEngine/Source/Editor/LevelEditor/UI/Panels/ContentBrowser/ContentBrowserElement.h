@@ -99,6 +99,15 @@ class FbxElement final : public ContentBrowserElement
     void DrawContextMenu(ContentBrowserContext &Context) override;
 };
 
+class SkeletalMeshElement final : public ContentBrowserElement
+{
+  public:
+    void OnDoubleLeftClicked(ContentBrowserContext &Context) override;
+
+  protected:
+    void DrawContextMenu(ContentBrowserContext &Context) override;
+};
+
 class PNGElement final : public ContentBrowserElement
 {
   public:

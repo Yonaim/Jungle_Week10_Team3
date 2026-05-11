@@ -70,7 +70,7 @@ class FAssetEditorManager
      * 임시 Preview Mesh 생성 경로.
      * 실제 Importer가 완성되기 전까지 SkeletalMeshEditor 작업이 막히지 않도록 둔다.
      */
-    USkeletalMesh *CreateDummySkeletalMeshForEditorPreview(const std::filesystem::path &SourcePath) const;
+    USkeletalMesh *CreateSkeletalMeshForEditorPreview(const std::filesystem::path &SourcePath) const;
 
   private:
     UEditorEngine *EditorEngine = nullptr;

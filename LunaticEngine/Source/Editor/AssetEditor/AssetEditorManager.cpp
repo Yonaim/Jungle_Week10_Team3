@@ -8,10 +8,12 @@
 #include "Core/Notification.h"
 #include "Engine/Asset/AssetData.h"
 #include "Engine/Asset/AssetFileSerializer.h"
+#include "Engine/Mesh/FbxImporter.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "EditorEngine.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
+#include "Serialization/WindowsArchive.h"
 
 #include <algorithm>
 #include <cwctype>
@@ -26,6 +28,19 @@ std::wstring ToLowerExtension(const std::filesystem::path &Path)
         return static_cast<wchar_t>(std::towlower(Ch));
     });
     return Extension;
+}
+
+bool IsSkeletalMeshCachePath(const std::filesystem::path &Path)
+{
+    if (ToLowerExtension(Path) != L".bin")
+    {
+        return false;
+    }
+
+    const std::wstring Stem = Path.stem().wstring();
+    constexpr wchar_t SkeletalSuffix[] = L"_Skeletal";
+    constexpr size_t  SuffixLength = (sizeof(SkeletalSuffix) / sizeof(wchar_t)) - 1;
+    return Stem.size() >= SuffixLength && Stem.compare(Stem.size() - SuffixLength, SuffixLength, SkeletalSuffix) == 0;
 }
 } // namespace
 
@@ -91,6 +106,29 @@ bool FAssetEditorManager::OpenSourceFileFromPath(const std::filesystem::path &So
     if (Extension == L".fbx")
     {
         return OpenFbxForPreview(SourcePath);
+    }
+
+    if (IsSkeletalMeshCachePath(SourcePath))
+    {
+        UObject *LoadedAsset = CreateSkeletalMeshForEditorPreview(SourcePath);
+        if (!LoadedAsset)
+        {
+            FNotificationManager::Get().AddNotification("Failed to load skeletal mesh cache.", ENotificationType::Error, 3.0f);
+            return false;
+        }
+
+        const bool bOpened = OpenLoadedAsset(LoadedAsset, SourcePath);
+        if (!bOpened)
+        {
+            UObjectManager::Get().DestroyObject(LoadedAsset);
+        }
+
+        if (bOpened && EditorEngine)
+        {
+            EditorEngine->HideLevelEditorUIForAssetEditor();
+        }
+
+        return bOpened;
     }
 
     FNotificationManager::Get().AddNotification("Unsupported source file type.", ENotificationType::Info, 3.0f);
@@ -187,7 +225,7 @@ bool FAssetEditorManager::OpenFbxForPreview(const std::filesystem::path &FbxPath
     // 성원희 담당 영역 Placeholder:
     // FBX SDK 기반 importer가 완성되면 아래 dummy 생성 경로를 실제 importer로 교체한다.
     // 예) ImportedMesh = FFbxSkeletalMeshImporter::ImportSkeletalMeshForPreview(NormalizedPath);
-    USkeletalMesh *ImportedMesh = CreateDummySkeletalMeshForEditorPreview(NormalizedPath);
+    USkeletalMesh *ImportedMesh = CreateSkeletalMeshForEditorPreview(NormalizedPath);
     if (!ImportedMesh)
     {
         FNotificationManager::Get().AddNotification("Failed to create skeletal mesh preview from FBX.", ENotificationType::Error, 3.0f);
@@ -252,16 +290,56 @@ bool FAssetEditorManager::IsCapturingInput() const
     return AssetEditorWindow.IsCapturingInput();
 }
 
-USkeletalMesh *FAssetEditorManager::CreateDummySkeletalMeshForEditorPreview(const std::filesystem::path &SourcePath) const
+USkeletalMesh *FAssetEditorManager::CreateSkeletalMeshForEditorPreview(const std::filesystem::path &SourcePath) const
 {
+    const std::filesystem::path NormalizedPath = SourcePath.lexically_normal();
+    const std::wstring Extension = ToLowerExtension(NormalizedPath);
+
     USkeletalMesh *Mesh = UObjectManager::Get().CreateObject<USkeletalMesh>();
     if (!Mesh)
     {
         return nullptr;
     }
 
-    const FString MeshName = FPaths::ToUtf8(SourcePath.stem().wstring());
+    const FString MeshName = FPaths::ToUtf8(NormalizedPath.stem().wstring());
     Mesh->SetFName(FName(MeshName.empty() ? FString("PreviewSkeletalMesh") : MeshName));
+
+    if (Extension == L".fbx")
+    {
+        FSkeletalMesh *ImportedAsset = new FSkeletalMesh();
+        TArray<FStaticMaterial> ImportedMaterials;
+        const FString RelativePath = FPaths::ToUtf8(NormalizedPath.lexically_relative(FPaths::RootDir()).generic_wstring());
+        if (!FFbxSkeletalMeshImporter::Import(RelativePath, *ImportedAsset, ImportedMaterials))
+        {
+            delete ImportedAsset;
+            UObjectManager::Get().DestroyObject(Mesh);
+            return nullptr;
+        }
+
+        Mesh->SetStaticMaterials(std::move(ImportedMaterials));
+        Mesh->SetSkeletalMeshAsset(ImportedAsset);
+        return Mesh;
+    }
+
+    if (Extension == L".bin")
+    {
+        const FString BinPath = FPaths::ToUtf8(NormalizedPath.generic_wstring());
+        FWindowsBinReader Reader(BinPath);
+        if (!Reader.IsValid())
+        {
+            UObjectManager::Get().DestroyObject(Mesh);
+            return nullptr;
+        }
+
+        Mesh->Serialize(Reader);
+        if (Mesh->IsValid())
+        {
+            return Mesh;
+        }
+
+        UObjectManager::Get().DestroyObject(Mesh);
+        return nullptr;
+    }
 
     // 성원희 담당 영역 Placeholder:
     // 실제 FBX Importer가 완성되면 여기서 dummy data 대신
@@ -269,7 +347,8 @@ USkeletalMesh *FAssetEditorManager::CreateDummySkeletalMeshForEditorPreview(cons
     //
     // 김연하 담당 영역:
     // SkeletalMeshEditor는 이 USkeletalMesh를 받아 Details / Preview / Skeleton Tree에 표시한다.
-    return Mesh;
+    UObjectManager::Get().DestroyObject(Mesh);
+    return nullptr;
 }
 
 std::unique_ptr<IAssetEditor> FAssetEditorManager::CreateEditorForAsset(UObject *Asset) const

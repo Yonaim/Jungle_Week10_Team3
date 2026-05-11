@@ -144,6 +144,20 @@ std::string ToLowerUtf8(std::string Value)
     return Value;
 }
 
+bool IsSkeletalMeshCacheFile(const std::filesystem::path &Path)
+{
+    const std::string Extension = ToLowerUtf8(FPaths::ToUtf8(Path.extension()));
+    if (Extension != ".bin")
+    {
+        return false;
+    }
+
+    const std::wstring Stem = Path.stem().wstring();
+    constexpr wchar_t SkeletalSuffix[] = L"_Skeletal";
+    constexpr size_t  SuffixLength = (sizeof(SkeletalSuffix) / sizeof(wchar_t)) - 1;
+    return Stem.size() >= SuffixLength && Stem.compare(Stem.size() - SuffixLength, SuffixLength, SkeletalSuffix) == 0;
+}
+
 ID3D11ShaderResourceView *GetTexturePreviewSRV(const std::filesystem::path &Path)
 {
     const FString RelativePath = FPaths::ToUtf8(Path.lexically_relative(FPaths::RootDir()).generic_wstring());
@@ -454,6 +468,11 @@ void FContentBrowser::RefreshContent()
         else if (Extension == ".fbx")
         {
             element = std::make_shared<FbxElement>();
+            element.get()->SetIcon(ICons[".fbx"].Get());
+        }
+        else if (IsSkeletalMeshCacheFile(Content.Path))
+        {
+            element = std::make_shared<SkeletalMeshElement>();
             element.get()->SetIcon(ICons[".fbx"].Get());
         }
         else if (Extension == ".mat")
