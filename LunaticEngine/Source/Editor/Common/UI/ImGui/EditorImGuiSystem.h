@@ -1,6 +1,6 @@
 #pragma once
 
-#include <filesystem>
+#include <cstdint>
 
 class FWindowsWindow;
 class FD3DDevice;
@@ -32,11 +32,11 @@ class FEditorImGuiSystem
 
     void MakeCurrentContext() const;
 
-    ImGuiContext *GetContext() const { return Context; }
-    ImFont *GetTitleBarFont() const { return TitleBarFont; }
-    ImFont *GetWindowControlIconFont() const { return WindowControlIconFont; }
+    ImGuiContext   *GetContext() const { return Context; }
+    ImFont         *GetTitleBarFont() const { return TitleBarFont; }
+    ImFont         *GetWindowControlIconFont() const { return WindowControlIconFont; }
     FWindowsWindow *GetMainWindow() const { return MainWindow; }
-    FD3DDevice *GetMainDevice() const { return MainDevice; }
+    FD3DDevice     *GetMainDevice() const { return MainDevice; }
 
   private:
     void ApplyEditorColorTheme();
@@ -44,11 +44,11 @@ class FEditorImGuiSystem
     void LoadFonts();
 
   private:
-    ImGuiContext *Context = nullptr;
+    ImGuiContext   *Context = nullptr;
     FWindowsWindow *MainWindow = nullptr;
-    FD3DDevice *MainDevice = nullptr;
-    ImFont *TitleBarFont = nullptr;
-    ImFont *WindowControlIconFont = nullptr;
+    FD3DDevice     *MainDevice = nullptr;
+    ImFont         *TitleBarFont = nullptr;
+    ImFont         *WindowControlIconFont = nullptr;
     FWindowsWindow *ActiveWindow = nullptr;
-    bool bInitialized = false;
+    bool            bInitialized = false;
 };

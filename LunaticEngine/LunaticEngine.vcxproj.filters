@@ -67,9 +67,6 @@
     <Filter Include="Source\Editor\Common\File">
       <UniqueIdentifier>{6bd0395d-78bb-436b-cff4-aa13d466cdca}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Editor\Common\ImGui">
-      <UniqueIdentifier>{8b650b22-ad07-3e1a-7517-f0fd18b084c5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Editor\Common\Menu">
       <UniqueIdentifier>{a4a91f25-6bb1-65a2-e2cb-c114a78f8ca8}</UniqueIdentifier>
     </Filter>
@@ -84,6 +81,9 @@
     </Filter>
     <Filter Include="Source\Editor\Common\UI\DragDrop">
       <UniqueIdentifier>{d49a79cc-29e0-8922-aeb1-9eb79df46ec9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\UI\ImGui">
+      <UniqueIdentifier>{2162778a-19a3-f013-6a34-c4842cbf0791}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\Common\UI\Notifications">
       <UniqueIdentifier>{09d6437c-a740-9f2a-eb88-2d047f31b289}</UniqueIdentifier>
@@ -560,9 +560,6 @@
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Editor\Common\ImGui\EditorImGuiSystem.cpp">
-      <Filter>Source\Editor\Common\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp">
       <Filter>Source\Editor\Common\Menu</Filter>
     </ClCompile>
@@ -574,6 +571,12 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\UI\DragDrop\DragSource.cpp">
       <Filter>Source\Editor\Common\UI\DragDrop</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\UI\ImGui\EditorImGuiStyleSettings.cpp">
+      <Filter>Source\Editor\Common\UI\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\UI\ImGui\EditorImGuiSystem.cpp">
+      <Filter>Source\Editor\Common\UI\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp">
       <Filter>Source\Editor\Common\UI\Notifications</Filter>
@@ -666,9 +669,6 @@
       <Filter>Source\Editor\MainFrame</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\MainFrame\EditorMainMenuBar.cpp">
-      <Filter>Source\Editor\MainFrame</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp">
       <Filter>Source\Editor\MainFrame</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Asset\AssetCurveUtils.cpp">
@@ -1430,9 +1430,6 @@
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\ImGui\EditorImGuiSystem.h">
-      <Filter>Source\Editor\Common\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h">
       <Filter>Source\Editor\Common\Menu</Filter>
     </ClInclude>
@@ -1447,6 +1444,12 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\DragDrop\DragSource.h">
       <Filter>Source\Editor\Common\UI\DragDrop</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\ImGui\EditorImGuiStyleSettings.h">
+      <Filter>Source\Editor\Common\UI\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\ImGui\EditorImGuiSystem.h">
+      <Filter>Source\Editor\Common\UI\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Notifications\NotificationToast.h">
       <Filter>Source\Editor\Common\UI\Notifications</Filter>
@@ -1563,9 +1566,6 @@
       <Filter>Source\Editor\MainFrame</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\MainFrame\EditorMenuProvider.h">
-      <Filter>Source\Editor\MainFrame</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h">
       <Filter>Source\Editor\MainFrame</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Asset\AssetCurveUtils.h">

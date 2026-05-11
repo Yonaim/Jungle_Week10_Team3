@@ -1,4 +1,4 @@
-#include "ImGuiSetting.h"
+#include "Common/UI/ImGui/EditorImGuiStyleSettings.h"
 #include "Common/UI/Panels/Panel.h"
 #include "imgui.h"
 #include "Core/CoreTypes.h"
@@ -17,11 +17,11 @@ namespace
 	}
 }
 
-void ImGuiSetting::ShowSetting()
+void FEditorImGuiStyleSettings::ShowPanel()
 {
 	FPanelDesc PanelDesc;
-	PanelDesc.DisplayName = "ImGui Settings";
-	PanelDesc.StableId = "ImGuiSettingsPanel";
+	PanelDesc.DisplayName = "ImGui Style Settings";
+	PanelDesc.StableId = "EditorImGuiStyleSettingsPanel";
 	PanelDesc.IconKey = "Editor.Icon.Panel.Settings";
 	if (!FPanel::Begin(PanelDesc))
 	{
@@ -32,8 +32,8 @@ void ImGuiSetting::ShowSetting()
 	ImGuiStyle& Style = ImGui::GetStyle();
 	ImVec4* colors = Style.Colors;
 
-	if (ImGui::Button("Save Setting"))
-		SaveSetting();
+	if (ImGui::Button("Save Style Settings"))
+		Save();
 
 	ImGui::Separator();
 
@@ -60,7 +60,7 @@ void ImGuiSetting::ShowSetting()
 	FPanel::End();
 }
 
-void ImGuiSetting::SaveSetting()
+void FEditorImGuiStyleSettings::Save()
 {
 	using namespace json;
 
@@ -98,7 +98,7 @@ void ImGuiSetting::SaveSetting()
 	}
 }
 
-void ImGuiSetting::LoadSetting()
+void FEditorImGuiStyleSettings::Load()
 {
 	using namespace json;
 

@@ -1,10 +1,10 @@
-#include "Common/ImGui/EditorImGuiSystem.h"
+#include "Common/UI/ImGui/EditorImGuiSystem.h"
 
-#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/ImGui/EditorImGuiStyleSettings.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Style/AccentColor.h"
 #include "Engine/Render/Device/D3DDevice.h"
 #include "Engine/Runtime/WindowsWindow.h"
-#include "MainFrame/ImGuiSetting.h"
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
 
@@ -28,7 +28,7 @@ namespace
     constexpr ImVec4 UnrealDockEmpty = ImVec4(5.0f / 255.0f, 5.0f / 255.0f, 5.0f / 255.0f, 1.0f);
     constexpr ImVec4 UnrealPopupSurface = ImVec4(42.0f / 255.0f, 42.0f / 255.0f, 42.0f / 255.0f, 0.98f);
     constexpr ImVec4 UnrealBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
-}
+} // namespace
 
 bool FEditorImGuiSystem::Initialize(FWindowsWindow *InMainWindow, FD3DDevice *InMainDevice)
 {
@@ -43,12 +43,15 @@ bool FEditorImGuiSystem::Initialize(FWindowsWindow *InMainWindow, FD3DDevice *In
     MainWindow = InMainWindow;
     MainDevice = InMainDevice;
 
-    ImGuiSetting::LoadSetting();
+    FEditorImGuiStyleSettings::Load();
 
     ImGuiIO &IO = ImGui::GetIO();
     IO.IniFilename = "Settings/imgui.ini";
     IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    IO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    // 현재 Editor는 단일 메인 OS Window 안에서 동작하므로 ImGui native viewport 생성을 끈다.
+    // 여기서 ViewportsEnable을 켜면 추가 platform window가 생성되어
+    // Win32 입력 라우팅과 Active Viewport Context가 어긋날 수 있다.
+    IO.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable;
 
     ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
     ApplyEditorColorTheme();
@@ -118,13 +121,9 @@ void FEditorImGuiSystem::EndFrame()
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-    ImGuiIO &IO = ImGui::GetIO();
-    if (IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-        SetActiveWindow(MainWindow);
-    }
+    // 단일 Window 기반 Editor 경로에서는 platform viewport 렌더링을 의도적으로 사용하지 않는다.
+    // 나중에 Asset Editor를 native window로 분리할 때는 이 옵션만 켜지 말고
+    // Window별 WndProc 라우팅과 함께 다시 설계해야 한다.
 }
 
 void FEditorImGuiSystem::MakeCurrentContext() const
@@ -155,7 +154,8 @@ bool FEditorImGuiSystem::HandleWindowMessage(FWindowsWindow *InWindow, void *hWn
     }
 
     MakeCurrentContext();
-    SetActiveWindow(InWindow);
+    ActiveWindow = InWindow;
+    ImGui_ImplWin32_SetActiveWindow(hWnd);
     return ImGui_ImplWin32_WndProcHandler((HWND)hWnd, Msg, (WPARAM)wParam, (LPARAM)lParam) != 0;
 }
 
@@ -206,7 +206,7 @@ void FEditorImGuiSystem::ApplyEditorTabStyle()
 
 void FEditorImGuiSystem::LoadFonts()
 {
-    ImGuiIO &IO = ImGui::GetIO();
+    ImGuiIO    &IO = ImGui::GetIO();
     ImGuiStyle &Style = ImGui::GetStyle();
     Style.WindowPadding.x = (std::max)(Style.WindowPadding.x, 12.0f);
     Style.WindowPadding.y = (std::max)(Style.WindowPadding.y, 10.0f);
@@ -219,9 +219,9 @@ void FEditorImGuiSystem::LoadFonts()
     Style.CurveTessellationTol = (std::max)(Style.CurveTessellationTol, 0.1f);
     Style.CircleTessellationMaxError = (std::max)(Style.CircleTessellationMaxError, 0.1f);
 
-    const FString FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
+    const FString               FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
     const std::filesystem::path UIFontPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(FontPath);
-    const FString UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
+    const FString               UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
     IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
     TitleBarFont = IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
 

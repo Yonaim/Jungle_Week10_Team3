@@ -1,7 +1,6 @@
 #include "MainFrame/EditorMainFrame.h"
 
 #include "Common/UI/Style/AccentColor.h"
-#include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Core/ProjectSettings.h"
 #include "EditorEngine.h"
 #include "Engine/Input/InputManager.h"
@@ -10,17 +9,11 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/GameInstance.h"
 #include "GameFramework/GameModeBase.h"
-#include "MainFrame/ImGuiSetting.h"
 #include "Object/UClass.h"
-#include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
 #include "Render/Pipeline/Renderer.h"
 
 #include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_dx11.h"
-#include "ImGui/imgui_impl_win32.h"
-
-#include <filesystem>
 #include <imm.h>
 #include <windows.h>
 
@@ -122,68 +115,22 @@ namespace
 
 void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine)
 {
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    MainImGuiContext = ImGui::GetCurrentContext();
-    ImGuiSetting::LoadSetting();
-
-    ImGuiIO &IO = ImGui::GetIO();
-    IO.IniFilename = "Settings/imgui.ini";
-    IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
-    ApplyEditorColorTheme();
-    ApplyEditorTabStyle();
-
+    // FEditorMainFrame은 최상위 UI 루트 역할만 한다.
+    // ImGui Context / Backend / Frame 생명주기는 FEditorImGuiSystem이 단독으로 관리한다.
+    (void)InRenderer;
     Window = InWindow;
     EditorEngine = InEditorEngine;
-
-    ImGuiStyle &Style = ImGui::GetStyle();
-    Style.WindowPadding.x = (std::max)(Style.WindowPadding.x, 12.0f);
-    Style.WindowPadding.y = (std::max)(Style.WindowPadding.y, 10.0f);
-    Style.FramePadding.x = (std::max)(Style.FramePadding.x, 8.0f);
-    Style.FramePadding.y = (std::max)(Style.FramePadding.y, 5.0f);
-    Style.ItemSpacing.x = (std::max)(Style.ItemSpacing.x, 10.0f);
-    Style.ItemSpacing.y = (std::max)(Style.ItemSpacing.y, 8.0f);
-    Style.CellPadding.x = (std::max)(Style.CellPadding.x, 8.0f);
-    Style.CellPadding.y = (std::max)(Style.CellPadding.y, 6.0f);
-    Style.CurveTessellationTol = (std::max)(Style.CurveTessellationTol, 0.1f);
-    Style.CircleTessellationMaxError = (std::max)(Style.CircleTessellationMaxError, 0.1f);
-
-    const FString FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
-    const std::filesystem::path UIFontPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(FontPath);
-    const FString UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
-    IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
-    TitleBarFont = IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
-    PanelTitleUtils::EnsurePanelChromeIconFontLoaded();
-    if (std::filesystem::exists("C:/Windows/Fonts/segmdl2.ttf"))
-    {
-        ImFontConfig IconFontConfig{};
-        IconFontConfig.PixelSnapH = true;
-        WindowControlIconFont = IO.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segmdl2.ttf", 13.0f, &IconFontConfig);
-    }
-
-    ImGui_ImplWin32_Init((void *)InWindow->GetHWND());
-    ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());
 }
 
 void FEditorMainFrame::Release()
 {
-    MakeCurrentContext();
-    PanelTitleUtils::ReleasePanelChromeIconFontForCurrentContext();
-    ImGui_ImplDX11_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
-    MainImGuiContext = nullptr;
-    TitleBarFont = nullptr;
-    WindowControlIconFont = nullptr;
+    Window = nullptr;
+    EditorEngine = nullptr;
 }
 
 void FEditorMainFrame::BeginFrame()
 {
     MakeCurrentContext();
-    ImGui_ImplDX11_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
 }
 
 void FEditorMainFrame::RenderMainMenuBar(IEditorMenuProvider *MenuProvider)
@@ -192,8 +139,8 @@ void FEditorMainFrame::RenderMainMenuBar(IEditorMenuProvider *MenuProvider)
     Context.Window = Window;
     Context.EditorEngine = EditorEngine;
     Context.MenuProvider = MenuProvider;
-    Context.TitleBarFont = TitleBarFont;
-    Context.WindowControlIconFont = WindowControlIconFont;
+    Context.TitleBarFont = EditorEngine ? EditorEngine->GetImGuiSystem().GetTitleBarFont() : nullptr;
+    Context.WindowControlIconFont = EditorEngine ? EditorEngine->GetImGuiSystem().GetWindowControlIconFont() : nullptr;
     Context.bShowProjectSettings = &bShowProjectSettings;
     Context.bShowShortcutOverlay = &bShowShortcutOverlay;
     Context.bShowCreditsOverlay = &bShowCreditsOverlay;
@@ -209,8 +156,7 @@ void FEditorMainFrame::RenderCommonOverlays()
 
 void FEditorMainFrame::EndFrame()
 {
-    ImGui::Render();
-    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+    // ImGui::Render()와 backend draw 제출은 FEditorImGuiSystem이 프레임당 한 번만 수행한다.
 }
 
 void FEditorMainFrame::UpdateInputState(bool bMouseOverViewport, bool bAssetEditorCapturingInput, bool bPIEPopupOpen)
@@ -261,9 +207,9 @@ bool FEditorMainFrame::HasBlockingOverlayOpen() const
 
 void FEditorMainFrame::MakeCurrentContext() const
 {
-    if (MainImGuiContext)
+    if (EditorEngine)
     {
-        ImGui::SetCurrentContext(MainImGuiContext);
+        EditorEngine->GetImGuiSystem().MakeCurrentContext();
     }
 }
 

@@ -20,7 +20,7 @@
 #include "Render/Pipeline/Renderer.h"
 
 #include "Common/File/EditorFileUtils.h"
-#include "Common/ImGui/EditorImGuiSystem.h"
+#include "Common/UI/ImGui/EditorImGuiSystem.h"
 #include "Common/UI/Style/AccentColor.h"
 #include "Common/UI/Docking/DockLayoutUtils.h"
 #include "Common/UI/Panels/Panel.h"
@@ -32,7 +32,7 @@
 #include "GameFramework/GameInstance.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/Level.h"
-#include "MainFrame/ImGuiSetting.h"
+#include "Common/UI/ImGui/EditorImGuiStyleSettings.h"
 #include "Object/UClass.h"
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
@@ -455,7 +455,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
 
     if (!bHideEditorWindows && Settings.Panels.bImGuiSettings)
     {
-        ImGuiSetting::ShowSetting();
+        FEditorImGuiStyleSettings::ShowPanel();
     }
 
     if (!bHideEditorWindows && Settings.Panels.bConsole)
@@ -637,7 +637,7 @@ void FLevelEditorWindow::BuildWindowMenu()
     ImGui::Checkbox("Content Browser", &Settings.Panels.bContentBrowser);
     ImGui::Checkbox("Shadow Map Debug", &Settings.Panels.bShadowMapDebug);
     ImGui::Separator();
-    ImGui::Checkbox("ImGuiSetting", &Settings.Panels.bImGuiSettings);
+    ImGui::Checkbox("ImGui Style Settings", &Settings.Panels.bImGuiSettings);
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Default Layout"))
     {

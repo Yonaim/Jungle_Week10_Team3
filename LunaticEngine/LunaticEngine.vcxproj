@@ -336,11 +336,12 @@
     <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp" />
     <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp" />
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp" />
-    <ClCompile Include="Source\Editor\Common\ImGui\EditorImGuiSystem.cpp" />
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\DragDrop\DragSource.cpp" />
+    <ClCompile Include="Source\Editor\Common\UI\ImGui\EditorImGuiStyleSettings.cpp" />
+    <ClCompile Include="Source\Editor\Common\UI\ImGui\EditorImGuiSystem.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Panels\Panel.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp" />
@@ -372,7 +373,6 @@
     <ClCompile Include="Source\Editor\LevelEditor\Window\LevelEditorWindow.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\EditorMainFrame.cpp" />
     <ClCompile Include="Source\Editor\MainFrame\EditorMainMenuBar.cpp" />
-    <ClCompile Include="Source\Editor\MainFrame\ImGuiSetting.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetCurveUtils.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetData.cpp" />
     <ClCompile Include="Source\Engine\Asset\AssetFileSerializer.cpp" />
@@ -628,12 +628,13 @@
     <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h" />
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
-    <ClInclude Include="Source\Editor\Common\ImGui\EditorImGuiSystem.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
     <ClInclude Include="Source\Editor\Common\UI\Base\UIElement.h" />
     <ClInclude Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\DragDrop\DragSource.h" />
+    <ClInclude Include="Source\Editor\Common\UI\ImGui\EditorImGuiStyleSettings.h" />
+    <ClInclude Include="Source\Editor\Common\UI\ImGui\EditorImGuiSystem.h" />
     <ClInclude Include="Source\Editor\Common\UI\Notifications\NotificationToast.h" />
     <ClInclude Include="Source\Editor\Common\UI\Panels\Panel.h" />
     <ClInclude Include="Source\Editor\Common\UI\Panels\PanelTitleUtils.h" />
@@ -673,7 +674,6 @@
     <ClInclude Include="Source\Editor\MainFrame\EditorMainFrame.h" />
     <ClInclude Include="Source\Editor\MainFrame\EditorMainMenuBar.h" />
     <ClInclude Include="Source\Editor\MainFrame\EditorMenuProvider.h" />
-    <ClInclude Include="Source\Editor\MainFrame\ImGuiSetting.h" />
     <ClInclude Include="Source\Engine\Asset\AssetCurveUtils.h" />
     <ClInclude Include="Source\Engine\Asset\AssetData.h" />
     <ClInclude Include="Source\Engine\Asset\AssetFileSerializer.h" />
