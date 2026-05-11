@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/CoreTypes.h"
+#include "Common/Gizmo/GizmoTypes.h"
 
 // Skeletal Mesh Editor에서 사용하는 프리뷰 표시 모드.
 // 실제 Reference Pose / Skinned Pose 렌더링은 Runtime 담당자가 USkeletalMeshComponent와 연동하면 여기서 선택값만 넘겨주면 된다.
@@ -28,6 +29,8 @@ struct FSkeletalMeshEditorState
     bool bShowGrid = true;
     bool bShowReferencePose = true;
     bool bEnablePoseEditMode = false;
+    EGizmoMode GizmoMode = EGizmoMode::Translate;
+    EGizmoSpace GizmoSpace = EGizmoSpace::Local;
     bool bShowMeshStatsOverlay = true;
     bool bFramePreviewRequested = false;
 

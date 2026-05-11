@@ -264,7 +264,7 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
 
     if (bPreviewPanelOpen)
     {
-        PreviewViewport.Render(EditingAsset, State, &Toolbar, DeltaTime, PreviewDesc);
+        PreviewViewport.Render(EditingAsset, State, &SelectionManager, &Toolbar, DeltaTime, PreviewDesc);
     }
     if (bSkeletonTreePanelOpen)
     {

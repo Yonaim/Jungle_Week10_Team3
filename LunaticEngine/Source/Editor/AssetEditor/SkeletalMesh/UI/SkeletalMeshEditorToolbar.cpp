@@ -193,25 +193,42 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
     }
 
     ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconButton("##PreviewTranslate", EPreviewToolbarIcon::Translate, "T", "Translate", State.bEnablePoseEditMode))
+    if (DrawIconButton("##PreviewTranslate", EPreviewToolbarIcon::Translate, "T", "Translate",
+                       State.bEnablePoseEditMode && State.GizmoMode == EGizmoMode::Translate))
     {
         State.bEnablePoseEditMode = true;
+        State.GizmoMode = EGizmoMode::Translate;
     }
 
     ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconButton("##PreviewRotate", EPreviewToolbarIcon::Rotate, "R", "Rotate", false))
+    if (DrawIconButton("##PreviewRotate", EPreviewToolbarIcon::Rotate, "R", "Rotate",
+                       State.bEnablePoseEditMode && State.GizmoMode == EGizmoMode::Rotate))
     {
         State.bEnablePoseEditMode = true;
+        State.GizmoMode = EGizmoMode::Rotate;
     }
 
     ImGui::SameLine(0.0f, ButtonSpacing);
-    if (DrawIconButton("##PreviewScale", EPreviewToolbarIcon::Scale, "S", "Scale", false))
+    if (DrawIconButton("##PreviewScale", EPreviewToolbarIcon::Scale, "S", "Scale",
+                       State.bEnablePoseEditMode && State.GizmoMode == EGizmoMode::Scale))
     {
         State.bEnablePoseEditMode = true;
+        State.GizmoMode = EGizmoMode::Scale;
     }
 
     ImGui::SameLine(0.0f, ButtonSpacing + 4.0f);
-    DrawIconButton("##PreviewWorldSpace", EPreviewToolbarIcon::WorldSpace, "World", "World Space", true);
+    if (DrawIconButton("##PreviewWorldSpace", EPreviewToolbarIcon::WorldSpace, "World", "World Space",
+                       State.GizmoSpace == EGizmoSpace::World))
+    {
+        State.GizmoSpace = EGizmoSpace::World;
+    }
+
+    ImGui::SameLine(0.0f, ButtonSpacing);
+    if (DrawIconButton("##PreviewLocalSpace", EPreviewToolbarIcon::LocalSpace, "Local", "Local Space",
+                       State.GizmoSpace == EGizmoSpace::Local))
+    {
+        State.GizmoSpace = EGizmoSpace::Local;
+    }
 
     ImGui::SameLine(0.0f, ButtonSpacing);
     if (DrawIconButton("##PreviewSnap", EPreviewToolbarIcon::TranslateSnap, "Snap", "Snap Settings"))

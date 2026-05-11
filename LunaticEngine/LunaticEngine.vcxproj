@@ -327,6 +327,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformProxy.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.cpp" />
@@ -338,6 +339,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp" />
     <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp" />
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp" />
+    <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp" />
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.cpp" />
@@ -621,6 +623,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformProxy.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshEditorToolbar.h" />
@@ -632,6 +635,9 @@
     <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h" />
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
+    <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h" />
+    <ClInclude Include="Source\Editor\Common\Gizmo\GizmoTypes.h" />
+    <ClInclude Include="Source\Editor\Common\Gizmo\TransformProxy.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
     <ClInclude Include="Source\Editor\Common\UI\Base\UIElement.h" />

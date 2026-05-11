@@ -14,6 +14,7 @@ class FRenderer;
 class FWindowsWindow;
 class USkeletalMesh;
 class FSkeletalMeshEditorToolbar;
+class FSkeletalMeshSelectionManager;
 
 /**
  * Skeletal Mesh Editor의 Preview Viewport 패널.
@@ -36,15 +37,15 @@ class FSkeletalMeshPreviewViewport
     void Shutdown();
 
     void Tick(float DeltaTime);
-    void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime,
-                const FPanelDesc &PanelDesc);
+    void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager *SelectionManager,
+                FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime, const FPanelDesc &PanelDesc);
 
     FSkeletalMeshPreviewViewportClient *GetViewportClient() { return PreviewViewportClient.get(); }
 
   private:
     void EnsureViewportResources();
-    void RenderViewportPanel(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshEditorToolbar *Toolbar,
-                             float DeltaTime);
+    void RenderViewportPanel(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager *SelectionManager,
+                             FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime);
 
   private:
     FWindowsWindow *Window = nullptr;

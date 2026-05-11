@@ -1,6 +1,7 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
 
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
+#include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 #include "Common/UI/Panels/Panel.h"
 #include "Common/UI/Viewport/ViewportToolbar.h"
 #include "Common/Viewport/EditorViewportPanel.h"
@@ -66,19 +67,21 @@ void FSkeletalMeshPreviewViewport::EnsureViewportResources()
     PreviewViewportClient->SetLayoutWindow(PreviewLayoutWindow.get());
 }
 
-void FSkeletalMeshPreviewViewport::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshEditorToolbar *Toolbar,
-                                          float DeltaTime, const FPanelDesc &PanelDesc)
+void FSkeletalMeshPreviewViewport::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State,
+                                          FSkeletalMeshSelectionManager *SelectionManager,
+                                          FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime, const FPanelDesc &PanelDesc)
 {
     EnsureViewportResources();
 
     if (FPanel::Begin(PanelDesc))
     {
-        RenderViewportPanel(Mesh, State, Toolbar, DeltaTime);
+        RenderViewportPanel(Mesh, State, SelectionManager, Toolbar, DeltaTime);
     }
     FPanel::End();
 }
 
 void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State,
+                                                       FSkeletalMeshSelectionManager *SelectionManager,
                                                        FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime)
 {
     (void)DeltaTime;
@@ -91,6 +94,7 @@ void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSke
 
     PreviewViewportClient->SetPreviewMesh(Mesh);
     PreviewViewportClient->SetEditorState(&State);
+    PreviewViewportClient->SetSelectionManager(SelectionManager);
 
     if (Toolbar)
     {

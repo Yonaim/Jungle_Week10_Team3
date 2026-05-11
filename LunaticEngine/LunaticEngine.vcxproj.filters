@@ -46,6 +46,9 @@
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh">
       <UniqueIdentifier>{9cf86e78-2e49-3a26-1b21-b6951b7f242f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo">
+      <UniqueIdentifier>{740570f3-3590-ed5b-eab7-6c73b84dc310}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\AssetEditor\SkeletalMesh\Selection">
       <UniqueIdentifier>{22c777ed-6b28-ae7e-a15a-8ca07c7ed198}</UniqueIdentifier>
     </Filter>
@@ -69,6 +72,9 @@
     </Filter>
     <Filter Include="Source\Editor\Common\File">
       <UniqueIdentifier>{6bd0395d-78bb-436b-cff4-aa13d466cdca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor\Common\Gizmo">
+      <UniqueIdentifier>{7c56f807-2eeb-f84f-df26-45bc997b6125}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Editor\Common\Menu">
       <UniqueIdentifier>{a4a91f25-6bb1-65a2-e2cb-c114a78f8ca8}</UniqueIdentifier>
@@ -536,6 +542,9 @@
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformProxy.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Gizmo</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\Selection</Filter>
     </ClCompile>
@@ -568,6 +577,9 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp">
       <Filter>Source\Editor\Common\Menu</Filter>
@@ -1412,6 +1424,9 @@
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformProxy.h">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh\Gizmo</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\Selection</Filter>
     </ClInclude>
@@ -1444,6 +1459,15 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\GizmoTypes.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\TransformProxy.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h">
       <Filter>Source\Editor\Common\Menu</Filter>
