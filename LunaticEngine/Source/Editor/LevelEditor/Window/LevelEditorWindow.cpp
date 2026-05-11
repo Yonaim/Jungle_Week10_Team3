@@ -22,6 +22,8 @@
 #include "Common/File/EditorFileUtils.h"
 #include "Common/ImGui/EditorImGuiSystem.h"
 #include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/EditorDockLayoutUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "Common/UI/NotificationToast.h"
 #include "Core/Notification.h"
@@ -194,6 +196,15 @@ namespace
 
     const char *GetWindowControlIconClose() { return "\xEE\xA2\xBB"; }
 
+    std::string MakeLevelPanelTitle(const char *DisplayName, const char *StableId, const char *IconKey = nullptr)
+    {
+        FEditorPanelDesc Desc;
+        Desc.DisplayName = DisplayName;
+        Desc.StableId = StableId;
+        Desc.IconKey = IconKey;
+        return FEditorPanel::MakeTitle(Desc);
+    }
+
 } // namespace
 
 void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine, FLevelEditor *InLevelEditor)
@@ -211,6 +222,9 @@ void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer,
     StatPanel.Init(InEditorEngine);
     ContentBrowser.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
     ShadowMapDebugPanel.Init(InEditorEngine);
+
+    const std::filesystem::path ImGuiLayoutPath = std::filesystem::path(FPaths::SettingsDir()) / L"imgui.ini";
+    bPendingDefaultDockLayout = !std::filesystem::exists(ImGuiLayoutPath);
 }
 
 void FLevelEditorWindow::Release()
@@ -219,6 +233,42 @@ void FLevelEditorWindow::Release()
 }
 
 void FLevelEditorWindow::SaveToSettings() const { ContentBrowser.SaveToSettings(); }
+
+void FLevelEditorWindow::RequestDefaultDockLayout()
+{
+    bPendingDefaultDockLayout = true;
+}
+
+void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
+{
+    if (!bPendingDefaultDockLayout || MainDockspaceId == 0)
+    {
+        return;
+    }
+
+    ImGuiDockNode *DockNode = ImGui::DockBuilderGetNode(MainDockspaceId);
+    if (!DockNode)
+    {
+        return;
+    }
+
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    Settings.Panels.bViewport = true;
+    Settings.Panels.bDetails = true;
+    Settings.Panels.bOutliner = true;
+    Settings.Panels.bPlaceActors = true;
+    Settings.Panels.bContentBrowser = true;
+
+    FLevelEditorDockLayoutDesc LayoutDesc;
+    LayoutDesc.LeftWindow = MakeLevelPanelTitle("Place Actors", "LevelPlaceActorsPanel", "Editor.Icon.Panel.PlaceActors");
+    LayoutDesc.CenterWindow = MakeLevelPanelTitle("Viewport", "LevelViewportArea_0", "Editor.Icon.Panel.Viewport");
+    LayoutDesc.RightTopWindow = MakeLevelPanelTitle("Outliner", "LevelOutlinerPanel", "Editor.Icon.Panel.Outliner");
+    LayoutDesc.RightBottomWindow = MakeLevelPanelTitle("Details", "LevelDetailsPanel", "Editor.Icon.Panel.Details");
+    LayoutDesc.BottomWindow = MakeLevelPanelTitle("Content Browser", "LevelContentBrowser", "Editor.Icon.Panel.ContentBrowser");
+
+    FEditorDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
+    bPendingDefaultDockLayout = false;
+}
 
 void FLevelEditorWindow::FlushPendingMenuAction()
 {
@@ -383,6 +433,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     {
         MainDockspaceId = ImGui::GetID("##EditorDockSpace");
         ImGui::DockSpace(MainDockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
+        ApplyPendingDefaultDockLayout();
     }
     ImGui::End();
     ImGui::PopStyleVar(4);
@@ -585,6 +636,11 @@ void FLevelEditorWindow::BuildWindowMenu()
     ImGui::Checkbox("Shadow Map Debug", &Settings.Panels.bShadowMapDebug);
     ImGui::Separator();
     ImGui::Checkbox("ImGuiSetting", &Settings.Panels.bImGuiSettings);
+    ImGui::Separator();
+    if (ImGui::MenuItem("Reset Default Layout"))
+    {
+        RequestDefaultDockLayout();
+    }
 }
 
 void FLevelEditorWindow::BuildCustomMenus()
@@ -1243,6 +1299,4 @@ void FLevelEditorWindow::RenderCreditsOverlay()
 
     ImGui::End();
 }
-
-
 

@@ -45,7 +45,6 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
     State = FSkeletalMeshEditorState{};
     BuiltDockspaceId = 0;
 
-    bToolbarPanelOpen = true;
     bPreviewPanelOpen = true;
     bSkeletonTreePanelOpen = true;
     bDetailsPanelOpen = true;
@@ -70,7 +69,6 @@ void FSkeletalMeshEditor::Close()
     State = FSkeletalMeshEditorState{};
     BuiltDockspaceId = 0;
 
-    bToolbarPanelOpen = true;
     bPreviewPanelOpen = true;
     bSkeletonTreePanelOpen = true;
     bDetailsPanelOpen = true;
@@ -93,9 +91,6 @@ void FSkeletalMeshEditor::Tick(float DeltaTime)
 
 void FSkeletalMeshEditor::RenderContent(float DeltaTime)
 {
-    // IAssetEditor 기본 wrapper 경로에서 호출될 때를 위한 fallback.
-    // 실제 Asset Editor 통합 경로에서는 UsesExternalPanels() == true이므로
-    // FAssetEditorTabManager가 RenderPanels()를 직접 호출한다.
     RenderPanels(DeltaTime, 0);
 }
 
@@ -132,10 +127,8 @@ void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *>
     }
 }
 
-
 void FSkeletalMeshEditor::BuildWindowMenu()
 {
-    ImGui::Checkbox("Toolbar", &bToolbarPanelOpen);
     ImGui::Checkbox("Preview Viewport", &bPreviewPanelOpen);
     ImGui::Checkbox("Skeleton Tree", &bSkeletonTreePanelOpen);
     ImGui::Checkbox("Details", &bDetailsPanelOpen);
@@ -143,7 +136,6 @@ void FSkeletalMeshEditor::BuildWindowMenu()
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Skeletal Mesh Editor Layout"))
     {
-        bToolbarPanelOpen = true;
         bPreviewPanelOpen = true;
         bSkeletonTreePanelOpen = true;
         bDetailsPanelOpen = true;
@@ -187,7 +179,6 @@ FEditorPanelDesc FSkeletalMeshEditor::MakePanelDesc(const char *DisplayName, con
     Desc.bApplySideInset = true;
     Desc.bApplyBottomInset = true;
 
-    // StableId는 Render 함수 안에서 std::string 수명을 유지한 채 c_str()로 넣는다.
     (void)StableName;
     return Desc;
 }
@@ -199,13 +190,9 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
         return;
     }
 
-    const std::string ToolbarId = MakePanelStableId("Toolbar");
     const std::string SkeletonId = MakePanelStableId("SkeletonTree");
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
     const std::string DetailsId = MakePanelStableId("Details");
-
-    FEditorPanelDesc ToolbarDesc = MakePanelDesc("Toolbar", "Toolbar", nullptr);
-    ToolbarDesc.StableId = ToolbarId.c_str();
 
     FEditorPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
     SkeletonDesc.StableId = SkeletonId.c_str();
@@ -218,13 +205,10 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
     DetailsDesc.StableId = DetailsId.c_str();
 
     FAssetPreviewDockLayoutDesc LayoutDesc;
-    LayoutDesc.ToolbarWindow = FEditorPanel::MakeTitle(ToolbarDesc);
     LayoutDesc.CenterWindow = FEditorPanel::MakeTitle(PreviewDesc);
     LayoutDesc.RightTopWindow = FEditorPanel::MakeTitle(SkeletonDesc);
     LayoutDesc.RightBottomWindow = FEditorPanel::MakeTitle(DetailsDesc);
 
-    // FBX/SkeletalMesh Editor 기본 배치:
-    // 좌측 Toolbar / 중앙 Preview Viewport / 우측 상단 Skeleton Tree / 우측 하단 Details.
     FEditorDockLayoutUtils::DockAssetPreviewLayout(DockspaceId, LayoutDesc);
 }
 
@@ -232,20 +216,9 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
 {
     (void)DockspaceId;
 
-    const std::string ToolbarId = MakePanelStableId("Toolbar");
     const std::string SkeletonId = MakePanelStableId("SkeletonTree");
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
     const std::string DetailsId = MakePanelStableId("Details");
-
-    FEditorPanelDesc ToolbarDesc = MakePanelDesc("Toolbar", "Toolbar", nullptr,
-                                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-                                                      ImGuiWindowFlags_NoScrollWithMouse);
-    ToolbarDesc.StableId = ToolbarId.c_str();
-    ToolbarDesc.bOpen = &bToolbarPanelOpen;
-    ToolbarDesc.bDrawTitleIcon = false;
-    ToolbarDesc.bApplyContentTopInset = true;
-    ToolbarDesc.bApplySideInset = true;
-    ToolbarDesc.bApplyBottomInset = false;
 
     FEditorPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
     SkeletonDesc.StableId = SkeletonId.c_str();
@@ -263,13 +236,9 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     DetailsDesc.StableId = DetailsId.c_str();
     DetailsDesc.bOpen = &bDetailsPanelOpen;
 
-    if (bToolbarPanelOpen)
-    {
-        RenderToolbarPanel(ToolbarDesc);
-    }
     if (bPreviewPanelOpen)
     {
-        PreviewViewport.Render(EditingAsset, State, DeltaTime, PreviewDesc);
+        PreviewViewport.Render(EditingAsset, State, &Toolbar, DeltaTime, PreviewDesc);
     }
     if (bSkeletonTreePanelOpen)
     {
@@ -279,13 +248,4 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     {
         DetailsPanel.Render(EditingAsset, EditingAssetPath, State, DetailsDesc);
     }
-}
-
-void FSkeletalMeshEditor::RenderToolbarPanel(const FEditorPanelDesc &PanelDesc)
-{
-    if (FEditorPanel::Begin(PanelDesc))
-    {
-        Toolbar.Render(EditingAsset, State);
-    }
-    FEditorPanel::End();
 }

@@ -96,6 +96,8 @@ class FLevelEditorWindow : public IEditorMenuProvider
     };
 
     void MakeCurrentContext() const;
+    void RequestDefaultDockLayout();
+    void ApplyPendingDefaultDockLayout();
     bool HasBlockingOverlayOpen() const;
     void HandleGlobalShortcuts();
     void PackageGameBuild(const char *BatFileName);
@@ -127,6 +129,7 @@ class FLevelEditorWindow : public IEditorMenuProvider
     bool bShowProjectSettings = false;
     bool bShowShortcutOverlay = false;
     bool bShowCreditsOverlay = false;
+    bool bPendingDefaultDockLayout = true;
 
     ImGuiID MainDockspaceId = 0;
 

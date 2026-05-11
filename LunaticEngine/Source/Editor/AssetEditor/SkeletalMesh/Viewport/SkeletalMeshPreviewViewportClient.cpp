@@ -442,7 +442,6 @@ void FSkeletalMeshPreviewViewportClient::RenderFallbackOverlay()
         }
     }
 
-    ImGui::Separator();
     ImGui::TextDisabled("RMB Drag: Orbit / MMB Drag: Pan / Wheel: Zoom / Toolbar: Frame");
     ImGui::EndGroup();
 }

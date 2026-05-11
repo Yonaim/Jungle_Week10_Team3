@@ -2,6 +2,7 @@
 
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "Common/UI/EditorPanel.h"
+#include "Common/UI/EditorViewportToolbar.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "ImGui/imgui.h"
@@ -45,9 +46,7 @@ void FLevelViewportArea::Render(float DeltaTime)
         return;
     }
 
-    const float ToolbarHeight = ImGui::GetFrameHeight() + 2.0f;
-    if (ImGui::BeginChild("##ViewportToolbar", ImVec2(0.0f, ToolbarHeight), false,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+    if (FEditorViewportToolbar::Begin("##ViewportToolbar"))
     {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
         float ButtonWidth = ImGui::CalcTextSize("Split").x + ImGui::GetStyle().FramePadding.x * 2.0f;
@@ -63,8 +62,8 @@ void FLevelViewportArea::Render(float DeltaTime)
                 EditorEngine->ToggleViewportSplit();
             }
         }
-        ImGui::EndChild();
     }
+    FEditorViewportToolbar::End();
 
     // 뷰포트 패널 위에서 마우스 클릭 시 활성 뷰포트 전환
     if (ViewportClient && EditorEngine)

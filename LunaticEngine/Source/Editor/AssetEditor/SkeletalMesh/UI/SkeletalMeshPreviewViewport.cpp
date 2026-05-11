@@ -1,6 +1,8 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
 
+#include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
 #include "Common/UI/EditorPanel.h"
+#include "Common/UI/EditorViewportToolbar.h"
 #include "Common/Viewport/EditorViewportPanel.h"
 
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -64,19 +66,20 @@ void FSkeletalMeshPreviewViewport::EnsureViewportResources()
     PreviewViewportClient->SetLayoutWindow(PreviewLayoutWindow.get());
 }
 
-void FSkeletalMeshPreviewViewport::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, float DeltaTime,
-                                          const FEditorPanelDesc &PanelDesc)
+void FSkeletalMeshPreviewViewport::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshEditorToolbar *Toolbar,
+                                          float DeltaTime, const FEditorPanelDesc &PanelDesc)
 {
     EnsureViewportResources();
 
     if (FEditorPanel::Begin(PanelDesc))
     {
-        RenderViewportPanel(Mesh, State, DeltaTime);
+        RenderViewportPanel(Mesh, State, Toolbar, DeltaTime);
     }
     FEditorPanel::End();
 }
 
-void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, float DeltaTime)
+void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State,
+                                                       FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime)
 {
     (void)DeltaTime;
 
@@ -88,6 +91,15 @@ void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSke
 
     PreviewViewportClient->SetPreviewMesh(Mesh);
     PreviewViewportClient->SetEditorState(&State);
+
+    if (Toolbar && FEditorViewportToolbar::Begin("##SkeletalMeshViewportToolbar"))
+    {
+        Toolbar->RenderViewportToolbar(Mesh, State);
+    }
+    if (Toolbar)
+    {
+        FEditorViewportToolbar::End();
+    }
 
     const bool bActive = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     FEditorViewportPanel::RenderViewportClient(*PreviewViewportClient, bActive);

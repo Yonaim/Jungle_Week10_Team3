@@ -17,5 +17,5 @@ class USkeletalMesh;
 class FSkeletalMeshEditorToolbar
 {
   public:
-    void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State);
+    void RenderViewportToolbar(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State);
 };

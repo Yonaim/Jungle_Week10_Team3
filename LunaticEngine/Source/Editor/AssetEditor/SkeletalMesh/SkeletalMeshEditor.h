@@ -67,7 +67,6 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
   private:
     void RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId);
-    void RenderToolbarPanel(const FEditorPanelDesc &PanelDesc);
     void BuildDefaultDockLayout(ImGuiID DockspaceId);
 
     std::string MakePanelStableId(const char *PanelName) const;
@@ -92,7 +91,6 @@ class FSkeletalMeshEditor final : public IAssetEditor
     bool bDirty = false;
 
     // 패널별 close button 상태. FBX를 다시 열면 기본 레이아웃과 함께 모두 열린 상태로 복구한다.
-    bool bToolbarPanelOpen = true;
     bool bPreviewPanelOpen = true;
     bool bSkeletonTreePanelOpen = true;
     bool bDetailsPanelOpen = true;

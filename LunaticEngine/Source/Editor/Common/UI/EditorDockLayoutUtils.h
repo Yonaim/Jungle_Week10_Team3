@@ -47,6 +47,25 @@ struct FAssetPreviewDockLayoutDesc
     float RightBottomRatio = 0.48f;
 };
 
+/**
+ * Level Editor 기본 배치.
+ *
+ * 좌측 Place Actors / 중앙 Viewport / 우측 상단 Outliner / 우측 하단 Details / 하단 Content Browser.
+ */
+struct FLevelEditorDockLayoutDesc
+{
+    std::string LeftWindow;
+    std::string CenterWindow;
+    std::string RightTopWindow;
+    std::string RightBottomWindow;
+    std::string BottomWindow;
+
+    float BottomRatio = 0.24f;
+    float LeftRatio = 0.20f;
+    float RightRatio = 0.24f;
+    float RightBottomRatio = 0.52f;
+};
+
 class FEditorDockLayoutUtils
 {
   public:
@@ -105,13 +124,17 @@ class FEditorDockLayoutUtils
         ClearDockspaceForAssetEditor(DockspaceId);
 
         ImGuiID MainId = DockspaceId;
-        ImGuiID ToolbarId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, Desc.LeftToolbarRatio, nullptr, &MainId);
+        ImGuiID ToolbarId = 0;
+        if (!Desc.ToolbarWindow.empty())
+        {
+            ToolbarId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, Desc.LeftToolbarRatio, nullptr, &MainId);
+        }
         ImGuiID RightColumnId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Right, Desc.RightColumnRatio, nullptr, &MainId);
         ImGuiID RightBottomId = ImGui::DockBuilderSplitNode(RightColumnId, ImGuiDir_Down, Desc.RightBottomRatio, nullptr, &RightColumnId);
         ImGuiID CenterId = MainId;
         ImGuiID RightTopId = RightColumnId;
 
-        if (!Desc.ToolbarWindow.empty())
+        if (ToolbarId != 0 && !Desc.ToolbarWindow.empty())
         {
             ImGui::DockBuilderDockWindow(Desc.ToolbarWindow.c_str(), ToolbarId);
         }
@@ -126,6 +149,47 @@ class FEditorDockLayoutUtils
         if (!Desc.RightBottomWindow.empty())
         {
             ImGui::DockBuilderDockWindow(Desc.RightBottomWindow.c_str(), RightBottomId);
+        }
+
+        ImGui::DockBuilderFinish(DockspaceId);
+    }
+
+    static void DockLevelEditorLayout(ImGuiID DockspaceId, const FLevelEditorDockLayoutDesc &Desc)
+    {
+        if (DockspaceId == 0)
+        {
+            return;
+        }
+
+        ClearDockspaceForAssetEditor(DockspaceId);
+
+        ImGuiID MainId = DockspaceId;
+        ImGuiID BottomId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Down, Desc.BottomRatio, nullptr, &MainId);
+        ImGuiID LeftId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, Desc.LeftRatio, nullptr, &MainId);
+        ImGuiID RightColumnId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Right, Desc.RightRatio, nullptr, &MainId);
+        ImGuiID RightBottomId = ImGui::DockBuilderSplitNode(RightColumnId, ImGuiDir_Down, Desc.RightBottomRatio, nullptr, &RightColumnId);
+        ImGuiID CenterId = MainId;
+        ImGuiID RightTopId = RightColumnId;
+
+        if (!Desc.LeftWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.LeftWindow.c_str(), LeftId);
+        }
+        if (!Desc.CenterWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.CenterWindow.c_str(), CenterId);
+        }
+        if (!Desc.RightTopWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.RightTopWindow.c_str(), RightTopId);
+        }
+        if (!Desc.RightBottomWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.RightBottomWindow.c_str(), RightBottomId);
+        }
+        if (!Desc.BottomWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.BottomWindow.c_str(), BottomId);
         }
 
         ImGui::DockBuilderFinish(DockspaceId);
