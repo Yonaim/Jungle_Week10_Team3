@@ -1,9 +1,10 @@
-﻿#include "ContentBrowser.h"
+#include "ContentBrowser.h"
 
 #include "ContentBrowserElement.h"
 #include "Core/AsciiUtils.h"
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "Engine/Runtime/Engine.h"
 #include "Materials/MaterialManager.h"
@@ -141,6 +142,20 @@ std::string ToLowerUtf8(std::string Value)
         Character = AsciiUtils::ToLower(Character);
     }
     return Value;
+}
+
+bool IsSkeletalMeshCacheFile(const std::filesystem::path &Path)
+{
+    const std::string Extension = ToLowerUtf8(FPaths::ToUtf8(Path.extension()));
+    if (Extension != ".bin")
+    {
+        return false;
+    }
+
+    const std::wstring Stem = Path.stem().wstring();
+    constexpr wchar_t SkeletalSuffix[] = L"_Skeletal";
+    constexpr size_t  SuffixLength = (sizeof(SkeletalSuffix) / sizeof(wchar_t)) - 1;
+    return Stem.size() >= SuffixLength && Stem.compare(Stem.size() - SuffixLength, SuffixLength, SkeletalSuffix) == 0;
 }
 
 ID3D11ShaderResourceView *GetTexturePreviewSRV(const std::filesystem::path &Path)
@@ -324,17 +339,18 @@ void FContentBrowser::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.ContentBrowser";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Content Browser", PanelIconKey);
-    const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Content Browser", Settings.Panels.bContentBrowser,
-                                                     "x##CloseContentBrowser");
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Content Browser";
+    PanelDesc.StableId = "LevelContentBrowser";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bContentBrowser;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 6.0f));
@@ -388,7 +404,7 @@ void FContentBrowser::Render(float DeltaTime)
         BrowserContext.SelectedElement->RenderDetail();
 
     ImGui::EndTable();
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FContentBrowser::Refresh()
@@ -444,10 +460,20 @@ void FContentBrowser::RefreshContent()
             element = std::make_shared<SceneElement>();
             element.get()->SetIcon(ICons[".Scene"].Get());
         }
-        else if (Extension == ".obj" || Extension == ".fbx")
+        else if (Extension == ".obj")
         {
             element = std::make_shared<ObjectElement>();
             element.get()->SetIcon(ICons[".obj"].Get());
+        }
+        else if (Extension == ".fbx")
+        {
+            element = std::make_shared<FbxElement>();
+            element.get()->SetIcon(ICons[".fbx"].Get());
+        }
+        else if (IsSkeletalMeshCacheFile(Content.Path))
+        {
+            element = std::make_shared<SkeletalMeshElement>();
+            element.get()->SetIcon(ICons[".fbx"].Get());
         }
         else if (Extension == ".mat")
         {
@@ -548,24 +574,30 @@ void FContentBrowser::DrawContents()
     const float itemHeight = BrowserContext.ContentSize.y;
     const float MinGap = 10.0f;
 
+    if (itemWidth <= 0.0f || itemHeight <= 0.0f)
+    {
+        return;
+    }
+
     int columnCount = static_cast<int>((contentWidth + MinGap) / (itemWidth + MinGap));
     if (columnCount < 1)
     {
         columnCount = 1;
     }
+    const int safeColumnCount = (std::max)(columnCount, 1);
 
     float gapSize = MinGap;
-    if (columnCount > 1)
+    if (safeColumnCount > 1)
     {
-        gapSize = (std::max)(MinGap, (contentWidth - itemWidth * columnCount) / (columnCount - 1));
+        gapSize = (std::max)(MinGap, (contentWidth - itemWidth * safeColumnCount) / (safeColumnCount - 1));
     }
 
     ImVec2 startPos = ImGui::GetCursorPos();
 
     for (int i = 0; i < elementCount; ++i)
     {
-        int column = i % columnCount;
-        int row = i / columnCount;
+        int column = i % safeColumnCount;
+        int row = i / safeColumnCount;
 
         float x = startPos.x + column * (itemWidth + gapSize);
         float y = startPos.y + row * (itemHeight + gapSize);
@@ -580,7 +612,7 @@ void FContentBrowser::DrawContents()
         SaveToSettings();
     }
 
-    int rowCount = (elementCount + columnCount - 1) / columnCount;
+    int rowCount = (elementCount + safeColumnCount - 1) / safeColumnCount;
     const float TotalHeight = rowCount * itemHeight + (rowCount > 0 ? (rowCount - 1) * gapSize : 0.0f);
     ImGui::SetCursorPos(startPos);
     ImGui::Dummy(ImVec2((std::max)(itemWidth, contentWidth), TotalHeight));

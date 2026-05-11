@@ -1,7 +1,8 @@
-﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Core/ProjectSettings.h"
@@ -1805,18 +1806,22 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Viewport";
-    const std::string     WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Viewport", PanelIconKey);
-    const bool            bIsOpen = ImGui::Begin(WindowTitle.c_str(), nullptr, ImGuiWindowFlags_None);
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Viewport", FLevelEditorSettings::Get().Panels.bViewport, "x##CloseViewport");
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Viewport";
+    PanelDesc.StableId = "LevelViewport";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.WindowFlags = ImGuiWindowFlags_None;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &FLevelEditorSettings::Get().Panels.bViewport;
+    PanelDesc.bApplySideInset = false;
+    PanelDesc.bApplyBottomInset = false;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         ImGui::PopStyleVar();
         return;
     }
-
-    EditorPanelTitleUtils::ApplyPanelContentTopInset(false, false);
 
     ImVec2 ContentPos = ImGui::GetCursorScreenPos();
     ImVec2 ContentSize = ImGui::GetContentRegionAvail();
@@ -2011,7 +2016,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
     RenderViewportPlaceActorPopup();
 
-    ImGui::End();
+    FEditorPanel::End();
     ImGui::PopStyleVar();
 }
 

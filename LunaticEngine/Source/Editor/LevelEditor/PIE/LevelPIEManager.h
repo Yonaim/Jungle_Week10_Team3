@@ -6,6 +6,20 @@
 
 class UEditorEngine;
 
+/**
+ * Level Editor의 Play In Editor 실행 상태를 관리한다.
+ *
+ * 역할:
+ * - 현재 Editor World를 PIE World로 복제
+ * - GameViewportClient 연결
+ * - PIE possessed/ejected 모드 전환
+ * - PIE 종료 시 Editor World / Selection / Camera 상태 복원
+ * - PIE 전용 popup overlay 처리
+ *
+ * 주의:
+ * - PIE는 현재 Level Editor가 편집 중인 World를 실행해보는 기능이므로 LevelEditor 소속이다.
+ * - 독립 게임 실행기나 Standalone Game launcher가 아니다.
+ */
 class FLevelPIEManager
 {
 public:

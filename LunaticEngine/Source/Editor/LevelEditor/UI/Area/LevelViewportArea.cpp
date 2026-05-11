@@ -1,6 +1,8 @@
-﻿#include "LevelEditor/UI/Area/LevelViewportArea.h"
+#include "LevelEditor/UI/Area/LevelViewportArea.h"
 
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
+#include "Common/UI/EditorViewportToolbar.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "ImGui/imgui.h"
@@ -28,20 +30,23 @@ void FLevelViewportArea::Render(float DeltaTime)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
                         ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 1.0f));
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Viewport";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle(WindowName.c_str(), PanelIconKey);
-    const bool bIsOpen = ImGui::Begin(WindowTitle.c_str(), nullptr);
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
+    const std::string StableId = std::string("LevelViewportArea_") + std::to_string(Index);
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = WindowName.c_str();
+    PanelDesc.StableId = StableId.c_str();
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.WindowFlags = ImGuiWindowFlags_None;
+    PanelDesc.bApplySideInset = false;
+    PanelDesc.bApplyBottomInset = false;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         ImGui::PopStyleVar(2);
         return;
     }
-    EditorPanelTitleUtils::ApplyPanelContentTopInset(false, false);
 
-    const float ToolbarHeight = ImGui::GetFrameHeight() + 2.0f;
-    if (ImGui::BeginChild("##ViewportToolbar", ImVec2(0.0f, ToolbarHeight), false,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+    if (FEditorViewportToolbar::Begin("##ViewportToolbar"))
     {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
         float ButtonWidth = ImGui::CalcTextSize("Split").x + ImGui::GetStyle().FramePadding.x * 2.0f;
@@ -57,8 +62,8 @@ void FLevelViewportArea::Render(float DeltaTime)
                 EditorEngine->ToggleViewportSplit();
             }
         }
-        ImGui::EndChild();
     }
+    FEditorViewportToolbar::End();
 
     // 뷰포트 패널 위에서 마우스 클릭 시 활성 뷰포트 전환
     if (ViewportClient && EditorEngine)
@@ -98,6 +103,6 @@ void FLevelViewportArea::Render(float DeltaTime)
         }
     }
 
-    ImGui::End();
+    FEditorPanel::End();
     ImGui::PopStyleVar(2);
 }

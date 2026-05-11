@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Render/Types/FrameContext.h"
 #include "Engine/Collision/Octree.h"
 
@@ -20,6 +20,7 @@ class FRenderCollector
 {
 public:
 	void Collect(UWorld* World, const FFrameContext& Frame, FCollectOutput& Output);
+	void CollectScene(FScene& Scene, const FFrameContext& Frame, FCollectOutput& Output);
 	void CollectGrid(float GridSpacing, int32 GridHalfLineCount, FScene& Scene);
 	void CollectScreenText(const FOverlayStatSystem& OverlaySystem, const UEditorEngine& Editor, FScene& Scene);
 	void CollectScreenUI(UWorld* World, FScene& Scene);

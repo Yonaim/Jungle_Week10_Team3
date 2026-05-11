@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "SkinnedMeshComponent.h"
 
 // USkeletalMeshComponent:
@@ -18,6 +18,7 @@ public:
 	TArray<FNormalVertex>* GetCPUSkinnedVertices() override { return &SkinBuffer; }
 
 	void SetSkeletalMesh(USkeletalMesh* Mesh);
+	void RefreshSkinningForEditor(float DeltaTime);
 
 	void BeginPlay() override;
 	void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction) override;

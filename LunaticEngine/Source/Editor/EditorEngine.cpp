@@ -1,4 +1,5 @@
 ﻿#include "EditorEngine.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
 
 #include "Audio/AudioManager.h"
 #include "Common/File/EditorFileUtils.h"
@@ -60,11 +61,7 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     FLevelEditorSettings::Get().LoadFromFile(FLevelEditorSettings::GetDefaultSettingsPath());
     FProjectSettings::Get().LoadFromFile(FProjectSettings::GetDefaultPath());
 
-    {
-        SCOPE_STARTUP_STAT("EditorMainFrame::Create");
-        MainFrame.Create(Window, Renderer, this);
-    }
-
+    AssetEditorManager.Initialize(this, &Renderer);
     AssetImportManager.Init(this);
 
     // 기본 월드 생성 — 모든 서브시스템 초기화의 기반
@@ -72,8 +69,13 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     SetActiveWorld(WorldList[0].ContextHandle);
     GetWorld()->InitWorld();
 
-    // Selection & Gizmo
-    LevelEditor.Init(this, Window, Renderer);
+    {
+        SCOPE_STARTUP_STAT("LevelEditor::Initialize");
+        LevelEditor.Initialize(this, Window, Renderer);
+    }
+
+    ImGuiSystem.Initialize(Window, &Renderer.GetFD3DDevice());
+    LevelEditorWindow.Create(Window, Renderer, this, &LevelEditor);
 
     {
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
@@ -92,13 +94,16 @@ void UEditorEngine::Shutdown()
 {
     // 에디터 해제 (엔진보다 먼저)
     LevelEditor.GetViewportLayout().SaveToSettings();
-    MainFrame.SaveToSettings();
+    LevelEditorWindow.SaveToSettings();
     FProjectSettings::Get().SaveToFile(FProjectSettings::GetDefaultPath());
     FLevelEditorSettings::Get().SaveToFile(FLevelEditorSettings::GetDefaultSettingsPath());
     CloseScene();
+    FDirectoryWatcher::Get().Shutdown();
+    AssetEditorManager.Shutdown();
     AssetImportManager.Shutdown();
     LevelEditor.Shutdown();
-    MainFrame.Release();
+    LevelEditorWindow.Release();
+    ImGuiSystem.Shutdown();
 
     // 엔진 공통 해제 (Renderer, D3D 등)
     UEngine::Shutdown();
@@ -119,8 +124,7 @@ void UEditorEngine::Tick(float DeltaTime)
         PendingSceneLoadReference.clear();
         LoadScene(SceneToLoad);
     }
-    LevelEditor.GetPIEManager().Tick(DeltaTime);
-    LevelEditor.GetSceneManager().Tick(DeltaTime);
+    LevelEditor.Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
     FDirectoryWatcher::Get().ProcessChanges();
@@ -130,7 +134,9 @@ void UEditorEngine::Tick(float DeltaTime)
     }
     FNotificationManager::Get().Tick(DeltaTime);
     FAudioManager::Get().Update();
-    MainFrame.Update();
+    AssetEditorManager.Tick(DeltaTime);
+    LevelEditorWindow.Update();
+    LevelEditorWindow.UpdateInputState(IsMouseOverViewport(), AssetEditorManager.IsCapturingInput(), IsScoreSavePopupOpen());
 
     for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
     {
@@ -169,7 +175,20 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
     return false;
 }
 
-void UEditorEngine::RenderUI(float DeltaTime) { MainFrame.Render(DeltaTime); }
+void UEditorEngine::RenderUI(float DeltaTime)
+{
+    ImGuiSystem.BeginFrame();
+
+    LevelEditorWindow.RenderContent(DeltaTime);
+    AssetEditorManager.RenderContent(DeltaTime, LevelEditorWindow.GetMainDockspaceId());
+
+    // Level Editor 패널과 Asset/SkeletalMesh Editor 패널을 모두 렌더링한 뒤 한 번만 flush한다.
+    // EditorPanelTitleUtils는 이 시점에 dock tab bar의 빈 영역 fill과 선택 탭 accent line을 그린다.
+    EditorPanelTitleUtils::FlushPanelDecorations();
+
+    ImGuiSystem.EndFrame();
+    LevelEditorWindow.FlushPendingMenuAction();
+}
 
 void UEditorEngine::RenderPIEOverlayPopups() { LevelEditor.GetPIEManager().RenderOverlayPopups(); }
 

@@ -2,9 +2,46 @@
 
 #include "Viewport/ViewportClient.h"
 #include "UI/SWindow.h"
+#include "Render/Types/ViewTypes.h"
 
 class FWindowsWindow;
 class FViewport;
+class UCameraComponent;
+class FScene;
+class FEditorViewportClient;
+
+/**
+ * 모든 Editor Viewport Client의 공통 베이스.
+ *
+ * 역할:
+ * - FViewport 포인터와 ImGui/SWindow layout 정보를 보관한다.
+ * - Viewport screen rect, active/hovered 상태, viewport image 렌더링 같은 공통 기능을 제공한다.
+ *
+ * 주의:
+ * - 이 클래스는 Level Editor 전용 기능을 몰라야 한다.
+ * - Actor picking, Gizmo, Selection, Camera navigation, PIE shortcut은 FLevelEditorViewportClient 쪽에 둔다.
+ * - SkeletalMeshPreviewViewportClient 같은 Asset Preview 뷰포트도 이 베이스를 상속한다.
+ */
+
+/**
+ * Editor viewport를 Renderer에 넘기기 위한 공통 렌더 요청.
+ *
+ * Level Editor와 Asset Preview Editor는 같은 FViewport/Renderer 경로를 사용하지만,
+ * 렌더 대상 Scene과 전용 기능(Actor Picking, Bone Gizmo 등)은 서로 다르다.
+ * 그래서 RenderPipeline은 구체 ViewportClient 타입 대신 이 요청 구조체만 읽는다.
+ */
+struct FEditorViewportRenderRequest
+{
+    FViewport *Viewport = nullptr;
+    UCameraComponent *Camera = nullptr;
+    FScene *Scene = nullptr;
+    FViewportRenderOptions RenderOptions;
+    FEditorViewportClient *CursorProvider = nullptr;
+
+    bool bRenderGrid = true;
+    bool bEnableGPUOcclusion = false;
+    bool bAllowLevelDebugVisuals = false;
+};
 
 class FEditorViewportClient : public FViewportClient
 {
@@ -29,11 +66,18 @@ class FEditorViewportClient : public FViewportClient
     bool IsHovered() const { return bIsHovered; }
 
     void SetViewportSize(float InWidth, float InHeight);
+    void SetViewportScreenRect(const FRect &InRect);
 
     const FRect &GetViewportScreenRect() const { return ViewportScreenRect; }
 
     virtual void UpdateLayoutRect();
     virtual void RenderViewportImage(bool bIsActiveViewport);
+
+    /**
+     * 실제 렌더 대상이 있는 ViewportClient만 true를 반환한다.
+     * 기본 EditorViewportClient는 UI 표시용 공통 기능만 제공하므로 렌더 요청을 만들지 않는다.
+     */
+    virtual bool BuildRenderRequest(FEditorViewportRenderRequest &OutRequest) { (void)OutRequest; return false; }
 
     bool GetCursorViewportPosition(uint32 &OutX, uint32 &OutY) const;
 

@@ -1,75 +1,42 @@
-﻿#include "MainFrame/EditorMainFrame.h"
+#include "MainFrame/EditorMainFrame.h"
 
-#include "Component/CameraComponent.h"
-#include "EditorEngine.h"
-#include "Engine/Profiling/Timer.h"
-#include "Engine/Runtime/WindowsWindow.h"
-#include "GameFramework/AActor.h"
-#include "GameFramework/World.h"
-#include "LevelEditor/Subsystem/OverlayStatSystem.h"
-#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
-#include "Object/Object.h"
-#include "LevelEditor/Settings/LevelEditorSettings.h"
-
-#include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_dx11.h"
-#include "ImGui/imgui_impl_win32.h"
-#include "ImGui/imgui_internal.h"
-
-#include "Engine/Input/InputManager.h"
-#include "Render/Pipeline/Renderer.h"
-
-#include "Common/File/EditorFileUtils.h"
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/NotificationToast.h"
-#include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
+#include "EditorEngine.h"
+#include "Engine/Input/InputManager.h"
+#include "Engine/Profiling/Timer.h"
+#include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/GameInstance.h"
 #include "GameFramework/GameModeBase.h"
-#include "GameFramework/Level.h"
 #include "MainFrame/ImGuiSetting.h"
 #include "Object/UClass.h"
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
+#include "Render/Pipeline/Renderer.h"
+
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
 
 #include <filesystem>
+#include <imm.h>
 #include <windows.h>
 
 namespace
 {
-    constexpr ImVec4           UnrealPanelSurface = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
-    constexpr ImVec4           UnrealPanelSurfaceHover = ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
-    constexpr ImVec4           UnrealPanelSurfaceActive = ImVec4(52.0f / 255.0f, 52.0f / 255.0f, 52.0f / 255.0f, 1.0f);
-    constexpr ImVec4           UnrealDockEmpty = ImVec4(5.0f / 255.0f, 5.0f / 255.0f, 5.0f / 255.0f, 1.0f);
-    constexpr ImVec4           UnrealPopupSurface = ImVec4(42.0f / 255.0f, 42.0f / 255.0f, 42.0f / 255.0f, 0.98f);
-    constexpr ImVec4           UnrealBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
-    constexpr ImVec4           PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
-    constexpr EOverlayStatType SupportedOverlayStats[] = {
-        EOverlayStatType::FPS,
-        EOverlayStatType::PickingTime,
-        EOverlayStatType::Memory,
-        EOverlayStatType::Shadow,
-    };
+    constexpr ImVec4 UnrealPanelSurface = ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
+    constexpr ImVec4 UnrealPanelSurfaceHover = ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
+    constexpr ImVec4 UnrealPanelSurfaceActive = ImVec4(52.0f / 255.0f, 52.0f / 255.0f, 52.0f / 255.0f, 1.0f);
+    constexpr ImVec4 UnrealDockEmpty = ImVec4(5.0f / 255.0f, 5.0f / 255.0f, 5.0f / 255.0f, 1.0f);
+    constexpr ImVec4 UnrealPopupSurface = ImVec4(42.0f / 255.0f, 42.0f / 255.0f, 42.0f / 255.0f, 0.98f);
+    constexpr ImVec4 UnrealBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
+    constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
     constexpr const char *CreditsDevelopers[] = {
-        "Hojin Lee",
-        "HyoBeom Kim",
-        "Hyungjun Kim",
-        "JunHyeop3631",
-        "keonwookang0914",
-        "kimhojun",
-        "kwonhyeonsoo-goo",
-        "LEE SangHoon",
-        "lin-ion",
-        "Park SangHyeok",
-        "Seyoung Park",
-        "ShimWoojin",
-        "wwonnn",
-        "Yonaim",
-        "\xEA\xB0\x95\xEA\xB1\xB4\xEC\x9A\xB0",
-        "\xEA\xB9\x80\xED\x83\x9C\xED\x98\x84",
-        "\xEB\x82\xA8\xEC\x9C\xA4\xEC\xA7\x80",
+        "Hojin Lee", "HyoBeom Kim", "Hyungjun Kim", "JunHyeop3631", "keonwookang0914", "kimhojun", "kwonhyeonsoo-goo",
+        "LEE SangHoon", "lin-ion", "Park SangHyeok", "Seyoung Park", "ShimWoojin", "wwonnn", "Yonaim",
+        "\xEA\xB0\x95\xEA\xB1\xB4\xEC\x9A\xB0", "\xEA\xB9\x80\xED\x83\x9C\xED\x98\x84", "\xEB\x82\xA8\xEC\x9C\xA4\xEC\xA7\x80",
         "\xEC\xA1\xB0\xED\x98\x84\xEC\x84\x9D",
     };
 
@@ -105,13 +72,6 @@ namespace
         ImGui::PopStyleColor(4);
         ImGui::PopStyleVar(2);
         return bVisible;
-    }
-
-    bool ConfirmNewScene(HWND OwnerWindowHandle)
-    {
-        const int32 Result = MessageBoxW(OwnerWindowHandle, L"Create a new scene?\nUnsaved changes may be lost.", L"New Scene",
-                                         MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
-        return Result == IDYES;
     }
 
     void ApplyEditorTabStyle()
@@ -158,45 +118,13 @@ namespace
         Style.Colors[ImGuiCol_Border] = UnrealBorder;
         Style.Colors[ImGuiCol_DockingEmptyBg] = UnrealDockEmpty;
     }
-
-    FString GetSceneTitleLabel(UEditorEngine *EditorEngine)
-    {
-        if (!EditorEngine || !EditorEngine->HasCurrentLevelFilePath())
-        {
-            return "Untitled.Scene";
-        }
-
-        const std::filesystem::path ScenePath(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath()));
-        const std::wstring          FileName = ScenePath.filename().wstring();
-        return FileName.empty() ? FString("Untitled.Scene") : FPaths::ToUtf8(FileName);
-    }
-
-    float GetCustomTitleBarHeight() { return 42.0f; }
-
-    float GetWindowOuterPadding() { return 6.0f; }
-
-    float GetWindowCornerRadius() { return 12.0f; }
-
-    float GetWindowTopContentInset(FWindowsWindow *Window)
-    {
-        (void)Window;
-        return 0.0f;
-    }
-
-    const char *GetWindowControlIconMinimize() { return "\xEE\xA4\xA1"; }
-
-    const char *GetWindowControlIconMaximize() { return "\xEE\xA4\xA2"; }
-
-    const char *GetWindowControlIconRestore() { return "\xEE\xA4\xA3"; }
-
-    const char *GetWindowControlIconClose() { return "\xEE\xA2\xBB"; }
-
 } // namespace
 
 void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine)
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    MainImGuiContext = ImGui::GetCurrentContext();
     ImGuiSetting::LoadSetting();
 
     ImGuiIO &IO = ImGui::GetIO();
@@ -218,10 +146,12 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
     Style.ItemSpacing.y = (std::max)(Style.ItemSpacing.y, 8.0f);
     Style.CellPadding.x = (std::max)(Style.CellPadding.x, 8.0f);
     Style.CellPadding.y = (std::max)(Style.CellPadding.y, 6.0f);
+    Style.CurveTessellationTol = (std::max)(Style.CurveTessellationTol, 0.1f);
+    Style.CircleTessellationMaxError = (std::max)(Style.CircleTessellationMaxError, 0.1f);
 
-    const FString               FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
+    const FString FontPath = FResourceManager::Get().ResolvePath(FName("Default.Font.UI"));
     const std::filesystem::path UIFontPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(FontPath);
-    const FString               UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
+    const FString UIFontPathAbsolute = FPaths::ToUtf8(UIFontPath.lexically_normal().wstring());
     IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
     TitleBarFont = IO.Fonts->AddFontFromFileTTF(UIFontPathAbsolute.c_str(), 18.0f, nullptr, IO.Fonts->GetGlyphRangesKorean());
     EditorPanelTitleUtils::EnsurePanelChromeIconFontLoaded();
@@ -234,577 +164,107 @@ void FEditorMainFrame::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, U
 
     ImGui_ImplWin32_Init((void *)InWindow->GetHWND());
     ImGui_ImplDX11_Init(InRenderer.GetFD3DDevice().GetDevice(), InRenderer.GetFD3DDevice().GetDeviceContext());
-
-    ConsolePanel.Init(InEditorEngine);
-    DetailsPanel.Init(InEditorEngine);
-    OutlinerPanel.Init(InEditorEngine);
-    PlaceActorsPanel.Init(InEditorEngine);
-    StatPanel.Init(InEditorEngine);
-    ContentBrowser.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
-    ShadowMapDebugPanel.Init(InEditorEngine);
-    AssetEditorManager.Init(EditorEngine, &InRenderer);
 }
 
 void FEditorMainFrame::Release()
 {
-    ConsolePanel.Shutdown();
-    AssetEditorManager.Shutdown();
+    MakeCurrentContext();
+    EditorPanelTitleUtils::ReleasePanelChromeIconFontForCurrentContext();
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
+    MainImGuiContext = nullptr;
+    TitleBarFont = nullptr;
+    WindowControlIconFont = nullptr;
 }
 
-void FEditorMainFrame::SaveToSettings() const { ContentBrowser.SaveToSettings(); }
-
-void FEditorMainFrame::Render(float DeltaTime)
+void FEditorMainFrame::BeginFrame()
 {
+    MakeCurrentContext();
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
-    EditorPanelTitleUtils::BeginPanelDecorationFrame();
+}
 
-    const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
-    const float          TitleBarHeight = GetCustomTitleBarHeight();
-    const float          TopFrameInset = GetWindowTopContentInset(Window);
-    const float          OuterPadding = GetWindowOuterPadding();
-    const float          CornerRadius = GetWindowCornerRadius();
-    const ImVec2         ViewportMin = MainViewport->Pos;
-    const ImVec2         ViewportMax(MainViewport->Pos.x + MainViewport->Size.x, MainViewport->Pos.y + MainViewport->Size.y);
-    const ImVec2         FrameMin(MainViewport->Pos.x + OuterPadding, MainViewport->Pos.y + TopFrameInset + OuterPadding);
-    const ImVec2         FrameMax(MainViewport->Pos.x + MainViewport->Size.x - OuterPadding,
-                                  MainViewport->Pos.y + MainViewport->Size.y - OuterPadding);
-    ImDrawList          *BackgroundDrawList = ImGui::GetBackgroundDrawList(const_cast<ImGuiViewport *>(MainViewport));
-    BackgroundDrawList->AddRectFilled(ViewportMin, ViewportMax, IM_COL32(5, 5, 5, 255));
-    BackgroundDrawList->AddRectFilled(FrameMin, FrameMax, IM_COL32(5, 5, 5, 255), CornerRadius);
+void FEditorMainFrame::RenderMainMenuBar(IEditorMenuProvider *MenuProvider)
+{
+    FEditorMainMenuBarContext Context{};
+    Context.Window = Window;
+    Context.EditorEngine = EditorEngine;
+    Context.MenuProvider = MenuProvider;
+    Context.TitleBarFont = TitleBarFont;
+    Context.WindowControlIconFont = WindowControlIconFont;
+    Context.bShowProjectSettings = &bShowProjectSettings;
+    Context.bShowShortcutOverlay = &bShowShortcutOverlay;
+    Context.bShowCreditsOverlay = &bShowCreditsOverlay;
+    MainMenuBar.Render(Context);
+}
 
-    RenderMainMenuBar();
-
-    ImGuiWindowClass DockspaceWindowClass{};
-    DockspaceWindowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton;
-    ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x + OuterPadding, MainViewport->Pos.y + TopFrameInset + TitleBarHeight + OuterPadding),
-                            ImGuiCond_Always);
-    ImGui::SetNextWindowSize(
-        ImVec2(MainViewport->Size.x - OuterPadding * 2.0f, MainViewport->Size.y - TopFrameInset - TitleBarHeight - OuterPadding * 2.0f),
-        ImGuiCond_Always);
-    ImGui::SetNextWindowViewport(MainViewport->ID);
-    ImGuiWindowFlags DockspaceWindowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-                                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus |
-                                            ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 6.0f));
-    if (ImGui::Begin("##EditorDockSpaceHost", nullptr, DockspaceWindowFlags))
-    {
-        ImGui::DockSpace(ImGui::GetID("##EditorDockSpace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
-    }
-    ImGui::End();
-    ImGui::PopStyleVar(4);
-
-    // 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
-    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    if (EditorEngine && Settings.Panels.bViewport)
-    {
-        SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
-        EditorEngine->RenderViewportUI(DeltaTime);
-
-        if (FLevelEditorViewportClient *ActiveViewport = EditorEngine->GetActiveViewport())
-        {
-            EditorEngine->GetOverlayStatSystem().RenderImGui(*EditorEngine, ActiveViewport->GetViewportScreenRect());
-        }
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bImGuiSettings)
-    {
-        ImGuiSetting::ShowSetting();
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bConsole)
-    {
-        SCOPE_STAT_CAT("ConsolePanel.Render", "5_UI");
-        ConsolePanel.Render(DeltaTime);
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bDetails)
-    {
-        SCOPE_STAT_CAT("DetailsPanel.Render", "5_UI");
-        DetailsPanel.Render(DeltaTime);
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bOutliner)
-    {
-        SCOPE_STAT_CAT("OutlinerPanel.Render", "5_UI");
-        OutlinerPanel.Render(DeltaTime);
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bPlaceActors)
-    {
-        SCOPE_STAT_CAT("PlaceActorsPanel.Render", "5_UI");
-        PlaceActorsPanel.Render(DeltaTime);
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bStats)
-    {
-        SCOPE_STAT_CAT("StatPanel.Render", "5_UI");
-        StatPanel.Render(DeltaTime);
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bContentBrowser)
-    {
-        SCOPE_STAT_CAT("ContentBrowser.Render", "5_UI");
-        ContentBrowser.Render(DeltaTime);
-    }
-
-    if (!bHideEditorWindows && AssetEditorManager.GetActiveEditor() && AssetEditorManager.GetActiveEditor()->IsOpen())
-    {
-        SCOPE_STAT_CAT("AssetEditorManager.Render", "5_UI");
-        AssetEditorManager.Render(DeltaTime);
-    }
-
-    if (!bHideEditorWindows && Settings.Panels.bShadowMapDebug)
-    {
-        ShadowMapDebugPanel.Render(DeltaTime);
-    }
-
+void FEditorMainFrame::RenderCommonOverlays()
+{
     RenderProjectSettingsWindow();
-    if (EditorEngine)
-    {
-        EditorEngine->RenderPIEOverlayPopups();
-    }
-
     RenderShortcutOverlay();
     RenderCreditsOverlay();
-    EditorPanelTitleUtils::FlushPanelDecorations();
+}
 
-    // 토스트 알림 (항상 최상위에 표시)
-    FNotificationToast::Render();
-
+void FEditorMainFrame::EndFrame()
+{
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void FEditorMainFrame::RenderMainMenuBar()
+void FEditorMainFrame::UpdateInputState(bool bMouseOverViewport, bool bAssetEditorCapturingInput, bool bPIEPopupOpen)
 {
-    const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
-    const float          TitleBarHeight = GetCustomTitleBarHeight();
-    const float          TopFrameInset = GetWindowTopContentInset(Window);
-    const float          OuterPadding = GetWindowOuterPadding();
-    const float          CornerRadius = GetWindowCornerRadius();
-    const float          LogoSize = 36.0f;
-    const float          ButtonWidth = 38.0f;
-    const float          WindowControlHeight = 24.0f;
-    const float          ButtonSpacing = 2.0f;
-    const float          RightControlsWidth = ButtonWidth * 3.0f + ButtonSpacing * 2.0f;
-    const float          TitleBarPaddingY = 2.0f;
-    const float          LeftContentInset = 8.0f;
+    MakeCurrentContext();
+    ImGuiIO &IO = ImGui::GetIO();
 
-    ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x + OuterPadding, MainViewport->Pos.y + TopFrameInset + OuterPadding),
-                            ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(MainViewport->Size.x - OuterPadding * 2.0f, TitleBarHeight), ImGuiCond_Always);
-    ImGui::SetNextWindowViewport(MainViewport->ID);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f + LeftContentInset, TitleBarPaddingY));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 0.0f));
-    const ImGuiWindowFlags TitleBarFlags =
-        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar |
-        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
-        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
-    if (!ImGui::Begin("##EditorCustomTitleBar", nullptr, TitleBarFlags))
+    bool bWantMouse = IO.WantCaptureMouse;
+    bool bWantKeyboard = IO.WantCaptureKeyboard || HasBlockingOverlayOpen();
+    if (bPIEPopupOpen)
     {
-        ImGui::End();
-        ImGui::PopStyleVar(4);
-        return;
+        bWantMouse = true;
+        bWantKeyboard = true;
     }
 
-    FLevelEditorSettings          &Settings = FLevelEditorSettings::Get();
-    ID3D11ShaderResourceView *LogoTexture =
-        FResourceManager::Get().FindLoadedTexture(FResourceManager::Get().ResolvePath(FName("Editor.Icon.AppLogo"))).Get();
-
-    float MenuEndX = 54.0f;
-    if (ImGui::BeginMenuBar())
+    if (EditorEngine && bMouseOverViewport && !bAssetEditorCapturingInput)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.0f, 0.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
-        if (TitleBarFont)
+        if (!bPIEPopupOpen)
         {
-            ImGui::PushFont(TitleBarFont);
+            bWantMouse = false;
+            if (!IO.WantTextInput && !HasBlockingOverlayOpen())
+            {
+                bWantKeyboard = false;
+            }
         }
-        const FString SceneTabLabel = GetSceneTitleLabel(EditorEngine);
-        FString       ScenePathTooltip = "Unsaved Scene";
-        if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
-        {
-            ScenePathTooltip = EditorEngine->GetCurrentLevelFilePath();
-        }
-        const float SceneTabWidth = ImGui::CalcTextSize(SceneTabLabel.c_str()).x + 34.0f;
-        const float MenuFrameHeight = ImGui::GetFrameHeight();
-        const float SceneTabHeight = MenuFrameHeight;
-        const float MaxContentHeight = (std::max)((std::max)(MenuFrameHeight, SceneTabHeight), (std::max)(WindowControlHeight, LogoSize));
-        const float ContentStartY = (std::max)(0.0f, floorf((TitleBarHeight - MaxContentHeight) * 0.5f));
-        const float RightControlsStartX = ImGui::GetWindowWidth() - RightControlsWidth;
-        const float SceneTabX = RightControlsStartX - SceneTabWidth - 12.0f;
-        float       MenuStartX = ImGui::GetStyle().WindowPadding.x;
-
-        if (LogoTexture)
-        {
-            const float  LogoX = 8.0f;
-            const float  LogoY = ContentStartY;
-            ImDrawList  *DrawList = ImGui::GetForegroundDrawList(const_cast<ImGuiViewport *>(MainViewport));
-            const ImVec2 WindowPos = ImGui::GetWindowPos();
-            DrawList->AddImage(LogoTexture, ImVec2(WindowPos.x + LogoX, WindowPos.y + LogoY),
-                               ImVec2(WindowPos.x + LogoX + LogoSize, WindowPos.y + LogoY + LogoSize));
-            MenuStartX = LogoX + LogoSize + 10.0f;
-        }
-
-        ImGui::SetCursorPos(ImVec2(MenuStartX, ContentStartY));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
-        ImGui::PushStyleColor(ImGuiCol_PopupBg, UnrealPanelSurface);
-        ImGui::PushStyleColor(ImGuiCol_Header, UnrealPanelSurface);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
-
-        if (ImGui::BeginMenu("File"))
-        {
-            DrawPopupSectionHeader("SCENE");
-            if (ImGui::MenuItem("New Scene", "Ctrl+N") && EditorEngine)
-            {
-                HWND OwnerWindowHandle = Window ? Window->GetHWND() : nullptr;
-                if (ConfirmNewScene(OwnerWindowHandle))
-                {
-                    EditorEngine->NewScene();
-                }
-            }
-            if (ImGui::MenuItem("Open Scene...", "Ctrl+O") && EditorEngine)
-            {
-                EditorEngine->LoadSceneWithDialog();
-            }
-            if (ImGui::MenuItem("Save Scene", "Ctrl+S") && EditorEngine)
-            {
-                EditorEngine->SaveScene();
-            }
-            if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S") && EditorEngine)
-            {
-                EditorEngine->RequestSaveSceneAsDialog();
-            }
-
-            DrawPopupSectionHeader("ASSET");
-            if (ImGui::MenuItem("New UAsset..."))
-            {
-                AssetEditorManager.CreateCameraModifierStackAsset();
-            }
-            if (ImGui::MenuItem("Open UAsset...", "Ctrl+Alt+O"))
-            {
-                AssetEditorManager.OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
-            }
-
-            DrawPopupSectionHeader("IMPORT");
-            if (ImGui::MenuItem("Import Material...") && EditorEngine)
-            {
-                EditorEngine->ImportMaterialWithDialog();
-            }
-            if (ImGui::MenuItem("Import Texture...") && EditorEngine)
-            {
-                EditorEngine->ImportTextureWithDialog();
-            }
-            DrawPopupSectionHeader("COOK");
-            if (ImGui::MenuItem("Cook Current Scene") && EditorEngine)
-            {
-                CookCurrentScene();
-            }
-            if (ImGui::MenuItem("Cook All Scenes"))
-            {
-                const int32 Count = FSceneSaveManager::CookAllScenes();
-                FNotificationManager::Get().AddNotification(std::string("Cooked ") + std::to_string(Count) + " scenes",
-                                                            Count > 0 ? ENotificationType::Success : ENotificationType::Error);
-            }
-            DrawPopupSectionHeader("PACKAGE");
-            if (ImGui::MenuItem("Package: Release..."))
-            {
-                PackageGameBuild("ReleaseBuild.bat");
-            }
-            if (ImGui::MenuItem("Package: Shipping..."))
-            {
-                PackageGameBuild("ShippingBuild.bat");
-            }
-            if (ImGui::MenuItem("Package: Demo..."))
-            {
-                PackageGameBuild("DemoBuild.bat");
-            }
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Edit"))
-        {
-            const bool bCanUndo = EditorEngine && EditorEngine->CanUndoTransformChange();
-            const bool bCanRedo = EditorEngine && EditorEngine->CanRedoTransformChange();
-            if (!bCanUndo)
-                ImGui::BeginDisabled();
-            if (ImGui::MenuItem("Undo", "Ctrl+Z") && EditorEngine)
-                EditorEngine->UndoTrackedTransformChange();
-            if (!bCanUndo)
-                ImGui::EndDisabled();
-            if (!bCanRedo)
-                ImGui::BeginDisabled();
-            if (ImGui::MenuItem("Redo", "Ctrl+Y") && EditorEngine)
-                EditorEngine->RedoTrackedTransformChange();
-            if (!bCanRedo)
-                ImGui::EndDisabled();
-            ImGui::Separator();
-            if (ImGui::MenuItem("Project Settings..."))
-            {
-                bShowProjectSettings = true;
-            }
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Window"))
-        {
-            ImGui::Checkbox("Viewport", &Settings.Panels.bViewport);
-            ImGui::Separator();
-            ImGui::Checkbox("Console", &Settings.Panels.bConsole);
-            ImGui::Checkbox("Details", &Settings.Panels.bDetails);
-            ImGui::Checkbox("Outliner", &Settings.Panels.bOutliner);
-            ImGui::Checkbox("Place Actors", &Settings.Panels.bPlaceActors);
-            ImGui::Checkbox("Stat Profiler", &Settings.Panels.bStats);
-            ImGui::Checkbox("Content Browser", &Settings.Panels.bContentBrowser);
-            ImGui::Checkbox("Shadow Map Debug", &Settings.Panels.bShadowMapDebug);
-            ImGui::Separator();
-            ImGui::Checkbox("ImGuiSetting", &Settings.Panels.bImGuiSettings);
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Stat"))
-        {
-            if (EditorEngine)
-            {
-                FOverlayStatSystem &OverlayStats = EditorEngine->GetOverlayStatSystem();
-                for (EOverlayStatType StatType : SupportedOverlayStats)
-                {
-                    bool bVisible = OverlayStats.IsStatVisible(StatType);
-                    if (ImGui::MenuItem(FOverlayStatSystem::GetStatDisplayName(StatType), nullptr, bVisible))
-                    {
-                        OverlayStats.SetStatVisible(StatType, !bVisible);
-                    }
-                }
-
-                ImGui::Separator();
-                if (ImGui::MenuItem("Hide All"))
-                {
-                    OverlayStats.HideAll();
-                }
-            }
-            else
-            {
-                ImGui::BeginDisabled();
-                for (EOverlayStatType StatType : SupportedOverlayStats)
-                {
-                    ImGui::MenuItem(FOverlayStatSystem::GetStatDisplayName(StatType), nullptr, false, false);
-                }
-                ImGui::Separator();
-                ImGui::MenuItem("Hide All", nullptr, false, false);
-                ImGui::EndDisabled();
-            }
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Help"))
-        {
-            if (ImGui::MenuItem("Shortcut Help"))
-            {
-                bShowShortcutOverlay = !bShowShortcutOverlay;
-            }
-            if (ImGui::MenuItem("Credits"))
-            {
-                bShowCreditsOverlay = !bShowCreditsOverlay;
-            }
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Levels"))
-        {
-            UWorld *World = EditorEngine->GetWorld();
-            if (World)
-            {
-                ULevel *Persistent = World->GetPersistentLevel();
-                FString PersistentName = Persistent ? "Persistent Level" : "No Persistent Level";
-                bool    bIsPersistentCurrent = (World->GetCurrentLevel() == Persistent);
-                if (ImGui::MenuItem(PersistentName.c_str(), nullptr, bIsPersistentCurrent))
-                {
-                    World->SetCurrentLevel(Persistent);
-                }
-
-                ImGui::Separator();
-                ImGui::TextDisabled("Streaming Levels");
-
-                for (const auto &Info : World->GetStreamingLevels())
-                {
-                    bool    bIsCurrent = (World->GetCurrentLevel() == Info.LoadedLevel);
-                    FString DisplayName = Info.LevelName.ToString() + (Info.bIsLoaded ? "" : " (Unloaded)");
-
-                    if (ImGui::MenuItem(DisplayName.c_str(), nullptr, bIsCurrent))
-                    {
-                        if (Info.LoadedLevel)
-                            World->SetCurrentLevel(Info.LoadedLevel);
-                    }
-
-                    if (ImGui::BeginPopupContextItem())
-                    {
-                        if (!Info.bIsLoaded)
-                        {
-                            if (ImGui::MenuItem("Load Level"))
-                                World->LoadStreamingLevel(Info.LevelPath);
-                        }
-                        else
-                        {
-                            if (ImGui::MenuItem("Unload Level"))
-                                World->UnloadStreamingLevel(Info.LevelName);
-                        }
-                        ImGui::EndPopup();
-                    }
-                }
-
-                ImGui::Separator();
-                if (ImGui::MenuItem("Add Existing Level..."))
-                {
-                    const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
-                    const FString      SelectedPath = FEditorFileUtils::OpenFileDialog({
-                             .Filter = L"Level Files (*.umap)\0*.umap\0",
-                             .Title = L"Add Existing Level",
-                             .InitialDirectory = InitialDir.c_str(),
-                             .OwnerWindowHandle = Window ? Window->GetHWND() : nullptr,
-                             .bFileMustExist = true,
-                             .bPathMustExist = true,
-                             .bPromptOverwrite = false,
-                             .bReturnRelativeToProjectRoot = false,
-                    });
-                    if (!SelectedPath.empty())
-                    {
-                        World->AddStreamingLevel(SelectedPath);
-                    }
-                }
-
-                if (Persistent && ImGui::BeginMenu("GameMode Override"))
-                {
-                    const TArray<UClass *> Candidates = UClass::GetSubclassesOf(AGameModeBase::StaticClass());
-                    const FString          CurrentName = Persistent->GetGameModeClassName();
-
-                    if (ImGui::MenuItem("(Use Project Default)", nullptr, CurrentName.empty()))
-                    {
-                        Persistent->SetGameModeClassName("");
-                    }
-                    ImGui::Separator();
-                    for (UClass *C : Candidates)
-                    {
-                        const bool bSelected = (CurrentName == C->GetName());
-                        if (ImGui::MenuItem(C->GetName(), nullptr, bSelected))
-                        {
-                            Persistent->SetGameModeClassName(C->GetName());
-                        }
-                    }
-                    ImGui::EndMenu();
-                }
-            }
-            ImGui::EndMenu();
-        }
-        ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar(4);
-
-        MenuEndX = ImGui::GetCursorPosX();
-
-        ImGui::SetCursorPos(ImVec2(SceneTabX, ContentStartY));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.72f, 0.72f, 0.74f, 1.0f));
-        ImGui::Button(SceneTabLabel.c_str(), ImVec2(SceneTabWidth, SceneTabHeight));
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-        {
-            ImGui::BeginTooltip();
-            ImGui::PushTextWrapPos(520.0f);
-            ImGui::Text("Current: %s", ScenePathTooltip.c_str());
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
-        ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar(2);
-
-        if (Window)
-        {
-            ImGui::SetCursorPos(ImVec2(RightControlsStartX, ContentStartY));
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.20f, 0.22f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
-            if (WindowControlIconFont)
-            {
-                ImGui::PushFont(WindowControlIconFont);
-            }
-            ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.58f));
-            if (ImGui::Button(GetWindowControlIconMinimize(), ImVec2(ButtonWidth, WindowControlHeight)))
-            {
-                Window->Minimize();
-            }
-            ImGui::PopStyleVar();
-            ImGui::SameLine(0.0f, ButtonSpacing);
-            if (ImGui::Button(Window->IsWindowMaximized() ? GetWindowControlIconRestore() : GetWindowControlIconMaximize(),
-                              ImVec2(ButtonWidth, WindowControlHeight)))
-            {
-                Window->ToggleMaximize();
-            }
-            ImGui::SameLine(0.0f, ButtonSpacing);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.72f, 0.16f, 0.16f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.58f, 0.10f, 0.10f, 1.0f));
-            if (ImGui::Button(GetWindowControlIconClose(), ImVec2(ButtonWidth, WindowControlHeight)))
-            {
-                Window->Close();
-            }
-            if (WindowControlIconFont)
-            {
-                ImGui::PopFont();
-            }
-            ImGui::PopStyleColor(2);
-            ImGui::PopStyleColor(3);
-            ImGui::PopStyleVar(2);
-        }
-
-        if (TitleBarFont)
-        {
-            ImGui::PopFont();
-        }
-        ImGui::PopStyleVar(4);
-        ImGui::EndMenuBar();
     }
 
-    const float SceneTabWidth = ImGui::CalcTextSize(GetSceneTitleLabel(EditorEngine).c_str()).x + 34.0f;
-    const float DragRegionStartX = MenuEndX + 8.0f;
-    const float DragRegionEndX = ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x - RightControlsWidth - SceneTabWidth - 20.0f;
-    const float DragRegionWidth = DragRegionEndX - DragRegionStartX;
-    const float TitleBarClientOriginX = OuterPadding;
-    const float TitleBarClientOriginY = TopFrameInset + OuterPadding;
-    const float TitleBarControlRegionX = TitleBarClientOriginX + (ImGui::GetWindowWidth() - RightControlsWidth);
-    const float TitleBarControlRegionY = TitleBarClientOriginY + floorf((TitleBarHeight - WindowControlHeight) * 0.5f);
+    FInputManager::Get().SetGuiCaptureOverride(bWantMouse, bWantKeyboard, IO.WantTextInput);
 
-    if (Window && DragRegionWidth > 24.0f)
+    if (Window)
     {
-        Window->SetTitleBarDragRegion(TitleBarClientOriginX + DragRegionStartX, TitleBarClientOriginY, DragRegionWidth, TitleBarHeight);
-        Window->SetTitleBarControlRegion(TitleBarControlRegionX, TitleBarControlRegionY, RightControlsWidth, WindowControlHeight);
+        HWND hWnd = Window->GetHWND();
+        if (IO.WantTextInput)
+        {
+            ImmAssociateContextEx(hWnd, NULL, IACE_DEFAULT);
+        }
+        else
+        {
+            ImmAssociateContext(hWnd, NULL);
+        }
     }
-    else if (Window)
-    {
-        Window->ClearTitleBarDragRegion();
-        Window->ClearTitleBarControlRegion();
-    }
+}
 
-    ImGui::End();
-    ImGui::PopStyleVar(4);
+bool FEditorMainFrame::HasBlockingOverlayOpen() const
+{
+    return bShowProjectSettings || bShowShortcutOverlay || bShowCreditsOverlay;
+}
+
+void FEditorMainFrame::MakeCurrentContext() const
+{
+    if (MainImGuiContext)
+    {
+        ImGui::SetCurrentContext(MainImGuiContext);
+    }
 }
 
 void FEditorMainFrame::RenderProjectSettingsWindow()
@@ -825,7 +285,7 @@ void FEditorMainFrame::RenderProjectSettingsWindow()
     auto DrawClassDropdown = [](const char *Label, UClass *BaseClass, FString &InOutValue)
     {
         const TArray<UClass *> Candidates = UClass::GetSubclassesOf(BaseClass);
-        const char            *Preview = InOutValue.empty() ? "(none)" : InOutValue.c_str();
+        const char *Preview = InOutValue.empty() ? "(none)" : InOutValue.c_str();
         if (ImGui::BeginCombo(Label, Preview))
         {
             for (UClass *C : Candidates)
@@ -836,7 +296,9 @@ void FEditorMainFrame::RenderProjectSettingsWindow()
                     InOutValue = C->GetName();
                 }
                 if (bSelected)
+                {
                     ImGui::SetItemDefaultFocus();
+                }
             }
             ImGui::EndCombo();
         }
@@ -921,24 +383,23 @@ void FEditorMainFrame::RenderProjectSettingsWindow()
     DrawClassDropdown("GameInstance Class", UGameInstance::StaticClass(), ProjectSettings.Game.GameInstanceClass);
     DrawClassDropdown("Default GameMode Class", AGameModeBase::StaticClass(), ProjectSettings.Game.DefaultGameModeClass);
 
-    // Default Map
+    const TArray<FString> Scenes = FSceneSaveManager::GetSceneFileList();
+    const char *Preview = ProjectSettings.Game.DefaultScene.empty() ? "(none)" : ProjectSettings.Game.DefaultScene.c_str();
+    if (ImGui::BeginCombo("Default Map", Preview))
     {
-        const TArray<FString> Scenes = FSceneSaveManager::GetSceneFileList();
-        const char           *Preview = ProjectSettings.Game.DefaultScene.empty() ? "(none)" : ProjectSettings.Game.DefaultScene.c_str();
-        if (ImGui::BeginCombo("Default Map", Preview))
+        for (const FString &Stem : Scenes)
         {
-            for (const FString &Stem : Scenes)
+            const bool bSelected = (ProjectSettings.Game.DefaultScene == Stem);
+            if (ImGui::Selectable(Stem.c_str(), bSelected))
             {
-                const bool bSelected = (ProjectSettings.Game.DefaultScene == Stem);
-                if (ImGui::Selectable(Stem.c_str(), bSelected))
-                {
-                    ProjectSettings.Game.DefaultScene = Stem;
-                }
-                if (bSelected)
-                    ImGui::SetItemDefaultFocus();
+                ProjectSettings.Game.DefaultScene = Stem;
             }
-            ImGui::EndCombo();
+            if (bSelected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
         }
+        ImGui::EndCombo();
     }
     ImGui::TextDisabled("(GameInstance class change requires restart)");
 
@@ -1010,7 +471,7 @@ void FEditorMainFrame::RenderCreditsOverlay()
     if (CreditsTexture)
     {
         constexpr float ImageSize = 180.0f;
-        const float     CursorX = (ImGui::GetContentRegionAvail().x - ImageSize) * 0.5f;
+        const float CursorX = (ImGui::GetContentRegionAvail().x - ImageSize) * 0.5f;
         ImGui::SetCursorPosX((std::max)(CursorX, 0.0f));
         ImGui::Image(CreditsTexture, ImVec2(ImageSize, ImageSize));
     }
@@ -1032,234 +493,4 @@ void FEditorMainFrame::RenderCreditsOverlay()
     }
 
     ImGui::End();
-}
-
-void FEditorMainFrame::Update()
-{
-    HandleGlobalShortcuts();
-
-    ImGuiIO &IO = ImGui::GetIO();
-
-    // 뷰포트 슬롯 위에서는 bUsingMouse를 해제해야 TickInteraction이 동작
-    bool       bWantMouse = IO.WantCaptureMouse;
-    bool       bWantKeyboard = IO.WantCaptureKeyboard || bShowShortcutOverlay || bShowCreditsOverlay;
-    const bool bAssetEditorCapturingInput = AssetEditorManager.IsCapturingInput();
-    const bool bPIEPopupOpen = EditorEngine && EditorEngine->IsScoreSavePopupOpen();
-    if (bPIEPopupOpen)
-    {
-        bWantMouse = true;
-        bWantKeyboard = true;
-    }
-
-    if (EditorEngine && EditorEngine->IsMouseOverViewport() && !bAssetEditorCapturingInput)
-    {
-        if (!bPIEPopupOpen)
-        {
-            bWantMouse = false;
-            if (!IO.WantTextInput && !bShowShortcutOverlay && !bShowCreditsOverlay)
-            {
-                bWantKeyboard = false;
-            }
-        }
-    }
-    FInputManager::Get().SetGuiCaptureOverride(bWantMouse, bWantKeyboard, IO.WantTextInput);
-
-    // IME는 ImGui가 텍스트 입력을 원할 때만 활성화.
-    if (Window)
-    {
-        HWND hWnd = Window->GetHWND();
-        if (IO.WantTextInput)
-        {
-            ImmAssociateContextEx(hWnd, NULL, IACE_DEFAULT);
-        }
-        else
-        {
-            ImmAssociateContext(hWnd, NULL);
-        }
-    }
-}
-
-void FEditorMainFrame::HandleGlobalShortcuts()
-{
-    if (!EditorEngine)
-    {
-        return;
-    }
-    if (EditorEngine->IsPIEPossessedMode())
-    {
-        return;
-    }
-
-    ImGuiIO &IO = ImGui::GetIO();
-    if (IO.WantTextInput)
-    {
-        return;
-    }
-
-    FInputManager   &Input = FInputManager::Get();
-    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-
-    if (Input.IsKeyPressed(VK_OEM_3))
-    {
-        Settings.Panels.bConsole = !Settings.Panels.bConsole;
-        return;
-    }
-
-    if (!Input.IsKeyDown(VK_CONTROL))
-    {
-        return;
-    }
-
-    const bool bShift = Input.IsKeyDown(VK_SHIFT);
-    if (Input.IsKeyPressed(VK_SPACE))
-    {
-        Settings.Panels.bContentBrowser = !Settings.Panels.bContentBrowser;
-        return;
-    }
-
-    if (Input.IsKeyPressed('N'))
-    {
-        EditorEngine->NewScene();
-    }
-    else if (Input.IsKeyPressed('O'))
-    {
-        EditorEngine->LoadSceneWithDialog();
-    }
-    else if (Input.IsKeyPressed('S'))
-    {
-        if (bShift)
-        {
-            EditorEngine->RequestSaveSceneAsDialog();
-        }
-        else
-        {
-            EditorEngine->SaveScene();
-        }
-    }
-    else if (Input.IsKeyPressed('Z'))
-    {
-        EditorEngine->UndoTrackedTransformChange();
-    }
-    else if (Input.IsKeyPressed('Y'))
-    {
-        EditorEngine->RedoTrackedTransformChange();
-    }
-}
-
-void FEditorMainFrame::HideEditorWindows()
-{
-    if (bHasSavedPanelVisibility)
-    {
-        bHideEditorWindows = true;
-        bShowPanelList = false;
-        return;
-    }
-
-    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    SavedPanelVisibility = Settings.Panels;
-    bSavedShowPanelList = bShowPanelList;
-    bHasSavedPanelVisibility = true;
-    bHideEditorWindows = true;
-    bShowPanelList = false;
-
-    Settings.Panels.bConsole = false;
-    Settings.Panels.bDetails = false;
-    Settings.Panels.bOutliner = false;
-    Settings.Panels.bPlaceActors = false;
-    Settings.Panels.bStats = false;
-    Settings.Panels.bContentBrowser = false;
-    Settings.Panels.bImGuiSettings = false;
-    Settings.Panels.bShadowMapDebug = false;
-}
-
-void FEditorMainFrame::ShowEditorWindows()
-{
-    if (!bHasSavedPanelVisibility)
-    {
-        bHideEditorWindows = false;
-        return;
-    }
-
-    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    Settings.Panels = SavedPanelVisibility;
-    bShowPanelList = bSavedShowPanelList;
-    bHideEditorWindows = false;
-    bHasSavedPanelVisibility = false;
-}
-
-void FEditorMainFrame::HideEditorWindowsForPIE() { HideEditorWindows(); }
-
-void FEditorMainFrame::RestoreEditorWindowsAfterPIE() { ShowEditorWindows(); }
-
-void FEditorMainFrame::CookCurrentScene()
-{
-    if (!EditorEngine || !EditorEngine->HasCurrentLevelFilePath())
-    {
-        FNotificationManager::Get().AddNotification("Cook: save the current scene first.", ENotificationType::Error);
-        return;
-    }
-
-    const FString        &InPath = EditorEngine->GetCurrentLevelFilePath();
-    std::filesystem::path Out(FPaths::ToWide(InPath));
-    Out.replace_extension(L".umap");
-    const FString OutPath = FPaths::ToUtf8(Out.wstring());
-
-    const bool bOk = FSceneSaveManager::CookSceneToBinary(InPath, OutPath);
-    FNotificationManager::Get().AddNotification(bOk ? std::string("Cooked: ") + Out.filename().string()
-                                                    : std::string("Cook failed: ") + Out.filename().string(),
-                                                bOk ? ENotificationType::Success : ENotificationType::Error);
-}
-
-void FEditorMainFrame::PackageGameBuild(const char *BatFileName)
-{
-    // 솔루션 루트(.bat 위치)를 찾는다 — 후보 경로를 차례대로 검사.
-    // FPaths::RootDir()은 보통 LunaticEngine/ (개발) 또는 exe 디렉터리(배포)를 반환한다.
-    // 트레일링 슬래시 때문에 parent_path()가 의도대로 안 나올 수 있으므로 lexically_normal로 정규화.
-    std::filesystem::path RootDir = std::filesystem::path(FPaths::RootDir()).lexically_normal();
-
-    std::filesystem::path       SolutionDir;
-    std::filesystem::path       BatPath;
-    const std::filesystem::path Candidates[] = {
-        RootDir,                             // exe 디렉터리에 .bat이 있는 경우 (배포)
-        RootDir.parent_path(),               // LunaticEngine/의 상위 = 솔루션 루트 (개발)
-        RootDir.parent_path().parent_path(), // 한 단계 더 (혹시 모를 중첩)
-        std::filesystem::current_path(),     // 마지막 폴백
-    };
-    for (const auto &Candidate : Candidates)
-    {
-        const std::filesystem::path Tentative = Candidate / BatFileName;
-        if (std::filesystem::exists(Tentative))
-        {
-            SolutionDir = Candidate;
-            BatPath = Tentative;
-            break;
-        }
-    }
-
-    if (BatPath.empty())
-    {
-        FNotificationManager::Get().AddNotification(std::string("Package script not found: ") + BatFileName + " (searched near " +
-                                                        RootDir.string() + ")",
-                                                    ENotificationType::Error);
-        return;
-    }
-
-    // .bat은 별도 콘솔 창에서 실행 (편집 중인 에디터를 막지 않게).
-    // "cmd /c start \"Title\" /D <SolutionDir> cmd /k \"<bat>\"" 형태로 cmd 콘솔에서 띄움.
-    std::wstring SolutionDirW = SolutionDir.wstring();
-    std::wstring BatPathW = BatPath.wstring();
-
-    std::wstring CommandLine = L"/c start \"Package Game Build\" /D \"" + SolutionDirW + L"\" cmd /k \"\"" + BatPathW + L"\"\"";
-
-    HINSTANCE Result =
-        ShellExecuteW(Window ? Window->GetHWND() : nullptr, L"open", L"cmd.exe", CommandLine.c_str(), SolutionDirW.c_str(), SW_SHOWNORMAL);
-
-    if (reinterpret_cast<INT_PTR>(Result) <= 32)
-    {
-        FNotificationManager::Get().AddNotification(std::string("Failed to launch package script: ") + BatFileName,
-                                                    ENotificationType::Error);
-        return;
-    }
-
-    FNotificationManager::Get().AddNotification(std::string("Packaging started: ") + BatFileName, ENotificationType::Info);
 }

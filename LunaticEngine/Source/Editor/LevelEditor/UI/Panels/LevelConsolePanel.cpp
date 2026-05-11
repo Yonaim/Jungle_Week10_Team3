@@ -1,7 +1,8 @@
-﻿#include "LevelEditor/UI/Panels/LevelConsolePanel.h"
+#include "LevelEditor/UI/Panels/LevelConsolePanel.h"
 #include "Component/CameraComponent.h"
 #include "Core/AsciiUtils.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
@@ -436,16 +437,18 @@ void FLevelConsolePanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Console";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Console", PanelIconKey);
-    const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Console", Settings.Panels.bConsole, "x##CloseConsole");
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Console";
+    PanelDesc.StableId = "LevelConsolePanel";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bConsole;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     RenderDrawerToolbar();
     const float FooterHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
@@ -453,7 +456,7 @@ void FLevelConsolePanel::Render(float DeltaTime)
     ImGui::Separator();
     RenderInputLine("Input");
 
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FLevelConsolePanel::RenderDrawerToolbar()

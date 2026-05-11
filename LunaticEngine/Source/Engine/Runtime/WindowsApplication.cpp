@@ -1,13 +1,18 @@
 #include "Engine/Runtime/WindowsApplication.h"
 #include "Engine/Runtime/resource.h"
 #include "Core/ProjectSettings.h"
+#if WITH_EDITOR
+#include "EditorEngine.h"
+#endif
 
 #include <windowsx.h>
 #include <vector>
 
 #include "Engine/Input/InputManager.h"
+#include "Engine/Runtime/Engine.h"
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, unsigned int Msg, WPARAM wParam, LPARAM lParam);
+extern void ImGui_ImplWin32_SetActiveWindow(void* hwnd);
 
 namespace
 {
@@ -54,9 +59,22 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 	// Keep engine input state coherent even when ImGui consumes the message.
 	FInputManager::Get().ProcessMessage(hWnd, Msg, wParam, lParam);
 
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, Msg, wParam, lParam))
+#if WITH_EDITOR
+	if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
 	{
-		return true;
+		if (EditorEngine->GetImGuiSystem().HandleWindowMessage(EditorEngine->GetWindow(), hWnd, Msg, wParam, lParam))
+		{
+			return true;
+		}
+	}
+	else
+#endif
+	{
+		ImGui_ImplWin32_SetActiveWindow((void*)hWnd);
+		if (ImGui_ImplWin32_WndProcHandler(hWnd, Msg, wParam, lParam))
+		{
+			return true;
+		}
 	}
 
 	switch (Msg)

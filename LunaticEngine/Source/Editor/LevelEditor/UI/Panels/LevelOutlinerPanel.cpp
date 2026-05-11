@@ -1,7 +1,8 @@
-﻿#include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
+#include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
@@ -274,16 +275,18 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Outliner";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Outliner", PanelIconKey);
-    const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Outliner", Settings.Panels.bOutliner, "x##CloseOutliner");
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Outliner";
+    PanelDesc.StableId = "LevelOutlinerPanel";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bOutliner;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     UWorld *World = EditorEngine->GetWorld();
     std::set<FString> ActorTypes;
@@ -473,7 +476,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
     {
         ImGui::EndDisabled();
     }
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FLevelOutlinerPanel::SelectAllVisibleActors()

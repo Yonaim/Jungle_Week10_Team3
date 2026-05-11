@@ -1,4 +1,4 @@
-﻿#include "ContentBrowserElement.h"
+#include "ContentBrowserElement.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Common/UI/EditorAccentColor.h"
 #include "Core/Notification.h"
@@ -304,6 +304,58 @@ void MtlElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
     {
         FNotificationManager::Get().AddNotification("Failed to import MTL: " + RelativeMtlPath, ENotificationType::Error, 5.0f);
     }
+}
+
+
+void FbxElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
+{
+    if (!Context.EditorEngine)
+    {
+        return;
+    }
+
+    if (!Context.EditorEngine->OpenSourceFileFromPath(ContentItem.Path))
+    {
+        FNotificationManager::Get().AddNotification("Failed to open FBX preview: " + GetDisplayName(), ENotificationType::Error, 5.0f);
+    }
+}
+
+void FbxElement::DrawContextMenu(ContentBrowserContext &Context)
+{
+    const bool bCanOpen = std::filesystem::exists(ContentItem.Path);
+    if (ImGui::MenuItem("Open FBX Preview", nullptr, false, bCanOpen))
+    {
+        OnDoubleLeftClicked(Context);
+    }
+
+    ImGui::Separator();
+    ContentBrowserElement::DrawContextMenu(Context);
+}
+
+void SkeletalMeshElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
+{
+    if (!Context.EditorEngine)
+    {
+        return;
+    }
+
+    if (!Context.EditorEngine->OpenSourceFileFromPath(ContentItem.Path))
+    {
+        FNotificationManager::Get().AddNotification("Failed to open skeletal mesh asset: " + GetDisplayName(), ENotificationType::Error,
+                                                    5.0f);
+    }
+}
+
+void SkeletalMeshElement::DrawContextMenu(ContentBrowserContext &Context)
+{
+    const bool bCanOpen = std::filesystem::exists(ContentItem.Path);
+    if (ImGui::MenuItem("Open Skeletal Mesh Preview", nullptr, false, bCanOpen))
+    {
+        OnDoubleLeftClicked(Context);
+    }
+
+    ImGui::Separator();
+    ContentBrowserElement::DrawContextMenu(Context);
 }
 
 void UAssetElement::OnDoubleLeftClicked(ContentBrowserContext &Context)

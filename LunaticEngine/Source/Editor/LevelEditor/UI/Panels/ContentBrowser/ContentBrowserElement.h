@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "ContentItem.h"
 #include "Core/ClassTypes.h"
 #include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowserContext.h"
@@ -88,6 +88,24 @@ class ObjectElement final : public ContentBrowserElement
     {
         return "ObjectContentItem";
     }
+};
+
+class FbxElement final : public ContentBrowserElement
+{
+  public:
+    void OnDoubleLeftClicked(ContentBrowserContext &Context) override;
+
+  protected:
+    void DrawContextMenu(ContentBrowserContext &Context) override;
+};
+
+class SkeletalMeshElement final : public ContentBrowserElement
+{
+  public:
+    void OnDoubleLeftClicked(ContentBrowserContext &Context) override;
+
+  protected:
+    void DrawContextMenu(ContentBrowserContext &Context) override;
 };
 
 class PNGElement final : public ContentBrowserElement

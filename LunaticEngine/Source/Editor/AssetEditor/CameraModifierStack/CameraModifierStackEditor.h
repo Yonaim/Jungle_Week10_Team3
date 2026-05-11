@@ -17,20 +17,17 @@ struct FCameraShakeModifierAssetDesc;
 class FCameraModifierStackEditor final : public IAssetEditor
 {
   public:
-    void Init(UEditorEngine *InEditorEngine, FRenderer *InRenderer) override;
-    void Shutdown() override;
-
-    bool CanEdit(UObject *Asset) const override;
+    void Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer) override;
     bool OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath) override;
     void Close() override;
     bool Save() override;
 
-    void Render(float DeltaTime) override;
+    void RenderContent(float DeltaTime) override;
 
-    bool IsOpen() const override { return bOpen; }
     bool IsDirty() const override { return bDirty; }
     bool IsCapturingInput() const override { return bCapturingInput; }
     const char *GetEditorName() const override { return "CameraModifierStackEditor"; }
+    const std::filesystem::path &GetAssetPath() const override { return EditingAssetPath; }
 
     bool CreateCameraShakeAsset();
     bool HasOpenAsset() const { return EditingAsset != nullptr; }

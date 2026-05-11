@@ -1,6 +1,7 @@
 ﻿#include "LevelEditor/Settings/LevelEditorSettings.h"
-#include "LevelEditor/Viewport/LevelViewportLayout.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
+
 
 #include <filesystem>
 #include <fstream>
@@ -9,94 +10,94 @@
 
 namespace Key
 {
-// Section
-constexpr const char *Viewport = "Viewport";
-constexpr const char *Paths = "Paths";
+    // Section
+    constexpr const char *Viewport = "Viewport";
+    constexpr const char *Paths = "Paths";
 
-// Viewport
-constexpr const char *CameraSpeed = "CameraSpeed";
-constexpr const char *CameraRotationSpeed = "CameraRotationSpeed";
-constexpr const char *CameraZoomSpeed = "CameraZoomSpeed";
-constexpr const char *InitViewPos = "InitViewPos";
-constexpr const char *InitLookAt = "InitLookAt";
+    // Viewport
+    constexpr const char *CameraSpeed = "CameraSpeed";
+    constexpr const char *CameraRotationSpeed = "CameraRotationSpeed";
+    constexpr const char *CameraZoomSpeed = "CameraZoomSpeed";
+    constexpr const char *InitViewPos = "InitViewPos";
+    constexpr const char *InitLookAt = "InitLookAt";
 
-// Slot Render Options
-constexpr const char *ViewMode = "ViewMode";
-constexpr const char *bPrimitives = "bPrimitives";
-constexpr const char *bGrid = "bGrid";
-constexpr const char *bWorldAxis = "bWorldAxis";
-constexpr const char *bGizmo = "bGizmo";
-constexpr const char *bBillboardText = "bBillboardText";
-constexpr const char *bBoundingVolume = "bBoundingVolume";
-constexpr const char *bDebugDraw = "bDebugDraw";
-constexpr const char *bSceneBVH = "bSceneBVH";
-constexpr const char *bOctree = "bOctree";
-constexpr const char *bWorldBound = "bWorldBound";
-constexpr const char *bLightVisualization = "bLightVisualization";
-constexpr const char *bLightHitMap = "bLightHitMap";
-constexpr const char *bFog = "bFog";
-constexpr const char *bShowShadowFrustum = "bShowShadowFrustum";
-constexpr const char *bGammaCorrection = "bGammaCorrection";
-constexpr const char *GridSpacing = "GridSpacing";
-constexpr const char *GridHalfLineCount = "GridHalfLineCount";
-constexpr const char *GridLineThickness = "GridLineThickness";
-constexpr const char *GridMajorLineThickness = "GridMajorLineThickness";
-constexpr const char *GridMajorLineInterval = "GridMajorLineInterval";
-constexpr const char *GridMinorIntensity = "GridMinorIntensity";
-constexpr const char *GridMajorIntensity = "GridMajorIntensity";
-constexpr const char *GridAxisThickness = "GridAxisThickness";
-constexpr const char *GridAxisIntensity = "GridAxisIntensity";
-constexpr const char *DebugLineThickness = "DebugLineThickness";
-constexpr const char *ActorHelperBillboardScale = "ActorHelperBillboardScale";
-constexpr const char *CameraMoveSensitivity = "CameraMoveSensitivity";
-constexpr const char *CameraRotateSensitivity = "CameraRotateSensitivity";
-constexpr const char *DisplayGamma = "DisplayGamma";
-constexpr const char *GammaCorrectionBlend = "GammaCorrectionBlend";
-constexpr const char *bUseSRGBCurve = "bUseSRGBCurve";
-constexpr const char *DirectionalLightVisualizationScale = "DirectionalLightVisualizationScale";
-constexpr const char *PointLightVisualizationScale = "PointLightVisualizationScale";
-constexpr const char *SpotLightVisualizationScale = "SpotLightVisualizationScale";
+    // Slot Render Options
+    constexpr const char *ViewMode = "ViewMode";
+    constexpr const char *bPrimitives = "bPrimitives";
+    constexpr const char *bGrid = "bGrid";
+    constexpr const char *bWorldAxis = "bWorldAxis";
+    constexpr const char *bGizmo = "bGizmo";
+    constexpr const char *bBillboardText = "bBillboardText";
+    constexpr const char *bBoundingVolume = "bBoundingVolume";
+    constexpr const char *bDebugDraw = "bDebugDraw";
+    constexpr const char *bSceneBVH = "bSceneBVH";
+    constexpr const char *bOctree = "bOctree";
+    constexpr const char *bWorldBound = "bWorldBound";
+    constexpr const char *bLightVisualization = "bLightVisualization";
+    constexpr const char *bLightHitMap = "bLightHitMap";
+    constexpr const char *bFog = "bFog";
+    constexpr const char *bShowShadowFrustum = "bShowShadowFrustum";
+    constexpr const char *bGammaCorrection = "bGammaCorrection";
+    constexpr const char *GridSpacing = "GridSpacing";
+    constexpr const char *GridHalfLineCount = "GridHalfLineCount";
+    constexpr const char *GridLineThickness = "GridLineThickness";
+    constexpr const char *GridMajorLineThickness = "GridMajorLineThickness";
+    constexpr const char *GridMajorLineInterval = "GridMajorLineInterval";
+    constexpr const char *GridMinorIntensity = "GridMinorIntensity";
+    constexpr const char *GridMajorIntensity = "GridMajorIntensity";
+    constexpr const char *GridAxisThickness = "GridAxisThickness";
+    constexpr const char *GridAxisIntensity = "GridAxisIntensity";
+    constexpr const char *DebugLineThickness = "DebugLineThickness";
+    constexpr const char *ActorHelperBillboardScale = "ActorHelperBillboardScale";
+    constexpr const char *CameraMoveSensitivity = "CameraMoveSensitivity";
+    constexpr const char *CameraRotateSensitivity = "CameraRotateSensitivity";
+    constexpr const char *DisplayGamma = "DisplayGamma";
+    constexpr const char *GammaCorrectionBlend = "GammaCorrectionBlend";
+    constexpr const char *bUseSRGBCurve = "bUseSRGBCurve";
+    constexpr const char *DirectionalLightVisualizationScale = "DirectionalLightVisualizationScale";
+    constexpr const char *PointLightVisualizationScale = "PointLightVisualizationScale";
+    constexpr const char *SpotLightVisualizationScale = "SpotLightVisualizationScale";
 
-// Paths
-constexpr const char *EditorStartLevel = "EditorStartLevel";
-constexpr const char *ContentBrowserPath = "ContentBrowserPath";
+    // Paths
+    constexpr const char *EditorStartLevel = "EditorStartLevel";
+    constexpr const char *ContentBrowserPath = "ContentBrowserPath";
 
-// Layout
-constexpr const char *Layout = "Layout";
-constexpr const char *LayoutType = "LayoutType";
-constexpr const char *Slots = "Slots";
-constexpr const char *ViewportType = "ViewportType";
-constexpr const char *SplitterRatios = "SplitterRatios";
+    // Layout
+    constexpr const char *Layout = "Layout";
+    constexpr const char *LayoutType = "LayoutType";
+    constexpr const char *Slots = "Slots";
+    constexpr const char *ViewportType = "ViewportType";
+    constexpr const char *SplitterRatios = "SplitterRatios";
 
-// UI Panels
-constexpr const char *UIPanels = "UIPanels";
-constexpr const char *ShowViewport = "ShowViewport";
-constexpr const char *ShowConsole = "ShowConsole";
-constexpr const char *ShowDetailsPanel = "ShowDetailsPanel";
-constexpr const char *ShowOutlinerPanel = "ShowOutlinerPanel";
-constexpr const char *ShowPlaceActors = "ShowPlaceActors";
-constexpr const char *ShowStatsPanel = "ShowStatsPanel";
-constexpr const char *ShowContentBrowser = "ShowContentBrowser";
-constexpr const char *ShowImGuiSettings = "ShowImGuiSettings";
-constexpr const char *ShowShadowMapDebug = "ShowShadowMapDebug";
+    // UI Panels
+    constexpr const char *UIPanels = "UIPanels";
+    constexpr const char *ShowViewport = "ShowViewport";
+    constexpr const char *ShowConsole = "ShowConsole";
+    constexpr const char *ShowDetailsPanel = "ShowDetailsPanel";
+    constexpr const char *ShowOutlinerPanel = "ShowOutlinerPanel";
+    constexpr const char *ShowPlaceActors = "ShowPlaceActors";
+    constexpr const char *ShowStatsPanel = "ShowStatsPanel";
+    constexpr const char *ShowContentBrowser = "ShowContentBrowser";
+    constexpr const char *ShowImGuiSettings = "ShowImGuiSettings";
+    constexpr const char *ShowShadowMapDebug = "ShowShadowMapDebug";
 
-// Perspective Camera
-constexpr const char *PerspectiveCamera = "PerspectiveCamera";
-constexpr const char *Location = "Location";
-constexpr const char *Rotation = "Rotation";
-constexpr const char *FOV = "FOV";
-constexpr const char *NearClip = "NearClip";
-constexpr const char *FarClip = "FarClip";
+    // Perspective Camera
+    constexpr const char *PerspectiveCamera = "PerspectiveCamera";
+    constexpr const char *Location = "Location";
+    constexpr const char *Rotation = "Rotation";
+    constexpr const char *FOV = "FOV";
+    constexpr const char *NearClip = "NearClip";
+    constexpr const char *FarClip = "FarClip";
 
-// Transform Tools
-constexpr const char *TransformTools = "TransformTools";
-constexpr const char *CoordSystem = "CoordSystem";
-constexpr const char *bEnableTranslationSnap = "bEnableTranslationSnap";
-constexpr const char *TranslationSnapSize = "TranslationSnapSize";
-constexpr const char *bEnableRotationSnap = "bEnableRotationSnap";
-constexpr const char *RotationSnapSize = "RotationSnapSize";
-constexpr const char *bEnableScaleSnap = "bEnableScaleSnap";
-constexpr const char *ScaleSnapSize = "ScaleSnapSize";
+    // Transform Tools
+    constexpr const char *TransformTools = "TransformTools";
+    constexpr const char *CoordSystem = "CoordSystem";
+    constexpr const char *bEnableTranslationSnap = "bEnableTranslationSnap";
+    constexpr const char *TranslationSnapSize = "TranslationSnapSize";
+    constexpr const char *bEnableRotationSnap = "bEnableRotationSnap";
+    constexpr const char *RotationSnapSize = "RotationSnapSize";
+    constexpr const char *bEnableScaleSnap = "bEnableScaleSnap";
+    constexpr const char *ScaleSnapSize = "ScaleSnapSize";
 } // namespace Key
 
 void FLevelEditorSettings::SaveToFile(const FString &Path) const
@@ -129,11 +130,11 @@ void FLevelEditorSettings::SaveToFile(const FString &Path) const
     JSON LayoutObj = Object();
     LayoutObj[Key::LayoutType] = LayoutType;
 
-    JSON SlotsArr = Array();
+    JSON  SlotsArr = Array();
     int32 SlotCount = FLevelViewportLayout::GetSlotCount(static_cast<EViewportLayout>(LayoutType));
     for (int32 i = 0; i < SlotCount; ++i)
     {
-        JSON SlotObj = Object();
+        JSON                          SlotObj = Object();
         const FViewportRenderOptions &Opts = SlotOptions[i];
         SlotObj[Key::ViewMode] = static_cast<int32>(Opts.ViewMode);
         SlotObj[Key::ViewportType] = static_cast<int32>(Opts.ViewportType);
@@ -257,8 +258,8 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
         if (Viewport.hasKey(Key::InitViewPos))
         {
             JSON Pos = Viewport[Key::InitViewPos];
-            InitViewPos = FVector(static_cast<float>(Pos[0].ToFloat()), static_cast<float>(Pos[1].ToFloat()),
-                                  static_cast<float>(Pos[2].ToFloat()));
+            InitViewPos =
+                FVector(static_cast<float>(Pos[0].ToFloat()), static_cast<float>(Pos[1].ToFloat()), static_cast<float>(Pos[2].ToFloat()));
         }
 
         if (Viewport.hasKey(Key::InitLookAt))
@@ -293,7 +294,7 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
             JSON SlotsArr = LayoutObj[Key::Slots];
             for (int32 i = 0; i < static_cast<int32>(SlotsArr.length()) && i < 4; ++i)
             {
-                JSON S = SlotsArr[i];
+                JSON                    S = SlotsArr[i];
                 FViewportRenderOptions &Opts = SlotOptions[i];
                 if (S.hasKey(Key::ViewMode))
                     Opts.ViewMode = static_cast<EViewMode>(S[Key::ViewMode].ToInt());
@@ -334,14 +335,12 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
                 if (S.hasKey(Key::GridHalfLineCount))
                     Opts.GridHalfLineCount = S[Key::GridHalfLineCount].ToInt();
                 if (S.hasKey(Key::GridLineThickness))
-                    Opts.GridRenderSettings.LineThickness =
-                        std::clamp(static_cast<float>(S[Key::GridLineThickness].ToFloat()), 0.0f, 8.0f);
+                    Opts.GridRenderSettings.LineThickness = std::clamp(static_cast<float>(S[Key::GridLineThickness].ToFloat()), 0.0f, 8.0f);
                 if (S.hasKey(Key::GridMajorLineThickness))
                     Opts.GridRenderSettings.MajorLineThickness =
                         std::clamp(static_cast<float>(S[Key::GridMajorLineThickness].ToFloat()), 0.0f, 12.0f);
                 if (S.hasKey(Key::GridMajorLineInterval))
-                    Opts.GridRenderSettings.MajorLineInterval =
-                        std::clamp<int32>(S[Key::GridMajorLineInterval].ToInt(), 1, 100);
+                    Opts.GridRenderSettings.MajorLineInterval = std::clamp<int32>(S[Key::GridMajorLineInterval].ToInt(), 1, 100);
                 if (S.hasKey(Key::GridMinorIntensity))
                     Opts.GridRenderSettings.MinorIntensity =
                         std::clamp(static_cast<float>(S[Key::GridMinorIntensity].ToFloat()), 0.0f, 2.0f);
@@ -352,8 +351,7 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
                     Opts.GridRenderSettings.AxisThickness =
                         std::clamp(static_cast<float>(S[Key::GridAxisThickness].ToFloat()), 0.0f, 12.0f);
                 if (S.hasKey(Key::GridAxisIntensity))
-                    Opts.GridRenderSettings.AxisIntensity =
-                        std::clamp(static_cast<float>(S[Key::GridAxisIntensity].ToFloat()), 0.0f, 2.0f);
+                    Opts.GridRenderSettings.AxisIntensity = std::clamp(static_cast<float>(S[Key::GridAxisIntensity].ToFloat()), 0.0f, 2.0f);
                 if (S.hasKey(Key::DebugLineThickness))
                     Opts.DebugLineThickness = static_cast<float>(S[Key::DebugLineThickness].ToFloat());
                 if (S.hasKey(Key::ActorHelperBillboardScale))
@@ -369,14 +367,11 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
                 if (S.hasKey(Key::bUseSRGBCurve))
                     Opts.bUseSRGBCurve = S[Key::bUseSRGBCurve].ToBool();
                 if (S.hasKey(Key::DirectionalLightVisualizationScale))
-                    Opts.DirectionalLightVisualizationScale =
-                        static_cast<float>(S[Key::DirectionalLightVisualizationScale].ToFloat());
+                    Opts.DirectionalLightVisualizationScale = static_cast<float>(S[Key::DirectionalLightVisualizationScale].ToFloat());
                 if (S.hasKey(Key::PointLightVisualizationScale))
-                    Opts.PointLightVisualizationScale =
-                        static_cast<float>(S[Key::PointLightVisualizationScale].ToFloat());
+                    Opts.PointLightVisualizationScale = static_cast<float>(S[Key::PointLightVisualizationScale].ToFloat());
                 if (S.hasKey(Key::SpotLightVisualizationScale))
-                    Opts.SpotLightVisualizationScale =
-                        static_cast<float>(S[Key::SpotLightVisualizationScale].ToFloat());
+                    Opts.SpotLightVisualizationScale = static_cast<float>(S[Key::SpotLightVisualizationScale].ToFloat());
             }
         }
 
@@ -419,9 +414,9 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
             Panels.bShadowMapDebug = P[Key::ShowShadowMapDebug].ToBool();
     }
 
-    else if (Root.hasKey("UIWidgets"))
+    else if (Root.hasKey("UIPanels"))
     {
-        JSON LegacyPanels = Root["UIWidgets"];
+        JSON LegacyPanels = Root["UIPanels"];
         if (LegacyPanels.hasKey(Key::ShowViewport))
             Panels.bViewport = LegacyPanels[Key::ShowViewport].ToBool();
         if (LegacyPanels.hasKey(Key::ShowConsole))
@@ -448,8 +443,8 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
         if (CamObj.hasKey(Key::Location))
         {
             JSON L = CamObj[Key::Location];
-            PerspCamLocation = FVector(static_cast<float>(L[0].ToFloat()), static_cast<float>(L[1].ToFloat()),
-                                       static_cast<float>(L[2].ToFloat()));
+            PerspCamLocation =
+                FVector(static_cast<float>(L[0].ToFloat()), static_cast<float>(L[1].ToFloat()), static_cast<float>(L[2].ToFloat()));
         }
         if (CamObj.hasKey(Key::Rotation))
         {
@@ -487,7 +482,3 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
             ScaleSnapSize = static_cast<float>(TransformObj[Key::ScaleSnapSize].ToFloat());
     }
 }
-
-
-
-
