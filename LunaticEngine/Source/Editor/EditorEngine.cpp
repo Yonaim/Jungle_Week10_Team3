@@ -1,4 +1,5 @@
 ﻿#include "EditorEngine.h"
+#include "Common/UI/EditorPanelTitleUtils.h"
 
 #include "Audio/AudioManager.h"
 #include "Common/File/EditorFileUtils.h"
@@ -177,8 +178,14 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 void UEditorEngine::RenderUI(float DeltaTime)
 {
     ImGuiSystem.BeginFrame();
+
     LevelEditorWindow.RenderContent(DeltaTime);
     AssetEditorManager.RenderContent(DeltaTime, LevelEditorWindow.GetMainDockspaceId());
+
+    // Level Editor 패널과 Asset/SkeletalMesh Editor 패널을 모두 렌더링한 뒤 한 번만 flush한다.
+    // EditorPanelTitleUtils는 이 시점에 dock tab bar의 빈 영역 fill과 선택 탭 accent line을 그린다.
+    EditorPanelTitleUtils::FlushPanelDecorations();
+
     ImGuiSystem.EndFrame();
     LevelEditorWindow.FlushPendingMenuAction();
 }

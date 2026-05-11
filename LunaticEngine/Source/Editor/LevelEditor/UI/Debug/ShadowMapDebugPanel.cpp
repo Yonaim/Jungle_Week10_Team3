@@ -1,7 +1,8 @@
-﻿#include "LevelEditor/UI/Debug/ShadowMapDebugPanel.h"
+#include "LevelEditor/UI/Debug/ShadowMapDebugPanel.h"
 #include "Component/Light/PointLightComponent.h"
 #include "Component/Light/SpotLightComponent.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "GameFramework/Light/DirectionalLightActor.h"
@@ -295,17 +296,18 @@ void FShadowMapDebugPanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.ShadowMapDebug";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Shadow Map Debug", PanelIconKey);
-    const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Shadow Map Debug", Settings.Panels.bShadowMapDebug,
-                                                     "x##CloseShadow");
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Shadow Map Debug";
+    PanelDesc.StableId = "ShadowMapDebugPanel";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bShadowMapDebug;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     FRenderer &Renderer = GEngine->GetRenderer();
     const FShadowMapResources &SR = Renderer.GetResources().ShadowResources;

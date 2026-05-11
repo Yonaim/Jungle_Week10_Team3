@@ -1,6 +1,7 @@
-﻿#include "LevelEditor/UI/Panels/LevelStatPanel.h"
+#include "LevelEditor/UI/Panels/LevelStatPanel.h"
 
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "ImGui/imgui.h"
 #include "Profiling/GPUProfiler.h"
@@ -24,11 +25,18 @@ void FLevelStatPanel::Render(float DeltaTime)
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     ImGui::SetNextWindowSize(ImVec2(700.0f, 500.0f), ImGuiCond_Once);
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Stat";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Stat Profiler", PanelIconKey);
-    ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Stat Profiler", Settings.Panels.bStats, "x##CloseStat");
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Stat Profiler";
+    PanelDesc.StableId = "LevelStatPanel";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bStats;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    if (!bIsOpen)
+    {
+        FEditorPanel::End();
+        return;
+    }
 
     // Pause / Resume 踰꾪듉
     if (bPaused)
@@ -108,7 +116,7 @@ void FLevelStatPanel::Render(float DeltaTime)
         RenderStatTable("GPUStatTable", GPUSource, GPUSortColumn, bGPUSortDescending, HalfHeight);
     }
 
-    ImGui::End();
+    FEditorPanel::End();
 #endif
 }
 

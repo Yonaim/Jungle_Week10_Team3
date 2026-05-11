@@ -4,6 +4,7 @@
 #include "Core/AsciiUtils.h"
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "Engine/Runtime/Engine.h"
 #include "Materials/MaterialManager.h"
@@ -324,17 +325,18 @@ void FContentBrowser::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.ContentBrowser";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Content Browser", PanelIconKey);
-    const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Content Browser", Settings.Panels.bContentBrowser,
-                                                     "x##CloseContentBrowser");
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Content Browser";
+    PanelDesc.StableId = "LevelContentBrowser";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bContentBrowser;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 6.0f));
@@ -388,7 +390,7 @@ void FContentBrowser::Render(float DeltaTime)
         BrowserContext.SelectedElement->RenderDetail();
 
     ImGui::EndTable();
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FContentBrowser::Refresh()

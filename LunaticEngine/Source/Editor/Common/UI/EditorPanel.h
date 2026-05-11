@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common/UI/EditorPanelTitleUtils.h"
 #include "Core/CoreTypes.h"
@@ -68,10 +68,15 @@ class FEditorPanel
 
         if (bVisible)
         {
-            if (Desc.bDrawTitleIcon && Desc.IconKey)
-            {
-                EditorPanelTitleUtils::DrawPanelTitleIcon(Desc.IconKey);
-            }
+            // 모든 공통 패널은 decoration queue에 등록한다.
+            // 이유:
+            // - EditorPanelTitleUtils::FlushPanelDecorations()가 dock tab bar의 빈 영역 fill과
+            //   선택된 탭의 accent line을 그리기 위해 현재 패널의 DockNode/Tab 정보를 필요로 한다.
+            // - IconKey가 없는 패널(예: Preview Viewport)도 기존 Level Editor 패널과 같은 tab chrome을 써야 한다.
+            // - bOpen이 없는 임시 OpenPtr은 Flush 시점에 수명이 끝나므로 close button용 VisibleFlag로 넘기지 않는다.
+            const char *DecorationIconKey = (Desc.bDrawTitleIcon && Desc.IconKey) ? Desc.IconKey : nullptr;
+            bool *DecorationVisibleFlag = (Desc.bClosable && Desc.bOpen) ? Desc.bOpen : nullptr;
+            EditorPanelTitleUtils::QueuePanelDecoration(DecorationIconKey, DecorationVisibleFlag);
 
             if (Desc.bApplyContentTopInset)
             {

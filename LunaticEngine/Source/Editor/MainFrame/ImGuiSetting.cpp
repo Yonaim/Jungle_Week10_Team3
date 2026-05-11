@@ -1,4 +1,5 @@
-﻿#include "ImGuiSetting.h"
+#include "ImGuiSetting.h"
+#include "Common/UI/EditorPanel.h"
 #include "imgui.h"
 #include "Core/CoreTypes.h"
 #include "Platform/Paths.h"
@@ -18,9 +19,13 @@ namespace
 
 void ImGuiSetting::ShowSetting()
 {
-	if (!ImGui::Begin("ImGuiSetting"))
+	FEditorPanelDesc PanelDesc;
+	PanelDesc.DisplayName = "ImGui Settings";
+	PanelDesc.StableId = "ImGuiSettingsPanel";
+	PanelDesc.IconKey = "Editor.Icon.Panel.Settings";
+	if (!FEditorPanel::Begin(PanelDesc))
 	{
-		ImGui::End();
+		FEditorPanel::End();
 		return;
 	}
 
@@ -52,7 +57,7 @@ void ImGuiSetting::ShowSetting()
 	}
 	ImGui::EndChild();
 
-	ImGui::End();
+	FEditorPanel::End();
 }
 
 void ImGuiSetting::SaveSetting()

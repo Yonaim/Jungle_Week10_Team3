@@ -1,7 +1,8 @@
-﻿#include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
+#include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 
@@ -1695,11 +1696,18 @@ void FLevelDetailsPanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Details";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Details", PanelIconKey);
-    ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Details", Settings.Panels.bDetails, "x##CloseDetails");
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Details";
+    PanelDesc.StableId = "LevelDetailsPanel";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bDetails;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    if (!bIsOpen)
+    {
+        FEditorPanel::End();
+        return;
+    }
 
     FSelectionManager &Selection = EditorEngine->GetSelectionManager();
     AActor *PrimaryActor = bSelectionLocked ? LockedActor : Selection.GetPrimarySelection();
@@ -1714,7 +1722,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
         LastSelectedActor = nullptr;
         bActorSelected = true;
         ImGui::Text("Select an object to view details.");
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
 
@@ -1804,7 +1812,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
     ImGui::EndChild();
     ImGui::PopStyleColor();
 
-    ImGui::End();
+    FEditorPanel::End();
 }
 
 void FLevelDetailsPanel::RenderDetailsFilterBar(const TArray<const char *> &AvailableSections)

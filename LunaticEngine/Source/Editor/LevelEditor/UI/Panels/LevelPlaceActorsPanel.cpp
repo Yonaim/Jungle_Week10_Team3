@@ -1,9 +1,10 @@
-﻿#include "LevelEditor/UI/Panels/LevelPlaceActorsPanel.h"
+#include "LevelEditor/UI/Panels/LevelPlaceActorsPanel.h"
 
 #include "Component/CameraComponent.h"
 #include "Core/AsciiUtils.h"
 #include "Common/UI/EditorAccentColor.h"
 #include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/EditorPanel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "GameFramework/AActor.h"
@@ -166,17 +167,18 @@ void FLevelPlaceActorsPanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.PlaceActors";
-    const std::string WindowTitle = EditorPanelTitleUtils::MakeClosablePanelTitle("Place Actors", PanelIconKey);
-    const bool bIsOpen = ImGui::Begin(WindowTitle.c_str());
-    EditorPanelTitleUtils::DrawPanelTitleIcon(PanelIconKey);
-    EditorPanelTitleUtils::DrawSmallPanelCloseButton("    Place Actors", Settings.Panels.bPlaceActors,
-                                                     "x##ClosePlaceActors");
+    FEditorPanelDesc PanelDesc;
+    PanelDesc.DisplayName = "Place Actors";
+    PanelDesc.StableId = "LevelPlaceActorsPanel";
+    PanelDesc.IconKey = PanelIconKey;
+    PanelDesc.bClosable = true;
+    PanelDesc.bOpen = &Settings.Panels.bPlaceActors;
+    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        ImGui::End();
+        FEditorPanel::End();
         return;
     }
-    EditorPanelTitleUtils::ApplyPanelContentTopInset();
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 9.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);

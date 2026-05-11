@@ -1,4 +1,4 @@
-#include "LevelEditor/Window/LevelEditorWindow.h"
+﻿#include "LevelEditor/Window/LevelEditorWindow.h"
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
@@ -448,8 +448,8 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
         EditorEngine->RenderPIEOverlayPopups();
     }
 
-    EditorPanelTitleUtils::FlushPanelDecorations();
-
+    // FlushPanelDecorations()는 UEditorEngine::RenderUI()에서 Level/Asset 패널을 모두 렌더링한 뒤 한 번만 호출한다.
+    // 그래야 FBX/SkeletalMesh 패널도 Level Editor 패널과 같은 dock tab fill / selected accent line을 적용받는다.
     RenderCommonOverlays();
 
     // 토스트 알림 (항상 최상위에 표시)

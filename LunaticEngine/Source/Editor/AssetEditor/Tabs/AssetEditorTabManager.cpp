@@ -1,4 +1,5 @@
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
+#include "Common/UI/EditorPanel.h"
 
 #include "AssetEditor/IAssetEditor.h"
 #include "AssetEditor/Tabs/AssetEditorTab.h"
@@ -122,15 +123,17 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
         }
 
         bool bOpen = true;
-        FString WindowTitle = FString(Tab->GetTitle()) + "###AssetEditorTab" + std::to_string(Index);
+        const std::string StableId = std::string("AssetEditorTab_") + std::to_string(Index);
+        FEditorPanelDesc PanelDesc;
+        PanelDesc.DisplayName = Tab->GetTitle();
+        PanelDesc.StableId = StableId.c_str();
+        PanelDesc.IconKey = "Editor.Icon.Panel.Asset";
+        PanelDesc.DockspaceId = DockspaceId;
+        PanelDesc.bClosable = true;
+        PanelDesc.bOpen = &bOpen;
+        PanelDesc.WindowFlags = ImGuiWindowFlags_NoCollapse;
 
-        if (DockspaceId != 0)
-        {
-            ImGui::SetNextWindowDockID(DockspaceId, ImGuiCond_FirstUseEver);
-        }
-
-        ImGuiWindowFlags Flags = ImGuiWindowFlags_NoCollapse;
-        if (ImGui::Begin(WindowTitle.c_str(), &bOpen, Flags))
+        if (FEditorPanel::Begin(PanelDesc))
         {
             if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
             {
@@ -139,7 +142,7 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 
             Tab->Render(DeltaTime);
         }
-        ImGui::End();
+        FEditorPanel::End();
 
         if (!bOpen)
         {
