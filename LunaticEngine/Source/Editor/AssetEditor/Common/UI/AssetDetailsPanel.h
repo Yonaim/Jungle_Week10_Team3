@@ -5,6 +5,7 @@
 
 #include <filesystem>
 
+class FSkeletalMeshSelectionManager;
 class USkeletalMesh;
 
 // 에셋 에디터 전용 Details 패널.
@@ -14,12 +15,14 @@ class FAssetDetailsPanel
 {
   public:
     void RenderSkeletalMesh(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
-                            FSkeletalMeshEditorState &State, const FPanelDesc &PanelDesc);
+                            FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager,
+                            const FPanelDesc &PanelDesc);
 
   private:
-    void RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State);
+    void RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State,
+                        FSkeletalMeshSelectionManager &SelectionManager);
     void RenderLODSectionMaterialInfo(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State);
-    void RenderViewerActions(FSkeletalMeshEditorState &State);
+    void RenderViewerActions(FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);
     void RenderRuntimePlaceholder();
-    void RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State);
+    void RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);
 };

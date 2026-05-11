@@ -1,42 +1,41 @@
-﻿#pragma once
+#pragma once
 
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
 #include "Common/UI/Panels/Panel.h"
 
 #include "ImGui/imgui.h"
 
+class FSkeletalMeshSelectionManager;
 class USkeletalMesh;
 struct FBoneInfo;
 
-/**
- * SkeletalMesh Editor의 왼쪽 Skeleton Tree 패널.
- *
- * 김연하 담당 범위:
- * - Skeleton/Bone 목록을 Viewer UI로 표시한다.
- * - Bone 선택 상태를 FSkeletalMeshEditorState에 기록한다.
- * - Bone 검색 / 선택 해제 같은 Viewer 편의 기능을 제공한다.
- *
- * 김형도 담당 예정 영역:
- * - 실제 USkeleton / Bone hierarchy API 연동
- * - Parent/Child 구조 기반 TreeNode 표시
- * - Bone 선택 후 Transform Inspector / Gizmo / Pose 갱신 연결
- */
+// Skeletal Mesh Editor의 Skeleton Tree 패널.
+// Outliner와 동일한 표 스타일을 쓰지 않고, Bone hierarchy가 잘 보이도록
+// 단일 Name 컬럼, 들여쓰기, 가지선 중심의 트리 스타일을 사용한다.
+// 선택 상태는 FSkeletalMeshSelectionManager가 소유하며, 이 패널은 선택을 변경하는 입력 UI 역할만 맡는다.
 class FSkeletonTreePanel
 {
-  public:
-    void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, const FPanelDesc &PanelDesc);
+public:
+    void Render(USkeletalMesh* Mesh, FSkeletalMeshEditorState& State, FSkeletalMeshSelectionManager& SelectionManager,
+                const FPanelDesc& PanelDesc);
 
 private:
-	void DrawBoneTreeNode(
-		const TArray<FBoneInfo>& Bones,
-		const TArray<TArray<int32>>& BoneChildren,
-		int32 BoneIndex,
-		FSkeletalMeshEditorState& State);
+    void DrawBoneTreeNode(const TArray<FBoneInfo>& Bones, const TArray<TArray<int32>>& BoneChildren, int32 BoneIndex,
+                          int32 Depth, FSkeletalMeshEditorState& State, FSkeletalMeshSelectionManager& SelectionManager,
+                          const TArray<int32>& VisibleBoneOrder);
 
-	void DrawFilteredBoneList(
-		const TArray<FBoneInfo>& Bones,
-		FSkeletalMeshEditorState& State);
+    void DrawFilteredBoneList(const TArray<FBoneInfo>& Bones, FSkeletalMeshEditorState& State,
+                              FSkeletalMeshSelectionManager& SelectionManager, const TArray<int32>& VisibleBoneOrder);
 
-  private:
+    bool DrawBoneRow(const FBoneInfo& Bone, int32 BoneIndex, int32 Depth, bool bHasChildren, bool bFilteredList,
+                     FSkeletalMeshEditorState& State, FSkeletalMeshSelectionManager& SelectionManager,
+                     const TArray<int32>& VisibleBoneOrder);
+
+    void ApplyBoneClickSelection(int32 BoneIndex, FSkeletalMeshEditorState& State,
+                                 FSkeletalMeshSelectionManager& SelectionManager,
+                                 const TArray<int32>& VisibleBoneOrder);
+    void SyncLegacySelectedBoneIndex(FSkeletalMeshEditorState& State, const FSkeletalMeshSelectionManager& SelectionManager);
+
+private:
     char SearchBuffer[128] = "";
 };

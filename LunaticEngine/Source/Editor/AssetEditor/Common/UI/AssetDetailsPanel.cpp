@@ -1,5 +1,7 @@
 #include "AssetEditor/Common/UI/AssetDetailsPanel.h"
 
+#include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
+
 #include "Common/UI/Style/EditorUIStyle.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Platform/Paths.h"
@@ -22,7 +24,9 @@ const char *PreviewModeToText(ESkeletalMeshPreviewMode Mode)
 } // namespace
 
 void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
-                                            FSkeletalMeshEditorState &State, const FPanelDesc &PanelDesc)
+                                            FSkeletalMeshEditorState &State,
+                                            FSkeletalMeshSelectionManager &SelectionManager,
+                                            const FPanelDesc &PanelDesc)
 {
     if (!FPanel::Begin(PanelDesc))
     {
@@ -37,21 +41,22 @@ void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::file
         return;
     }
 
-    RenderMeshInfo(Mesh, AssetPath, State);
+    RenderMeshInfo(Mesh, AssetPath, State, SelectionManager);
     ImGui::Spacing();
     RenderLODSectionMaterialInfo(Mesh, State);
     ImGui::Spacing();
-    RenderViewerActions(State);
+    RenderViewerActions(State, SelectionManager);
     ImGui::Spacing();
     RenderRuntimePlaceholder();
     ImGui::Spacing();
-    RenderBoneEditingPlaceholder(State);
+    RenderBoneEditingPlaceholder(State, SelectionManager);
 
     FPanel::End();
 }
 
 void FAssetDetailsPanel::RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
-                                        FSkeletalMeshEditorState &State)
+                                        FSkeletalMeshEditorState &State,
+                                        FSkeletalMeshSelectionManager &SelectionManager)
 {
     if (!FEditorUIStyle::BeginDetailsSection("Mesh Info"))
     {
@@ -73,7 +78,8 @@ void FAssetDetailsPanel::RenderMeshInfo(USkeletalMesh *Mesh, const std::filesyst
         FEditorUIStyle::DrawReadOnlyIntRow("Vertex Count", Mesh->GetVertexCount());
         FEditorUIStyle::DrawReadOnlyIntRow("Index Count", Mesh->GetIndexCount());
         FEditorUIStyle::DrawReadOnlyIntRow("Current LOD", State.CurrentLODIndex);
-        FEditorUIStyle::DrawReadOnlyIntRow("Selected Bone", State.SelectedBoneIndex);
+        FEditorUIStyle::DrawReadOnlyIntRow("Primary Bone", SelectionManager.GetPrimaryBoneIndex());
+        FEditorUIStyle::DrawReadOnlyIntRow("Selected Bones", SelectionManager.GetSelectedCount());
         FEditorUIStyle::DrawReadOnlyTextRow("Preview Mode", PreviewModeToText(State.PreviewMode));
         ImGui::EndTable();
     }
@@ -136,7 +142,7 @@ void FAssetDetailsPanel::RenderLODSectionMaterialInfo(USkeletalMesh *Mesh, FSkel
     }
 }
 
-void FAssetDetailsPanel::RenderViewerActions(FSkeletalMeshEditorState &State)
+void FAssetDetailsPanel::RenderViewerActions(FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager)
 {
     if (!FEditorUIStyle::BeginDetailsSection("Viewer Actions"))
     {
@@ -151,6 +157,7 @@ void FAssetDetailsPanel::RenderViewerActions(FSkeletalMeshEditorState &State)
     ImGui::SameLine();
     if (ImGui::Button("Clear Bone Selection"))
     {
+        SelectionManager.ClearSelection();
         State.SelectedBoneIndex = -1;
     }
     FEditorUIStyle::PopHeaderButtonStyle();
@@ -170,7 +177,8 @@ void FAssetDetailsPanel::RenderRuntimePlaceholder()
     }
 }
 
-void FAssetDetailsPanel::RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State)
+void FAssetDetailsPanel::RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State,
+                                                        FSkeletalMeshSelectionManager &SelectionManager)
 {
     if (FEditorUIStyle::BeginDetailsSection("Skeleton / Pose / Bone Gizmo"))
     {
@@ -181,6 +189,7 @@ void FAssetDetailsPanel::RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &
 
         ImGui::Separator();
         ImGui::Checkbox("Pose Edit Mode", &State.bEnablePoseEditMode);
-        ImGui::Text("Selected Bone Index: %d", State.SelectedBoneIndex);
+        ImGui::Text("Primary Bone Index: %d", SelectionManager.GetPrimaryBoneIndex());
+        ImGui::Text("Selected Bone Count: %d", SelectionManager.GetSelectedCount());
     }
 }

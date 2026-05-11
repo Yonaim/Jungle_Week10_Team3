@@ -52,6 +52,7 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
     EditingAsset = SkeletalMesh;
     EditingAssetPath = AssetPath.lexically_normal();
     State = FSkeletalMeshEditorState{};
+    SelectionManager.Reset();
     BuiltDockspaceId = 0;
 
     bPreviewPanelOpen = true;
@@ -76,6 +77,7 @@ void FSkeletalMeshEditor::Close()
 
     EditingAssetPath.clear();
     State = FSkeletalMeshEditorState{};
+    SelectionManager.Reset();
     BuiltDockspaceId = 0;
 
     bPreviewPanelOpen = true;
@@ -266,10 +268,10 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     }
     if (bSkeletonTreePanelOpen)
     {
-        SkeletonTreePanel.Render(EditingAsset, State, SkeletonDesc);
+        SkeletonTreePanel.Render(EditingAsset, State, SelectionManager, SkeletonDesc);
     }
     if (bDetailsPanelOpen)
     {
-        AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, EditingAssetPath, State, DetailsDesc);
+        AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, EditingAssetPath, State, SelectionManager, DetailsDesc);
     }
 }

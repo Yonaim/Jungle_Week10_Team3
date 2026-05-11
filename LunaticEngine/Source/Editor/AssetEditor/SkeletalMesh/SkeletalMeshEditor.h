@@ -2,6 +2,7 @@
 
 #include "AssetEditor/IAssetEditor.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
+#include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 #include "AssetEditor/Common/UI/AssetDetailsPanel.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
@@ -87,6 +88,9 @@ class FSkeletalMeshEditor final : public IAssetEditor
     FSkeletalMeshPreviewViewport PreviewViewport;
     FSkeletonTreePanel SkeletonTreePanel;
     FAssetDetailsPanel AssetDetailsPanel;
+
+    // Skeleton Tree / Asset Details / Preview Viewport가 공유하는 Bone 선택 관리자.
+    FSkeletalMeshSelectionManager SelectionManager;
 
     bool bOpen = false;
     bool bDirty = false;

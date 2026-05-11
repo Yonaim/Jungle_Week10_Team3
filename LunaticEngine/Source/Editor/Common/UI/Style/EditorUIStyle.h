@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Common/UI/Style/AccentColor.h"
 #include "Core/CoreTypes.h"
@@ -255,5 +255,109 @@ inline void PushOutlinerSelectionRowStyle()
 inline void PopOutlinerSelectionRowStyle()
 {
     ImGui::PopStyleColor(4);
+}
+
+
+// Skeleton Tree 전용 스타일.
+// Outliner의 표 형태를 그대로 쓰지 않고, Bone hierarchy의 부모/자식 관계가 잘 보이도록
+// 단일 Name 컬럼 + 들여쓰기 + 가지선 중심의 트리 스타일을 제공한다.
+inline constexpr ImVec4 SkeletonTreeHeaderBg = ImVec4(0.16f, 0.16f, 0.16f, 1.0f);
+inline constexpr ImVec4 SkeletonTreeRowBg = ImVec4(0.065f, 0.065f, 0.065f, 1.0f);
+inline constexpr ImVec4 SkeletonTreeRowAltBg = ImVec4(0.085f, 0.085f, 0.085f, 1.0f);
+inline constexpr ImVec4 SkeletonTreeLineColor = ImVec4(0.30f, 0.30f, 0.31f, 1.0f);
+inline constexpr ImVec4 SkeletonTreeTextColor = ImVec4(0.76f, 0.76f, 0.78f, 1.0f);
+inline constexpr ImVec4 SkeletonTreeMutedTextColor = ImVec4(0.50f, 0.50f, 0.52f, 1.0f);
+inline constexpr ImVec4 SkeletonTreeSelectedTextColor = ImVec4(0.00f, 0.00f, 0.00f, 1.0f);
+inline constexpr ImVec4 SkeletonTreeSelectionColor = UIAccentColor::Value;
+inline constexpr ImVec4 SkeletonTreeSelectionHoveredColor = UIAccentColor::Value;
+inline constexpr ImVec4 SkeletonTreeSelectionActiveColor = UIAccentColor::Value;
+inline constexpr float SkeletonTreeIndentWidth = 18.0f;
+inline constexpr float SkeletonTreeRowHeight = 20.0f;
+
+inline bool BeginSkeletonTreeTable(const char* Id)
+{
+    ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, SkeletonTreeHeaderBg);
+    ImGui::PushStyleColor(ImGuiCol_TableRowBg, SkeletonTreeRowBg);
+    ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, SkeletonTreeRowAltBg);
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.0f, 1.0f));
+
+    const bool bOpen = ImGui::BeginTable(
+        Id,
+        1,
+        ImGuiTableFlags_RowBg |
+        ImGuiTableFlags_ScrollY |
+        ImGuiTableFlags_SizingStretchProp |
+        ImGuiTableFlags_BordersInnerH);
+
+    if (!bOpen)
+    {
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(4);
+    }
+
+    return bOpen;
+}
+
+inline void SetupSkeletonTreeTableColumns()
+{
+    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableHeadersRow();
+}
+
+inline void EndSkeletonTreeTable()
+{
+    ImGui::EndTable();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(4);
+}
+
+inline void PushSkeletonTreeRowStyle(bool bSelected)
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_Header, bSelected ? SkeletonTreeSelectionColor : ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, bSelected ? SkeletonTreeSelectionHoveredColor : ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, bSelected ? SkeletonTreeSelectionActiveColor : ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, bSelected ? SkeletonTreeSelectedTextColor : SkeletonTreeTextColor);
+}
+
+inline void PopSkeletonTreeRowStyle()
+{
+    ImGui::PopStyleColor(4);
+    ImGui::PopStyleVar(2);
+}
+
+inline void DrawSkeletonTreeGuides(int32 Depth, bool bHasParent, float CellStartScreenX)
+{
+    if (Depth <= 0)
+    {
+        return;
+    }
+
+    ImDrawList* DrawList = ImGui::GetWindowDrawList();
+    const ImVec2 RowMin = ImGui::GetItemRectMin();
+    const ImVec2 RowMax = ImGui::GetItemRectMax();
+    const float RowMidY = (RowMin.y + RowMax.y) * 0.5f;
+    const float BaseX = CellStartScreenX + 8.0f;
+    const ImU32 LineColor = ImGui::GetColorU32(SkeletonTreeLineColor);
+
+    for (int32 Level = 0; Level < Depth; ++Level)
+    {
+        const float X = BaseX + static_cast<float>(Level) * SkeletonTreeIndentWidth;
+        DrawList->AddLine(ImVec2(X, RowMin.y), ImVec2(X, RowMax.y), LineColor, 1.0f);
+    }
+
+    if (bHasParent)
+    {
+        const float ParentX = BaseX + static_cast<float>(Depth - 1) * SkeletonTreeIndentWidth;
+        const float ChildX = ParentX + SkeletonTreeIndentWidth - 4.0f;
+        DrawList->AddLine(ImVec2(ParentX, RowMidY), ImVec2(ChildX, RowMidY), LineColor, 1.0f);
+    }
+}
+
+inline const char* GetSkeletonBoneIcon(bool bSelected)
+{
+    return bSelected ? "◆" : "◇";
 }
 } // namespace FEditorUIStyle
