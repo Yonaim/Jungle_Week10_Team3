@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
 #include "Common/UI/EditorPanel.h"
@@ -6,6 +6,7 @@
 #include "ImGui/imgui.h"
 
 class USkeletalMesh;
+struct FBoneInfo;
 
 /**
  * SkeletalMesh Editor의 왼쪽 Skeleton Tree 패널.
@@ -24,6 +25,17 @@ class FSkeletonTreePanel
 {
   public:
     void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, const FEditorPanelDesc &PanelDesc);
+
+private:
+	void DrawBoneTreeNode(
+		const TArray<FBoneInfo>& Bones,
+		const TArray<TArray<int32>>& BoneChildren,
+		int32 BoneIndex,
+		FSkeletalMeshEditorState& State);
+
+	void DrawFilteredBoneList(
+		const TArray<FBoneInfo>& Bones,
+		FSkeletalMeshEditorState& State);
 
   private:
     char SearchBuffer[128] = "";

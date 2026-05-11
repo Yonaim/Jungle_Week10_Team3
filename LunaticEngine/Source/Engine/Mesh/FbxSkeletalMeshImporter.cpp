@@ -618,6 +618,8 @@ void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
 
 		// 2. Skin Weights, Bone Data
 		FillSkinWeights(Context, FoundMeshNodes, ControlPointToVertices, MeshNodeVertices, OutMesh);
+		// BoneChildren / RootBoneIndices 캐시 구성
+		OutMesh.BuildBoneHierarchyCache();
 
 		// 3. Materials & Sections
 		if (Context.Materials.empty() && !OutMesh.Indices.empty())

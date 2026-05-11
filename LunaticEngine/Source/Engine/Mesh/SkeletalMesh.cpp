@@ -1,4 +1,4 @@
-#include "Mesh/SkeletalMesh.h"
+﻿#include "Mesh/SkeletalMesh.h"
 
 IMPLEMENT_CLASS(USkeletalMesh, UObject)
 
@@ -28,7 +28,12 @@ bool USkeletalMesh::IsValid() const
 
 int32 USkeletalMesh::GetBoneCount() const
 {
-	return SkeletalMesh ? static_cast<int32>(SkeletalMesh->Bones.size()) : 0;
+	if (!SkeletalMesh)
+	{
+		return 0;
+	}
+
+	return static_cast<int32>(SkeletalMesh->Bones.size());
 }
 
 int32 USkeletalMesh::GetVertexCount(int32 LODIndex) const
@@ -48,6 +53,81 @@ void USkeletalMesh::SetSkeletalMeshAsset(FSkeletalMesh* InMesh)
 	// 이전 애셋 메모리를 해제하고 새 Cooked Data로 교체한다.
 	delete SkeletalMesh;
 	SkeletalMesh = InMesh;
+}
+
+const TArray<FBoneInfo>& USkeletalMesh::GetBones() const
+{
+	static const TArray<FBoneInfo> EmptyBones;
+
+	if (!SkeletalMesh)
+	{
+		return EmptyBones;
+	}
+
+	return SkeletalMesh->Bones;
+}
+
+const FBoneInfo* USkeletalMesh::GetBoneInfo(int32 BoneIndex) const
+{
+	if (!SkeletalMesh)
+	{
+		return nullptr;
+	}
+
+	const int32 BoneCount = static_cast<int32>(SkeletalMesh->Bones.size());
+
+	if (BoneIndex < 0 || BoneIndex >= BoneCount)
+	{
+		return nullptr;
+	}
+
+	return &SkeletalMesh->Bones[BoneIndex];
+}
+
+int32 USkeletalMesh::GetParentBoneIndex(int32 BoneIndex) const
+{
+	const FBoneInfo* Bone = GetBoneInfo(BoneIndex);
+	if (!Bone)
+	{
+		return InvalidBoneIndex;
+	}
+
+	return Bone->ParentIndex;
+}
+
+const char* USkeletalMesh::GetBoneName(int32 BoneIndex) const
+{
+	const FBoneInfo* Bone = GetBoneInfo(BoneIndex);
+	if (!Bone)
+	{
+		return "";
+	}
+
+	return Bone->Name.c_str();
+}
+
+const TArray<TArray<int32>>& USkeletalMesh::GetBoneChildren() const
+{
+	static const TArray<TArray<int32>> EmptyBoneChildren;
+
+	if (!SkeletalMesh)
+	{
+		return EmptyBoneChildren;
+	}
+
+	return SkeletalMesh->BoneChildren;
+}
+
+const TArray<int32>& USkeletalMesh::GetRootBoneIndices() const
+{
+	static const TArray<int32> EmptyRootBoneIndices;
+
+	if (!SkeletalMesh)
+	{
+		return EmptyRootBoneIndices;
+	}
+
+	return SkeletalMesh->RootBoneIndices;
 }
 
 FSkeletalMesh* USkeletalMesh::GetSkeletalMeshAsset() const

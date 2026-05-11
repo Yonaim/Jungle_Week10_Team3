@@ -286,6 +286,10 @@ USkeletalMesh* FObjManager::LoadObjSkeletalMesh(const std::string& PathFileName,
 		if (Reader.IsValid())
 		{
 			SkeletalMesh->Serialize(Reader);
+			if (FSkeletalMesh* MeshAsset = SkeletalMesh->GetSkeletalMeshAsset())
+			{
+				MeshAsset->BuildBoneHierarchyCache();
+			}
 		}
 		else
 		{

@@ -111,6 +111,9 @@ struct FSkeletalMesh
 	TArray<FSkinWeight> SkinWeights;
 	TArray<FBoneInfo> Bones;
 
+	TArray<TArray<int32>> BoneChildren;
+	TArray<int32> RootBoneIndices;
+
 	TArray<FSkeletalMeshSection> Sections;
 
 	void Serialize(FArchive& Ar)
@@ -121,5 +124,30 @@ struct FSkeletalMesh
 		Ar << SkinWeights;
 		Ar << Bones;
 		Ar << Sections;
+	}
+
+	void BuildBoneHierarchyCache()
+	{
+		BoneChildren.clear();
+		RootBoneIndices.clear();
+
+		const int32 BoneCount = static_cast<int32>(Bones.size());
+		BoneChildren.resize(BoneCount);
+
+		for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+		{
+			const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+
+			if (ParentIndex == InvalidBoneIndex ||
+				ParentIndex < 0 ||
+				ParentIndex >= BoneCount)
+			{
+				RootBoneIndices.push_back(BoneIndex);
+			}
+			else
+			{
+				BoneChildren[ParentIndex].push_back(BoneIndex);
+			}
+		}
 	}
 };

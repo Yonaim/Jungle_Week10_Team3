@@ -1,4 +1,4 @@
-#include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
+﻿#include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
 
 #include "Common/UI/EditorPanel.h"
 
@@ -11,89 +11,231 @@
 
 namespace
 {
-bool ContainsCaseInsensitive(const std::string &Text, const char *Pattern)
-{
-    if (!Pattern || Pattern[0] == '\0')
-    {
-        return true;
-    }
+	bool ContainsCaseInsensitive(const std::string &Text, const char *Pattern)
+	{
+		if (!Pattern || Pattern[0] == '\0')
+		{
+			return true;
+		}
 
-    std::string LowerText = Text;
-    std::string LowerPattern = Pattern;
-    for (char &Ch : LowerText)
-    {
-        Ch = static_cast<char>(::tolower(static_cast<unsigned char>(Ch)));
-    }
-    for (char &Ch : LowerPattern)
-    {
-        Ch = static_cast<char>(::tolower(static_cast<unsigned char>(Ch)));
-    }
-    return LowerText.find(LowerPattern) != std::string::npos;
+		std::string LowerText = Text;
+		std::string LowerPattern = Pattern;
+		for (char &Ch : LowerText)
+		{
+			Ch = static_cast<char>(::tolower(static_cast<unsigned char>(Ch)));
+		}
+		for (char &Ch : LowerPattern)
+		{
+			Ch = static_cast<char>(::tolower(static_cast<unsigned char>(Ch)));
+		}
+		return LowerText.find(LowerPattern) != std::string::npos;
+	}
 }
+
+void FSkeletonTreePanel::Render(
+	USkeletalMesh* Mesh,
+	FSkeletalMeshEditorState& State,
+	const FEditorPanelDesc& PanelDesc)
+{
+	if (!FEditorPanel::Begin(PanelDesc))
+	{
+		FEditorPanel::End();
+		return;
+	}
+
+	if (!Mesh)
+	{
+		ImGui::TextDisabled("No Skeleton.");
+		FEditorPanel::End();
+		return;
+	}
+
+	const int32 BoneCount = Mesh->GetBoneCount();
+
+	ImGui::Text("Bones: %d", BoneCount);
+	ImGui::SameLine();
+
+	if (ImGui::Button("Clear Selection"))
+	{
+		State.SelectedBoneIndex = -1;
+	}
+
+	ImGui::SetNextItemWidth(-1.0f);
+	ImGui::InputTextWithHint(
+		"##SkeletalBoneSearch",
+		"Search bone...",
+		SearchBuffer,
+		sizeof(SearchBuffer)
+	);
+
+	ImGui::Separator();
+
+	if (BoneCount <= 0)
+	{
+		ImGui::TextDisabled("This mesh has no bone data.");
+		ImGui::TextDisabled("FBX Importer가 skeleton/bone 데이터를 채우면 여기에 표시된다.");
+		FEditorPanel::End();
+		return;
+	}
+
+	const TArray<FBoneInfo>& Bones = Mesh->GetBones();
+
+	if (Bones.empty())
+	{
+		ImGui::TextDisabled("Bone count is valid, but bone array is empty.");
+		FEditorPanel::End();
+		return;
+	}
+
+	if (State.SelectedBoneIndex >= static_cast<int32>(Bones.size()))
+	{
+		State.SelectedBoneIndex = -1;
+	}
+
+	if (ImGui::BeginChild("##SkeletalBoneTree", ImVec2(0, 0), true))
+	{
+		const bool bHasSearch = SearchBuffer[0] != '\0';
+
+		if (bHasSearch)
+		{
+			DrawFilteredBoneList(Bones, State);
+		}
+		else
+		{
+			const TArray<TArray<int32>>& BoneChildren = Mesh->GetBoneChildren();
+			const TArray<int32>& RootBoneIndices = Mesh->GetRootBoneIndices();
+
+			if (RootBoneIndices.empty())
+			{
+				ImGui::TextDisabled("No root bone found.");
+				ImGui::TextDisabled("BuildBoneHierarchyCache() may not have been called.");
+			}
+			else if (BoneChildren.size() != Bones.size())
+			{
+				ImGui::TextDisabled("Bone hierarchy cache is invalid.");
+				ImGui::Text(
+					"Bones: %d, Children: %d",
+					static_cast<int32>(Bones.size()),
+					static_cast<int32>(BoneChildren.size())
+				);
+			}
+			else
+			{
+				for (int32 RootBoneIndex : RootBoneIndices)
+				{
+					DrawBoneTreeNode(Bones, BoneChildren, RootBoneIndex, State);
+				}
+			}
+		}
+	}
+
+	ImGui::EndChild();
+
+	FEditorPanel::End();
 }
 
-void FSkeletonTreePanel::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, const FEditorPanelDesc &PanelDesc)
+void FSkeletonTreePanel::DrawBoneTreeNode(
+	const TArray<FBoneInfo>& Bones,
+	const TArray<TArray<int32>>& BoneChildren,
+	int32 BoneIndex,
+	FSkeletalMeshEditorState& State)
 {
-    if (!FEditorPanel::Begin(PanelDesc))
-    {
-        FEditorPanel::End();
-        return;
-    }
+	const int32 BoneCount = static_cast<int32>(Bones.size());
+	const int32 ChildrenCount = static_cast<int32>(BoneChildren.size());
 
-    if (!Mesh)
-    {
-        ImGui::TextDisabled("No Skeleton.");
-        FEditorPanel::End();
-        return;
-    }
+	if (BoneIndex < 0 || BoneIndex >= BoneCount)
+	{
+		return;
+	}
 
-    const int32 BoneCount = Mesh->GetBoneCount();
-    ImGui::Text("Bones: %d", BoneCount);
-    ImGui::SameLine();
-    if (ImGui::Button("Clear Selection"))
-    {
-        State.SelectedBoneIndex = -1;
-    }
+	if (BoneIndex >= ChildrenCount)
+	{
+		return;
+	}
 
-    ImGui::SetNextItemWidth(-1.0f);
-    ImGui::InputTextWithHint("##SkeletalBoneSearch", "Search bone...", SearchBuffer, sizeof(SearchBuffer));
+	const FBoneInfo& Bone = Bones[BoneIndex];
 
-    ImGui::Separator();
+	const bool bSelected = State.SelectedBoneIndex == BoneIndex;
+	const bool bLeaf = BoneChildren[BoneIndex].empty();
 
-    // 김형도 담당 영역 Placeholder:
-    // 현재 Viewer 단계에서는 Bone hierarchy API가 확정되지 않아 flat bone list로 표시한다.
-    // 추후 USkeleton / FBoneInfo에서 BoneName, ParentIndex, Local/World Transform accessor가 확정되면
-    // 이 영역을 재귀 TreeNode + Transform Inspector + Bone Gizmo 선택 상태와 연결하면 된다.
-    if (BoneCount <= 0)
-    {
-        ImGui::TextDisabled("This mesh has no bone data.");
-        ImGui::TextDisabled("FBX Importer가 skeleton/bone 데이터를 채우면 여기에 표시된다.");
-        FEditorPanel::End();
-        return;
-    }
+	ImGuiTreeNodeFlags Flags =
+		ImGuiTreeNodeFlags_OpenOnArrow |
+		ImGuiTreeNodeFlags_SpanAvailWidth;
 
-    ImGui::TextDisabled("Hierarchy placeholder - flat bone list until USkeleton accessor is ready.");
+	if (bSelected)
+	{
+		Flags |= ImGuiTreeNodeFlags_Selected;
+	}
 
-    if (ImGui::BeginChild("##SkeletalBoneList", ImVec2(0, 0), true))
-    {
-        for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
-        {
-            char Label[64];
-            snprintf(Label, sizeof(Label), "Bone %d", BoneIndex);
+	if (bLeaf)
+	{
+		Flags |= ImGuiTreeNodeFlags_Leaf;
+		Flags |= ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	}
 
-            if (!ContainsCaseInsensitive(Label, SearchBuffer))
-            {
-                continue;
-            }
+	ImGui::PushID(BoneIndex);
 
-            const bool bSelected = (State.SelectedBoneIndex == BoneIndex);
-            if (ImGui::Selectable(Label, bSelected))
-            {
-                State.SelectedBoneIndex = BoneIndex;
-            }
-        }
-    }
-    ImGui::EndChild();
+	const char* BoneName = Bone.Name.empty()
+		? "(unnamed bone)"
+		: Bone.Name.c_str();
 
-    FEditorPanel::End();
+	const bool bOpen = ImGui::TreeNodeEx(
+		"BoneNode",
+		Flags,
+		"%s [%d]",
+		BoneName,
+		BoneIndex
+	);
+
+	if (ImGui::IsItemClicked())
+	{
+		State.SelectedBoneIndex = BoneIndex;
+	}
+
+	if (!bLeaf && bOpen)
+	{
+		for (int32 ChildBoneIndex : BoneChildren[BoneIndex])
+		{
+			DrawBoneTreeNode(Bones, BoneChildren, ChildBoneIndex, State);
+		}
+
+		ImGui::TreePop();
+	}
+
+	ImGui::PopID();
+}
+
+void FSkeletonTreePanel::DrawFilteredBoneList(
+	const TArray<FBoneInfo>& Bones,
+	FSkeletalMeshEditorState& State)
+{
+	const int32 BoneCount = static_cast<int32>(Bones.size());
+
+	for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+	{
+		const FBoneInfo& Bone = Bones[BoneIndex];
+
+		const char* BoneName = Bone.Name.empty() ? "(unnamed bone)" : Bone.Name.c_str();
+
+		if (!ContainsCaseInsensitive(BoneName, SearchBuffer))
+		{
+			continue;
+		}
+
+		char Label[256];
+		snprintf(
+			Label,
+			sizeof(Label),
+			"%s [%d]",
+			BoneName,
+			BoneIndex
+		);
+
+		const bool bSelected = State.SelectedBoneIndex == BoneIndex;
+
+		if (ImGui::Selectable(Label, bSelected))
+		{
+			State.SelectedBoneIndex = BoneIndex;
+		}
+	}
 }

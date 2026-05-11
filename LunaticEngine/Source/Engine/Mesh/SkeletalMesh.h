@@ -26,6 +26,14 @@ public:
 	void SetSkeletalMeshAsset(FSkeletalMesh* InMesh);
 	FSkeletalMesh* GetSkeletalMeshAsset() const;
 
+	const TArray<FBoneInfo>& GetBones() const;
+	const FBoneInfo* GetBoneInfo(int32 BoneIndex) const;
+	int32 GetParentBoneIndex(int32 BoneIndex) const;
+	const char* GetBoneName(int32 BoneIndex) const;
+
+	const TArray<TArray<int32>>& GetBoneChildren() const;
+	const TArray<int32>& GetRootBoneIndices() const;
+
 	void SetStaticMaterials(TArray<FStaticMaterial>&& InMaterials);
 	const TArray<FStaticMaterial>& GetStaticMaterials() const;
 
