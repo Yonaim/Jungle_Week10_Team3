@@ -1,8 +1,9 @@
 #include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 
@@ -70,8 +71,8 @@
 namespace
 {
 constexpr ImVec4 PopupMenuItemColor = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
-constexpr ImVec4 PopupMenuItemHoverColor = EditorAccentColor::Value;
-constexpr ImVec4 PopupMenuItemActiveColor = EditorAccentColor::Value;
+constexpr ImVec4 PopupMenuItemHoverColor = UIAccentColor::Value;
+constexpr ImVec4 PopupMenuItemActiveColor = UIAccentColor::Value;
 constexpr ImVec4 DetailsHeaderButtonColor = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
 constexpr ImVec4 DetailsHeaderButtonHoveredColor = ImVec4(0.24f, 0.24f, 0.24f, 1.0f);
 constexpr ImVec4 DetailsHeaderButtonActiveColor = ImVec4(0.18f, 0.18f, 0.18f, 1.0f);
@@ -87,14 +88,14 @@ constexpr ImVec4 FieldActiveBg = ImVec4(43.0f / 255.0f, 43.0f / 255.0f, 43.0f / 
 constexpr ImVec4 FieldBorder = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
 } // namespace PopupPalette
 
-FString GetEditorPathResource(const char *Key)
+FString GetIconResourcePath(const char *Key)
 {
     return FResourceManager::Get().ResolvePath(FName(Key));
 }
 
-ID3D11ShaderResourceView *GetEditorIcon(const char *Key)
+ID3D11ShaderResourceView *GetIcon(const char *Key)
 {
-    return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource(Key)).Get();
+    return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath(Key)).Get();
 }
 
 UTexture2D *GetTexturePreviewTexture(const FString &TexturePath)
@@ -208,26 +209,17 @@ TArray<FString> CollectLuaScriptPaths()
 
 void PushDetailsHeaderButtonStyle(float FrameRounding = 6.0f)
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, FrameRounding);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, DetailsHeaderButtonColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DetailsHeaderButtonHoveredColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, DetailsHeaderButtonActiveColor);
-    ImGui::PushStyleColor(ImGuiCol_Border, DetailsHeaderButtonBorderColor);
+    FEditorUIStyle::PushHeaderButtonStyle(FrameRounding);
 }
 
 void PopDetailsHeaderButtonStyle()
 {
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(2);
+    FEditorUIStyle::PopHeaderButtonStyle();
 }
 
 void PushPopupMenuStyle()
 {
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, PopupPalette::PopupBg);
-    ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+    FEditorUIStyle::PushPopupMenuStyle();
 }
 
 const char *GetActorHeaderIconKey(const AActor *Actor)
@@ -308,7 +300,7 @@ bool DrawSearchInputWithIcon(const char *Id, const char *Hint, char *Buffer, siz
     ImGui::PopStyleColor();
     ImGui::PopStyleVar(3);
 
-    if (ID3D11ShaderResourceView *SearchIcon = GetEditorIcon("Editor.Icon.Search"))
+    if (ID3D11ShaderResourceView *SearchIcon = GetIcon("Editor.Icon.Search"))
     {
         const ImVec2 Min = ImGui::GetItemRectMin();
         const float IconSize = ImGui::GetFrameHeight() - 12.0f;
@@ -331,7 +323,7 @@ bool DrawHeaderIconButton(const char *Id, const char *IconKey, const char *Fallb
     const ImVec2 Max = ImGui::GetItemRectMax();
     ImDrawList *DrawList = ImGui::GetWindowDrawList();
 
-    if (ID3D11ShaderResourceView *Icon = GetEditorIcon(IconKey))
+    if (ID3D11ShaderResourceView *Icon = GetIcon(IconKey))
     {
         const ImVec2 ItemSize = ImGui::GetItemRectSize();
         const float IconSize = (std::min)(ItemSize.x, ItemSize.y) - 8.0f;
@@ -382,7 +374,7 @@ bool DrawIconLabelButton(const char *Id, const char *IconKey, const char *Fallba
     float CursorX = Min.x + 8.0f;
     const float CenterY = Min.y + (Max.y - Min.y) * 0.5f;
 
-    if (ID3D11ShaderResourceView *Icon = GetEditorIcon(IconKey))
+    if (ID3D11ShaderResourceView *Icon = GetIcon(IconKey))
     {
         const float IconSize = (std::min)(ImGui::GetItemRectSize().y - 8.0f, 14.0f);
         DrawList->AddImage(reinterpret_cast<ImTextureID>(Icon), ImVec2(CursorX, CenterY - IconSize * 0.5f),
@@ -544,18 +536,7 @@ TArray<FString> CollectButtonActionFunctionNames(const AActor *OwnerActor)
 
 bool BeginDetailsSection(const char *SectionName)
 {
-    const std::string HeaderId = std::string(SectionName) + "##DetailsSection";
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.76f, 0.76f, 0.78f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.20f, 0.20f, 0.20f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.24f, 0.24f, 0.24f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.18f, 0.18f, 0.18f, 1.0f));
-    const bool bOpen =
-        ImGui::CollapsingHeader(HeaderId.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(2);
-    return bOpen;
+    return FEditorUIStyle::BeginDetailsSection(SectionName);
 }
 
 const char *GetComponentIconKey(const UActorComponent *Component)
@@ -569,7 +550,7 @@ const char *GetComponentIconKey(const UActorComponent *Component)
 
 void DrawLastTreeNodeIcon(const UActorComponent *Component)
 {
-    if (ID3D11ShaderResourceView *Icon = GetEditorIcon(GetComponentIconKey(Component)))
+    if (ID3D11ShaderResourceView *Icon = GetIcon(GetComponentIconKey(Component)))
     {
         const ImVec2 Min = ImGui::GetItemRectMin();
         const float IconSize = 14.0f;
@@ -582,7 +563,7 @@ void DrawLastTreeNodeIcon(const UActorComponent *Component)
 
 void DrawLastTreeNodeActorIcon(const AActor *Actor)
 {
-    if (ID3D11ShaderResourceView *Icon = GetEditorIcon(GetActorHeaderIconKey(Actor)))
+    if (ID3D11ShaderResourceView *Icon = GetIcon(GetActorHeaderIconKey(Actor)))
     {
         const ImVec2 Min = ImGui::GetItemRectMin();
         const float IconSize = 14.0f;
@@ -790,43 +771,32 @@ constexpr float DetailsVectorResetSpacing = 6.0f;
 
 void PushDetailsFieldStyle()
 {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, PopupPalette::FieldBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, PopupPalette::FieldHoverBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, PopupPalette::FieldActiveBg);
-    ImGui::PushStyleColor(ImGuiCol_Border, PopupPalette::FieldBorder);
+    FEditorUIStyle::PushDetailsFieldStyle();
 }
 
 void PopDetailsFieldStyle()
 {
-    ImGui::PopStyleColor(4);
+    FEditorUIStyle::PopDetailsFieldStyle();
 }
 
 void PushDetailsVectorFieldStyle()
 {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, DetailsVectorFieldBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, DetailsVectorFieldHoverBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, DetailsVectorFieldActiveBg);
-    ImGui::PushStyleColor(ImGuiCol_Border, PopupPalette::FieldBorder);
+    FEditorUIStyle::PushDetailsVectorFieldStyle();
 }
 
 void PopDetailsVectorFieldStyle()
 {
-    ImGui::PopStyleColor(4);
+    FEditorUIStyle::PopDetailsVectorFieldStyle();
 }
 
 void PushDetailsVectorResetButtonStyle()
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, DetailsVectorResetButtonColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DetailsVectorResetButtonHoveredColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, DetailsVectorResetButtonActiveColor);
-    ImGui::PushStyleColor(ImGuiCol_Border, DetailsVectorResetButtonBorderColor);
+    FEditorUIStyle::PushDetailsVectorResetButtonStyle();
 }
 
 void PopDetailsVectorResetButtonStyle()
 {
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar();
+    FEditorUIStyle::PopDetailsVectorResetButtonStyle();
 }
 
 bool DrawLabeledField(const char *Label, const std::function<bool()> &DrawField)
@@ -1696,16 +1666,16 @@ void FLevelDetailsPanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Details";
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Details";
     PanelDesc.StableId = "LevelDetailsPanel";
     PanelDesc.IconKey = PanelIconKey;
     PanelDesc.bClosable = true;
     PanelDesc.bOpen = &Settings.Panels.bDetails;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -1722,7 +1692,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
         LastSelectedActor = nullptr;
         bActorSelected = true;
         ImGui::Text("Select an object to view details.");
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -1795,7 +1765,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
 
     ImDrawList *DrawList = ImGui::GetWindowDrawList();
     const float LineY = HandleCursor.y + ResizeHandleHeight * 0.5f;
-    const ImU32 LineColor = ImGui::GetColorU32(bHandleActive    ? EditorAccentColor::Value
+    const ImU32 LineColor = ImGui::GetColorU32(bHandleActive    ? UIAccentColor::Value
                                                : bHandleHovered ? ImVec4(0.45f, 0.48f, 0.55f, 1.0f)
                                                                 : ImVec4(0.26f, 0.28f, 0.32f, 1.0f));
     DrawList->AddLine(ImVec2(HandleCursor.x, LineY), ImVec2(HandleCursor.x + HandleWidth, LineY), LineColor, 2.0f);
@@ -1804,7 +1774,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
     if (ScrollHeight < MinDetailsHeight)
         ScrollHeight = MinDetailsHeight;
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, PopupPalette::SurfaceBg);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, FEditorUIStyle::SurfaceBg);
     ImGui::BeginChild("##Details", ImVec2(0, ScrollHeight), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     {
         RenderDetails(PrimaryActor, SelectedActors);
@@ -1812,7 +1782,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
     ImGui::EndChild();
     ImGui::PopStyleColor();
 
-    FEditorPanel::End();
+    FPanel::End();
 }
 
 void FLevelDetailsPanel::RenderDetailsFilterBar(const TArray<const char *> &AvailableSections)
@@ -1845,13 +1815,13 @@ void FLevelDetailsPanel::RenderDetailsFilterBar(const TArray<const char *> &Avai
             }
         }
 
-        ImGui::PushStyleColor(ImGuiCol_Button, bActive ? EditorAccentColor::WithAlpha(0.92f)
+        ImGui::PushStyleColor(ImGuiCol_Button, bActive ? UIAccentColor::WithAlpha(0.92f)
                                                        : ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                              bActive ? EditorAccentColor::Value
+                              bActive ? UIAccentColor::Value
                                       : ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive,
-                              bActive ? EditorAccentColor::Value
+                              bActive ? UIAccentColor::Value
                                       : ImVec4(30.0f / 255.0f, 30.0f / 255.0f, 30.0f / 255.0f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f));
         if (ImGui::Button(ButtonId.c_str()))
@@ -1968,7 +1938,7 @@ void FLevelDetailsPanel::RenderHeader(AActor *PrimaryActor, const TArray<AActor 
     {
         const float AvailableWidth = ImGui::GetContentRegionAvail().x;
         const float InputWidth = (std::clamp)(AvailableWidth - 84.0f, 120.0f, 240.0f);
-        if (ID3D11ShaderResourceView *ActorIcon = GetEditorIcon(GetActorHeaderIconKey(PrimaryActor)))
+        if (ID3D11ShaderResourceView *ActorIcon = GetIcon(GetActorHeaderIconKey(PrimaryActor)))
         {
             ImGui::Image(ActorIcon, ImVec2(16.0f, 16.0f));
             ImGui::SameLine(0.0f, 6.0f);
@@ -2020,7 +1990,7 @@ void FLevelDetailsPanel::RenderHeader(AActor *PrimaryActor, const TArray<AActor 
     const bool bLocked = bSelectionLocked && LockedActor == PrimaryActor;
     const char *LockIconKey = bLocked ? "Editor.Icon.Locked" : "Editor.Icon.Unlocked";
     const char *LockTooltip = bLocked ? "Unlock Details Panel" : "Lock Details Panel to Selection";
-    const ImU32 LockTint = bLocked ? EditorAccentColor::ToU32() : IM_COL32(215, 215, 215, 255);
+    const ImU32 LockTint = bLocked ? UIAccentColor::ToU32() : IM_COL32(215, 215, 215, 255);
     if (DrawHeaderIconButton("##LockDetailsSelection", LockIconKey, bLocked ? "Unlock" : "Lock", LockTooltip,
                              ImVec2(28.0f, 0.0f), LockTint))
     {
@@ -2349,9 +2319,9 @@ void FLevelDetailsPanel::RenderComponentTree(AActor *Actor, float Height)
     if (bActorNodeSelected)
     {
         ActorFlags |= ImGuiTreeNodeFlags_Selected;
-        ImGui::PushStyleColor(ImGuiCol_Header, EditorAccentColor::WithAlpha(0.95f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_Header, UIAccentColor::WithAlpha(0.95f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, UIAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, UIAccentColor::Value);
     }
 
     FString ActorName = Actor->GetFName().ToString();
@@ -2402,9 +2372,9 @@ void FLevelDetailsPanel::RenderComponentTree(AActor *Actor, float Height)
             if (bIsSelected)
             {
                 Flags |= ImGuiTreeNodeFlags_Selected;
-                ImGui::PushStyleColor(ImGuiCol_Header, EditorAccentColor::WithAlpha(0.95f));
-                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
-                ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
+                ImGui::PushStyleColor(ImGuiCol_Header, UIAccentColor::WithAlpha(0.95f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, UIAccentColor::Value);
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, UIAccentColor::Value);
             }
 
             ImGui::TreeNodeEx(Comp, Flags, "%s%s", ComponentTreeLabelPadding, LabelText.c_str());
@@ -2457,9 +2427,9 @@ void FLevelDetailsPanel::RenderSceneComponentNode(USceneComponent *Comp)
     if (bIsSelected)
     {
         Flags |= ImGuiTreeNodeFlags_Selected;
-        ImGui::PushStyleColor(ImGuiCol_Header, EditorAccentColor::WithAlpha(0.95f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_Header, UIAccentColor::WithAlpha(0.95f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, UIAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, UIAccentColor::Value);
     }
 
     bool bIsRoot = (Comp->GetParent() == nullptr);
@@ -2884,13 +2854,7 @@ void FLevelDetailsPanel::RenderPropertySection(const char *SectionName, TArray<F
         return;
     }
 
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.05f, 0.05f, 0.06f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.08f, 0.08f, 0.09f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.10f, 0.10f, 0.11f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.05f, 0.05f, 0.06f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.10f, 0.12f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.18f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
+    FEditorUIStyle::PushDetailsPropertyEditStyle();
     const FString Query = DetailSearchBuffer;
 
     for (int32 PropIndex : Indices)
@@ -2924,7 +2888,7 @@ void FLevelDetailsPanel::RenderPropertySection(const char *SectionName, TArray<F
         ImGui::Dummy(ImVec2(0.0f, DetailsPropertyVerticalSpacing));
     }
 
-    ImGui::PopStyleColor(7);
+    FEditorUIStyle::PopDetailsPropertyEditStyle();
 }
 
 void FLevelDetailsPanel::PropagatePropertyChange(const FString &PropName, const TArray<AActor *> &SelectedActors)

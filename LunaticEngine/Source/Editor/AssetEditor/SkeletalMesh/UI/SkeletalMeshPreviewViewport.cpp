@@ -1,8 +1,8 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
 
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
-#include "Common/UI/EditorPanel.h"
-#include "Common/UI/EditorViewportToolbar.h"
+#include "Common/UI/Panels/Panel.h"
+#include "Common/UI/Viewport/ViewportToolbar.h"
 #include "Common/Viewport/EditorViewportPanel.h"
 
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -67,15 +67,15 @@ void FSkeletalMeshPreviewViewport::EnsureViewportResources()
 }
 
 void FSkeletalMeshPreviewViewport::Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshEditorToolbar *Toolbar,
-                                          float DeltaTime, const FEditorPanelDesc &PanelDesc)
+                                          float DeltaTime, const FPanelDesc &PanelDesc)
 {
     EnsureViewportResources();
 
-    if (FEditorPanel::Begin(PanelDesc))
+    if (FPanel::Begin(PanelDesc))
     {
         RenderViewportPanel(Mesh, State, Toolbar, DeltaTime);
     }
-    FEditorPanel::End();
+    FPanel::End();
 }
 
 void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State,
@@ -92,13 +92,13 @@ void FSkeletalMeshPreviewViewport::RenderViewportPanel(USkeletalMesh *Mesh, FSke
     PreviewViewportClient->SetPreviewMesh(Mesh);
     PreviewViewportClient->SetEditorState(&State);
 
-    if (Toolbar && FEditorViewportToolbar::Begin("##SkeletalMeshViewportToolbar"))
-    {
-        Toolbar->RenderViewportToolbar(Mesh, State);
-    }
     if (Toolbar)
     {
-        FEditorViewportToolbar::End();
+        if (FViewportToolbar::Begin("##SkeletalMeshViewportToolbar"))
+        {
+            Toolbar->RenderViewportToolbar(Mesh, State, Renderer);
+        }
+        FViewportToolbar::End();
     }
 
     const bool bActive = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

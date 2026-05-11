@@ -1,11 +1,11 @@
-﻿#pragma once
-#include "Common/UI/EditorDragSource.h"
+#pragma once
+#include "Common/UI/DragDrop/DragSource.h"
 #include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowserElement.h"
 #include "Render/Types/RenderTypes.h"
 #include "imgui.h"
 
 
-class PrefabDragSource final : public EditorDragSource
+class PrefabDragSource final : public FDragSource
 {
   public:
     ~PrefabDragSource()

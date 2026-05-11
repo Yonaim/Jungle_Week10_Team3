@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 
-#include "Common/UI/EditorUIElement.h"
+#include "Common/UI/Base/UIElement.h"
 #include <string>
 
 class FLevelEditorViewportClient;
 
-class FLevelViewportArea : public FEditorUIElement
+class FLevelViewportArea : public FUIElement
 {
   public:
     void Render(float DeltaTime) override;

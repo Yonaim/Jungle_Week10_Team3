@@ -2,9 +2,9 @@
 
 #include "ContentBrowserElement.h"
 #include "Core/AsciiUtils.h"
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "Engine/Runtime/Engine.h"
 #include "Materials/MaterialManager.h"
@@ -21,7 +21,7 @@ namespace
 {
 bool IsParentDirectoryReference(const std::filesystem::path &Path);
 
-FString GetEditorPathResource(const char *Key)
+FString GetIconResourcePath(const char *Key)
 {
     return FResourceManager::Get().ResolvePath(FName(Key));
 }
@@ -298,27 +298,27 @@ ID3D11ShaderResourceView *GetMtlPreviewSRV(const std::filesystem::path &Path)
 
 void FContentBrowser::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
 {
-    FEditorUIElement::Init(InEditor);
+    FUIElement::Init(InEditor);
     if (!InDevice)
         return;
 
     ICons["Default"] =
-        FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Default"));
+        FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Default"));
     ICons["Directory"] =
-        FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Directory"));
+        FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Directory"));
     ICons["FolderClosed"] =
-        FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.FolderClosed"));
-    ICons["FolderOpen"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.FolderOpen"));
+        FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.FolderClosed"));
+    ICons["FolderOpen"] = FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.FolderOpen"));
     ICons[".Scene"] =
-        FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Scene"));
+        FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Scene"));
     ICons[".umap"] = ICons[".Scene"];
     ICons[".UMAP"] = ICons[".Scene"];
-    ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Mesh"));
+    ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Mesh"));
     ICons[".fbx"] = ICons[".obj"];
     ICons[".mat"] =
-        FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Material"));
+        FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Material"));
     ICons[".mtl"] =
-        FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ContentBrowser.Material"));
+        FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Material"));
 
     ContentBrowserContext Context;
     Context.ContentSize = ImVec2(92.0f, 126.0f);
@@ -339,16 +339,16 @@ void FContentBrowser::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.ContentBrowser";
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Content Browser";
     PanelDesc.StableId = "LevelContentBrowser";
     PanelDesc.IconKey = PanelIconKey;
     PanelDesc.bClosable = true;
     PanelDesc.bOpen = &Settings.Panels.bContentBrowser;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -356,7 +356,7 @@ void FContentBrowser::Render(float DeltaTime)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(12.0f, 6.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.14f, 0.16f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::WithAlpha(1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::WithAlpha(1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.08f, 0.42f, 0.78f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.28f, 0.30f, 0.34f, 1.0f));
     if (ImGui::Button("Refresh##ContentBrowser"))
@@ -404,7 +404,7 @@ void FContentBrowser::Render(float DeltaTime)
         BrowserContext.SelectedElement->RenderDetail();
 
     ImGui::EndTable();
-    FEditorPanel::End();
+    FPanel::End();
 }
 
 void FContentBrowser::Refresh()

@@ -6,7 +6,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 
 #include "ImGui/imgui.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
 
 void FAssetEditorWindow::Initialize(UEditorEngine *InEditorEngine, FAssetEditorManager *InOwnerManager)
 {
@@ -107,8 +107,8 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
     if (TabManager.HasOpenTabs())
     {
         // Asset Editor도 Level Editor와 같은 panel chrome / surface 색을 사용한다.
-        // 개별 패널의 body 색은 FEditorPanel::Begin()에서 공통으로 적용한다.
-        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::ColorConvertU32ToFloat4(EditorPanelTitleUtils::GetDockTabBarGapColor()));
+        // 개별 패널의 body 색은 FPanel::Begin()에서 공통으로 적용한다.
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::ColorConvertU32ToFloat4(PanelTitleUtils::GetDockTabBarGapColor()));
         TabManager.Render(DeltaTime, DockspaceId);
         ImGui::PopStyleColor();
 
@@ -132,6 +132,17 @@ bool FAssetEditorWindow::IsCapturingInput() const
     return IsOpen() && (bCapturingInput || TabManager.IsCapturingInput());
 }
 
+
+FEditorViewportClient *FAssetEditorWindow::GetActiveViewportClient() const
+{
+    if (!IsOpen())
+    {
+        return nullptr;
+    }
+
+    return TabManager.GetActiveViewportClient();
+}
+
 void FAssetEditorWindow::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
 {
     if (!IsOpen())
@@ -145,6 +156,13 @@ void FAssetEditorWindow::CollectViewportClients(TArray<FEditorViewportClient *> 
 
 void FAssetEditorWindow::BuildFileMenu()
 {
+    if (ImGui::MenuItem("Back to Level Editor") && EditorEngine)
+    {
+        EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+    }
+
+    ImGui::Separator();
+
     if (ImGui::MenuItem("Open Asset...") && OwnerManager)
     {
         OwnerManager->OpenAssetWithDialog(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
@@ -172,6 +190,10 @@ void FAssetEditorWindow::BuildFileMenu()
     if (ImGui::MenuItem("Close Window"))
     {
         Hide();
+        if (EditorEngine)
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+        }
     }
 }
 
@@ -203,7 +225,7 @@ FString FAssetEditorWindow::GetFrameTitle() const
 {
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
     {
-        return ActiveEditor->GetEditorName();
+        return FString("Asset Editor | ") + ActiveEditor->GetEditorName();
     }
 
     return "Asset Editor";
@@ -216,7 +238,7 @@ FString FAssetEditorWindow::GetFrameTitleTooltip() const
         const std::filesystem::path &AssetPath = ActiveEditor->GetAssetPath();
         if (!AssetPath.empty())
         {
-            return FPaths::ToUtf8(AssetPath.wstring());
+            return FString("Asset Editor | ") + ActiveEditor->GetEditorName() + " | " + FPaths::ToUtf8(AssetPath.wstring());
         }
     }
 

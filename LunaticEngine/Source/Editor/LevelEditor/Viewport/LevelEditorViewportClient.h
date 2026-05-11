@@ -65,6 +65,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
 
     void UpdateLayoutRect() override;
     void RenderViewportImage(bool bIsActiveViewport) override;
+    const char *GetViewportTooltipBarText() const override;
 
   private:
     void SetupInput();

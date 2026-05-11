@@ -1,6 +1,6 @@
 #include "MainFrame/EditorMainMenuBar.h"
 
-#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/Style/AccentColor.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "MainFrame/EditorMenuProvider.h"
 #include "Resource/ResourceManager.h"
@@ -24,16 +24,6 @@ namespace
     const char *GetWindowControlIconRestore() { return "\xEE\xA4\xA3"; }
     const char *GetWindowControlIconClose() { return "\xEE\xA2\xBB"; }
 } // namespace
-
-FString IEditorMenuProvider::GetFrameTitle() const
-{
-    return "Editor";
-}
-
-FString IEditorMenuProvider::GetFrameTitleTooltip() const
-{
-    return GetFrameTitle();
-}
 
 void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
 {
@@ -111,8 +101,8 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, UnrealPanelSurface);
         ImGui::PushStyleColor(ImGuiCol_Header, UnrealPanelSurface);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, UIAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, UIAccentColor::Value);
 
         if (ImGui::BeginMenu("File"))
         {

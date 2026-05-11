@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/UI/EditorPanelTitleUtils.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Core/CoreTypes.h"
 
 #include "ImGui/imgui.h"
@@ -10,14 +10,14 @@
 #include <vector>
 
 /**
- * Editor panel 공통 descriptor.
+ * Panel 공통 descriptor.
  *
  * 역할:
  * - Level Editor 패널과 Asset Editor 패널이 같은 title/icon/inset 스타일을 쓰도록 한다.
  * - DisplayName은 사용자가 보는 이름이고, StableId는 ImGui 내부 ID 충돌 방지용 이름이다.
  * - 같은 이름의 Details / Viewport 패널이 여러 에디터에 생길 수 있으므로 StableId는 반드시 고유해야 한다.
  */
-struct FEditorPanelDesc
+struct FPanelDesc
 {
     const char *DisplayName = "";
     const char *StableId = "";
@@ -37,14 +37,14 @@ struct FEditorPanelDesc
 };
 
 /**
- * Editor panel 공통 wrapper.
+ * Panel 공통 wrapper.
  *
  * 사용 이유:
- * - 기존 Level Editor 패널은 EditorPanelTitleUtils 기반의 탭 스타일을 사용한다.
+ * - 기존 Level Editor 패널은 PanelTitleUtils 기반의 탭 스타일을 사용한다.
  * - SkeletalMeshEditor 같은 Asset Editor 패널도 이 wrapper를 통하면 같은 스타일을 유지할 수 있다.
  * - 패널마다 ImGui::Begin / DrawPanelTitleIcon / ApplyPanelContentTopInset 코드를 반복하지 않게 한다.
  */
-class FEditorPanel
+class FPanel
 {
   private:
     struct FBeginState
@@ -60,15 +60,15 @@ class FEditorPanel
     }
 
   public:
-    static std::string MakeTitle(const FEditorPanelDesc &Desc)
+    static std::string MakeTitle(const FPanelDesc &Desc)
     {
         const char *StableId = (Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName;
-        const bool bHasIcon = Desc.IconKey && EditorPanelTitleUtils::GetEditorIcon(Desc.IconKey) != nullptr;
+        const bool bHasIcon = Desc.IconKey && PanelTitleUtils::GetIcon(Desc.IconKey) != nullptr;
         const char *Prefix = bHasIcon ? "     " : "";
         return std::string(Prefix) + (Desc.DisplayName ? Desc.DisplayName : "") + "###" + StableId;
     }
 
-    static bool Begin(const FEditorPanelDesc &Desc)
+    static bool Begin(const FPanelDesc &Desc)
     {
         FBeginState BeginState;
 
@@ -100,18 +100,18 @@ class FEditorPanel
         const bool bVisible = ImGui::Begin(Title.c_str(), OpenPtr, Desc.WindowFlags);
         BeginState.bDidBeginWindow = true;
 
-        EditorPanelTitleUtils::PushEditorPanelStyle();
+        PanelTitleUtils::PushPanelStyle();
         BeginState.bPushedStyle = true;
         GetBeginStateStack().push_back(BeginState);
 
         if (bVisible)
         {
             const char *DecorationIconKey = (Desc.bDrawTitleIcon && Desc.IconKey) ? Desc.IconKey : nullptr;
-            EditorPanelTitleUtils::QueuePanelDecoration(DecorationIconKey, nullptr);
+            PanelTitleUtils::QueuePanelDecoration(DecorationIconKey, nullptr);
 
             if (Desc.bApplyContentTopInset)
             {
-                EditorPanelTitleUtils::ApplyPanelContentTopInset(Desc.bApplySideInset, Desc.bApplyBottomInset);
+                PanelTitleUtils::ApplyPanelContentTopInset(Desc.bApplySideInset, Desc.bApplyBottomInset);
             }
         }
 
@@ -136,7 +136,7 @@ class FEditorPanel
 
         if (BeginState.bPushedStyle)
         {
-            EditorPanelTitleUtils::PopEditorPanelStyle();
+            PanelTitleUtils::PopPanelStyle();
         }
         ImGui::End();
     }

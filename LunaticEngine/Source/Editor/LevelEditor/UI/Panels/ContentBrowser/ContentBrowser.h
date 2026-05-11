@@ -1,14 +1,14 @@
-﻿#pragma once
+#pragma once
 #include "ContentBrowserContext.h"
 #include "ContentBrowserElement.h"
 #include "ContentItem.h"
-#include "Common/UI/EditorUIElement.h"
+#include "Common/UI/Base/UIElement.h"
 #include <d3d11.h>
 #include <memory>
 #include <wrl/client.h>
 
 
-class FContentBrowser final : public FEditorUIElement
+class FContentBrowser final : public FUIElement
 {
     struct FDirNode
     {

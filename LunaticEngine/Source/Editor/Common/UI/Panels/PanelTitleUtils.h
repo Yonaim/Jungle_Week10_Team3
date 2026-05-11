@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/Style/AccentColor.h"
 #include "Object/FName.h"
 #include "Resource/ResourceManager.h"
 
@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace EditorPanelTitleUtils
+namespace PanelTitleUtils
 {
 struct FPendingPanelDecoration
 {
@@ -110,40 +110,40 @@ inline ImU32 GetDockTabBarGapColor()
     return IM_COL32(5, 5, 5, 255);
 }
 
-inline ImVec4 GetEditorPanelSurfaceColor()
+inline ImVec4 GetPanelSurfaceColor()
 {
     return ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
 }
 
-inline ImVec4 GetEditorPanelSurfaceHoverColor()
+inline ImVec4 GetPanelSurfaceHoverColor()
 {
     return ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
 }
 
-inline ImVec4 GetEditorPanelSurfaceActiveColor()
+inline ImVec4 GetPanelSurfaceActiveColor()
 {
     return ImVec4(52.0f / 255.0f, 52.0f / 255.0f, 52.0f / 255.0f, 1.0f);
 }
 
-inline ImVec4 GetEditorPanelBorderColor()
+inline ImVec4 GetPanelBorderColor()
 {
     return ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
 }
 
-inline void PushEditorPanelStyle()
+inline void PushPanelStyle()
 {
     // Level Editor와 Asset Editor 패널이 같은 회색 surface를 사용하도록 여기서 통일한다.
     // Asset Editor 쪽에서 별도로 WindowBg를 덮어쓰면 탭/패널 body 색이 어긋나므로,
     // 모든 dockable editor panel은 이 공통 스타일을 먼저 탄다.
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, GetEditorPanelSurfaceColor());
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, GetEditorPanelSurfaceColor());
-    ImGui::PushStyleColor(ImGuiCol_Border, GetEditorPanelBorderColor());
-    ImGui::PushStyleColor(ImGuiCol_Header, GetEditorPanelSurfaceColor());
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, GetEditorPanelSurfaceHoverColor());
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, GetEditorPanelSurfaceActiveColor());
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, GetPanelSurfaceColor());
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, GetPanelSurfaceColor());
+    ImGui::PushStyleColor(ImGuiCol_Border, GetPanelBorderColor());
+    ImGui::PushStyleColor(ImGuiCol_Header, GetPanelSurfaceColor());
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, GetPanelSurfaceHoverColor());
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, GetPanelSurfaceActiveColor());
 }
 
-inline void PopEditorPanelStyle()
+inline void PopPanelStyle()
 {
     ImGui::PopStyleColor(6);
 }
@@ -180,7 +180,7 @@ inline float GetSelectedPanelTopBorderThickness()
 
 inline ImU32 GetSelectedPanelTopBorderColor()
 {
-    return EditorAccentColor::ToU32();
+    return UIAccentColor::ToU32();
 }
 
 inline float GetSelectedPanelTopBorderInset()
@@ -199,12 +199,12 @@ inline void BeginPanelDecorationFrame()
     GetFocusedPanelOverlays().clear();
 }
 
-inline FString GetEditorPathResource(const char *Key)
+inline FString GetIconResourcePath(const char *Key)
 {
     return FResourceManager::Get().ResolvePath(FName(Key));
 }
 
-inline ID3D11ShaderResourceView *GetEditorIcon(const char *Key)
+inline ID3D11ShaderResourceView *GetIcon(const char *Key)
 {
     if (!Key || Key[0] == '\0')
     {
@@ -216,12 +216,12 @@ inline ID3D11ShaderResourceView *GetEditorIcon(const char *Key)
         return Texture->SRV;
     }
 
-    return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource(Key)).Get();
+    return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath(Key)).Get();
 }
 
 inline std::string MakeClosablePanelTitle(const char *Title, const char *IconKey = nullptr)
 {
-    const char *Prefix = GetEditorIcon(IconKey) ? "     " : "";
+    const char *Prefix = GetIcon(IconKey) ? "     " : "";
     return std::string(Prefix) + Title + "          ###" + Title;
 }
 
@@ -410,7 +410,7 @@ inline void ApplyPanelContentTopInset(bool bApplySideInset = true, bool bApplyBo
         return;
     }
 
-    const ImGuiID InsetStateId = ImHashStr("##EditorPanelContentInsetApplied");
+    const ImGuiID InsetStateId = ImHashStr("##PanelContentInsetApplied");
     int *const LastAppliedFrame = Window->StateStorage.GetIntRef(InsetStateId, -1);
     if (*LastAppliedFrame != ImGui::GetFrameCount())
     {
@@ -505,7 +505,7 @@ inline void FlushPanelDecorations()
             GetFocusedPanelOverlays().push_back(Overlay);
         }
 
-        if (ID3D11ShaderResourceView *Icon = GetEditorIcon(Decoration.IconKey))
+        if (ID3D11ShaderResourceView *Icon = GetIcon(Decoration.IconKey))
         {
             const float IconSize = 14.0f;
             const float IconX = TitleRect.Min.x + 8.0f;
@@ -548,4 +548,4 @@ inline void FlushPanelDecorations()
         Overlay.DrawList->PopClipRect();
     }
 }
-} // namespace EditorPanelTitleUtils
+} // namespace PanelTitleUtils

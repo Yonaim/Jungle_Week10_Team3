@@ -5,6 +5,8 @@
 
 #include "ImGui/imgui.h"
 
+#include <algorithm>
+
 namespace
 {
 bool TryConvertMouseToViewportPixel(const ImVec2 &MousePos, const FRect &ViewportScreenRect, const FViewport *Viewport,
@@ -141,6 +143,41 @@ void FEditorViewportClient::RenderViewportImage(bool bIsActiveViewport)
                           ImVec2(Max.x - BorderInset, Max.y - BorderInset), IM_COL32(255, 165, 0, 220), 0.0f, 0,
                           ActiveBorderThickness);
     }
+
+}
+
+void FEditorViewportClient::RenderViewportTooltipBar() const
+{
+    const char *TooltipBarText = GetViewportTooltipBarText();
+    if (!TooltipBarText || TooltipBarText[0] == '\0')
+    {
+        return;
+    }
+
+    const FRect &R = ViewportScreenRect;
+    if (R.Width <= 0.0f || R.Height <= 0.0f)
+    {
+        return;
+    }
+
+    ImDrawList *DrawList = ImGui::GetWindowDrawList();
+    const ImVec2 TextSize = ImGui::CalcTextSize(TooltipBarText);
+    const ImVec2 Padding(12.0f, 7.0f);
+    const float  Margin = 12.0f;
+    const float  BarHeight = TextSize.y + Padding.y * 2.0f;
+    const float  MaxBarWidth = (std::max)(120.0f, R.Width - Margin * 2.0f);
+    const float  DesiredBarWidth = TextSize.x + Padding.x * 2.0f;
+    const float  BarWidth = (std::min)(MaxBarWidth, DesiredBarWidth);
+
+    const ImVec2 BarMin(R.X + Margin, R.Y + R.Height - Margin - BarHeight);
+    const ImVec2 BarMax(BarMin.x + BarWidth, BarMin.y + BarHeight);
+    const ImVec2 TextMin(BarMin.x + Padding.x, BarMin.y + Padding.y);
+
+    DrawList->AddRectFilled(BarMin, BarMax, IM_COL32(20, 22, 26, 210), 8.0f);
+    DrawList->AddRect(BarMin, BarMax, IM_COL32(70, 74, 82, 220), 8.0f);
+    DrawList->PushClipRect(BarMin, BarMax, true);
+    DrawList->AddText(TextMin, IM_COL32(190, 196, 205, 255), TooltipBarText);
+    DrawList->PopClipRect();
 }
 
 bool FEditorViewportClient::GetCursorViewportPosition(uint32 &OutX, uint32 &OutY) const

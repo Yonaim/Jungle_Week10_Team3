@@ -1,6 +1,6 @@
 ﻿#include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
 
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/Panel.h"
 
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "ImGui/imgui.h"
@@ -35,18 +35,18 @@ namespace
 void FSkeletonTreePanel::Render(
 	USkeletalMesh* Mesh,
 	FSkeletalMeshEditorState& State,
-	const FEditorPanelDesc& PanelDesc)
+	const FPanelDesc& PanelDesc)
 {
-	if (!FEditorPanel::Begin(PanelDesc))
+	if (!FPanel::Begin(PanelDesc))
 	{
-		FEditorPanel::End();
+		FPanel::End();
 		return;
 	}
 
 	if (!Mesh)
 	{
 		ImGui::TextDisabled("No Skeleton.");
-		FEditorPanel::End();
+		FPanel::End();
 		return;
 	}
 
@@ -74,7 +74,7 @@ void FSkeletonTreePanel::Render(
 	{
 		ImGui::TextDisabled("This mesh has no bone data.");
 		ImGui::TextDisabled("FBX Importer가 skeleton/bone 데이터를 채우면 여기에 표시된다.");
-		FEditorPanel::End();
+		FPanel::End();
 		return;
 	}
 
@@ -83,7 +83,7 @@ void FSkeletonTreePanel::Render(
 	if (Bones.empty())
 	{
 		ImGui::TextDisabled("Bone count is valid, but bone array is empty.");
-		FEditorPanel::End();
+		FPanel::End();
 		return;
 	}
 
@@ -131,7 +131,7 @@ void FSkeletonTreePanel::Render(
 
 	ImGui::EndChild();
 
-	FEditorPanel::End();
+	FPanel::End();
 }
 
 void FSkeletonTreePanel::DrawBoneTreeNode(

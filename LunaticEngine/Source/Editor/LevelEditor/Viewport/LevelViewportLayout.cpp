@@ -1,8 +1,9 @@
-﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
+#include "Common/UI/Viewport/ViewportToolbar.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Core/ProjectSettings.h"
@@ -54,15 +55,15 @@ namespace
         constexpr ImVec4 CheckboxBg = ImVec4(0.03f, 0.03f, 0.04f, 1.0f);
         constexpr ImVec4 CheckboxHoverBg = ImVec4(0.07f, 0.07f, 0.09f, 1.0f);
         constexpr ImVec4 CheckboxActiveBg = ImVec4(0.10f, 0.10f, 0.12f, 1.0f);
-        constexpr ImVec4 CheckboxCheck = EditorAccentColor::Value;
+        constexpr ImVec4 CheckboxCheck = UIAccentColor::Value;
     } // namespace PopupPalette
 
     constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
     constexpr ImVec4 CameraPopupLabelColor = ImVec4(0.87f, 0.88f, 0.90f, 1.0f);
     constexpr ImVec4 CameraPopupHintColor = ImVec4(0.60f, 0.63f, 0.68f, 1.0f);
     constexpr ImVec4 PopupMenuItemColor = ImVec4(0.18f, 0.18f, 0.20f, 0.96f);
-    constexpr ImVec4 PopupMenuItemHoverColor = EditorAccentColor::Value;
-    constexpr ImVec4 PopupMenuItemActiveColor = EditorAccentColor::Value;
+    constexpr ImVec4 PopupMenuItemHoverColor = UIAccentColor::Value;
+    constexpr ImVec4 PopupMenuItemActiveColor = UIAccentColor::Value;
     constexpr ImVec2 PopupComfortWindowPadding = ImVec2(10.0f, 10.0f);
     constexpr ImVec2 PopupComfortFramePadding = ImVec2(7.0f, 5.0f);
     constexpr ImVec2 PopupComfortItemSpacing = ImVec2(6.0f, 6.0f);
@@ -73,14 +74,14 @@ namespace
     constexpr float  CameraPopupMaxScalarFieldWidth = 112.0f;
     constexpr float  CameraPopupMaxAxisFieldWidth = 52.0f;
     constexpr ImVec4 SnapPopupBorderColor = ImVec4(0.30f, 0.31f, 0.35f, 1.0f);
-    constexpr ImVec4 SnapPopupSelectedColor = EditorAccentColor::WithAlpha(0.98f);
-    constexpr ImVec4 SnapPopupSelectedHoverColor = EditorAccentColor::Value;
-    constexpr ImVec4 SnapPopupSelectedActiveColor = EditorAccentColor::Value;
+    constexpr ImVec4 SnapPopupSelectedColor = UIAccentColor::WithAlpha(0.98f);
+    constexpr ImVec4 SnapPopupSelectedHoverColor = UIAccentColor::Value;
+    constexpr ImVec4 SnapPopupSelectedActiveColor = UIAccentColor::Value;
     constexpr ImVec4 SnapPopupSelectedTextColor = ImVec4(0.97f, 0.98f, 1.0f, 1.0f);
     constexpr ImVec4 SnapPopupSelectedCheckColor = ImVec4(0.97f, 0.98f, 1.0f, 1.0f);
-    constexpr ImVec4 SnapPopupTabSelectedColor = EditorAccentColor::Value;
-    constexpr ImVec4 SnapPopupTabSelectedHoverColor = EditorAccentColor::Value;
-    constexpr ImVec4 SnapPopupTabSelectedActiveColor = EditorAccentColor::Value;
+    constexpr ImVec4 SnapPopupTabSelectedColor = UIAccentColor::Value;
+    constexpr ImVec4 SnapPopupTabSelectedHoverColor = UIAccentColor::Value;
+    constexpr ImVec4 SnapPopupTabSelectedActiveColor = UIAccentColor::Value;
     constexpr ImVec4 SnapPopupTabSelectedTextColor = ImVec4(0.97f, 0.98f, 1.0f, 1.0f);
 
     void DrawPopupSectionHeader(const char *Label);
@@ -624,7 +625,7 @@ namespace
     }
 
     bool DrawSelectedToolbarIconDropdownButton(const char *Id, EToolbarIcon Icon, bool bSelected, float Width, float Height,
-                                               float FallbackSize, float MaxIconSize, ImU32 SelectedTint = EditorAccentColor::ToU32())
+                                               float FallbackSize, float MaxIconSize, ImU32 SelectedTint = UIAccentColor::ToU32())
     {
         const ImU32 Tint = bSelected ? SelectedTint : IM_COL32_WHITE;
         return DrawToolbarIconDropdownButton(Id, Icon, Width, Height, FallbackSize, MaxIconSize, Tint);
@@ -926,7 +927,7 @@ namespace
         return bChanged;
     }
 
-    float GetViewportPaneToolbarHeight(float PaneWidth) { return 38.0f; }
+    float GetViewportPaneToolbarHeight(float PaneWidth) { return FViewportToolbar::GetHeight(PaneWidth); }
 
     FString GetRegisteredMeshPath(const char *MeshKey)
     {
@@ -1807,7 +1808,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Viewport";
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Viewport";
     PanelDesc.StableId = "LevelViewport";
     PanelDesc.IconKey = PanelIconKey;
@@ -1816,10 +1817,10 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
     PanelDesc.bOpen = &FLevelEditorSettings::Get().Panels.bViewport;
     PanelDesc.bApplySideInset = false;
     PanelDesc.bApplyBottomInset = false;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         ImGui::PopStyleVar();
         return;
     }
@@ -1901,7 +1902,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
             }
         }
 
-        // 각 뷰포트 패인 상단에 툴바 오버레이 렌더
+        // 각 뷰포트 패인 상단에 툴바 렌더
         for (int32 i = 0; i < ActiveSlotCount; ++i)
         {
             const bool bShowPaneToolbar =
@@ -2017,11 +2018,11 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
     RenderViewportPlaceActorPopup();
 
-    FEditorPanel::End();
+    FPanel::End();
     ImGui::PopStyleVar();
 }
 
-// ─── 각 뷰포트 패인 툴바 오버레이 ──────────────────────────
+// ─── 각 뷰포트 패인 툴바 ──────────────────────────
 
 void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop)
 {
@@ -2066,9 +2067,9 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
         const bool bSelected = (Gizmo->GetMode() == TargetMode);
         if (bSelected)
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::Value);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+            ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
         }
         const bool bClicked = DrawToolbarIconButton(Id, Icon, FallbackLabel, ToolbarFallbackIconSize, ToolbarMaxIconSize);
         if (bSelected)
@@ -2128,9 +2129,9 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
     const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
     if (bWorldCoord)
     {
-        ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
     }
     if (DrawToolbarIconButton("##SharedCoordSystemIcon", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace,
                               bWorldCoord ? "World" : "Local", ToolbarFallbackIconSize, ToolbarMaxIconSize))
@@ -2151,9 +2152,9 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
         const bool bWasEnabled = bEnabled;
         if (bWasEnabled)
         {
-            ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::Value);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+            ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
         }
         if (DrawToolbarIconButton("##SnapToggle", Icon, FallbackLabel, ToolbarFallbackIconSize, ToolbarMaxIconSize))
         {
@@ -2207,20 +2208,14 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
     constexpr float PaneToolbarPaddingY = 6.0f;
     constexpr float PaneToolbarButtonSpacing = 6.0f;
 
-    // 툴바 오버레이 ID
-    char OverlayID[64];
-    snprintf(OverlayID, sizeof(OverlayID), "##PaneToolbar_%d", SlotIndex);
+    // 툴바 ID
+    char ToolbarID[64];
+    snprintf(ToolbarID, sizeof(ToolbarID), "##PaneToolbar_%d", SlotIndex);
 
-    ImGui::SetNextWindowPos(ImVec2(PaneRect.X, PaneRect.Y));
-    ImGui::SetNextWindowSize(ImVec2(PaneRect.Width, PaneToolbarHeight));
-
-    ImGuiWindowFlags OverlayFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-                                    ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(PaneToolbarPaddingX, PaneToolbarPaddingY));
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.10f, 0.10f, 0.11f, 0.92f));
-    ImGui::Begin(OverlayID, nullptr, OverlayFlags);
+    if (!FViewportToolbar::BeginInRect(ToolbarID, PaneRect, PaneToolbarHeight))
+    {
+        return;
+    }
     {
         ImGui::PushID(SlotIndex);
         PushToolbarButtonStyle();
@@ -2248,7 +2243,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
 
                 auto DrawSelectedToolbarIcon = [&](const char *Id, EToolbarIcon Icon, bool bSelected, const char *Tooltip) -> bool
                 {
-                    const ImU32 Tint = bSelected ? EditorAccentColor::ToU32() : IM_COL32_WHITE;
+                    const ImU32 Tint = bSelected ? UIAccentColor::ToU32() : IM_COL32_WHITE;
                     const bool  bClicked =
                         DrawToolbarIconButton(Id, Icon, Tooltip, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize, Tint);
                     ShowItemTooltip(Tooltip);
@@ -2547,7 +2542,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                         const bool bSelected = (static_cast<EViewportLayout>(i) == CurrentLayout);
                         if (bSelected)
                         {
-                            ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::Value);
+                            ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
                         }
 
                         bool bClicked = false;
@@ -2626,9 +2621,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             PopToolbarButtonStyle();
             ImGui::PopID();
         }
-        ImGui::End();
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar(2);
+        FViewportToolbar::EndInRect();
         return;
 
         const bool bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
@@ -2659,7 +2652,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                 bool bSelected = (static_cast<EViewportLayout>(i) == CurrentLayout);
                 if (bSelected)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::Value);
+                    ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
                 }
 
                 bool bClicked = false;
@@ -2735,9 +2728,9 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             {
                 if (bSelected)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::Value);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+                    ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
                 }
                 const bool bClicked = DrawToolbarIconButton(Id, Icon, Tooltip, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
                 if (bSelected)
@@ -2991,9 +2984,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         PopToolbarButtonStyle();
         ImGui::PopID();
     }
-    ImGui::End();
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar(2);
+    FViewportToolbar::EndInRect();
 }
 
 void FLevelViewportLayout::HandleViewportContextMenuInput(const FPoint &MousePos)

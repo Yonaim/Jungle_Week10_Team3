@@ -2,11 +2,11 @@
 
 #include "AssetEditor/IAssetEditor.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
-#include "AssetEditor/SkeletalMesh/UI/SkeletalMeshDetailsPanel.h"
+#include "AssetEditor/Common/UI/AssetDetailsPanel.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/Panel.h"
 
 #include <filesystem>
 #include <string>
@@ -36,7 +36,7 @@ class USkeletalMesh;
  *
  * 구현 규칙:
  * - 각 영역은 실제 독립 패널로 렌더링한다.
- * - Level Editor 패널과 같은 FEditorPanel wrapper를 사용해 title/icon/inset 스타일을 통일한다.
+ * - Level Editor 패널과 같은 FPanel wrapper를 사용해 title/icon/inset 스타일을 통일한다.
  * - Preview Viewport는 FEditorViewportClient 베이스를 재사용한다.
  *
  * 김형도 담당 예정 영역은 SkeletonTreePanel / DetailsPanel / PreviewViewportClient 내부에 placeholder로 남겨둔다.
@@ -61,6 +61,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     bool IsDirty() const override { return bDirty; }
     bool IsCapturingInput() const override { return bCapturingInput; }
+    FEditorViewportClient *GetActiveViewportClient() override;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) override;
     const char *GetEditorName() const override { return "Skeletal Mesh"; }
     const std::filesystem::path &GetAssetPath() const override { return EditingAssetPath; }
@@ -70,7 +71,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     void BuildDefaultDockLayout(ImGuiID DockspaceId);
 
     std::string MakePanelStableId(const char *PanelName) const;
-    FEditorPanelDesc MakePanelDesc(const char *DisplayName, const char *StableName, const char *IconKey,
+    FPanelDesc MakePanelDesc(const char *DisplayName, const char *StableName, const char *IconKey,
                                    ImGuiWindowFlags Flags = ImGuiWindowFlags_NoCollapse) const;
 
   private:
@@ -85,7 +86,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     FSkeletalMeshEditorToolbar Toolbar;
     FSkeletalMeshPreviewViewport PreviewViewport;
     FSkeletonTreePanel SkeletonTreePanel;
-    FSkeletalMeshDetailsPanel DetailsPanel;
+    FAssetDetailsPanel AssetDetailsPanel;
 
     bool bOpen = false;
     bool bDirty = false;

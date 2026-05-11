@@ -1,24 +1,24 @@
-﻿#pragma once
+#pragma once
 
 #include "Object/Object.h"
 #include "imgui.h"
 
-struct DragSoruceInfo final
+struct FDragSourceInfo final
 {
 	UObject* Object;
 };
 
-class EditorDragSource
+class FDragSource
 {
 public:
 	void Render(ImVec2 InSize);
-	void SetDragSourceInfo(DragSoruceInfo* info) { DragSourceInfo = info; }
+	void SetDragSourceInfo(FDragSourceInfo* info) { DragSourceInfo = info; }
 	void SetID(FString ID) { DragID = ID; }
 
 protected:
 	virtual void RenderSource(ImVec2 InSize) = 0;
 
-	DragSoruceInfo* DragSourceInfo;
+	FDragSourceInfo* DragSourceInfo;
 private:
 	FString DragID;
 };

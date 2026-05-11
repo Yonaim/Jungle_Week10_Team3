@@ -2,9 +2,9 @@
 
 #include "Component/CameraComponent.h"
 #include "Core/AsciiUtils.h"
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "GameFramework/AActor.h"
@@ -27,16 +27,16 @@ constexpr ImVec4 PlacePanelBg = ImVec4(28.0f / 255.0f, 28.0f / 255.0f, 28.0f / 2
 constexpr ImVec4 PlaceSidebarButton = ImVec4(44.0f / 255.0f, 44.0f / 255.0f, 44.0f / 255.0f, 1.0f);
 constexpr ImVec4 PlaceSidebarButtonHover = ImVec4(58.0f / 255.0f, 58.0f / 255.0f, 58.0f / 255.0f, 1.0f);
 constexpr ImVec4 PlaceSidebarButtonActive = ImVec4(68.0f / 255.0f, 68.0f / 255.0f, 68.0f / 255.0f, 1.0f);
-constexpr ImVec4 PlaceCategorySelected = EditorAccentColor::Value;
-constexpr ImVec4 PlaceCategorySelectedHover = EditorAccentColor::Value;
-constexpr ImVec4 PlaceCategorySelectedActive = EditorAccentColor::Value;
+constexpr ImVec4 PlaceCategorySelected = UIAccentColor::Value;
+constexpr ImVec4 PlaceCategorySelectedHover = UIAccentColor::Value;
+constexpr ImVec4 PlaceCategorySelectedActive = UIAccentColor::Value;
 constexpr ImVec4 PlaceEntryBg = ImVec4(63.0f / 255.0f, 63.0f / 255.0f, 63.0f / 255.0f, 1.0f);
 constexpr ImVec4 PlaceEntryHover = ImVec4(78.0f / 255.0f, 78.0f / 255.0f, 78.0f / 255.0f, 1.0f);
 constexpr ImVec4 PlaceEntryActive = ImVec4(90.0f / 255.0f, 90.0f / 255.0f, 90.0f / 255.0f, 1.0f);
 constexpr ImVec4 PlaceBorder = ImVec4(70.0f / 255.0f, 70.0f / 255.0f, 70.0f / 255.0f, 1.0f);
 constexpr ImVec4 PlaceSearchBg = ImVec4(18.0f / 255.0f, 18.0f / 255.0f, 18.0f / 255.0f, 1.0f);
 
-FString GetEditorPathResource(const char *Key)
+FString GetIconResourcePath(const char *Key)
 {
     return FResourceManager::Get().ResolvePath(FName(Key));
 }
@@ -46,17 +46,17 @@ ID3D11ShaderResourceView *GetPlaceActorsCategoryIcon(FLevelPlaceActorsPanel::EPl
     switch (Category)
     {
     case FLevelPlaceActorsPanel::EPlaceActorCategory::Basic:
-        return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Basic")).Get();
+        return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.PlaceActors.Basic")).Get();
     case FLevelPlaceActorsPanel::EPlaceActorCategory::Text:
-        return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.ScreenText")).Get();
+        return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ScreenText")).Get();
     case FLevelPlaceActorsPanel::EPlaceActorCategory::UI:
-        return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.ToolIcon.WorldSpace")).Get();
+        return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.ToolIcon.WorldSpace")).Get();
     case FLevelPlaceActorsPanel::EPlaceActorCategory::Lights:
-        return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Lights")).Get();
+        return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.PlaceActors.Lights")).Get();
     case FLevelPlaceActorsPanel::EPlaceActorCategory::Shapes:
-        return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.Shapes")).Get();
+        return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.PlaceActors.Shapes")).Get();
     case FLevelPlaceActorsPanel::EPlaceActorCategory::VFX:
-        return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.PlaceActors.VFX")).Get();
+        return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.PlaceActors.VFX")).Get();
     default:
         return nullptr;
     }
@@ -68,7 +68,7 @@ ID3D11ShaderResourceView *GetPlaceActorEntryIcon(const FEntry &Entry)
     {
         return nullptr;
     }
-    return FResourceManager::Get().FindLoadedTexture(GetEditorPathResource(Entry.IconKey)).Get();
+    return FResourceManager::Get().FindLoadedTexture(GetIconResourcePath(Entry.IconKey)).Get();
 }
 
 bool DrawSearchInputWithIcon(const char *Id, const char *Hint, char *Buffer, size_t BufferSize)
@@ -87,7 +87,7 @@ bool DrawSearchInputWithIcon(const char *Id, const char *Hint, char *Buffer, siz
     ImGui::PopStyleVar(3);
 
     if (ID3D11ShaderResourceView *SearchIcon =
-            FResourceManager::Get().FindLoadedTexture(GetEditorPathResource("Editor.Icon.Search")).Get())
+            FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.Search")).Get())
     {
         const ImVec2 Min = ImGui::GetItemRectMin();
         const float IconSize = ImGui::GetFrameHeight() - 12.0f;
@@ -167,16 +167,16 @@ void FLevelPlaceActorsPanel::Render(float DeltaTime)
     }
 
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.PlaceActors";
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Place Actors";
     PanelDesc.StableId = "LevelPlaceActorsPanel";
     PanelDesc.IconKey = PanelIconKey;
     PanelDesc.bClosable = true;
     PanelDesc.bOpen = &Settings.Panels.bPlaceActors;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -206,7 +206,7 @@ void FLevelPlaceActorsPanel::Render(float DeltaTime)
 
     ImGui::PopStyleColor(3);
     ImGui::PopStyleVar(3);
-    FEditorPanel::End();
+    FPanel::End();
 }
 
 void FLevelPlaceActorsPanel::RenderCategorySidebar()

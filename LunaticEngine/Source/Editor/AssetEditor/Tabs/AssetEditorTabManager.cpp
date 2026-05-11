@@ -1,5 +1,5 @@
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/Panel.h"
 
 #include "AssetEditor/IAssetEditor.h"
 #include "AssetEditor/Tabs/AssetEditorTab.h"
@@ -124,8 +124,9 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 
         bool bOpen = true;
         const std::string StableId = std::string("AssetEditorTab_") + std::to_string(Index);
-        FEditorPanelDesc PanelDesc;
-        PanelDesc.DisplayName = Tab->GetTitle();
+        const std::string TabTitle = Tab->GetTitle();
+        FPanelDesc PanelDesc;
+        PanelDesc.DisplayName = TabTitle.c_str();
         PanelDesc.StableId = StableId.c_str();
         PanelDesc.IconKey = "Editor.Icon.Panel.Asset";
         PanelDesc.DockspaceId = DockspaceId;
@@ -133,7 +134,7 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
         PanelDesc.bOpen = &bOpen;
         PanelDesc.WindowFlags = ImGuiWindowFlags_NoCollapse;
 
-        if (FEditorPanel::Begin(PanelDesc))
+        if (FPanel::Begin(PanelDesc))
         {
             if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
             {
@@ -142,7 +143,7 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 
             Tab->Render(DeltaTime);
         }
-        FEditorPanel::End();
+        FPanel::End();
 
         if (!bOpen)
         {
@@ -184,6 +185,13 @@ IAssetEditor *FAssetEditorTabManager::GetActiveEditor() const
     }
 
     return Tabs[ActiveTabIndex]->GetEditor();
+}
+
+
+FEditorViewportClient *FAssetEditorTabManager::GetActiveViewportClient() const
+{
+    IAssetEditor *Editor = GetActiveEditor();
+    return Editor ? Editor->GetActiveViewportClient() : nullptr;
 }
 
 void FAssetEditorTabManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const

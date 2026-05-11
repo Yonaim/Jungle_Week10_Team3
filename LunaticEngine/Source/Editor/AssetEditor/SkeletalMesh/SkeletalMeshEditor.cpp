@@ -1,6 +1,6 @@
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditor.h"
 
-#include "Common/UI/EditorDockLayoutUtils.h"
+#include "Common/UI/Docking/DockLayoutUtils.h"
 #include "Core/Notification.h"
 #include "EditorEngine.h"
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -15,6 +15,15 @@
 namespace
 {
 uint32 GNextSkeletalMeshEditorId = 1;
+
+std::string MakeAssetTabTitle(const std::filesystem::path &AssetPath, const char *FallbackName)
+{
+    if (!AssetPath.empty())
+    {
+        return FPaths::ToUtf8(AssetPath.filename().wstring());
+    }
+    return FallbackName ? FallbackName : "Asset";
+}
 }
 
 void FSkeletalMeshEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
@@ -110,8 +119,18 @@ void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
 
     RenderPanelsInternal(DeltaTime, DockspaceId);
 
-    bCapturingInput = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) ||
-                      ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
+    FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient();
+    bCapturingInput = PreviewClient && (PreviewClient->IsHovered() || PreviewClient->IsActive());
+}
+
+FEditorViewportClient *FSkeletalMeshEditor::GetActiveViewportClient()
+{
+    if (!bOpen || !bPreviewPanelOpen)
+    {
+        return nullptr;
+    }
+
+    return PreviewViewport.GetViewportClient();
 }
 
 void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients)
@@ -129,9 +148,12 @@ void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *>
 
 void FSkeletalMeshEditor::BuildWindowMenu()
 {
-    ImGui::Checkbox("Preview Viewport", &bPreviewPanelOpen);
-    ImGui::Checkbox("Skeleton Tree", &bSkeletonTreePanelOpen);
-    ImGui::Checkbox("Details", &bDetailsPanelOpen);
+    if (ImGui::MenuItem("Preview Viewport", nullptr, bPreviewPanelOpen))
+        bPreviewPanelOpen = !bPreviewPanelOpen;
+    if (ImGui::MenuItem("Skeleton Tree", nullptr, bSkeletonTreePanelOpen))
+        bSkeletonTreePanelOpen = !bSkeletonTreePanelOpen;
+    if (ImGui::MenuItem("Asset Details", nullptr, bDetailsPanelOpen))
+        bDetailsPanelOpen = !bDetailsPanelOpen;
 
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Skeletal Mesh Editor Layout"))
@@ -167,10 +189,10 @@ std::string FSkeletalMeshEditor::MakePanelStableId(const char *PanelName) const
     return std::string("SkeletalMeshEditor_") + std::to_string(EditorInstanceId) + "_" + PanelName;
 }
 
-FEditorPanelDesc FSkeletalMeshEditor::MakePanelDesc(const char *DisplayName, const char *StableName, const char *IconKey,
+FPanelDesc FSkeletalMeshEditor::MakePanelDesc(const char *DisplayName, const char *StableName, const char *IconKey,
                                                     ImGuiWindowFlags Flags) const
 {
-    FEditorPanelDesc Desc;
+    FPanelDesc Desc;
     Desc.DisplayName = DisplayName;
     Desc.IconKey = IconKey;
     Desc.WindowFlags = Flags;
@@ -192,24 +214,25 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
 
     const std::string SkeletonId = MakePanelStableId("SkeletonTree");
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
-    const std::string DetailsId = MakePanelStableId("Details");
+    const std::string DetailsId = MakePanelStableId("AssetDetails");
 
-    FEditorPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
+    FPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
     SkeletonDesc.StableId = SkeletonId.c_str();
     SkeletonDesc.bOpen = &bSkeletonTreePanelOpen;
 
-    FEditorPanelDesc PreviewDesc = MakePanelDesc("Preview Viewport", "PreviewViewport", "Editor.Icon.Panel.Viewport");
+    const std::string PreviewTitle = MakeAssetTabTitle(EditingAssetPath, "Preview Viewport");
+    FPanelDesc PreviewDesc = MakePanelDesc(PreviewTitle.c_str(), "PreviewViewport", "Editor.Icon.Panel.Viewport");
     PreviewDesc.StableId = PreviewId.c_str();
 
-    FEditorPanelDesc DetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
+    FPanelDesc DetailsDesc = MakePanelDesc("Asset Details", "AssetDetails", "Editor.Icon.Panel.Details");
     DetailsDesc.StableId = DetailsId.c_str();
 
     FAssetPreviewDockLayoutDesc LayoutDesc;
-    LayoutDesc.CenterWindow = FEditorPanel::MakeTitle(PreviewDesc);
-    LayoutDesc.RightTopWindow = FEditorPanel::MakeTitle(SkeletonDesc);
-    LayoutDesc.RightBottomWindow = FEditorPanel::MakeTitle(DetailsDesc);
+    LayoutDesc.CenterWindow = FPanel::MakeTitle(PreviewDesc);
+    LayoutDesc.RightTopWindow = FPanel::MakeTitle(SkeletonDesc);
+    LayoutDesc.RightBottomWindow = FPanel::MakeTitle(DetailsDesc);
 
-    FEditorDockLayoutUtils::DockAssetPreviewLayout(DockspaceId, LayoutDesc);
+    FDockLayoutUtils::DockAssetPreviewLayout(DockspaceId, LayoutDesc);
 }
 
 void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId)
@@ -218,13 +241,14 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
 
     const std::string SkeletonId = MakePanelStableId("SkeletonTree");
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
-    const std::string DetailsId = MakePanelStableId("Details");
+    const std::string DetailsId = MakePanelStableId("AssetDetails");
 
-    FEditorPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
+    FPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.Outliner");
     SkeletonDesc.StableId = SkeletonId.c_str();
     SkeletonDesc.bOpen = &bSkeletonTreePanelOpen;
 
-    FEditorPanelDesc PreviewDesc = MakePanelDesc("Preview Viewport", "PreviewViewport", "Editor.Icon.Panel.Viewport",
+    const std::string PreviewTitle = MakeAssetTabTitle(EditingAssetPath, "Preview Viewport");
+    FPanelDesc PreviewDesc = MakePanelDesc(PreviewTitle.c_str(), "PreviewViewport", "Editor.Icon.Panel.Viewport",
                                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                                                      ImGuiWindowFlags_NoScrollWithMouse);
     PreviewDesc.StableId = PreviewId.c_str();
@@ -232,7 +256,7 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     PreviewDesc.bApplySideInset = false;
     PreviewDesc.bApplyBottomInset = false;
 
-    FEditorPanelDesc DetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
+    FPanelDesc DetailsDesc = MakePanelDesc("Asset Details", "AssetDetails", "Editor.Icon.Panel.Details");
     DetailsDesc.StableId = DetailsId.c_str();
     DetailsDesc.bOpen = &bDetailsPanelOpen;
 
@@ -246,6 +270,6 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     }
     if (bDetailsPanelOpen)
     {
-        DetailsPanel.Render(EditingAsset, EditingAssetPath, State, DetailsDesc);
+        AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, EditingAssetPath, State, DetailsDesc);
     }
 }

@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <string>
 
 /**
  * Asset Editor 안에서 열린 문서 하나를 나타내는 래퍼.
@@ -21,7 +22,7 @@ class FAssetEditorTab
     explicit FAssetEditorTab(std::unique_ptr<IAssetEditor> InEditor);
 
     IAssetEditor *GetEditor() const;
-    const char *GetTitle() const;
+    std::string GetTitle() const;
     const std::filesystem::path &GetAssetPath() const;
 
     void Tick(float DeltaTime);

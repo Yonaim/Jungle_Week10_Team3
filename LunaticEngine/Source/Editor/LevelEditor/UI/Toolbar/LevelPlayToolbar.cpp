@@ -1,6 +1,6 @@
-﻿#include "LevelEditor/UI/Toolbar/LevelPlayToolbar.h"
+#include "LevelEditor/UI/Toolbar/LevelPlayToolbar.h"
 
-#include "Common/UI/EditorAccentColor.h"
+#include "Common/UI/Style/AccentColor.h"
 #include "EditorEngine.h"
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "ImGui/imgui.h"
@@ -92,8 +92,8 @@ void FLevelPlayToolbar::Render(float Width)
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 7.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 7.0f));
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.35f, 0.39f, 0.9f));
 
     auto DrawIconButton = [&](const char *Id, ID3D11ShaderResourceView *Icon, const char *FallbackLabel, bool bDisabled,
@@ -149,7 +149,7 @@ void FLevelPlayToolbar::Render(float Width)
 
     const ImVec4 PlayTint = bPlaying ? ImVec4(1.0f, 1.0f, 1.0f, 0.7f) : ImVec4(0.30f, 0.90f, 0.35f, 1.0f);
     const ImVec4 PauseTint =
-        (bPlaying && bPaused) ? EditorAccentColor::Value : ImVec4(1.0f, 1.0f, 1.0f, bPlaying ? 1.0f : 0.7f);
+        (bPlaying && bPaused) ? UIAccentColor::Value : ImVec4(1.0f, 1.0f, 1.0f, bPlaying ? 1.0f : 0.7f);
     const ImVec4 StopTint = bPlaying ? ImVec4(0.95f, 0.28f, 0.25f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
     const float PlayGroupWidth =
         GroupPaddingX * 2.0f + GroupInnerPadding * 2.0f + ButtonSize * 3.0f + ButtonSpacing * 2.0f;

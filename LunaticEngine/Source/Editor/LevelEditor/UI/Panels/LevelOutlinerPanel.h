@@ -1,12 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreTypes.h"
-#include "Common/UI/EditorUIElement.h"
+#include "Common/UI/Base/UIElement.h"
 
 
 class AActor;
 
-class FLevelOutlinerPanel : public FEditorUIElement
+class FLevelOutlinerPanel : public FUIElement
 {
   public:
     virtual void Init(UEditorEngine *InEditorEngine) override;

@@ -59,14 +59,16 @@ struct FLevelEditorDockLayoutDesc
     std::string RightTopWindow;
     std::string RightBottomWindow;
     std::string BottomWindow;
+    std::string BottomRightWindow;
 
     float BottomRatio = 0.24f;
     float LeftRatio = 0.20f;
     float RightRatio = 0.24f;
     float RightBottomRatio = 0.52f;
+    float BottomRightRatio = 0.42f;
 };
 
-class FEditorDockLayoutUtils
+class FDockLayoutUtils
 {
   public:
     static void ClearDockspaceForAssetEditor(ImGuiID DockspaceId)
@@ -165,6 +167,11 @@ class FEditorDockLayoutUtils
 
         ImGuiID MainId = DockspaceId;
         ImGuiID BottomId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Down, Desc.BottomRatio, nullptr, &MainId);
+        ImGuiID BottomRightId = 0;
+        if (!Desc.BottomRightWindow.empty())
+        {
+            BottomRightId = ImGui::DockBuilderSplitNode(BottomId, ImGuiDir_Right, Desc.BottomRightRatio, nullptr, &BottomId);
+        }
         ImGuiID LeftId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, Desc.LeftRatio, nullptr, &MainId);
         ImGuiID RightColumnId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Right, Desc.RightRatio, nullptr, &MainId);
         ImGuiID RightBottomId = ImGui::DockBuilderSplitNode(RightColumnId, ImGuiDir_Down, Desc.RightBottomRatio, nullptr, &RightColumnId);
@@ -190,6 +197,10 @@ class FEditorDockLayoutUtils
         if (!Desc.BottomWindow.empty())
         {
             ImGui::DockBuilderDockWindow(Desc.BottomWindow.c_str(), BottomId);
+        }
+        if (BottomRightId != 0 && !Desc.BottomRightWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.BottomRightWindow.c_str(), BottomRightId);
         }
 
         ImGui::DockBuilderFinish(DockspaceId);

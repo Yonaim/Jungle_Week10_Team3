@@ -1,8 +1,8 @@
 #include "LevelEditor/UI/Area/LevelViewportArea.h"
 
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/EditorPanel.h"
-#include "Common/UI/EditorViewportToolbar.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Panels/Panel.h"
+#include "Common/UI/Viewport/ViewportToolbar.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "ImGui/imgui.h"
@@ -31,22 +31,22 @@ void FLevelViewportArea::Render(float DeltaTime)
                         ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 1.0f));
     constexpr const char *PanelIconKey = "Editor.Icon.Panel.Viewport";
     const std::string StableId = std::string("LevelViewportArea_") + std::to_string(Index);
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = WindowName.c_str();
     PanelDesc.StableId = StableId.c_str();
     PanelDesc.IconKey = PanelIconKey;
     PanelDesc.WindowFlags = ImGuiWindowFlags_None;
     PanelDesc.bApplySideInset = false;
     PanelDesc.bApplyBottomInset = false;
-    const bool bIsOpen = FEditorPanel::Begin(PanelDesc);
+    const bool bIsOpen = FPanel::Begin(PanelDesc);
     if (!bIsOpen)
     {
-        FEditorPanel::End();
+        FPanel::End();
         ImGui::PopStyleVar(2);
         return;
     }
 
-    if (FEditorViewportToolbar::Begin("##ViewportToolbar"))
+    if (FViewportToolbar::Begin("##ViewportToolbar"))
     {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1.0f);
         float ButtonWidth = ImGui::CalcTextSize("Split").x + ImGui::GetStyle().FramePadding.x * 2.0f;
@@ -63,7 +63,7 @@ void FLevelViewportArea::Render(float DeltaTime)
             }
         }
     }
-    FEditorViewportToolbar::End();
+    FViewportToolbar::End();
 
     // 뷰포트 패널 위에서 마우스 클릭 시 활성 뷰포트 전환
     if (ViewportClient && EditorEngine)
@@ -103,6 +103,6 @@ void FLevelViewportArea::Render(float DeltaTime)
         }
     }
 
-    FEditorPanel::End();
+    FPanel::End();
     ImGui::PopStyleVar(2);
 }

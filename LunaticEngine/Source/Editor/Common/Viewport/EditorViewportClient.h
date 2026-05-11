@@ -72,6 +72,7 @@ class FEditorViewportClient : public FViewportClient
 
     virtual void UpdateLayoutRect();
     virtual void RenderViewportImage(bool bIsActiveViewport);
+    virtual const char *GetViewportTooltipBarText() const { return nullptr; }
 
     /**
      * 실제 렌더 대상이 있는 ViewportClient만 true를 반환한다.
@@ -82,6 +83,8 @@ class FEditorViewportClient : public FViewportClient
     bool GetCursorViewportPosition(uint32 &OutX, uint32 &OutY) const;
 
   protected:
+    void RenderViewportTooltipBar() const;
+
     FWindowsWindow *Window = nullptr;
     FViewport *Viewport = nullptr;
     SWindow *LayoutWindow = nullptr;

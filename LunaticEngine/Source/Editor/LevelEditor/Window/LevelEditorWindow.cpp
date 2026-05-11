@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Window/LevelEditorWindow.h"
+#include "LevelEditor/Window/LevelEditorWindow.h"
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
@@ -20,19 +20,19 @@
 #include "Render/Pipeline/Renderer.h"
 
 #include "Common/File/EditorFileUtils.h"
-#include "Common/ImGui/EditorImGuiSystem.h"
-#include "Common/UI/EditorAccentColor.h"
-#include "Common/UI/EditorDockLayoutUtils.h"
-#include "Common/UI/EditorPanel.h"
-#include "Common/UI/EditorPanelTitleUtils.h"
-#include "Common/UI/NotificationToast.h"
+#include "Common/UI/ImGui/EditorImGuiSystem.h"
+#include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Docking/DockLayoutUtils.h"
+#include "Common/UI/Panels/Panel.h"
+#include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Notifications/NotificationToast.h"
 #include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/GameInstance.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/Level.h"
-#include "MainFrame/ImGuiSetting.h"
+#include "Common/UI/ImGui/EditorImGuiStyleSettings.h"
 #include "Object/UClass.h"
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
@@ -150,7 +150,7 @@ namespace
         Style.Colors[ImGuiCol_FrameBg] = UnrealDockEmpty;
         Style.Colors[ImGuiCol_FrameBgHovered] = UnrealPanelSurfaceHover;
         Style.Colors[ImGuiCol_FrameBgActive] = UnrealPanelSurfaceActive;
-        Style.Colors[ImGuiCol_CheckMark] = EditorAccentColor::Value;
+        Style.Colors[ImGuiCol_CheckMark] = UIAccentColor::Value;
         Style.Colors[ImGuiCol_Button] = UnrealPanelSurface;
         Style.Colors[ImGuiCol_ButtonHovered] = UnrealPanelSurfaceHover;
         Style.Colors[ImGuiCol_ButtonActive] = UnrealPanelSurfaceActive;
@@ -198,11 +198,11 @@ namespace
 
     std::string MakeLevelPanelTitle(const char *DisplayName, const char *StableId, const char *IconKey = nullptr)
     {
-        FEditorPanelDesc Desc;
+        FPanelDesc Desc;
         Desc.DisplayName = DisplayName;
         Desc.StableId = StableId;
         Desc.IconKey = IconKey;
-        return FEditorPanel::MakeTitle(Desc);
+        return FPanel::MakeTitle(Desc);
     }
 
 } // namespace
@@ -223,8 +223,8 @@ void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer,
     ContentBrowser.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
     ShadowMapDebugPanel.Init(InEditorEngine);
 
-    const std::filesystem::path ImGuiLayoutPath = std::filesystem::path(FPaths::SettingsDir()) / L"imgui.ini";
-    bPendingDefaultDockLayout = !std::filesystem::exists(ImGuiLayoutPath);
+    // 시작 시에는 사용자의 ImGui ini / 이전 Dock 레이아웃을 사용하지 않고 Level Editor 기본 레이아웃을 강제 적용한다.
+    bPendingDefaultDockLayout = true;
 }
 
 void FLevelEditorWindow::Release()
@@ -258,15 +258,17 @@ void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
     Settings.Panels.bOutliner = true;
     Settings.Panels.bPlaceActors = true;
     Settings.Panels.bContentBrowser = true;
+    Settings.Panels.bConsole = true;
 
     FLevelEditorDockLayoutDesc LayoutDesc;
     LayoutDesc.LeftWindow = MakeLevelPanelTitle("Place Actors", "LevelPlaceActorsPanel", "Editor.Icon.Panel.PlaceActors");
-    LayoutDesc.CenterWindow = MakeLevelPanelTitle("Viewport", "LevelViewportArea_0", "Editor.Icon.Panel.Viewport");
+    LayoutDesc.CenterWindow = MakeLevelPanelTitle("Viewport", "LevelViewport", "Editor.Icon.Panel.Viewport");
     LayoutDesc.RightTopWindow = MakeLevelPanelTitle("Outliner", "LevelOutlinerPanel", "Editor.Icon.Panel.Outliner");
     LayoutDesc.RightBottomWindow = MakeLevelPanelTitle("Details", "LevelDetailsPanel", "Editor.Icon.Panel.Details");
     LayoutDesc.BottomWindow = MakeLevelPanelTitle("Content Browser", "LevelContentBrowser", "Editor.Icon.Panel.ContentBrowser");
+    LayoutDesc.BottomRightWindow = MakeLevelPanelTitle("Console", "LevelConsolePanel", "Editor.Icon.Panel.Console");
 
-    FEditorDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
+    FDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
     bPendingDefaultDockLayout = false;
 }
 
@@ -361,13 +363,15 @@ void FLevelEditorWindow::FlushPendingMenuAction()
 
 void FLevelEditorWindow::RenderContent(float DeltaTime)
 {
-    EditorPanelTitleUtils::BeginPanelDecorationFrame();
+    PanelTitleUtils::BeginPanelDecorationFrame();
 
     FEditorMenuBarContext MenuContext{};
     MenuContext.Id = "##LevelEditorMenuBar";
     MenuContext.Window = Window;
     MenuContext.EditorEngine = EditorEngine;
-    MenuContext.MenuProvider = this;
+    MenuContext.MenuProvider = (EditorEngine && EditorEngine->IsAssetEditorContextActive())
+                                  ? static_cast<IEditorMenuProvider *>(&EditorEngine->GetAssetEditorManager().GetAssetEditorWindow())
+                                  : static_cast<IEditorMenuProvider *>(this);
     MenuContext.TitleBarFont = ImGuiSystem ? ImGuiSystem->GetTitleBarFont() : nullptr;
     MenuContext.WindowControlIconFont = ImGuiSystem ? ImGuiSystem->GetWindowControlIconFont() : nullptr;
     MenuContext.bShowProjectSettingsMenu = true;
@@ -439,7 +443,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     ImGui::PopStyleVar(4);
 
     // 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
-    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
     if (EditorEngine && Settings.Panels.bViewport)
     {
         SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
@@ -453,7 +457,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
 
     if (!bHideEditorWindows && Settings.Panels.bImGuiSettings)
     {
-        ImGuiSetting::ShowSetting();
+        FEditorImGuiStyleSettings::ShowPanel(&Settings.Panels.bImGuiSettings);
     }
 
     if (!bHideEditorWindows && Settings.Panels.bConsole)
@@ -625,17 +629,26 @@ void FLevelEditorWindow::BuildWindowMenu()
         ImGui::Separator();
     }
 
-    ImGui::Checkbox("Viewport", &Settings.Panels.bViewport);
+    if (ImGui::MenuItem("Viewport", nullptr, Settings.Panels.bViewport))
+        Settings.Panels.bViewport = !Settings.Panels.bViewport;
     ImGui::Separator();
-    ImGui::Checkbox("Console", &Settings.Panels.bConsole);
-    ImGui::Checkbox("Details", &Settings.Panels.bDetails);
-    ImGui::Checkbox("Outliner", &Settings.Panels.bOutliner);
-    ImGui::Checkbox("Place Actors", &Settings.Panels.bPlaceActors);
-    ImGui::Checkbox("Stat Profiler", &Settings.Panels.bStats);
-    ImGui::Checkbox("Content Browser", &Settings.Panels.bContentBrowser);
-    ImGui::Checkbox("Shadow Map Debug", &Settings.Panels.bShadowMapDebug);
+    if (ImGui::MenuItem("Console", nullptr, Settings.Panels.bConsole))
+        Settings.Panels.bConsole = !Settings.Panels.bConsole;
+    if (ImGui::MenuItem("Details", nullptr, Settings.Panels.bDetails))
+        Settings.Panels.bDetails = !Settings.Panels.bDetails;
+    if (ImGui::MenuItem("Outliner", nullptr, Settings.Panels.bOutliner))
+        Settings.Panels.bOutliner = !Settings.Panels.bOutliner;
+    if (ImGui::MenuItem("Place Actors", nullptr, Settings.Panels.bPlaceActors))
+        Settings.Panels.bPlaceActors = !Settings.Panels.bPlaceActors;
+    if (ImGui::MenuItem("Stat Profiler", nullptr, Settings.Panels.bStats))
+        Settings.Panels.bStats = !Settings.Panels.bStats;
+    if (ImGui::MenuItem("Content Browser", nullptr, Settings.Panels.bContentBrowser))
+        Settings.Panels.bContentBrowser = !Settings.Panels.bContentBrowser;
+    if (ImGui::MenuItem("Shadow Map Debug", nullptr, Settings.Panels.bShadowMapDebug))
+        Settings.Panels.bShadowMapDebug = !Settings.Panels.bShadowMapDebug;
     ImGui::Separator();
-    ImGui::Checkbox("ImGuiSetting", &Settings.Panels.bImGuiSettings);
+    if (ImGui::MenuItem("ImGui Style Settings", nullptr, Settings.Panels.bImGuiSettings))
+        Settings.Panels.bImGuiSettings = !Settings.Panels.bImGuiSettings;
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Default Layout"))
     {
@@ -772,7 +785,7 @@ void FLevelEditorWindow::BuildCustomMenus()
 
 FString FLevelEditorWindow::GetFrameTitle() const
 {
-    return GetSceneTitleLabel(EditorEngine);
+    return FString("Level Editor | ") + GetSceneTitleLabel(EditorEngine);
 }
 
 FString FLevelEditorWindow::GetFrameTitleTooltip() const
@@ -782,7 +795,7 @@ FString FLevelEditorWindow::GetFrameTitleTooltip() const
         return EditorEngine->GetCurrentLevelFilePath();
     }
 
-    return "Unsaved Scene";
+    return "Level Editor | Unsaved Scene";
 }
 
 void FLevelEditorWindow::Update()
@@ -1118,9 +1131,9 @@ void FLevelEditorWindow::RenderProjectSettingsWindow()
     if (ProjectSettings.Game.WindowHeight < 240)
         ProjectSettings.Game.WindowHeight = 240;
 
-    ImGui::PushStyleColor(ImGuiCol_Button, EditorAccentColor::WithAlpha(0.92f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, EditorAccentColor::Value);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, EditorAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::WithAlpha(0.92f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.97f, 0.98f, 1.0f, 1.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 8.0f));

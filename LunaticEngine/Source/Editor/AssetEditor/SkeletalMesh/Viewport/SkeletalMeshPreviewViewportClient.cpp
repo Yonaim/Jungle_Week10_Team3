@@ -264,6 +264,11 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
     }
 }
 
+const char *FSkeletalMeshPreviewViewportClient::GetViewportTooltipBarText() const
+{
+    return nullptr;
+}
+
 void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
 {
     if (!PreviewCamera)

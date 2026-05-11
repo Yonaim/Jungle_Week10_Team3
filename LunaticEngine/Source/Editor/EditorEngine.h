@@ -5,7 +5,7 @@
 #include "Engine/Serialization/SceneSaveManager.h"
 
 #include "AssetTools/AssetImportManager.h"
-#include "Common/ImGui/EditorImGuiSystem.h"
+#include "Common/UI/ImGui/EditorImGuiSystem.h"
 #include "LevelEditor/LevelEditor.h"
 #include "LevelEditor/PIE/LevelPIETypes.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
@@ -22,6 +22,12 @@ class FOverlayStatSystem;
 class AActor;
 class UGameViewportClient;
 struct FPerspectiveCameraData;
+
+enum class EEditorContextType
+{
+    LevelEditor,
+    AssetEditor
+};
 
 class UEditorEngine : public UEngine
 {
@@ -50,6 +56,13 @@ class UEditorEngine : public UEngine
     UGizmoComponent  *GetGizmo() const { return GetSelectionManager().GetGizmo(); }
     UCameraComponent *GetCamera() const;
     bool              FocusActorInViewport(AActor *Actor);
+
+    void SetActiveEditorContext(EEditorContextType InContextType);
+    EEditorContextType GetActiveEditorContext() const { return ActiveEditorContextType; }
+    bool IsLevelEditorContextActive() const { return ActiveEditorContextType == EEditorContextType::LevelEditor; }
+    bool IsAssetEditorContextActive() const { return ActiveEditorContextType == EEditorContextType::AssetEditor; }
+    FEditorViewportClient *GetActiveEditorViewportClient() const;
+    bool IsMouseOverActiveViewport() const;
 
     void           ClearScene();
     void           ResetViewport();
@@ -114,7 +127,7 @@ class UEditorEngine : public UEngine
     }
     bool ShouldRenderViewportClient(const FLevelEditorViewportClient *ViewportClient) const
     {
-        return LevelEditor.GetViewportLayout().ShouldRenderViewportClient(ViewportClient);
+        return IsLevelEditorContextActive() && LevelEditor.GetViewportLayout().ShouldRenderViewportClient(ViewportClient);
     }
 
     void SetActiveViewport(FLevelEditorViewportClient *InClient) { LevelEditor.GetViewportLayout().SetActiveViewport(InClient); }
@@ -170,7 +183,13 @@ class UEditorEngine : public UEngine
     const FEditorImGuiSystem &GetImGuiSystem() const { return ImGuiSystem; }
 
     bool IsAssetEditorCapturingInput() const { return AssetEditorManager.IsCapturingInput(); }
-    void CollectAssetViewportClients(TArray<FEditorViewportClient *> &OutClients) const { AssetEditorManager.CollectViewportClients(OutClients); }
+    void CollectAssetViewportClients(TArray<FEditorViewportClient *> &OutClients) const
+    {
+        if (IsAssetEditorContextActive())
+        {
+            AssetEditorManager.CollectViewportClients(OutClients);
+        }
+    }
     FAssetEditorManager &GetAssetEditorManager() { return AssetEditorManager; }
     const FAssetEditorManager &GetAssetEditorManager() const { return AssetEditorManager; }
 
@@ -188,6 +207,8 @@ class UEditorEngine : public UEngine
     void              RestoreTrackedFolderOrder(const TArray<FString> &OrderedFolders);
     void              RestoreTrackedSelection(const TArray<uint32> &SelectedUUIDs);
     void              InvalidateTrackedSceneSnapshotCache();
+
+    EEditorContextType ActiveEditorContextType = EEditorContextType::LevelEditor;
 
     FLevelEditor       LevelEditor;
     FEditorImGuiSystem ImGuiSystem;

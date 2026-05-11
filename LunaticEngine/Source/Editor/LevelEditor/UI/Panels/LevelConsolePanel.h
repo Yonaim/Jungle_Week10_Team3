@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/CoreTypes.h"
 #include "Core/Log.h"
 #include <array>
@@ -10,7 +10,7 @@
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
 
-#include "Common/UI/EditorUIElement.h"
+#include "Common/UI/Base/UIElement.h"
 
 struct FConsoleLogEntry
 {
@@ -51,7 +51,7 @@ class FConsoleLogOutputDevice : public ILogOutputDevice
     friend class FLevelConsolePanel;
 };
 
-class FLevelConsolePanel : public FEditorUIElement
+class FLevelConsolePanel : public FUIElement
 {
   public:
     static void AddLog(const char *fmt, ...);

@@ -147,6 +147,10 @@ bool FAssetEditorManager::OpenLoadedAsset(UObject *Asset, const std::filesystem:
     if (AssetEditorWindow.IsOpen() && AssetEditorWindow.ActivateTabByAssetPath(NormalizedPath))
     {
         AssetEditorWindow.Show();
+        if (EditorEngine)
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+        }
         return true;
     }
 
@@ -168,6 +172,10 @@ bool FAssetEditorManager::OpenLoadedAsset(UObject *Asset, const std::filesystem:
 
     AssetEditorWindow.OpenEditorTab(std::move(Editor));
     AssetEditorWindow.Show();
+    if (EditorEngine)
+    {
+        EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+    }
     return true;
 }
 
@@ -255,6 +263,10 @@ bool FAssetEditorManager::ShowAssetEditorWindow()
 {
     AssetEditorWindow.Initialize(EditorEngine, this);
     AssetEditorWindow.Show();
+    if (EditorEngine)
+    {
+        EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+    }
     return true;
 }
 
@@ -272,6 +284,10 @@ bool FAssetEditorManager::CreateCameraModifierStackAsset()
 
     AssetEditorWindow.OpenEditorTab(std::move(Editor));
     AssetEditorWindow.Show();
+    if (EditorEngine)
+    {
+        EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+    }
     return true;
 }
 
@@ -283,11 +299,21 @@ bool FAssetEditorManager::SaveActiveEditor()
 void FAssetEditorManager::CloseActiveEditor()
 {
     AssetEditorWindow.CloseActiveTab();
+    if (EditorEngine && !AssetEditorWindow.IsOpen())
+    {
+        EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+    }
 }
 
 bool FAssetEditorManager::IsCapturingInput() const
 {
     return AssetEditorWindow.IsCapturingInput();
+}
+
+
+FEditorViewportClient *FAssetEditorManager::GetActiveViewportClient() const
+{
+    return AssetEditorWindow.GetActiveViewportClient();
 }
 
 void FAssetEditorManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const

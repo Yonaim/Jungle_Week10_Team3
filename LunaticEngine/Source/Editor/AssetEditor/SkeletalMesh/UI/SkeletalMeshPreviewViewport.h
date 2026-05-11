@@ -2,7 +2,7 @@
 
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
 #include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/Panel.h"
 #include "Viewport/Viewport.h"
 #include "UI/SWindow.h"
 
@@ -37,7 +37,7 @@ class FSkeletalMeshPreviewViewport
 
     void Tick(float DeltaTime);
     void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime,
-                const FEditorPanelDesc &PanelDesc);
+                const FPanelDesc &PanelDesc);
 
     FSkeletalMeshPreviewViewportClient *GetViewportClient() { return PreviewViewportClient.get(); }
 

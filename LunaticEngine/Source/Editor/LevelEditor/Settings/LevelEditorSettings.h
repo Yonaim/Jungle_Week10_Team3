@@ -68,6 +68,9 @@ public:
 	void SaveToFile(const FString& Path) const;
 	void LoadFromFile(const FString& Path);
 
+	// 시작 시 사용자 설정에서 카메라/경로는 복원하되, Editor 레이아웃과 패널 표시 상태는 기본값으로 되돌린다.
+	void ResetEditorLayoutToDefault();
+
 	static FString GetDefaultSettingsPath() { return FPaths::ToUtf8(FPaths::SettingsFilePath()); }
 };
 

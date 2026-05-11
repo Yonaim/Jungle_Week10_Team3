@@ -1,5 +1,5 @@
 #include "LevelMaterialInspectorPanel.h"
-#include "Common/UI/EditorPanel.h"
+#include "Common/UI/Panels/Panel.h"
 #include "LevelEditor/UI/Panels/ContentBrowser/ContentItem.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 #include "Engine/Materials/Material.h"
@@ -23,18 +23,18 @@ void FEditorMaterialInspector::Render()
         return;
     }
 
-    FEditorPanelDesc PanelDesc;
+    FPanelDesc PanelDesc;
     PanelDesc.DisplayName = "Material Inspector";
     PanelDesc.StableId = "LevelMaterialInspectorPanel";
     PanelDesc.IconKey = "Editor.Icon.Panel.Details";
-    bool bIsValid = FEditorPanel::Begin(PanelDesc);
+    bool bIsValid = FPanel::Begin(PanelDesc);
     bIsValid &= std::filesystem::exists(MaterialPath);
     bIsValid &= MaterialPath.extension() == ".mat";
     bIsValid &= (CachedMaterial != nullptr);
 
     if (!bIsValid)
     {
-        FEditorPanel::End();
+        FPanel::End();
         return;
     }
 
@@ -58,7 +58,7 @@ void FEditorMaterialInspector::Render()
     RenderShaderParameter();
     RenderTextureSection();
 
-    FEditorPanel::End();
+    FPanel::End();
 }
 
 void FEditorMaterialInspector::RenderPreview()
