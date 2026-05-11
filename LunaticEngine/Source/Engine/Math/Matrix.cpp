@@ -512,6 +512,13 @@ FVector FMatrix::GetScale() const
 	return FVector(ScaleX, ScaleY, ScaleZ);
 }
 
+float FMatrix::GetBasisDeterminant3x3() const
+{
+	return M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1])
+		- M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0])
+		+ M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+}
+
 void FMatrix::SetAxes(const FVector& Right, const FVector& Up, const FVector& Forward)
 {
 	M[0][0] = Right.X;   M[0][1] = Right.Y;   M[0][2] = Right.Z;   M[0][3] = 0.0f;

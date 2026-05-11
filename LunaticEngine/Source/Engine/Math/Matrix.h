@@ -108,6 +108,7 @@ struct FMatrix {
 	FVector GetEuler() const;
 	FVector GetLocation() const;
 	FVector GetScale() const;
+	float GetBasisDeterminant3x3() const;
 
 	// FQuat/FRotator 변환 (구현은 Quat.cpp/Rotator.cpp)
 	struct FQuat ToQuat() const;
