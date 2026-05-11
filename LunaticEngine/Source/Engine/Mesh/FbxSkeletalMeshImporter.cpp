@@ -611,10 +611,12 @@ void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
 					FbxNode* BoneNode = Cluster->GetLink();
 					if (!BoneNode) continue;
 
+					// FBoneInfo 정보 저장(임시값: 아래 Rebuild 함수에서 Hierarchy 반영해서 재계산)
 					// Cluster는 "해당 본이 어떤 Control Point에 얼마만큼 영향 주는지"를 제공한다.
 					// 본 이름 기반으로 엔진 Bone 배열 인덱스를 정규화한다.
 					int32 BoneIndex = FindOrAddBone(OutMesh, BoneNode, Cluster, BindGlobalMatrices);
 
+					// FSkinWeight 정보 저장
 					// Control Point 영향치를 코너 기반 엔진 정점으로 전파한다.
 					// (하나의 Control Point가 여러 엔진 정점으로 분화될 수 있음)
 					int CPCount = Cluster->GetControlPointIndicesCount();
@@ -647,8 +649,11 @@ void NormalizeSkinWeights(FSkeletalMesh& OutMesh)
 			}
 		}
 
+		// Skin이 없는 Rigid Mesh는 부모 본에 100% 영향되도록 처리한다.
 		BindRigidMeshesToParentBones(MeshNodes, MeshNodeVertices, OutMesh, BindGlobalMatrices);
+		// BindGlobalMatrices를 이용해 LocalBindTransform과 InverseBindPose 재구성
 		RebuildLocalBindTransforms(OutMesh, BindGlobalMatrices);
+		// Weight 합이 1이 되도록 정규화
 		NormalizeSkinWeights(OutMesh);
 	}
 
