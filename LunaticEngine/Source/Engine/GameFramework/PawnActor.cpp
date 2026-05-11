@@ -15,6 +15,11 @@ APawnActor::APawnActor()
 	bTickInEditor = true;
 }
 
+bool APawnActor::ShouldAutoPossessPlayer(int32 PlayerIndex) const
+{
+    return PlayerIndex == 0 && AutoPossessPlayer == EAutoPossessPlayer::Player0;
+}
+
 void APawnActor::BeginPlay()
 {
 	Super::BeginPlay();

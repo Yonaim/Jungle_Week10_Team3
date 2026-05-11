@@ -11,7 +11,7 @@ IMPLEMENT_CLASS(AGameModeBase, AActor)
 
 namespace
 {
-	APawnActor* FindFirstPlacedPawn(UWorld* World)
+	APawnActor* FindAutoPossessPawn(UWorld* World, int32 PlayerIndex)
 	{
 		if (!World)
 		{
@@ -21,7 +21,7 @@ namespace
 		for (AActor* Actor : World->GetActors())
 		{
 			APawnActor* Pawn = Cast<APawnActor>(Actor);
-			if (Pawn && IsAliveObject(Pawn))
+			if (Pawn && IsAliveObject(Pawn) && Pawn->ShouldAutoPossessPlayer(PlayerIndex))
 			{
 				return Pawn;
 			}
@@ -56,8 +56,9 @@ void AGameModeBase::StartPlay()
 		}
 	}
 
-	//  배치된 Pawn이 있으면 우선 Possess하고, 없을 때만 DefaultPawn을 스폰한다.
-	SpawnedPawn = FindFirstPlacedPawn(World);
+	//  AutoPossessPlayer == Player0인 배치 Pawn이 있으면 먼저 Possess한다.
+	//  없으면 GameMode의 DefaultPawnClass로 새 Pawn을 스폰한다.
+	SpawnedPawn = FindAutoPossessPawn(World, 0);
 	if (!SpawnedPawn && !DefaultPawnClassName.empty())
 	{
 		UObject* Obj = FObjectFactory::Get().Create(DefaultPawnClassName, World->GetCurrentLevel());
