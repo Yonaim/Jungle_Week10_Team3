@@ -1951,57 +1951,6 @@ void FLevelEditorViewportClient::EndUIScreenTranslateDrag(bool bCommitChange)
     }
 }
 
-
-void FLevelEditorViewportClient::SetViewportScreenRect(const FRect &InRect)
-{
-    ViewportScreenRect = InRect;
-
-    if (!Viewport)
-    {
-        return;
-    }
-
-    if (FProjectSettings::Get().Game.bLockWindowResolution)
-    {
-        const uint32 TargetW = (std::max)(320u, FProjectSettings::Get().Game.WindowWidth);
-        const uint32 TargetH = (std::max)(240u, FProjectSettings::Get().Game.WindowHeight);
-        if (Camera)
-        {
-            Camera->OnResize(static_cast<int32>(TargetW), static_cast<int32>(TargetH));
-        }
-        if (Viewport->GetWidth() != TargetW || Viewport->GetHeight() != TargetH)
-        {
-            Viewport->RequestResize(TargetW, TargetH);
-        }
-
-        if (InRect.Width > 0.0f && InRect.Height > 0.0f)
-        {
-            const float Scale =
-                (std::min)(InRect.Width / static_cast<float>(TargetW), InRect.Height / static_cast<float>(TargetH));
-            const float DrawW = static_cast<float>(TargetW) * Scale;
-            const float DrawH = static_cast<float>(TargetH) * Scale;
-            ViewportScreenRect.X = InRect.X + (InRect.Width - DrawW) * 0.5f;
-            ViewportScreenRect.Y = InRect.Y + (InRect.Height - DrawH) * 0.5f;
-            ViewportScreenRect.Width = DrawW;
-            ViewportScreenRect.Height = DrawH;
-        }
-        SyncPIEViewportRect(Viewport, ViewportScreenRect);
-        return;
-    }
-
-    const uint32 SlotW = static_cast<uint32>(InRect.Width > 0.0f ? InRect.Width : 0.0f);
-    const uint32 SlotH = static_cast<uint32>(InRect.Height > 0.0f ? InRect.Height : 0.0f);
-    if (Camera && SlotW > 0 && SlotH > 0)
-    {
-        Camera->OnResize(static_cast<int32>(SlotW), static_cast<int32>(SlotH));
-    }
-    if (SlotW > 0 && SlotH > 0 && (SlotW != Viewport->GetWidth() || SlotH != Viewport->GetHeight()))
-    {
-        Viewport->RequestResize(SlotW, SlotH);
-    }
-    SyncPIEViewportRect(Viewport, ViewportScreenRect);
-}
-
 void FLevelEditorViewportClient::UpdateLayoutRect()
 {
     if (!LayoutWindow)

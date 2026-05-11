@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
-#include "Common/UI/Viewport/ViewportToolbar.h"
 
 #include "ImGui/imgui.h"
 
@@ -38,22 +37,27 @@ class FEditorViewportPanel
         return Rect;
     }
 
-    static bool BeginTopToolbar(const char *Id, float Height = 0.0f)
-    {
-        return FViewportToolbar::Begin(Id, Height);
-    }
-
-    static void EndTopToolbar()
-    {
-        FViewportToolbar::End();
-    }
-
     static FRect RenderViewportClient(FEditorViewportClient &Client, bool bActiveFromOwner)
     {
-        const FRect Rect = CalculateContentRect();
+        return RenderViewportClientInRect(Client, CalculateContentRect(), bActiveFromOwner);
+    }
+
+    static FRect RenderViewportClientInRect(FEditorViewportClient &Client, const FRect &InRect, bool bActiveFromOwner)
+    {
+        FRect Rect = InRect;
+        if (Rect.Width < 1.0f)
+        {
+            Rect.Width = 1.0f;
+        }
+        if (Rect.Height < 1.0f)
+        {
+            Rect.Height = 1.0f;
+        }
+
         const ImVec2 Min(Rect.X, Rect.Y);
         const ImVec2 Max(Rect.X + Rect.Width, Rect.Y + Rect.Height);
 
+        ImGui::SetCursorScreenPos(Min);
         ImGui::PushID(&Client);
         ImGui::InvisibleButton("##EditorViewportInputSurface", ImVec2(Rect.Width, Rect.Height));
 

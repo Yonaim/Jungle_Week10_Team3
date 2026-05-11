@@ -1,6 +1,7 @@
 #include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Common/UI/Panels/Panel.h"
 #include "EditorEngine.h"
@@ -208,26 +209,17 @@ TArray<FString> CollectLuaScriptPaths()
 
 void PushDetailsHeaderButtonStyle(float FrameRounding = 6.0f)
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, FrameRounding);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, DetailsHeaderButtonColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DetailsHeaderButtonHoveredColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, DetailsHeaderButtonActiveColor);
-    ImGui::PushStyleColor(ImGuiCol_Border, DetailsHeaderButtonBorderColor);
+    FEditorUIStyle::PushHeaderButtonStyle(FrameRounding);
 }
 
 void PopDetailsHeaderButtonStyle()
 {
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(2);
+    FEditorUIStyle::PopHeaderButtonStyle();
 }
 
 void PushPopupMenuStyle()
 {
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, PopupPalette::PopupBg);
-    ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+    FEditorUIStyle::PushPopupMenuStyle();
 }
 
 const char *GetActorHeaderIconKey(const AActor *Actor)
@@ -544,18 +536,7 @@ TArray<FString> CollectButtonActionFunctionNames(const AActor *OwnerActor)
 
 bool BeginDetailsSection(const char *SectionName)
 {
-    const std::string HeaderId = std::string(SectionName) + "##DetailsSection";
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.76f, 0.76f, 0.78f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.20f, 0.20f, 0.20f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.24f, 0.24f, 0.24f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.18f, 0.18f, 0.18f, 1.0f));
-    const bool bOpen =
-        ImGui::CollapsingHeader(HeaderId.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(2);
-    return bOpen;
+    return FEditorUIStyle::BeginDetailsSection(SectionName);
 }
 
 const char *GetComponentIconKey(const UActorComponent *Component)
@@ -790,43 +771,32 @@ constexpr float DetailsVectorResetSpacing = 6.0f;
 
 void PushDetailsFieldStyle()
 {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, PopupPalette::FieldBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, PopupPalette::FieldHoverBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, PopupPalette::FieldActiveBg);
-    ImGui::PushStyleColor(ImGuiCol_Border, PopupPalette::FieldBorder);
+    FEditorUIStyle::PushDetailsFieldStyle();
 }
 
 void PopDetailsFieldStyle()
 {
-    ImGui::PopStyleColor(4);
+    FEditorUIStyle::PopDetailsFieldStyle();
 }
 
 void PushDetailsVectorFieldStyle()
 {
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, DetailsVectorFieldBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, DetailsVectorFieldHoverBg);
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, DetailsVectorFieldActiveBg);
-    ImGui::PushStyleColor(ImGuiCol_Border, PopupPalette::FieldBorder);
+    FEditorUIStyle::PushDetailsVectorFieldStyle();
 }
 
 void PopDetailsVectorFieldStyle()
 {
-    ImGui::PopStyleColor(4);
+    FEditorUIStyle::PopDetailsVectorFieldStyle();
 }
 
 void PushDetailsVectorResetButtonStyle()
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, DetailsVectorResetButtonColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, DetailsVectorResetButtonHoveredColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, DetailsVectorResetButtonActiveColor);
-    ImGui::PushStyleColor(ImGuiCol_Border, DetailsVectorResetButtonBorderColor);
+    FEditorUIStyle::PushDetailsVectorResetButtonStyle();
 }
 
 void PopDetailsVectorResetButtonStyle()
 {
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar();
+    FEditorUIStyle::PopDetailsVectorResetButtonStyle();
 }
 
 bool DrawLabeledField(const char *Label, const std::function<bool()> &DrawField)
@@ -1804,7 +1774,7 @@ void FLevelDetailsPanel::Render(float DeltaTime)
     if (ScrollHeight < MinDetailsHeight)
         ScrollHeight = MinDetailsHeight;
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, PopupPalette::SurfaceBg);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, FEditorUIStyle::SurfaceBg);
     ImGui::BeginChild("##Details", ImVec2(0, ScrollHeight), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     {
         RenderDetails(PrimaryActor, SelectedActors);
@@ -2884,13 +2854,7 @@ void FLevelDetailsPanel::RenderPropertySection(const char *SectionName, TArray<F
         return;
     }
 
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.05f, 0.05f, 0.06f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.08f, 0.08f, 0.09f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.10f, 0.10f, 0.11f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.05f, 0.05f, 0.06f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.10f, 0.12f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.15f, 0.18f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
+    FEditorUIStyle::PushDetailsPropertyEditStyle();
     const FString Query = DetailSearchBuffer;
 
     for (int32 PropIndex : Indices)
@@ -2924,7 +2888,7 @@ void FLevelDetailsPanel::RenderPropertySection(const char *SectionName, TArray<F
         ImGui::Dummy(ImVec2(0.0f, DetailsPropertyVerticalSpacing));
     }
 
-    ImGui::PopStyleColor(7);
+    FEditorUIStyle::PopDetailsPropertyEditStyle();
 }
 
 void FLevelDetailsPanel::PropagatePropertyChange(const FString &PropName, const TArray<AActor *> &SelectedActors)

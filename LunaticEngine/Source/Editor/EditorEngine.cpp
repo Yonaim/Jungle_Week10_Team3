@@ -59,6 +59,8 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
 
     // 에디터 전용 초기화
     FLevelEditorSettings::Get().LoadFromFile(FLevelEditorSettings::GetDefaultSettingsPath());
+    // 사용자 설정에서 카메라/경로 정보는 가져오되, Editor 레이아웃과 패널 상태는 매 실행마다 기본값으로 시작한다.
+    FLevelEditorSettings::Get().ResetEditorLayoutToDefault();
     FProjectSettings::Get().LoadFromFile(FProjectSettings::GetDefaultPath());
 
     AssetEditorManager.Initialize(this, &Renderer);
@@ -195,6 +197,7 @@ void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
         else
         {
             RestoreLevelEditorUIAfterAssetEditor();
+            LevelEditorWindow.RequestDefaultDockLayout();
         }
         return;
     }
@@ -212,6 +215,7 @@ void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
     else
     {
         RestoreLevelEditorUIAfterAssetEditor();
+        LevelEditorWindow.RequestDefaultDockLayout();
         if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
         {
             LevelViewportClient->SetActive(true);

@@ -1,6 +1,7 @@
 #include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 
 #include "Common/UI/Style/AccentColor.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Common/UI/Panels/Panel.h"
 #include "EditorEngine.h"
@@ -51,9 +52,7 @@ ID3D11ShaderResourceView *GetIcon(const char *Key)
 
 void DrawPopupSectionHeader(const char *Label)
 {
-    ImGui::PushStyleColor(ImGuiCol_Text, PopupSectionHeaderTextColor);
-    ImGui::SeparatorText(Label);
-    ImGui::PopStyleColor();
+    FEditorUIStyle::DrawPopupSectionHeader(Label);
 }
 
 enum class EActorTypeSection
@@ -131,18 +130,12 @@ void DrawCenteredButtonIcon(const char *IconKey, float IconSize, ImU32 Tint = IM
 
 void PushOutlinerButtonStyle(float FrameRounding = 6.0f)
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, FrameRounding);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::PushStyleColor(ImGuiCol_Button, OutlinerButtonColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, OutlinerButtonHoveredColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, OutlinerButtonActiveColor);
-    ImGui::PushStyleColor(ImGuiCol_Border, OutlinerButtonBorderColor);
+    FEditorUIStyle::PushHeaderButtonStyle(FrameRounding);
 }
 
 void PopOutlinerButtonStyle()
 {
-    ImGui::PopStyleColor(4);
-    ImGui::PopStyleVar(2);
+    FEditorUIStyle::PopHeaderButtonStyle();
 }
 
 bool DrawIconLabelButton(const char *Id, const char *IconKey, const char *Label, const ImVec2 &Size,
@@ -723,20 +716,13 @@ void FLevelOutlinerPanel::RenderActorOutliner()
     }
 
     ImGui::Indent(TableInsetX);
-    if (!ImGui::BeginTable("##OutlinerTable", 4,
-                           ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersInnerV |
-                               ImGuiTableFlags_Resizable | ImGuiTableFlags_PadOuterX,
-                           ImVec2(0.0f, 0.0f)))
+    if (!FEditorUIStyle::BeginOutlinerTable("##OutlinerTable"))
     {
         ImGui::Unindent(TableInsetX);
         return;
     }
 
-    ImGui::TableSetupColumn("##Visibility", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize, 28.0f);
-    ImGui::TableSetupColumn("##Lock", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize, 28.0f);
-    ImGui::TableSetupColumn("Item Label", ImGuiTableColumnFlags_WidthStretch, 260.0f);
-    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 140.0f);
-    ImGui::TableHeadersRow();
+    FEditorUIStyle::SetupOutlinerTableColumns();
     ImGui::TableSetColumnIndex(0);
     {
         const ImVec2 HeaderMin = ImGui::GetCursorScreenPos();
@@ -796,10 +782,7 @@ void FLevelOutlinerPanel::RenderActorOutliner()
         {
             ImGui::Indent(ChildItemIndentX);
         }
-        ImGui::PushStyleColor(ImGuiCol_Text, OutlinerItemLabelColor);
-        ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
+        FEditorUIStyle::PushOutlinerSelectionRowStyle();
         if (bIsRenaming)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 3.0f));
@@ -996,11 +979,11 @@ void FLevelOutlinerPanel::RenderActorOutliner()
         }
         else
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, OutlinerItemLabelColor);
-            ImGui::PushStyleColor(ImGuiCol_Text, OutlinerFolderArrowColor);
-            ImGui::PushStyleColor(ImGuiCol_Header, OutlinerSelectionHeaderColor);
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, OutlinerSelectionHeaderHoveredColor);
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, OutlinerSelectionHeaderActiveColor);
+            ImGui::PushStyleColor(ImGuiCol_Text, FEditorUIStyle::OutlinerItemLabelColor);
+            ImGui::PushStyleColor(ImGuiCol_Text, FEditorUIStyle::OutlinerFolderArrowColor);
+            ImGui::PushStyleColor(ImGuiCol_Header, FEditorUIStyle::OutlinerSelectionHeaderColor);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, FEditorUIStyle::OutlinerSelectionHeaderHoveredColor);
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, FEditorUIStyle::OutlinerSelectionHeaderActiveColor);
             bOpen = ImGui::TreeNodeEx((FolderName + "##Folder").c_str(), FolderFlags, "%s", FolderName.c_str());
             ImGui::PopStyleColor(3);
             ImGui::PopStyleColor();

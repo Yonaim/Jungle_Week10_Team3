@@ -223,8 +223,8 @@ void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer,
     ContentBrowser.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
     ShadowMapDebugPanel.Init(InEditorEngine);
 
-    const std::filesystem::path ImGuiLayoutPath = std::filesystem::path(FPaths::SettingsDir()) / L"imgui.ini";
-    bPendingDefaultDockLayout = !std::filesystem::exists(ImGuiLayoutPath);
+    // 시작 시에는 사용자의 ImGui ini / 이전 Dock 레이아웃을 사용하지 않고 Level Editor 기본 레이아웃을 강제 적용한다.
+    bPendingDefaultDockLayout = true;
 }
 
 void FLevelEditorWindow::Release()
@@ -258,13 +258,15 @@ void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
     Settings.Panels.bOutliner = true;
     Settings.Panels.bPlaceActors = true;
     Settings.Panels.bContentBrowser = true;
+    Settings.Panels.bConsole = true;
 
     FLevelEditorDockLayoutDesc LayoutDesc;
     LayoutDesc.LeftWindow = MakeLevelPanelTitle("Place Actors", "LevelPlaceActorsPanel", "Editor.Icon.Panel.PlaceActors");
-    LayoutDesc.CenterWindow = MakeLevelPanelTitle("Viewport", "LevelViewportArea_0", "Editor.Icon.Panel.Viewport");
+    LayoutDesc.CenterWindow = MakeLevelPanelTitle("Viewport", "LevelViewport", "Editor.Icon.Panel.Viewport");
     LayoutDesc.RightTopWindow = MakeLevelPanelTitle("Outliner", "LevelOutlinerPanel", "Editor.Icon.Panel.Outliner");
     LayoutDesc.RightBottomWindow = MakeLevelPanelTitle("Details", "LevelDetailsPanel", "Editor.Icon.Panel.Details");
     LayoutDesc.BottomWindow = MakeLevelPanelTitle("Content Browser", "LevelContentBrowser", "Editor.Icon.Panel.ContentBrowser");
+    LayoutDesc.BottomRightWindow = MakeLevelPanelTitle("Console", "LevelConsolePanel", "Editor.Icon.Panel.Console");
 
     FDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
     bPendingDefaultDockLayout = false;
@@ -441,7 +443,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     ImGui::PopStyleVar(4);
 
     // 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
-    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
     if (EditorEngine && Settings.Panels.bViewport)
     {
         SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
@@ -455,7 +457,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
 
     if (!bHideEditorWindows && Settings.Panels.bImGuiSettings)
     {
-        FEditorImGuiStyleSettings::ShowPanel();
+        FEditorImGuiStyleSettings::ShowPanel(&Settings.Panels.bImGuiSettings);
     }
 
     if (!bHideEditorWindows && Settings.Panels.bConsole)
@@ -618,39 +620,6 @@ void FLevelEditorWindow::BuildWindowMenu()
 {
     FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
 
-    auto DrawPanelMenuItem = [](const char *Label, bool &bOpen)
-    {
-        if (ImGui::MenuItem(Label, nullptr, bOpen))
-        {
-            bOpen = !bOpen;
-        }
-    };
-
-    if (EditorEngine)
-    {
-        const bool bIsLevelContext = EditorEngine->IsLevelEditorContextActive();
-        if (ImGui::MenuItem("Level Editor", nullptr, bIsLevelContext))
-        {
-            EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
-        }
-
-        const bool bHasAssetEditor = EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().IsOpen();
-        if (!bHasAssetEditor)
-        {
-            ImGui::BeginDisabled();
-        }
-        const bool bIsAssetContext = EditorEngine->IsAssetEditorContextActive();
-        if (ImGui::MenuItem("Asset Editor", nullptr, bIsAssetContext))
-        {
-            EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
-        }
-        if (!bHasAssetEditor)
-        {
-            ImGui::EndDisabled();
-        }
-        ImGui::Separator();
-    }
-
     if (bHideEditorWindows)
     {
         if (ImGui::MenuItem("Restore Level Editor Panels"))
@@ -660,17 +629,26 @@ void FLevelEditorWindow::BuildWindowMenu()
         ImGui::Separator();
     }
 
-    DrawPanelMenuItem("Viewport", Settings.Panels.bViewport);
+    if (ImGui::MenuItem("Viewport", nullptr, Settings.Panels.bViewport))
+        Settings.Panels.bViewport = !Settings.Panels.bViewport;
     ImGui::Separator();
-    DrawPanelMenuItem("Console", Settings.Panels.bConsole);
-    DrawPanelMenuItem("Details", Settings.Panels.bDetails);
-    DrawPanelMenuItem("Outliner", Settings.Panels.bOutliner);
-    DrawPanelMenuItem("Place Actors", Settings.Panels.bPlaceActors);
-    DrawPanelMenuItem("Stat Profiler", Settings.Panels.bStats);
-    DrawPanelMenuItem("Content Browser", Settings.Panels.bContentBrowser);
-    DrawPanelMenuItem("Shadow Map Debug", Settings.Panels.bShadowMapDebug);
+    if (ImGui::MenuItem("Console", nullptr, Settings.Panels.bConsole))
+        Settings.Panels.bConsole = !Settings.Panels.bConsole;
+    if (ImGui::MenuItem("Details", nullptr, Settings.Panels.bDetails))
+        Settings.Panels.bDetails = !Settings.Panels.bDetails;
+    if (ImGui::MenuItem("Outliner", nullptr, Settings.Panels.bOutliner))
+        Settings.Panels.bOutliner = !Settings.Panels.bOutliner;
+    if (ImGui::MenuItem("Place Actors", nullptr, Settings.Panels.bPlaceActors))
+        Settings.Panels.bPlaceActors = !Settings.Panels.bPlaceActors;
+    if (ImGui::MenuItem("Stat Profiler", nullptr, Settings.Panels.bStats))
+        Settings.Panels.bStats = !Settings.Panels.bStats;
+    if (ImGui::MenuItem("Content Browser", nullptr, Settings.Panels.bContentBrowser))
+        Settings.Panels.bContentBrowser = !Settings.Panels.bContentBrowser;
+    if (ImGui::MenuItem("Shadow Map Debug", nullptr, Settings.Panels.bShadowMapDebug))
+        Settings.Panels.bShadowMapDebug = !Settings.Panels.bShadowMapDebug;
     ImGui::Separator();
-    DrawPanelMenuItem("ImGui Style Settings", Settings.Panels.bImGuiSettings);
+    if (ImGui::MenuItem("ImGui Style Settings", nullptr, Settings.Panels.bImGuiSettings))
+        Settings.Panels.bImGuiSettings = !Settings.Panels.bImGuiSettings;
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Default Layout"))
     {
@@ -807,7 +785,7 @@ void FLevelEditorWindow::BuildCustomMenus()
 
 FString FLevelEditorWindow::GetFrameTitle() const
 {
-    return GetSceneTitleLabel(EditorEngine);
+    return FString("Level Editor | ") + GetSceneTitleLabel(EditorEngine);
 }
 
 FString FLevelEditorWindow::GetFrameTitleTooltip() const
@@ -817,7 +795,7 @@ FString FLevelEditorWindow::GetFrameTitleTooltip() const
         return EditorEngine->GetCurrentLevelFilePath();
     }
 
-    return "Unsaved Scene";
+    return "Level Editor | Unsaved Scene";
 }
 
 void FLevelEditorWindow::Update()

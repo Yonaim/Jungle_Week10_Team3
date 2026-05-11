@@ -524,6 +524,9 @@
     <ClCompile Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.cpp">
       <Filter>Source\Editor\AssetEditor\CameraModifierStack</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.cpp">
+      <Filter>Source\Editor\AssetEditor\Common\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.cpp">
       <Filter>Source\Editor\AssetEditor\Common\UI</Filter>
     </ClCompile>
@@ -1391,6 +1394,9 @@
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackToolbar.h">
       <Filter>Source\Editor\AssetEditor\CameraModifierStack\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.h">
+      <Filter>Source\Editor\AssetEditor\Common\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.h">
       <Filter>Source\Editor\AssetEditor\Common\UI</Filter>
     </ClInclude>
@@ -1461,6 +1467,9 @@
       <Filter>Source\Editor\Common\UI\Panels</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Style\AccentColor.h">
+      <Filter>Source\Editor\Common\UI\Style</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h">
       <Filter>Source\Editor\Common\UI\Style</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h">

@@ -207,22 +207,6 @@ void FAssetEditorWindow::BuildEditMenu()
 
 void FAssetEditorWindow::BuildWindowMenu()
 {
-    if (EditorEngine)
-    {
-        const bool bIsLevelContext = EditorEngine->IsLevelEditorContextActive();
-        if (ImGui::MenuItem("Level Editor", nullptr, bIsLevelContext))
-        {
-            EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
-        }
-
-        const bool bIsAssetContext = EditorEngine->IsAssetEditorContextActive();
-        if (ImGui::MenuItem("Asset Editor", nullptr, bIsAssetContext))
-        {
-            EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
-        }
-        ImGui::Separator();
-    }
-
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
     {
         ActiveEditor->BuildWindowMenu();
@@ -241,7 +225,7 @@ FString FAssetEditorWindow::GetFrameTitle() const
 {
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
     {
-        return ActiveEditor->GetEditorName();
+        return FString("Asset Editor | ") + ActiveEditor->GetEditorName();
     }
 
     return "Asset Editor";
@@ -254,7 +238,7 @@ FString FAssetEditorWindow::GetFrameTitleTooltip() const
         const std::filesystem::path &AssetPath = ActiveEditor->GetAssetPath();
         if (!AssetPath.empty())
         {
-            return FPaths::ToUtf8(AssetPath.wstring());
+            return FString("Asset Editor | ") + ActiveEditor->GetEditorName() + " | " + FPaths::ToUtf8(AssetPath.wstring());
         }
     }
 

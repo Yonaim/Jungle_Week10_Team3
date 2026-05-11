@@ -65,6 +65,7 @@ class FLevelEditorWindow : public IEditorMenuProvider
     ImGuiID GetMainDockspaceId() const { return MainDockspaceId; }
     void  SetContentBrowserIconSize(float Size) { ContentBrowser.SetIconSize(Size); }
     float GetContentBrowserIconSize() const { return ContentBrowser.GetIconSize(); }
+    void  RequestDefaultDockLayout();
     void  FlushPendingMenuAction();
 
     // IEditorMenuProvider: 공통 메뉴바에 Level Editor 전용 메뉴를 제공한다.
@@ -96,7 +97,6 @@ class FLevelEditorWindow : public IEditorMenuProvider
     };
 
     void MakeCurrentContext() const;
-    void RequestDefaultDockLayout();
     void ApplyPendingDefaultDockLayout();
     bool HasBlockingOverlayOpen() const;
     void HandleGlobalShortcuts();

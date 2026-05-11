@@ -15,7 +15,7 @@
 class FEditorImGuiStyleSettings
 {
   public:
-    static void ShowPanel();
+    static void ShowPanel(bool *bOpen = nullptr);
     static void Save();
     static void Load();
 };

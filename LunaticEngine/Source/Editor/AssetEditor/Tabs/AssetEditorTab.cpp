@@ -1,14 +1,26 @@
 #include "AssetEditor/Tabs/AssetEditorTab.h"
 
 #include "AssetEditor/IAssetEditor.h"
+#include "Platform/Paths.h"
 
 FAssetEditorTab::FAssetEditorTab(std::unique_ptr<IAssetEditor> InEditor) : Editor(std::move(InEditor)) {}
 
 IAssetEditor *FAssetEditorTab::GetEditor() const { return Editor.get(); }
 
-const char *FAssetEditorTab::GetTitle() const
+std::string FAssetEditorTab::GetTitle() const
 {
-    return Editor ? Editor->GetEditorName() : "Asset";
+    if (!Editor)
+    {
+        return "Asset";
+    }
+
+    const std::filesystem::path &AssetPath = Editor->GetAssetPath();
+    if (!AssetPath.empty())
+    {
+        return FPaths::ToUtf8(AssetPath.filename().wstring());
+    }
+
+    return Editor->GetEditorName();
 }
 
 const std::filesystem::path &FAssetEditorTab::GetAssetPath() const

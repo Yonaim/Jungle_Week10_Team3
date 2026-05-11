@@ -324,6 +324,7 @@
     <ClCompile Include="Source\Editor\EditorEngine.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\AssetEditorManager.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\CameraModifierStack\CameraModifierStackEditor.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp" />
@@ -615,6 +616,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackContentsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackDetailsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\CameraModifierStack\UI\CameraModifierStackToolbar.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h" />
@@ -639,6 +641,7 @@
     <ClInclude Include="Source\Editor\Common\UI\Panels\Panel.h" />
     <ClInclude Include="Source\Editor\Common\UI\Panels\PanelTitleUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\AccentColor.h" />
+    <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h" />

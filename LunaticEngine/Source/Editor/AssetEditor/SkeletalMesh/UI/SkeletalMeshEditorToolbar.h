@@ -3,6 +3,7 @@
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
 
 class USkeletalMesh;
+class FRenderer;
 
 /**
  * SkeletalMesh Editor의 상단 Toolbar 패널.
@@ -17,5 +18,5 @@ class USkeletalMesh;
 class FSkeletalMeshEditorToolbar
 {
   public:
-    void RenderViewportToolbar(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State);
+    void RenderViewportToolbar(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FRenderer *Renderer);
 };

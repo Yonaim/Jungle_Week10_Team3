@@ -124,8 +124,9 @@ void FAssetEditorTabManager::Render(float DeltaTime, ImGuiID DockspaceId)
 
         bool bOpen = true;
         const std::string StableId = std::string("AssetEditorTab_") + std::to_string(Index);
+        const std::string TabTitle = Tab->GetTitle();
         FPanelDesc PanelDesc;
-        PanelDesc.DisplayName = Tab->GetTitle();
+        PanelDesc.DisplayName = TabTitle.c_str();
         PanelDesc.StableId = StableId.c_str();
         PanelDesc.IconKey = "Editor.Icon.Panel.Asset";
         PanelDesc.DockspaceId = DockspaceId;

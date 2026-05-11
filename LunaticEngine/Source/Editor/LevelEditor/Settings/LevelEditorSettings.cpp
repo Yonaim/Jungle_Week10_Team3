@@ -100,6 +100,23 @@ namespace Key
     constexpr const char *ScaleSnapSize = "ScaleSnapSize";
 } // namespace Key
 
+
+void FLevelEditorSettings::ResetEditorLayoutToDefault()
+{
+    LayoutType = 0;
+    SplitterRatios[0] = 0.5f;
+    SplitterRatios[1] = 0.5f;
+    SplitterRatios[2] = 0.5f;
+    SplitterCount = 0;
+
+    for (FViewportRenderOptions &Options : SlotOptions)
+    {
+        Options = FViewportRenderOptions{};
+    }
+
+    Panels = FLevelEditorPanelVisibility{};
+}
+
 void FLevelEditorSettings::SaveToFile(const FString &Path) const
 {
     using namespace json;

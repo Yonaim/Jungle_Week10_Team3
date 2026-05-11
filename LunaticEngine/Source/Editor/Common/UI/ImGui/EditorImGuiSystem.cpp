@@ -46,7 +46,9 @@ bool FEditorImGuiSystem::Initialize(FWindowsWindow *InMainWindow, FD3DDevice *In
     FEditorImGuiStyleSettings::Load();
 
     ImGuiIO &IO = ImGui::GetIO();
-    IO.IniFilename = "Settings/imgui.ini";
+    // Editor Dock/Layout은 사용자 imgui.ini를 복원하지 않고 매 실행마다 기본 레이아웃으로 시작한다.
+    // 카메라/프로젝트 설정은 FLevelEditorSettings / FProjectSettings에서 별도로 복원한다.
+    IO.IniFilename = nullptr;
     IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     // 현재 Editor는 단일 메인 OS Window 안에서 동작하므로 ImGui native viewport 생성을 끈다.
     // 여기서 ViewportsEnable을 켜면 추가 platform window가 생성되어

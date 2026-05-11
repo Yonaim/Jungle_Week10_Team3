@@ -2,7 +2,7 @@
 
 #include "AssetEditor/IAssetEditor.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
-#include "AssetEditor/SkeletalMesh/UI/SkeletalMeshDetailsPanel.h"
+#include "AssetEditor/Common/UI/AssetDetailsPanel.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletonTreePanel.h"
@@ -86,7 +86,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     FSkeletalMeshEditorToolbar Toolbar;
     FSkeletalMeshPreviewViewport PreviewViewport;
     FSkeletonTreePanel SkeletonTreePanel;
-    FSkeletalMeshDetailsPanel DetailsPanel;
+    FAssetDetailsPanel AssetDetailsPanel;
 
     bool bOpen = false;
     bool bDirty = false;
