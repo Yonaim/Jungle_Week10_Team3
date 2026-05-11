@@ -1,5 +1,4 @@
 #include "LevelEditor/Selection/SelectionManager.h"
-#include "Component/GizmoComponent.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
 #include "GameFramework/AActor.h"
@@ -11,27 +10,13 @@
 
 void FSelectionManager::Init()
 {
-    Gizmo = UObjectManager::Get().CreateObject<UGizmoComponent>();
-    Gizmo->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
-    Gizmo->Deactivate();
+    // SelectionManager owns selection state only.
+    // Visual gizmo lifetime is owned by each FEditorViewportClient/FGizmoManager.
 }
 
 void FSelectionManager::SetWorld(UWorld *InWorld)
 {
-    // 기존 Scene에서 Gizmo 프록시 해제
-    if (Gizmo && World)
-        Gizmo->DestroyRenderState();
-
     World = InWorld;
-
-    // 새 Scene에 Gizmo 프록시 등록
-    if (Gizmo && World)
-    {
-        Gizmo->SetScene(&World->GetScene());
-        Gizmo->CreateRenderState();
-    }
-
-    SyncGizmo();
     if (World)
     {
         World->GetScene().SetSelectedComponent(SelectedComponent);
@@ -41,12 +26,7 @@ void FSelectionManager::SetWorld(UWorld *InWorld)
 void FSelectionManager::Shutdown()
 {
     ClearSelection();
-
-    if (Gizmo)
-    {
-        UObjectManager::Get().DestroyObject(Gizmo);
-        Gizmo = nullptr;
-    }
+    World = nullptr;
 }
 
 void FSelectionManager::Select(AActor *Actor)
@@ -339,8 +319,7 @@ int32 FSelectionManager::DeleteSelectedActors()
 
 void FSelectionManager::Tick()
 {
-    // Gizmo transform is now owned by FGizmoManager.
-    // SelectionManager only owns the visual component and selection state.
+    // Selection only. Gizmo transform/visibility is synchronized by FGizmoManager.
 }
 
 void FSelectionManager::SetGizmoEnabled(bool bEnabled)
@@ -431,30 +410,6 @@ void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
 
 void FSelectionManager::SyncGizmo()
 {
-    if (!Gizmo)
-        return;
-
-    if (!bGizmoEnabled)
-    {
-        Gizmo->Deactivate();
-        return;
-    }
-
-    USceneComponent *Primary = SelectedComponent;
-    if (Primary)
-    {
-        if (Primary->SupportsUIScreenPicking() || !Primary->SupportsWorldGizmo())
-        {
-            Gizmo->Deactivate();
-            Gizmo->SetSelectedActors(&SelectedActors);
-            return;
-        }
-
-        Gizmo->SetSelectedActors(&SelectedActors);
-    }
-    else
-    {
-        Gizmo->SetSelectedActors(nullptr);
-        Gizmo->Deactivate();
-    }
+    // No-op by design. SelectionManager no longer owns a UGizmoComponent.
+    // FLevelEditorViewportClient reads MakeTransformGizmoTarget() and updates FGizmoManager.
 }

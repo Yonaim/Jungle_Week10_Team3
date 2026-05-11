@@ -1,4 +1,4 @@
-#include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformProxy.h"
+#include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 
 #include "Component/SkeletalMeshComponent.h"
 
@@ -39,13 +39,13 @@ namespace
     }
 }
 
-FBoneTransformProxy::FBoneTransformProxy(USkeletalMeshComponent* InComponent, int32 InBoneIndex)
+FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent, int32 InBoneIndex)
     : Component(InComponent)
     , BoneIndex(InBoneIndex)
 {
 }
 
-bool FBoneTransformProxy::IsValid() const
+bool FBoneTransformGizmoTarget::IsValid() const
 {
     if (!Component || BoneIndex < 0)
     {
@@ -57,7 +57,7 @@ bool FBoneTransformProxy::IsValid() const
            BoneIndex < static_cast<int32>(Pose.ComponentTransforms.size());
 }
 
-FTransform FBoneTransformProxy::GetWorldTransform() const
+FTransform FBoneTransformGizmoTarget::GetWorldTransform() const
 {
     if (!IsValid())
     {
@@ -68,7 +68,7 @@ FTransform FBoneTransformProxy::GetWorldTransform() const
     return MakeTransformFromMatrix(Pose.ComponentTransforms[BoneIndex]);
 }
 
-void FBoneTransformProxy::SetWorldTransform(const FTransform& NewWorldTransform)
+void FBoneTransformGizmoTarget::SetWorldTransform(const FTransform& NewWorldTransform)
 {
     // 현재 Runtime 쪽 공개 API가 local pose 수정 중심이므로,
     // 실제 저장은 SetLocalTransform 경로로 통일한다.
@@ -76,7 +76,7 @@ void FBoneTransformProxy::SetWorldTransform(const FTransform& NewWorldTransform)
     SetLocalTransform(NewWorldTransform);
 }
 
-FTransform FBoneTransformProxy::GetLocalTransform() const
+FTransform FBoneTransformGizmoTarget::GetLocalTransform() const
 {
     if (!IsValid())
     {
@@ -87,7 +87,7 @@ FTransform FBoneTransformProxy::GetLocalTransform() const
     return Pose.LocalTransforms[BoneIndex];
 }
 
-void FBoneTransformProxy::SetLocalTransform(const FTransform& NewLocalTransform)
+void FBoneTransformGizmoTarget::SetLocalTransform(const FTransform& NewLocalTransform)
 {
     if (!IsValid())
     {
@@ -97,12 +97,12 @@ void FBoneTransformProxy::SetLocalTransform(const FTransform& NewLocalTransform)
     Component->SetBoneLocalTransform(BoneIndex, NewLocalTransform);
 }
 
-void FBoneTransformProxy::BeginTransform()
+void FBoneTransformGizmoTarget::BeginTransform()
 {
     bTransforming = IsValid();
 }
 
-void FBoneTransformProxy::EndTransform()
+void FBoneTransformGizmoTarget::EndTransform()
 {
     if (!bTransforming || !Component)
     {

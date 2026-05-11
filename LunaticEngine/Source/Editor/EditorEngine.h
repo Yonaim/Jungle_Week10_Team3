@@ -54,7 +54,7 @@ class UEditorEngine : public UEngine
     bool IsScoreSavePopupOpen() const override;
 
     // Editor-specific API
-    UGizmoComponent  *GetGizmo() const { return GetSelectionManager().GetGizmo(); }
+    UGizmoComponent  *GetGizmo() const;
     FEditorViewportCamera *GetCamera() const;
     bool              FocusActorInViewport(AActor *Actor);
 

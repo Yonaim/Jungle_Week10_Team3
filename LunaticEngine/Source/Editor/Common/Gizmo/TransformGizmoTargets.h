@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Component/Gizmo/TransformProxy.h"
+#include "Component/Gizmo/TransformGizmoTarget.h"
 #include "Component/SceneComponent.h"
 
 // SceneComponent를 기즈모 조작 대상으로 감싸는 공통 어댑터.

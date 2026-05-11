@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Render/Scene/FScene.h"
+#include "Render/Types/GlobalLightParams.h"
 
 #include <cstddef>
 #include <vector>
@@ -13,7 +14,7 @@ class FPrimitiveSceneProxy;
 class FPreviewScene
 {
 public:
-    FPreviewScene() = default;
+    FPreviewScene() { SetupDefaultLighting(); }
     ~FPreviewScene() { Clear(); }
 
     FScene& GetScene() { return Scene; }
@@ -96,6 +97,24 @@ public:
     }
 
     void ClearFrameData() { Scene.ClearFrameData(); }
+
+    void SetupDefaultLighting()
+    {
+        FGlobalAmbientLightParams Ambient{};
+        Ambient.Intensity = 0.35f;
+        Ambient.LightColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+        Ambient.bVisible = true;
+        Ambient.bCastShadows = false;
+        Scene.GetEnvironment().AddGlobalAmbientLight(nullptr, Ambient);
+
+        FGlobalDirectionalLightParams Directional{};
+        Directional.Intensity = 1.0f;
+        Directional.LightColor = FVector4(1.0f, 0.96f, 0.88f, 1.0f);
+        Directional.bVisible = true;
+        Directional.bCastShadows = false;
+        Directional.Direction = FVector(-0.45f, -0.55f, -0.70f).Normalized();
+        Scene.GetEnvironment().AddGlobalDirectionalLight(nullptr, Directional);
+    }
 
 private:
     FScene Scene;

@@ -1,4 +1,4 @@
-#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+﻿#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 
 #include "Core/ProjectSettings.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
@@ -572,6 +572,7 @@ FLevelEditorViewportClient::~FLevelEditorViewportClient()
 void FLevelEditorViewportClient::Init(FWindowsWindow *InWindow)
 {
     FEditorViewportClient::Init(InWindow);
+    EnsureEditorGizmo();
 }
 
 void FLevelEditorViewportClient::Shutdown()
@@ -580,7 +581,84 @@ void FLevelEditorViewportClient::Shutdown()
     bDraggingUIScreenGizmo = false;
     HoveredUIScreenGizmoAxis = 0;
     ActiveUIScreenGizmoAxis = 0;
+    ReleaseEditorGizmo();
     FEditorViewportClient::Shutdown();
+}
+
+void FLevelEditorViewportClient::EnsureEditorGizmo()
+{
+    if (Gizmo)
+    {
+        GizmoManager.SetVisualComponent(Gizmo);
+        return;
+    }
+
+    Gizmo = UObjectManager::Get().CreateObject<UGizmoComponent>();
+    Gizmo->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
+    Gizmo->Deactivate();
+    GizmoManager.SetVisualComponent(Gizmo);
+}
+
+void FLevelEditorViewportClient::ReleaseEditorGizmo()
+{
+    if (!Gizmo)
+    {
+        GizmoManager.SetVisualComponent(nullptr);
+        RegisteredGizmoScene = nullptr;
+        return;
+    }
+
+    UnregisterGizmoFromScene();
+    GizmoManager.SetVisualComponent(nullptr);
+    UObjectManager::Get().DestroyObject(Gizmo);
+    Gizmo = nullptr;
+}
+
+void FLevelEditorViewportClient::UnregisterGizmoFromScene()
+{
+    if (!Gizmo)
+    {
+        RegisteredGizmoScene = nullptr;
+        GizmoManager.SetVisualComponent(nullptr);
+        return;
+    }
+
+    // Editor gizmo must never survive across PIE world swaps.
+    // Destroy while the currently registered editor scene is still alive, then clear the
+    // explicit scene pointer so a later PIE shutdown cannot remove from a dead FScene.
+    if (RegisteredGizmoScene)
+    {
+        Gizmo->DestroyRenderState();
+    }
+    Gizmo->SetScene(nullptr);
+    RegisteredGizmoScene = nullptr;
+    GizmoManager.SetVisualComponent(nullptr);
+}
+
+void FLevelEditorViewportClient::RegisterGizmoToScene(FScene* Scene)
+{
+    if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+    {
+        if (EditorEngine->IsPlayingInEditor())
+        {
+            // PIE uses the game camera/input path. The editor transform gizmo is editor-only,
+            // so keep it unregistered and invisible for both possessed and ejected PIE modes.
+            UnregisterGizmoFromScene();
+            return;
+        }
+    }
+
+    EnsureEditorGizmo();
+    if (!Gizmo || !Scene || RegisteredGizmoScene == Scene)
+    {
+        return;
+    }
+
+    UnregisterGizmoFromScene();
+    Gizmo->SetScene(Scene);
+    Gizmo->CreateRenderState();
+    RegisteredGizmoScene = Scene;
+    GizmoManager.SetVisualComponent(Gizmo);
 }
 
 void FLevelEditorViewportClient::SetupInput()
@@ -1091,13 +1169,13 @@ void FLevelEditorViewportClient::ClearLightViewOverride()
     LightViewOverride = nullptr;
 }
 
-void FLevelEditorViewportClient::CreateCamera()
+void FLevelEditorViewportClient::InitializeCameraState()
 {
     // Editor camera is owned by FEditorViewportClient as a value member.
     ResetCamera();
 }
 
-void FLevelEditorViewportClient::DestroyCamera()
+void FLevelEditorViewportClient::ReleaseCameraState()
 {
     // No-op: editor camera is no longer heap/component owned.
 }
@@ -1315,9 +1393,12 @@ bool FLevelEditorViewportClient::BuildRenderRequest(FEditorViewportRenderRequest
         return false;
     }
 
+    FScene* Scene = &World->GetScene();
+    RegisterGizmoToScene(Scene);
+
     OutRequest.Viewport = Viewport;
     OutRequest.ViewInfo = GetCamera()->GetCameraState();
-    OutRequest.Scene = &World->GetScene();
+    OutRequest.Scene = Scene;
     OutRequest.RenderOptions = RenderOptions;
     OutRequest.CursorProvider = this;
     OutRequest.bRenderGrid = RenderOptions.ShowFlags.bGrid;

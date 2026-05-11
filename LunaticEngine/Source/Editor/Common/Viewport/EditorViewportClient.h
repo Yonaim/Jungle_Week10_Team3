@@ -23,7 +23,8 @@ class FLevelEditorViewportClient;
  *
  * 주의:
  * - 이 클래스는 Level Editor 전용 기능을 몰라야 한다.
- * - Actor picking, Gizmo, Selection, Camera navigation, PIE shortcut은 FLevelEditorViewportClient 쪽에 둔다.
+ * - ViewCamera와 선택적 GizmoManager는 공통으로 가진다.
+ * - Selection policy, picking, camera navigation, PIE shortcut은 파생 ViewportClient 쪽에 둔다.
  * - SkeletalMeshPreviewViewportClient 같은 Asset Preview 뷰포트도 이 베이스를 상속한다.
  */
 

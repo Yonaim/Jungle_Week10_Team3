@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Component/Gizmo/GizmoTypes.h"
-#include "Component/Gizmo/TransformProxy.h"
+#include "Component/Gizmo/TransformGizmoTarget.h"
 #include "Core/RayTypes.h"
 #include "Core/CollisionTypes.h"
 #include "Math/Transform.h"

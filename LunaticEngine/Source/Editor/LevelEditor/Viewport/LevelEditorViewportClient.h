@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
 #include "Common/Viewport/EditorViewportCamera.h"
@@ -23,6 +23,7 @@ class FWindowsWindow;
 class FSelectionManager;
 class USceneComponent;
 class FOverlayStatSystem;
+class FScene;
 
 // Level Editor ?꾩슜 Viewport Client.
 // 移대찓??議곗옉, Actor picking, Gizmo 議곗옉, View mode, PIE shortcut ?깆쓣 ?대떦?쒕떎.
@@ -39,7 +40,6 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     UWorld *GetWorld() const;
 
     void             SetOverlayStatSystem(FOverlayStatSystem *InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
-    void             SetGizmo(UGizmoComponent *InGizmo) { Gizmo = InGizmo; GizmoManager.SetVisualComponent(InGizmo); }
     void             SetSettings(const FLevelEditorSettings *InSettings) { Settings = InSettings; }
     void             SetSelectionManager(FSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
     UGizmoComponent *GetGizmo() { return Gizmo; }
@@ -50,8 +50,8 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void SetViewportType(ELevelViewportType NewType);
     void SetViewportSize(float InWidth, float InHeight);
 
-    void              CreateCamera();
-    void              DestroyCamera();
+    void              InitializeCameraState();
+    void              ReleaseCameraState();
     void              ResetCamera();
     FEditorViewportCamera *GetCamera() { return FEditorViewportClient::GetCamera(); }
     const FEditorViewportCamera *GetCamera() const { return FEditorViewportClient::GetCamera(); }
@@ -87,6 +87,10 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void OnEditorEscape(const FInputActionValue &Value);
     void OnEditorTogglePIE(const FInputActionValue &Value);
 
+    void  EnsureEditorGizmo();
+    void  ReleaseEditorGizmo();
+    void  RegisterGizmoToScene(FScene* Scene);
+    void  UnregisterGizmoFromScene();
     void  TickEditorShortcuts();
     void  TickInput(float DeltaTime);
     void  TickInteraction(float DeltaTime);
@@ -104,6 +108,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
   private:
     FOverlayStatSystem    *OverlayStatSystem = nullptr;
     UGizmoComponent       *Gizmo = nullptr;
+    FScene                *RegisteredGizmoScene = nullptr;
     const FLevelEditorSettings *Settings = nullptr;
     FSelectionManager     *SelectionManager = nullptr;
     USceneComponent        *CurrentGizmoTargetComponent = nullptr;

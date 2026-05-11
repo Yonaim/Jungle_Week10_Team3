@@ -290,6 +290,19 @@ void UEditorEngine::ToggleCoordSystem()
     ApplyTransformSettingsToGizmo();
 }
 
+UGizmoComponent *UEditorEngine::GetGizmo() const
+{
+    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    {
+        return ActiveClient->GetGizmoManager().GetVisualComponent();
+    }
+    if (FLevelEditorViewportClient *LevelClient = GetActiveViewport())
+    {
+        return LevelClient->GetGizmo();
+    }
+    return nullptr;
+}
+
 void UEditorEngine::ApplyTransformSettingsToGizmo()
 {
     UGizmoComponent *Gizmo = GetGizmo();
@@ -299,8 +312,21 @@ void UEditorEngine::ApplyTransformSettingsToGizmo()
     }
 
     const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    const bool             bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
-    Gizmo->SetWorldSpace(bForceLocalForScale ? false : (Settings.CoordSystem == EEditorCoordSystem::World));
+    const bool bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
+    const EGizmoSpace DesiredSpace =
+        bForceLocalForScale || Settings.CoordSystem != EEditorCoordSystem::World
+            ? EGizmoSpace::Local
+            : EGizmoSpace::World;
+
+    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    {
+        ActiveClient->GetGizmoManager().SetSpace(DesiredSpace);
+    }
+    else
+    {
+        Gizmo->SetGizmoSpace(DesiredSpace);
+    }
+
     // 에디터 설정의 좌표계/스냅 값을 매 프레임 Gizmo 상태와 동기화한다.
     Gizmo->SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, Settings.bEnableRotationSnap,
                            Settings.RotationSnapSize, Settings.bEnableScaleSnap, Settings.ScaleSnapSize);

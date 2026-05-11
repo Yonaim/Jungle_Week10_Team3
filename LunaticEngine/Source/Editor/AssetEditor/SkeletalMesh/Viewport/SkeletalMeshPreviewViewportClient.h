@@ -65,11 +65,8 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void TickViewportInput(float DeltaTime);
     void RenderFallbackOverlay();
 
-	// 임시 Bone 회전 테스트용 함수
-	void RenderPoseEditDebugControls();
 	void RenderSkeletonDebugOverlay();
     void SyncGizmoTargetFromSelection();
-    void RenderBoneGizmoOverlay();
 	bool ProjectWorldToViewport(const FVector& WorldPos, ImVec2& OutScreen) const;
 
   private:

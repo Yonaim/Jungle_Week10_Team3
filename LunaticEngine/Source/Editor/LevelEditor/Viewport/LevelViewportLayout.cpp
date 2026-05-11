@@ -1,4 +1,4 @@
-#include "LevelEditor/Viewport/LevelViewportLayout.h"
+﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/Style/AccentColor.h"
 #include "Common/UI/Style/EditorUIStyle.h"
@@ -42,6 +42,8 @@
 #include "WICTextureLoader.h"
 
 #include <algorithm>
+#include <cstring>
+#include <filesystem>
 #include <string>
 
 namespace
@@ -930,8 +932,96 @@ namespace
 
     float GetViewportPaneToolbarHeight(float PaneWidth) { return FViewportToolbar::GetHeight(PaneWidth); }
 
+    const char* GetBasicShapeFileStemFromKey(const char* MeshKey)
+    {
+        if (!MeshKey) return nullptr;
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Cube") == 0) return "Cube";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Sphere") == 0) return "Sphere";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Cylinder") == 0) return "Cylinder";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Cone") == 0) return "Cone";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.Plane") == 0) return "Plane";
+        if (std::strcmp(MeshKey, "Default.Mesh.BasicShape.SphereLowpoly") == 0) return "SphereLowpoly";
+        return nullptr;
+    }
+
+    FString FindBasicShapeObjPath(const char* MeshKey)
+    {
+        const char* Stem = GetBasicShapeFileStemFromKey(MeshKey);
+        if (!Stem) return "";
+
+        const std::filesystem::path RootPath(FPaths::RootDir());
+        const std::filesystem::path ContentPath(FPaths::ContentDir());
+        const std::filesystem::path AssetPath(FPaths::AssetDir());
+        const std::wstring StemW = FPaths::ToWide(Stem);
+        const std::wstring ObjFileName = StemW + L".obj";
+
+        const std::filesystem::path Candidates[] = {
+            ContentPath / L"BasicShape" / ObjFileName,
+            ContentPath / L"Mesh" / L"BasicShape" / ObjFileName,
+            ContentPath / L"Meshes" / L"BasicShape" / ObjFileName,
+            AssetPath / L"BasicShape" / ObjFileName,
+            RootPath / L"BasicShape" / ObjFileName,
+        };
+
+        for (const std::filesystem::path& Candidate : Candidates)
+        {
+            if (std::filesystem::exists(Candidate))
+            {
+                return FPaths::ToUtf8(Candidate.lexically_relative(RootPath).generic_wstring());
+            }
+        }
+
+        // Last-resort scan. This keeps Place Actors working even when the resource scan
+        // file only registered cached .bin files and the original BasicShape .obj files
+        // live in a slightly different content subdirectory.
+        const std::filesystem::path ScanRoots[] = { ContentPath, AssetPath };
+        for (const std::filesystem::path& ScanRoot : ScanRoots)
+        {
+            if (!std::filesystem::exists(ScanRoot) || !std::filesystem::is_directory(ScanRoot))
+            {
+                continue;
+            }
+
+            std::filesystem::directory_options Options = std::filesystem::directory_options::skip_permission_denied;
+            for (const auto& Entry : std::filesystem::recursive_directory_iterator(ScanRoot, Options))
+            {
+                if (!Entry.is_regular_file()) continue;
+                if (_wcsicmp(Entry.path().filename().c_str(), ObjFileName.c_str()) != 0) continue;
+
+                std::filesystem::path Parent = Entry.path().parent_path();
+                bool bInsideBasicShapeDirectory = false;
+                while (!Parent.empty())
+                {
+                    if (_wcsicmp(Parent.filename().c_str(), L"BasicShape") == 0)
+                    {
+                        bInsideBasicShapeDirectory = true;
+                        break;
+                    }
+                    const std::filesystem::path Next = Parent.parent_path();
+                    if (Next == Parent) break;
+                    Parent = Next;
+                }
+
+                if (bInsideBasicShapeDirectory)
+                {
+                    return FPaths::ToUtf8(Entry.path().lexically_relative(RootPath).generic_wstring());
+                }
+            }
+        }
+
+        return "";
+    }
+
     FString GetRegisteredMeshPath(const char *MeshKey)
     {
+        // BasicShape place actors should be sourced from the authoring .obj files when
+        // they exist. FObjManager can still use/rebuild the Cache/*.bin internally, but
+        // passing the source path lets timestamp invalidation and material sidecar lookup work.
+        if (FString BasicShapeObjPath = FindBasicShapeObjPath(MeshKey); !BasicShapeObjPath.empty())
+        {
+            return BasicShapeObjPath;
+        }
+
         if (const FMeshResource *MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
         {
             return MeshResource->Path;
@@ -1079,7 +1169,6 @@ void FLevelViewportLayout::Init(UEditorEngine *InEditor, FWindowsWindow *InWindo
     LevelVC->SetSettings(&FLevelEditorSettings::Get());
     LevelVC->Init(Window);
     LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
-    LevelVC->SetGizmo(SelectionManager->GetGizmo());
     LevelVC->SetSelectionManager(SelectionManager);
 
     auto *VP = new FViewport();
@@ -1088,7 +1177,7 @@ void FLevelViewportLayout::Init(UEditorEngine *InEditor, FWindowsWindow *InWindo
     VP->SetClient(LevelVC);
     LevelVC->SetViewport(VP);
 
-    LevelVC->CreateCamera();
+    LevelVC->InitializeCameraState();
     LevelVC->ResetCamera();
     ApplyProjectViewportSettings(LevelVC->GetRenderOptions());
 
@@ -1152,7 +1241,7 @@ void FLevelViewportLayout::ResetViewport(UWorld *InWorld)
 {
     for (FLevelEditorViewportClient *VC : LevelViewportClients)
     {
-        VC->CreateCamera();
+        VC->InitializeCameraState();
         VC->ResetCamera();
 
         // 카메라 재생성 후 현재 뷰포트 크기로 AspectRatio 동기화
@@ -1175,7 +1264,7 @@ void FLevelViewportLayout::DestroyAllCameras()
 {
     for (FLevelEditorViewportClient *VC : LevelViewportClients)
     {
-        VC->DestroyCamera();
+        VC->ReleaseCameraState();
     }
 }
 
@@ -1239,8 +1328,7 @@ void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
         LevelVC->SetSettings(&FLevelEditorSettings::Get());
         LevelVC->Init(Window);
         LevelVC->SetViewportSize(Window->GetWidth(), Window->GetHeight());
-        LevelVC->SetGizmo(SelectionManager->GetGizmo());
-        LevelVC->SetSelectionManager(SelectionManager);
+            LevelVC->SetSelectionManager(SelectionManager);
 
         auto *VP = new FViewport();
         VP->Initialize(RendererPtr->GetFD3DDevice().GetDevice(), static_cast<uint32>(Window->GetWidth()),
@@ -1248,7 +1336,7 @@ void FLevelViewportLayout::EnsureViewportSlots(int32 RequiredCount)
         VP->SetClient(LevelVC);
         LevelVC->SetViewport(VP);
 
-        LevelVC->CreateCamera();
+        LevelVC->InitializeCameraState();
         LevelVC->ResetCamera();
         ApplyProjectViewportSettings(LevelVC->GetRenderOptions());
 
@@ -1285,7 +1373,7 @@ void FLevelViewportLayout::ShrinkViewportSlots(int32 RequiredCount)
             VP->Release();
             delete VP;
         }
-        VC->DestroyCamera();
+        VC->ReleaseCameraState();
         delete VC;
 
         delete ViewportWindows[Idx];
