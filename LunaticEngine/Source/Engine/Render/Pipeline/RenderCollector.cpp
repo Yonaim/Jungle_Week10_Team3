@@ -1,4 +1,4 @@
-#include "RenderCollector.h"
+﻿#include "RenderCollector.h"
 
 #include "Collision/ConvexVolume.h"
 #include "Component/ActorComponent.h"
@@ -270,6 +270,14 @@ void FRenderCollector::FilterVisibleProxies(const FFrameContext &Frame, FScene &
             if (Frame.bIsLightView || (World && World->GetWorldType() != EWorldType::Editor))
                 continue;
         }
+
+		if (!Frame.RenderOptions.ShowFlags.bSkeletalMesh)
+		{
+			if (Proxy->HasProxyFlag(EPrimitiveProxyFlags::SkeletalMesh))
+			{
+				continue;
+			}
+		}
 
         UpdateProxyLOD(Proxy, Frame.LODContext);
         LOD_STATS_RECORD(Proxy->GetCurrentLOD());

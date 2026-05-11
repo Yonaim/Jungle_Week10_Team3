@@ -42,6 +42,7 @@ struct FShowFlags
 	bool bVisualize25DCulling = false;
 	bool bShowShadowFrustum = false;
 	bool bGammaCorrection = true;
+	bool bSkeletalMesh = true;
 };
 
 struct FGridRenderSettings
