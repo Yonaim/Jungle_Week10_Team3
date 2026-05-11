@@ -449,7 +449,7 @@ void UGizmoComponent::SetTargetScale(FVector NewScale)
 bool UGizmoComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
 	OutHitResult = {};
-	if (!IsVisible() || CurMode == EGizmoMode::Select || !TargetComponent || !MeshData || MeshData->Indices.empty())
+	if (!IsVisible() || CurMode == EGizmoMode::Select || !HasTarget() || !MeshData || MeshData->Indices.empty())
 	{
 		if (!IsHolding())
 		{
@@ -537,12 +537,16 @@ FVector UGizmoComponent::GetVectorForAxis(int32 Axis) const
 
 void UGizmoComponent::SetTarget(USceneComponent* NewTarget)
 {
-	if (!NewTarget)
+	TargetComponent = NewTarget;
+	bHasVisualTarget = false;
+
+	if (!TargetComponent)
 	{
+		SetVisibility(false);
+		SelectedAxis = -1;
+		SetPressedOnHandle(false);
 		return;
 	}
-
-	TargetComponent = NewTarget;
 
 	SetWorldLocation(TargetComponent->GetWorldLocation());
 	UpdateGizmoTransform();
@@ -557,7 +561,7 @@ void UGizmoComponent::SetTarget(AActor* NewTargetActor)
 	else
 	{
 		TargetComponent = nullptr;
-		SetVisibility(false);
+		ClearGizmoWorldTransform();
 	}
 }
 
@@ -743,16 +747,43 @@ void UGizmoComponent::UpdateGizmoMode(EGizmoMode NewMode)
 	UpdateGizmoTransform();
 }
 
+void UGizmoComponent::SetGizmoWorldTransform(const FTransform& InWorldTransform)
+{
+	VisualWorldTransform = InWorldTransform;
+	bHasVisualTarget = true;
+	TargetComponent = nullptr;
+	UpdateGizmoTransform();
+}
+
+void UGizmoComponent::ClearGizmoWorldTransform()
+{
+	bHasVisualTarget = false;
+	SetVisibility(false);
+	SelectedAxis = -1;
+	SetPressedOnHandle(false);
+}
+
 void UGizmoComponent::UpdateGizmoTransform()
 {
-	if (!TargetComponent)
+	if (TargetComponent)
 	{
-		SetVisibility(false);
-		SelectedAxis = -1;
-		SetPressedOnHandle(false);
+		ApplyGizmoWorldTransform(FTransform(TargetComponent->GetWorldLocation(), TargetComponent->GetWorldMatrix().ToRotator(), TargetComponent->GetWorldScale()));
 		return;
 	}
 
+	if (bHasVisualTarget)
+	{
+		ApplyGizmoWorldTransform(VisualWorldTransform);
+		return;
+	}
+
+	SetVisibility(false);
+	SelectedAxis = -1;
+	SetPressedOnHandle(false);
+}
+
+void UGizmoComponent::ApplyGizmoWorldTransform(const FTransform& InWorldTransform)
+{
 	if (CurMode == EGizmoMode::Select)
 	{
 		SetVisibility(false);
@@ -763,12 +794,12 @@ void UGizmoComponent::UpdateGizmoTransform()
 		SetVisibility(true);
 	}
 
-	const FVector DesiredLocation = TargetComponent->GetWorldLocation();
+	const FVector DesiredLocation = InWorldTransform.GetLocation();
 	
 	FRotator DesiredRotation = FRotator();
 	if (CurMode == EGizmoMode::Scale || !bIsWorldSpace)
 	{
-		DesiredRotation = TargetComponent->GetWorldMatrix().ToRotator();
+		DesiredRotation = InWorldTransform.ToMatrix().ToRotator();
 	}
 
 	const FMeshData* DesiredMeshData = nullptr;

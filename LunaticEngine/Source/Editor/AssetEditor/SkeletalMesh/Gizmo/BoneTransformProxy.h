@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/Gizmo/TransformProxy.h"
+#include "Component/Gizmo/TransformProxy.h"
 #include "Core/CoreTypes.h"
 
 class USkeletalMeshComponent;

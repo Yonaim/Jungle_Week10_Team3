@@ -1,22 +1,15 @@
-﻿#pragma once
+#pragma once
 
 #include "PrimitiveComponent.h"
 #include "Core/CoreTypes.h"
 #include "Math/Rotator.h"
+#include "Math/Transform.h"
 #include "Render/Types/ViewTypes.h"
+#include "Component/Gizmo/GizmoTypes.h"
 
 class AActor;
 class FPrimitiveSceneProxy;
 class FScene;
-
-enum class EGizmoMode
-{
-	Select,
-	Translate,
-	Rotate,
-	Scale,
-	End
-};
 
 class UGizmoComponent : public UPrimitiveComponent
 {
@@ -32,9 +25,14 @@ public:
 	void SetHolding(bool bHold);
 	inline bool IsHolding() const { return bIsHolding; }
 	inline bool IsHovered() const { return SelectedAxis != -1; }
-	inline bool HasTarget() const { return TargetComponent != nullptr; }
+	inline bool HasTarget() const { return TargetComponent != nullptr || bHasVisualTarget; }
 	inline USceneComponent* GetTarget() const { return TargetComponent; }
 	inline int32 GetSelectedAxis() const { return SelectedAxis; }
+
+	// Component Target 없이도 PreviewScene에서 기즈모를 렌더하기 위한 Visual Transform 경로.
+	void SetGizmoWorldTransform(const FTransform& InWorldTransform);
+	void ClearGizmoWorldTransform();
+	bool HasVisualTarget() const { return bHasVisualTarget; }
 
 	bool ParticipatesInRenderSpatialStructure() const override { return false; }
 
@@ -63,9 +61,11 @@ public:
 	inline void SetScaleMode() { UpdateGizmoMode(EGizmoMode::Scale); }
 	inline void SetSelectMode() { UpdateGizmoMode(EGizmoMode::Select); }
 	void UpdateGizmoTransform();
+	void ApplyGizmoWorldTransform(const FTransform& InWorldTransform);
 	float ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f) const;
 	void ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f);
 	void SetWorldSpace(bool bWorldSpace);
+	void SetGizmoSpace(EGizmoSpace InSpace) { SetWorldSpace(InSpace == EGizmoSpace::World); }
 	bool IsWorldSpace() const { return bIsWorldSpace; }
 	void SetSnapSettings(bool bTranslationEnabled, float InTranslationSnapSize,
 		bool bRotationEnabled, float InRotationSnapSizeDegrees,
@@ -110,6 +110,8 @@ private:
 
 private:
 	USceneComponent* TargetComponent = nullptr;
+	bool bHasVisualTarget = false;
+	FTransform VisualWorldTransform;
 	const TArray<AActor*>* AllSelectedActors = nullptr;
 	EGizmoMode CurMode = EGizmoMode::Translate;
 	FVector LastIntersectionLocation;

@@ -2,8 +2,9 @@
 
 #include "Math/Transform.h"
 
-// GizmoManager가 실제 대상 타입을 모르도록 막는 공용 Transform Proxy.
-// Bone / Socket / Actor / Component 등은 이 인터페이스만 맞추면 같은 GizmoManager로 조작할 수 있다.
+// Transform을 가진 조작 대상을 추상화하는 엔진 공용 인터페이스.
+// 구현체는 Editor/Runtime 어느 쪽에 있어도 되지만, 인터페이스 자체는
+// UGizmoComponent / FGizmoManager가 공통으로 참조할 수 있도록 Engine에 둔다.
 class ITransformProxy
 {
 public:

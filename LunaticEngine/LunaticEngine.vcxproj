@@ -636,8 +636,6 @@
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h" />
-    <ClInclude Include="Source\Editor\Common\Gizmo\GizmoTypes.h" />
-    <ClInclude Include="Source\Editor\Common\Gizmo\TransformProxy.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
     <ClInclude Include="Source\Editor\Common\UI\Base\UIElement.h" />

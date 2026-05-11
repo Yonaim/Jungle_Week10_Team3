@@ -1,9 +1,10 @@
-﻿#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
+#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformProxy.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 
 #include "Component/CameraComponent.h"
+#include "Component/GizmoComponent.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Object/Object.h"
@@ -115,11 +116,20 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
 
     PreviewCamera = UObjectManager::Get().CreateObject<UCameraComponent>();
     PreviewComponent = UObjectManager::Get().CreateObject<USkeletalMeshComponent>();
+    PreviewGizmoComponent = UObjectManager::Get().CreateObject<UGizmoComponent>();
+    if (PreviewGizmoComponent)
+    {
+        PreviewGizmoComponent->SetScene(&PreviewScene);
+        PreviewGizmoComponent->SetGizmoSpace(EGizmoSpace::Local);
+        PreviewGizmoComponent->CreateRenderState();
+        PreviewGizmoComponent->ClearGizmoWorldTransform();
+        GizmoManager.SetVisualComponent(PreviewGizmoComponent);
+    }
 
     RenderOptions.ViewMode = EViewMode::Lit_Phong;
     RenderOptions.ShowFlags.bGrid = true;
     RenderOptions.ShowFlags.bWorldAxis = true;
-    RenderOptions.ShowFlags.bGizmo = false;
+    RenderOptions.ShowFlags.bGizmo = true;
     RenderOptions.ShowFlags.bSceneBVH = false;
     RenderOptions.ShowFlags.bOctree = false;
     RenderOptions.ShowFlags.bWorldBound = false;
@@ -137,6 +147,16 @@ void FSkeletalMeshPreviewViewportClient::ReleasePreviewObjects()
     {
         PreviewScene.RemovePrimitive(PreviewProxy);
         PreviewProxy = nullptr;
+    }
+
+    GizmoManager.ClearTarget();
+    GizmoManager.SetVisualComponent(nullptr);
+
+    if (PreviewGizmoComponent)
+    {
+        PreviewGizmoComponent->DestroyRenderState();
+        UObjectManager::Get().DestroyObject(PreviewGizmoComponent);
+        PreviewGizmoComponent = nullptr;
     }
 
     if (PreviewComponent)
@@ -376,6 +396,8 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     {
         return false;
     }
+
+    SyncGizmoTargetFromSelection();
 
     OutRequest.Viewport = Viewport;
     OutRequest.Camera = PreviewCamera;
@@ -679,35 +701,9 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
 
 void FSkeletalMeshPreviewViewportClient::RenderBoneGizmoOverlay()
 {
-    if (!State || !State->bEnablePoseEditMode || !PreviewCamera)
-    {
-        return;
-    }
-
+    // 3D Primitive 기반 기즈모는 PreviewScene의 UGizmoComponent가 렌더한다.
+    // 이 함수는 기존 ImGui overlay 호출 지점을 유지하되, 현재는 렌더 직전/직후 상태 동기화만 수행한다.
     SyncGizmoTargetFromSelection();
-    if (!GizmoManager.HasValidTarget())
-    {
-        return;
-    }
-
-    const bool bConsumed = GizmoManager.DrawAndHandle(
-        ViewportScreenRect.X,
-        ViewportScreenRect.Y,
-        ViewportScreenRect.Width,
-        ViewportScreenRect.Height,
-        [this](const FVector& WorldPos, ImVec2& OutScreen) -> bool
-        {
-            return ProjectWorldToViewport(WorldPos, OutScreen);
-        },
-        PreviewCamera->GetRightVector(),
-        PreviewCamera->GetUpVector(),
-        OrbitDistance
-    );
-
-    if (bConsumed)
-    {
-        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-    }
 }
 
 bool FSkeletalMeshPreviewViewportClient::ProjectWorldToViewport(

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/CoreTypes.h"
-#include "Common/Gizmo/GizmoTypes.h"
+#include "Component/Gizmo/GizmoTypes.h"
 
 // Skeletal Mesh Editor에서 사용하는 프리뷰 표시 모드.
 // 실제 Reference Pose / Skinned Pose 렌더링은 Runtime 담당자가 USkeletalMeshComponent와 연동하면 여기서 선택값만 넘겨주면 된다.

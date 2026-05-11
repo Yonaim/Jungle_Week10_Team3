@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
@@ -8,6 +8,7 @@
 class UCameraComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
+class UGizmoComponent;
 class FPrimitiveSceneProxy;
 class FSkeletalMeshSelectionManager;
 
@@ -80,6 +81,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     USkeletalMeshComponent *PreviewComponent = nullptr;
     UCameraComponent *PreviewCamera = nullptr;
     FPrimitiveSceneProxy *PreviewProxy = nullptr;
+    UGizmoComponent *PreviewGizmoComponent = nullptr;
 
     FViewportRenderOptions RenderOptions;
     FGizmoManager GizmoManager;

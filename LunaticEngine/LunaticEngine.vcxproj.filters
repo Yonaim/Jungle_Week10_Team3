@@ -1463,12 +1463,6 @@
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h">
       <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Editor\Common\Gizmo\GizmoTypes.h">
-      <Filter>Source\Editor\Common\Gizmo</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\Common\Gizmo\TransformProxy.h">
-      <Filter>Source\Editor\Common\Gizmo</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h">
       <Filter>Source\Editor\Common\Menu</Filter>
     </ClInclude>
