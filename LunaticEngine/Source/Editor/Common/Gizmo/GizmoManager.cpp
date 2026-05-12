@@ -253,7 +253,20 @@ void FGizmoManager::SyncVisualFromTarget()
         return;
     }
 
-    VisualComponent->SetGizmoWorldTransform(Target->GetWorldTransform());
+    FTransform VisualTransform = Target->GetWorldTransform();
+
+    if (bDragging)
+    {
+        // 드래그 중에는 기즈모의 기준 축이 변하면 안 된다.
+        // Target transform은 매 프레임 갱신되지만, Local/Scale/Rotate 축까지 현재 transform에서
+        // 다시 뽑으면 조작 중 링/축이 따라 돌면서 delta 계산과 visual 기준이 계속 바뀐다.
+        // 따라서 위치는 현재 Target을 따라가되, 축을 결정하는 Rotation/Scale 기준은
+        // 드래그 시작 시점의 transform으로 고정한다.
+        VisualTransform.Rotation = DragStartTransform.Rotation;
+        VisualTransform.Scale = DragStartTransform.Scale;
+    }
+
+    VisualComponent->SetGizmoWorldTransform(VisualTransform);
 }
 
 void FGizmoManager::ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth, float ViewportHeight)
