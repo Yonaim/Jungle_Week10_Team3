@@ -34,67 +34,22 @@ namespace
 
     const char *GetViewportTypeLabel(ESkeletalMeshPreviewViewportType Type)
     {
-        switch (Type)
-        {
-        case ESkeletalMeshPreviewViewportType::Top: return "Top";
-        case ESkeletalMeshPreviewViewportType::Bottom: return "Bottom";
-        case ESkeletalMeshPreviewViewportType::Left: return "Left";
-        case ESkeletalMeshPreviewViewportType::Right: return "Right";
-        case ESkeletalMeshPreviewViewportType::Front: return "Front";
-        case ESkeletalMeshPreviewViewportType::Back: return "Back";
-        case ESkeletalMeshPreviewViewportType::FreeOrtho: return "Free Ortho";
-        case ESkeletalMeshPreviewViewportType::Perspective:
-        default: return "Perspective";
-        }
+        return FEditorViewportToolbar::GetViewportTypeLabelByIndex(static_cast<int32>(Type));
     }
 
     FEditorViewportToolbar::EIcon GetViewportTypeIcon(ESkeletalMeshPreviewViewportType Type)
     {
-        switch (Type)
-        {
-        case ESkeletalMeshPreviewViewportType::Top: return FEditorViewportToolbar::EIcon::ViewportTop;
-        case ESkeletalMeshPreviewViewportType::Bottom: return FEditorViewportToolbar::EIcon::ViewportBottom;
-        case ESkeletalMeshPreviewViewportType::Left: return FEditorViewportToolbar::EIcon::ViewportLeft;
-        case ESkeletalMeshPreviewViewportType::Right: return FEditorViewportToolbar::EIcon::ViewportRight;
-        case ESkeletalMeshPreviewViewportType::Front: return FEditorViewportToolbar::EIcon::ViewportFront;
-        case ESkeletalMeshPreviewViewportType::Back: return FEditorViewportToolbar::EIcon::ViewportBack;
-        case ESkeletalMeshPreviewViewportType::FreeOrtho: return FEditorViewportToolbar::EIcon::ViewportFreeOrtho;
-        case ESkeletalMeshPreviewViewportType::Perspective:
-        default: return FEditorViewportToolbar::EIcon::ViewportPerspective;
-        }
+        return FEditorViewportToolbar::GetViewportTypeIconByIndex(static_cast<int32>(Type));
     }
 
     const char *GetViewModeLabel(ESkeletalMeshPreviewViewMode Mode)
     {
-        // LevelViewportLayout.cpp의 ViewModeNames와 동일하게 Lit 계열은 toolbar label을 Lit으로 보이게 둔다.
-        switch (Mode)
-        {
-        case ESkeletalMeshPreviewViewMode::Unlit: return "Unlit";
-        case ESkeletalMeshPreviewViewMode::Wireframe: return "Wireframe";
-        case ESkeletalMeshPreviewViewMode::SceneDepth: return "Scene Depth";
-        case ESkeletalMeshPreviewViewMode::WorldNormal: return "World Normal";
-        case ESkeletalMeshPreviewViewMode::LightCulling: return "Light Culling";
-        case ESkeletalMeshPreviewViewMode::LitGouraud:
-        case ESkeletalMeshPreviewViewMode::LitLambert:
-        case ESkeletalMeshPreviewViewMode::Lit:
-        default: return "Lit";
-        }
+        return FEditorViewportToolbar::GetViewModeLabelByIndex(static_cast<int32>(Mode));
     }
 
     FEditorViewportToolbar::EIcon GetViewModeIcon(ESkeletalMeshPreviewViewMode Mode)
     {
-        switch (Mode)
-        {
-        case ESkeletalMeshPreviewViewMode::Unlit: return FEditorViewportToolbar::EIcon::ViewModeUnlit;
-        case ESkeletalMeshPreviewViewMode::Wireframe: return FEditorViewportToolbar::EIcon::ViewModeWireframe;
-        case ESkeletalMeshPreviewViewMode::SceneDepth: return FEditorViewportToolbar::EIcon::ViewModeSceneDepth;
-        case ESkeletalMeshPreviewViewMode::WorldNormal: return FEditorViewportToolbar::EIcon::ViewModeWorldNormal;
-        case ESkeletalMeshPreviewViewMode::LightCulling: return FEditorViewportToolbar::EIcon::ViewModeLightCulling;
-        case ESkeletalMeshPreviewViewMode::LitGouraud:
-        case ESkeletalMeshPreviewViewMode::LitLambert:
-        case ESkeletalMeshPreviewViewMode::Lit:
-        default: return FEditorViewportToolbar::EIcon::ViewModeLit;
-        }
+        return FEditorViewportToolbar::GetViewModeIconByIndex(static_cast<int32>(Mode));
     }
 
     void DrawViewportTypeOption(FSkeletalMeshEditorState &State, const char *Label, ESkeletalMeshPreviewViewportType Type)
@@ -113,43 +68,6 @@ namespace
             State.PreviewViewMode = Mode;
             ImGui::CloseCurrentPopup();
         }
-    }
-
-    void DrawSnapValueRow(const char *Label, bool &bEnabled, float &Value, const float *Values, int32 Count, const char *Format)
-    {
-        ImGui::Checkbox(Label, &bEnabled);
-        ImGui::BeginDisabled(!bEnabled);
-        ImGui::Indent(12.0f);
-        for (int32 i = 0; i < Count; ++i)
-        {
-            ImGui::PushID(i);
-            char ButtonLabel[32];
-            snprintf(ButtonLabel, sizeof(ButtonLabel), Format, Values[i]);
-            const bool bSelected = Value == Values[i];
-            if (ImGui::Selectable(ButtonLabel, bSelected, 0, ImVec2(88.0f, 22.0f)))
-            {
-                Value = Values[i];
-            }
-            if ((i + 1) % 3 != 0 && i + 1 < Count)
-            {
-                ImGui::SameLine();
-            }
-            ImGui::PopID();
-        }
-        ImGui::Unindent(12.0f);
-        ImGui::EndDisabled();
-    }
-
-    void DrawShowFlagSliderFloat(const char *Label, float &Value, float Min, float Max, const char *Format = "%.2f")
-    {
-        ImGui::SetNextItemWidth(150.0f);
-        ImGui::SliderFloat(Label, &Value, Min, Max, Format);
-    }
-
-    void DrawShowFlagSliderInt(const char *Label, int32 &Value, int32 Min, int32 Max)
-    {
-        ImGui::SetNextItemWidth(150.0f);
-        ImGui::SliderInt(Label, &Value, Min, Max);
     }
 }
 
@@ -181,16 +99,9 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
 
     Desc.DrawSnapPopup = [&]()
     {
-        static const float TranslationSnapSizes[] = {1.0f, 5.0f, 10.0f, 50.0f, 100.0f, 500.0f, 1000.0f, 5000.0f, 10000.0f};
-        static const float RotationSnapSizes[] = {1.0f, 5.0f, 10.0f, 15.0f, 30.0f, 45.0f, 60.0f, 90.0f};
-        static const float ScaleSnapSizes[] = {0.0625f, 0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
-
-        FEditorViewportToolbar::DrawPopupSectionHeader("SNAP SETTINGS");
-        DrawSnapValueRow("Location", State.bEnableTranslationSnap, State.TranslationSnapSize, TranslationSnapSizes, 9, "%.0f");
-        ImGui::Spacing();
-        DrawSnapValueRow("Rotation", State.bEnableRotationSnap, State.RotationSnapSize, RotationSnapSizes, 8, "%.0f deg");
-        ImGui::Spacing();
-        DrawSnapValueRow("Scale", State.bEnableScaleSnap, State.ScaleSnapSize, ScaleSnapSizes, 8, "%.5g");
+        FEditorViewportToolbar::DrawCommonSnapPopup(State.bEnableTranslationSnap, State.TranslationSnapSize,
+                                                   State.bEnableRotationSnap, State.RotationSnapSize,
+                                                   State.bEnableScaleSnap, State.ScaleSnapSize);
     };
 
     Desc.DrawCameraPopup = [&]()
@@ -198,12 +109,9 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
         FEditorViewportToolbar::DrawPopupSectionHeader("CAMERA");
         ImGui::TextDisabled("Preview camera settings");
         ImGui::Spacing();
-        ImGui::SetNextItemWidth(150.0f);
-        ImGui::DragFloat("Speed", &State.CameraSpeed, 0.1f, 0.1f, 1000.0f, "%.1f");
-        ImGui::SetNextItemWidth(150.0f);
-        ImGui::DragFloat("FOV", &State.CameraFOV, 0.5f, 1.0f, 170.0f, "%.1f");
-        ImGui::SetNextItemWidth(150.0f);
-        ImGui::DragFloat("Ortho Width", &State.CameraOrthoWidth, 0.1f, 0.1f, 100000.0f, "%.1f");
+        FEditorViewportToolbar::DrawScalarFloat("Speed", State.CameraSpeed, 0.1f, 0.1f, 1000.0f, "%.1f");
+        FEditorViewportToolbar::DrawScalarFloat("FOV", State.CameraFOV, 0.5f, 1.0f, 170.0f, "%.1f");
+        FEditorViewportToolbar::DrawScalarFloat("Ortho Width", State.CameraOrthoWidth, 0.1f, 0.1f, 100000.0f, "%.1f");
         FEditorViewportToolbar::DrawPopupSeparator(4.0f, 6.0f);
         if (ImGui::MenuItem("Frame Selected"))
         {
@@ -253,30 +161,30 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
         ImGui::Checkbox("Grid", &State.bShowGrid);
         if (State.bShowGrid)
         {
-            DrawShowFlagSliderFloat("Spacing", State.GridSpacing, 0.1f, 10.0f, "%.1f");
-            DrawShowFlagSliderInt("Half Line Count", State.GridHalfLineCount, 10, 500);
-            DrawShowFlagSliderFloat("Grid Line", State.GridLineThickness, 0.0f, 4.0f);
-            DrawShowFlagSliderFloat("Major Line", State.GridMajorLineThickness, 0.0f, 6.0f);
-            DrawShowFlagSliderInt("Major Interval", State.GridMajorLineInterval, 1, 50);
-            DrawShowFlagSliderFloat("Minor Intensity", State.GridMinorIntensity, 0.0f, 2.0f);
-            DrawShowFlagSliderFloat("Major Intensity", State.GridMajorIntensity, 0.0f, 2.0f);
+            FEditorViewportToolbar::DrawSliderFloat("Spacing", State.GridSpacing, 0.1f, 10.0f, "%.1f");
+            FEditorViewportToolbar::DrawSliderInt("Half Line Count", State.GridHalfLineCount, 10, 500);
+            FEditorViewportToolbar::DrawSliderFloat("Grid Line", State.GridLineThickness, 0.0f, 4.0f);
+            FEditorViewportToolbar::DrawSliderFloat("Major Line", State.GridMajorLineThickness, 0.0f, 6.0f);
+            FEditorViewportToolbar::DrawSliderInt("Major Interval", State.GridMajorLineInterval, 1, 50);
+            FEditorViewportToolbar::DrawSliderFloat("Minor Intensity", State.GridMinorIntensity, 0.0f, 2.0f);
+            FEditorViewportToolbar::DrawSliderFloat("Major Intensity", State.GridMajorIntensity, 0.0f, 2.0f);
         }
         ImGui::Checkbox("World Axis", &State.bShowWorldAxis);
         if (State.bShowWorldAxis)
         {
-            DrawShowFlagSliderFloat("Axis Thickness", State.AxisThickness, 0.0f, 8.0f);
-            DrawShowFlagSliderFloat("Axis Intensity", State.AxisIntensity, 0.0f, 2.0f);
+            FEditorViewportToolbar::DrawSliderFloat("Axis Thickness", State.AxisThickness, 0.0f, 8.0f);
+            FEditorViewportToolbar::DrawSliderFloat("Axis Intensity", State.AxisIntensity, 0.0f, 2.0f);
         }
         ImGui::Checkbox("Gizmo", &State.bShowGizmo);
         ImGui::Checkbox("Bones", &State.bShowBones);
-        DrawShowFlagSliderFloat("Billboard Icon Scale", State.BillboardIconScale, 0.1f, 5.0f);
+        FEditorViewportToolbar::DrawSliderFloat("Billboard Icon Scale", State.BillboardIconScale, 0.1f, 5.0f);
 
         FEditorViewportToolbar::DrawPopupSectionHeader("SKELETAL PREVIEW");
         ImGui::Checkbox("Reference Pose", &State.bShowReferencePose);
         ImGui::Checkbox("Mesh Stats", &State.bShowMeshStatsOverlay);
 
         FEditorViewportToolbar::DrawPopupSectionHeader("DEBUG");
-        DrawShowFlagSliderFloat("Line Thickness", State.DebugLineThickness, 1.0f, 12.0f, "%.1f");
+        FEditorViewportToolbar::DrawSliderFloat("Line Thickness", State.DebugLineThickness, 1.0f, 12.0f, "%.1f");
         ImGui::Checkbox("Scene BVH (Green)", &State.bShowSceneBVH);
         ImGui::Checkbox("Scene Octree (Cyan)", &State.bShowOctree);
         ImGui::Checkbox("World Bound (Magenta)", &State.bShowWorldBound);

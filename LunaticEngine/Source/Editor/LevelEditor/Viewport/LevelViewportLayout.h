@@ -121,6 +121,7 @@ class FLevelViewportLayout
 
     void ResetViewport(UWorld *InWorld);
     void DestroyAllCameras();
+    void DetachSceneResourcesForWorldChange();
     void DisableWorldAxisForPIE();
     void RestoreWorldAxisAfterPIE();
 

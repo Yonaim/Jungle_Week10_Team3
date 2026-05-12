@@ -22,13 +22,6 @@ class USkeletalMesh;
 /**
  * SkeletalMesh Viewer / Asset Editor.
  *
- * 김연하 담당 범위:
- * - SkeletalMesh 에셋 열기
- * - Viewer 패널 구성
- * - Preview Viewport 표시
- * - Mesh 정보 Details 표시
- * - Reference Pose / Skinned Pose 보기 상태 제공
- *
  * 패널 구성:
  * - Toolbar Panel
  * - Preview Viewport Panel
@@ -39,9 +32,6 @@ class USkeletalMesh;
  * - 각 영역은 실제 독립 패널로 렌더링한다.
  * - Level Editor 패널과 같은 FPanel wrapper를 사용해 title/icon/inset 스타일을 통일한다.
  * - Preview Viewport는 FEditorViewportClient 베이스를 재사용한다.
- *
- * 김형도 담당 예정 영역은 SkeletonTreePanel / DetailsPanel / PreviewViewportClient 내부에 placeholder로 남겨둔다.
- * Bone hierarchy, pose edit, bone gizmo, skeleton debug draw는 이 클래스가 직접 완성하지 않는다.
  */
 class FSkeletalMeshEditor final : public IAssetEditor
 {

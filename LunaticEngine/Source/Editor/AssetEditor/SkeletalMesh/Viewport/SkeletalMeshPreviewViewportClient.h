@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
@@ -24,8 +24,8 @@ struct ImVec2;
  *
  * 김연하 담당 범위:
  * - Preview Viewport 패널과 렌더 요청 연결
- * - Preview 전용 Camera / Scene / SkeletalMeshComponent 관리
- * - 입력은 Asset Preview용 orbit / pan / zoom 중심으로 처리
+ * - Preview 전용 Scene / SkeletalMeshComponent 관리
+ * - 카메라 입력은 공통 FViewportCameraController를 사용하고, Asset Preview는 orbit target만 소유
  *
  * 남윤지 담당 영역 연결:
  * - USkeletalMeshComponent가 CPU Skinning 결과를 만들고,
@@ -65,7 +65,6 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void TickViewportInput(float DeltaTime);
     void CycleGizmoModeFromShortcut();
     void RenderFallbackOverlay();
-    void RenderPoseEditDebugControls();
     void ApplyEditorStateToViewport();
     void SyncRenderOptionsFromState();
     void ApplyViewportTypeToCamera();

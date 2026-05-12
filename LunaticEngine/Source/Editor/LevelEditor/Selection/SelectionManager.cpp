@@ -1,11 +1,46 @@
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"
+#include "Component/SkinnedMeshComponent.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
 #include "Object/Object.h"
 #include "Render/Scene/FScene.h"
 #include "Common/Gizmo/TransformGizmoTargets.h"
+
+namespace
+{
+USceneComponent *ResolveLevelEditorSelectableComponent(USceneComponent *Component)
+{
+    if (!Component)
+    {
+        return nullptr;
+    }
+
+    USceneComponent *Target = Component;
+    if (Target->IsEditorOnlyComponent())
+    {
+        if (Target->GetParent())
+        {
+            Target = Target->GetParent();
+        }
+        else if (AActor *Owner = Target->GetOwner())
+        {
+            Target = Owner->GetRootComponent();
+        }
+    }
+
+    for (USceneComponent *Current = Target; Current; Current = Current->GetParent())
+    {
+        if (Current->IsA<USkinnedMeshComponent>())
+        {
+            return Current;
+        }
+    }
+
+    return Target;
+}
+}
 
 
 void FSelectionManager::Init()
@@ -342,18 +377,7 @@ void FSelectionManager::SelectComponent(USceneComponent *Component)
 
     // [버그 수정] 에디터 전용 컴포넌트(광원 아이콘 등)는 개별 조작 대상이 아니므로,
     // 부모 컴포넌트로 리다이렉트하여 함께 움직이도록 합니다.
-    USceneComponent *Target = Component;
-    if (Component->IsEditorOnlyComponent())
-    {
-        if (Component->GetParent())
-        {
-            Target = Component->GetParent();
-        }
-        else
-        {
-            Target = Component->GetOwner()->GetRootComponent();
-        }
-    }
+    USceneComponent *Target = ResolveLevelEditorSelectableComponent(Component);
 
     if (SelectedComponent == Target)
     {

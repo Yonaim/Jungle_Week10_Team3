@@ -348,6 +348,7 @@
     <ClCompile Include="Source\Editor\Common\UI\Notifications\NotificationToast.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportCamera.cpp" />
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp" />
+    <ClCompile Include="Source\Editor\Common\Viewport\ViewportCameraController.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.cpp" />
     <ClCompile Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.cpp" />
@@ -653,6 +654,7 @@
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\PreviewScene.h" />
+    <ClInclude Include="Source\Editor\Common\Viewport\ViewportCameraController.h" />
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h" />
     <ClInclude Include="Source\Editor\LevelEditor\History\LevelEditorHistoryManager.h" />
     <ClInclude Include="Source\Editor\LevelEditor\History\SceneHistoryBuilder.h" />

@@ -608,6 +608,9 @@
     <ClCompile Include="Source\Editor\Common\Viewport\EditorViewportClient.cpp">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Common\Viewport\ViewportCameraController.cpp">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\LevelEditor\LevelEditor.cpp">
       <Filter>Source\Editor\LevelEditor</Filter>
     </ClCompile>
@@ -1515,6 +1518,9 @@
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\PreviewScene.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\ViewportCameraController.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\LevelEditor\LevelEditor.h">

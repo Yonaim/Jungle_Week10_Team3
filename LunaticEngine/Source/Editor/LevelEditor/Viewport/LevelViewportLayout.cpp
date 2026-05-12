@@ -5,6 +5,7 @@
 #include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Common/UI/Panels/Panel.h"
 #include "Common/UI/Viewport/ViewportToolbar.h"
+#include "Common/UI/Viewport/EditorViewportToolbar.h"
 #include "Component/CameraComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Core/ProjectSettings.h"
@@ -1268,6 +1269,17 @@ void FLevelViewportLayout::DestroyAllCameras()
     }
 }
 
+void FLevelViewportLayout::DetachSceneResourcesForWorldChange()
+{
+    for (FLevelEditorViewportClient *VC : LevelViewportClients)
+    {
+        if (VC)
+        {
+            VC->DetachSceneResourcesForWorldChange();
+        }
+    }
+}
+
 void FLevelViewportLayout::DisableWorldAxisForPIE()
 {
     if (bHasSavedWorldAxisVisibility)
@@ -2264,7 +2276,9 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
 void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
 {
     if (SlotIndex >= MaxViewportSlots || !ViewportWindows[SlotIndex])
+    {
         return;
+    }
 
     FRect PaneRect = ViewportToolbarRects[SlotIndex];
     if (PaneRect.Width <= 0.0f || PaneRect.Height <= 0.0f)
@@ -2272,17 +2286,12 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         PaneRect = ViewportWindows[SlotIndex]->GetRect();
     }
     if (PaneRect.Width <= 0.0f || PaneRect.Height <= 0.0f)
+    {
         return;
+    }
 
-    EnsureToolbarIconsLoaded(RendererPtr);
-    constexpr float PaneToolbarFallbackIconSize = 14.0f;
-    constexpr float PaneToolbarMaxIconSize = 16.0f;
-    const float     PaneToolbarHeight = GetViewportPaneToolbarHeight(PaneRect.Width);
-    constexpr float PaneToolbarPaddingX = 8.0f;
-    constexpr float PaneToolbarPaddingY = 6.0f;
-    constexpr float PaneToolbarButtonSpacing = 6.0f;
+    const float PaneToolbarHeight = GetViewportPaneToolbarHeight(PaneRect.Width);
 
-    // 툴바 ID
     char ToolbarID[64];
     snprintf(ToolbarID, sizeof(ToolbarID), "##PaneToolbar_%d", SlotIndex);
 
@@ -2290,440 +2299,139 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
     {
         return;
     }
+
+    ImGui::PushID(SlotIndex);
+
+    if (SlotIndex < static_cast<int32>(LevelViewportClients.size()))
     {
-        ImGui::PushID(SlotIndex);
-        PushToolbarButtonStyle();
+        FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
+        FViewportRenderOptions &Opts = VC->GetRenderOptions();
+        FEditorViewportCamera *Camera = VC->GetCamera();
+        UGizmoComponent *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
+        FLevelEditorSettings &Settings = Editor->GetSettings();
+
+        FEditorViewportToolbar::FDesc Desc;
+        Desc.IdPrefix = "LevelViewportToolbar";
+        Desc.ToolbarWidth = PaneRect.Width;
+        Desc.Renderer = RendererPtr;
+        Desc.bEnabled = Editor != nullptr && VC != nullptr;
+        Desc.ToolMode = Gizmo && Gizmo->GetMode() == EGizmoMode::Rotate
+                            ? FEditorViewportToolbar::EToolMode::Rotate
+                            : (Gizmo && Gizmo->GetMode() == EGizmoMode::Scale
+                                   ? FEditorViewportToolbar::EToolMode::Scale
+                                   : FEditorViewportToolbar::EToolMode::Translate);
+        Desc.CoordSpace = Settings.CoordSystem == EEditorCoordSystem::World ? FEditorViewportToolbar::ECoordSpace::World
+                                                                            : FEditorViewportToolbar::ECoordSpace::Local;
+        Desc.bSnapEnabled = Settings.bEnableTranslationSnap || Settings.bEnableRotationSnap || Settings.bEnableScaleSnap;
+        Desc.ViewportTypeIcon = FEditorViewportToolbar::GetViewportTypeIconByIndex(static_cast<int32>(Opts.ViewportType));
+        Desc.ViewportTypeLabel = FEditorViewportToolbar::GetViewportTypeLabelByIndex(static_cast<int32>(Opts.ViewportType));
+        Desc.ViewModeIcon = FEditorViewportToolbar::GetViewModeIconByIndex(static_cast<int32>(Opts.ViewMode));
+        Desc.ViewModeLabel = FEditorViewportToolbar::GetViewModeLabelByIndex(static_cast<int32>(Opts.ViewMode));
+
+        Desc.OnToolModeChanged = [Gizmo](FEditorViewportToolbar::EToolMode Mode)
         {
-            if (SlotIndex < static_cast<int32>(LevelViewportClients.size()))
+            if (!Gizmo)
             {
-                FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
-                FViewportRenderOptions     &Opts = VC->GetRenderOptions();
-                FEditorViewportCamera      *Camera = VC->GetCamera();
-                UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
-                FLevelEditorSettings            &Settings = Editor->GetSettings();
-                const bool                  bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
-                const bool                  bUseCompactToolbarLayout = PaneRect.Width < 520.0f;
-                const float                 EffectiveButtonSpacing = bUseCompactToolbarLayout ? 3.0f : PaneToolbarButtonSpacing;
-                const bool                  bShowTranslateButton = PaneRect.Width >= 150.0f;
-                const bool                  bShowRotateButton = PaneRect.Width >= 185.0f;
-                const bool                  bShowScaleButton = PaneRect.Width >= 220.0f;
-                bool                        bShowCoordButton = PaneRect.Width >= 255.0f;
-                bool                        bShowSnapButton = PaneRect.Width >= 292.0f;
-                bool                        bShowViewModeButton = PaneRect.Width >= 340.0f;
-                bool                        bShowCameraMenu = PaneRect.Width >= 385.0f;
-                bool                        bShowShowMenu = PaneRect.Width >= 430.0f;
-                bool                        bShowLayoutButton = PaneRect.Width >= 475.0f;
-                const bool                  bShowToggleButton = PaneRect.Width >= 540.0f;
-
-                auto DrawSelectedToolbarIcon = [&](const char *Id, EToolbarIcon Icon, bool bSelected, const char *Tooltip) -> bool
-                {
-                    const ImU32 Tint = bSelected ? UIAccentColor::ToU32() : IM_COL32_WHITE;
-                    const bool  bClicked =
-                        DrawToolbarIconButton(Id, Icon, Tooltip, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize, Tint);
-                    ShowItemTooltip(Tooltip);
-                    return bClicked;
-                };
-
-                auto DrawDropdownToolbarButton = [&](const char *Id, EToolbarIcon Icon, const char *Label, const char *Tooltip, float Width,
-                                                     bool bShowLabel) -> bool
-                {
-                    const bool bClicked = !bShowLabel ? DrawToolbarIconDropdownButton(Id, Icon, Width, 26.0f, PaneToolbarFallbackIconSize,
-                                                                                      PaneToolbarMaxIconSize)
-                                                      : DrawToolbarIconLabelButton(Id, Icon, Label, Width, 26.0f,
-                                                                                   PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
-                    DrawToolbarDropdownArrowForLastItem();
-                    ShowItemTooltip(Tooltip);
-                    return bClicked;
-                };
-
-                static const char *ViewModeNames[] = {"Lit",       "Unlit",       "Lit",          "Lit",
-                                                      "Wireframe", "Scene Depth", "World Normal", "Light Culling"};
-                static const char *ViewportTypeNames[] = {"Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Ortho"};
-                const char        *CurrentViewModeName = ViewModeNames[static_cast<int32>(Opts.ViewMode)];
-                const char        *CurrentViewportTypeName = ViewportTypeNames[static_cast<int32>(Opts.ViewportType)];
-                const bool         bShowViewportLabel = PaneRect.Width >= 560.0f;
-                const bool         bShowViewModeLabel = PaneRect.Width >= 680.0f;
-                bool               bHasToolbarItem = false;
-                auto               BeginToolbarItem = [&](float Spacing)
-                {
-                    if (bHasToolbarItem)
-                    {
-                        ImGui::SameLine(0.0f, Spacing);
-                    }
-                    bHasToolbarItem = true;
-                };
-
-                if (Gizmo)
-                {
-                    if (bShowTranslateButton)
-                    {
-                        BeginToolbarItem(EffectiveButtonSpacing);
-                        if (DrawSelectedToolbarIcon("##TranslateTool", EToolbarIcon::Translate, Gizmo->GetMode() == EGizmoMode::Translate,
-                                                    "Translate"))
-                        {
-                            Gizmo->SetTranslateMode();
-                        }
-                    }
-                    if (bShowRotateButton)
-                    {
-                        BeginToolbarItem(EffectiveButtonSpacing);
-                        if (DrawSelectedToolbarIcon("##RotateTool", EToolbarIcon::Rotate, Gizmo->GetMode() == EGizmoMode::Rotate, "Rotate"))
-                        {
-                            Gizmo->SetRotateMode();
-                        }
-                    }
-                    if (bShowScaleButton)
-                    {
-                        BeginToolbarItem(EffectiveButtonSpacing);
-                        if (DrawSelectedToolbarIcon("##ScaleTool", EToolbarIcon::Scale, Gizmo->GetMode() == EGizmoMode::Scale, "Scale"))
-                        {
-                            Gizmo->SetScaleMode();
-                        }
-                    }
-                }
-
-                const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
-                if (bShowCoordButton)
-                {
-                    BeginToolbarItem(bUseCompactToolbarLayout ? 5.0f : 10.0f);
-                    if (DrawSelectedToolbarIcon("##CoordSystem", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace,
-                                                false, bWorldCoord ? "World Space" : "Local Space"))
-                    {
-                        Editor->ToggleCoordSystem();
-                    }
-                }
-
-                if (bShowSnapButton)
-                {
-                    BeginToolbarItem(EffectiveButtonSpacing);
-                    RenderSnapToolbarButton(SlotIndex, Settings, bUseCompactToolbarLayout ? 30.0f : 36.0f, PaneToolbarFallbackIconSize,
-                                            PaneToolbarMaxIconSize);
-                }
-
-                const float PopupButtonWidth = PaneRect.Width >= 700.0f ? 46.0f : (bUseCompactToolbarLayout ? 30.0f : 36.0f);
-                const float RightButtonSpacing =
-                    PaneRect.Width >= 700.0f ? PaneToolbarButtonSpacing : (bUseCompactToolbarLayout ? 0.0f : 2.0f);
-                const float ToggleButtonWidth = ImGui::GetFrameHeight();
-                const float EffectiveViewportWidth =
-                    bShowViewportLabel
-                        ? GetToolbarIconLabelButtonWidth(GetViewportTypeToolbarIcon(Opts.ViewportType), CurrentViewportTypeName,
-                                                         PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize)
-                        : PopupButtonWidth;
-                const float EffectiveViewModeWidth =
-                    bShowViewModeButton
-                        ? (bShowViewModeLabel ? GetToolbarIconLabelButtonWidth(GetViewModeToolbarIcon(Opts.ViewMode), CurrentViewModeName,
-                                                                               PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize)
-                                              : PopupButtonWidth)
-                        : 0.0f;
-                float RightGroupWidth = 0.0f;
-                bool  bHasRightGroupItem = false;
-                auto  AccumulateRightGroupWidth = [&](bool bShowButton, float ButtonWidth, float Spacing)
-                {
-                    if (!bShowButton)
-                    {
-                        return;
-                    }
-                    if (bHasRightGroupItem)
-                    {
-                        RightGroupWidth += Spacing;
-                    }
-                    RightGroupWidth += ButtonWidth;
-                    bHasRightGroupItem = true;
-                };
-                AccumulateRightGroupWidth(bShowCameraMenu, PopupButtonWidth, RightButtonSpacing);
-                AccumulateRightGroupWidth(true, EffectiveViewportWidth, RightButtonSpacing);
-                AccumulateRightGroupWidth(bShowViewModeButton, EffectiveViewModeWidth, RightButtonSpacing);
-                AccumulateRightGroupWidth(bShowShowMenu, PopupButtonWidth, RightButtonSpacing);
-                AccumulateRightGroupWidth(bShowLayoutButton, PopupButtonWidth, RightButtonSpacing);
-                AccumulateRightGroupWidth(bShowToggleButton, ToggleButtonWidth, EffectiveButtonSpacing);
-                if (bHasRightGroupItem)
-                {
-                    const float RightStartX = ImGui::GetWindowWidth() - PaneToolbarPaddingX - RightGroupWidth;
-                    const float MinStartX = ImGui::GetCursorPosX() + EffectiveButtonSpacing;
-                    ImGui::SameLine((std::max)(RightStartX, MinStartX), 0.0f);
-                }
-                bool bHasDrawnRightItem = false;
-                auto BeginRightToolbarItem = [&](float Spacing)
-                {
-                    if (bHasDrawnRightItem)
-                    {
-                        ImGui::SameLine(0.0f, Spacing);
-                    }
-                    bHasDrawnRightItem = true;
-                };
-
-                char CameraPopupID[64];
-                snprintf(CameraPopupID, sizeof(CameraPopupID), "CameraPopup_%d", SlotIndex);
-                if (bShowCameraMenu)
-                {
-                    BeginRightToolbarItem(RightButtonSpacing);
-                    if (DrawDropdownToolbarButton("##CameraSettingsIcon", EToolbarIcon::CameraSettings, "Camera", "Camera Settings",
-                                                  PopupButtonWidth, false))
-                    {
-                        ImGui::OpenPopup(CameraPopupID);
-                    }
-                }
-                ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Appearing);
-                PushCommonPopupBgColor();
-                if (bShowCameraMenu && ImGui::BeginPopup(CameraPopupID))
-                {
-                    DrawCameraPopupContent(Camera, Settings);
-
-                    ImGui::EndPopup();
-                }
-                ImGui::PopStyleColor();
-
-                char ViewportPopupID[64];
-                snprintf(ViewportPopupID, sizeof(ViewportPopupID), "ViewportPopup_%d", SlotIndex);
-                BeginRightToolbarItem(RightButtonSpacing);
-                if (DrawDropdownToolbarButton("##ViewportTypeIcon", GetViewportTypeToolbarIcon(Opts.ViewportType), CurrentViewportTypeName,
-                                              "Viewport Type", EffectiveViewportWidth, bShowViewportLabel))
-                {
-                    ImGui::OpenPopup(ViewportPopupID);
-                }
-                PushCommonPopupBgColor();
-                PushCommonPopupMenuItemStyle();
-                if (ImGui::BeginPopup(ViewportPopupID))
-                {
-                    auto DrawViewportTypeOptions = [&](const char *SectionLabel, int32 StartIndex, int32 EndIndex)
-                    {
-                        DrawPopupSectionHeader(SectionLabel);
-                        for (int32 TypeIndex = StartIndex; TypeIndex < EndIndex; ++TypeIndex)
-                        {
-                            const bool bSelected = static_cast<int32>(Opts.ViewportType) == TypeIndex;
-                            ImGui::PushID(TypeIndex);
-                            if (ImGui::Selectable("##ViewportTypeOption", bSelected, 0, ImVec2(220.0f, 24.0f)))
-                            {
-                                VC->SetViewportType(static_cast<ELevelViewportType>(TypeIndex));
-                                ImGui::CloseCurrentPopup();
-                            }
-                            const ImVec2 Min = ImGui::GetItemRectMin();
-                            ImDrawList  *DrawList = ImGui::GetWindowDrawList();
-                            if (ID3D11ShaderResourceView *IconSRV = GetToolbarIconTable()[static_cast<int32>(
-                                    GetViewportTypeToolbarIcon(static_cast<ELevelViewportType>(TypeIndex)))])
-                            {
-                                DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f),
-                                                   ImVec2(Min.x + 18.0f, Min.y + 18.0f));
-                            }
-                            DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text),
-                                              ViewportTypeNames[TypeIndex]);
-                            ImGui::PopID();
-                        }
-                    };
-
-                    DrawViewportTypeOptions("PERSPECTIVE", 0, 1);
-                    DrawViewportTypeOptions("ORTHOGRAPHIC", 1, 8);
-                    ImGui::EndPopup();
-                }
-                ImGui::PopStyleColor(4);
-
-                char ViewModePopupID[64];
-                snprintf(ViewModePopupID, sizeof(ViewModePopupID), "ViewModePopup_%d", SlotIndex);
-                if (bShowViewModeButton)
-                {
-                    BeginRightToolbarItem(RightButtonSpacing);
-                    if (DrawDropdownToolbarButton("##ViewModeIcon", GetViewModeToolbarIcon(Opts.ViewMode), CurrentViewModeName, "View Mode",
-                                                  EffectiveViewModeWidth, bShowViewModeLabel))
-                    {
-                        ImGui::OpenPopup(ViewModePopupID);
-                    }
-                }
-                PushCommonPopupBgColor();
-                PushCommonPopupMenuItemStyle();
-                if (bShowViewModeButton && ImGui::BeginPopup(ViewModePopupID))
-                {
-                    DrawPopupSectionHeader("VIEW MODE");
-                    int32 CurrentMode = static_cast<int32>(Opts.ViewMode);
-
-                    auto DrawViewModeOption = [&](const char *Label, EViewMode Mode, EToolbarIcon Icon)
-                    {
-                        const bool bSelected = CurrentMode == static_cast<int32>(Mode);
-                        ImGui::PushID(Label);
-                        if (ImGui::Selectable("##ViewModeOption", bSelected, 0, ImVec2(260.0f, 24.0f)))
-                        {
-                            CurrentMode = static_cast<int32>(Mode);
-                            ImGui::CloseCurrentPopup();
-                        }
-                        const ImVec2 Min = ImGui::GetItemRectMin();
-                        ImDrawList  *DrawList = ImGui::GetWindowDrawList();
-                        if (ID3D11ShaderResourceView *IconSRV = GetToolbarIconTable()[static_cast<int32>(Icon)])
-                        {
-                            DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f),
-                                               ImVec2(Min.x + 18.0f, Min.y + 18.0f));
-                        }
-                        DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text), Label);
-                        ImGui::PopID();
-                    };
-
-                    DrawViewModeOption("Lit", EViewMode::Lit_Phong, EToolbarIcon::ViewModeLit);
-                    DrawViewModeOption("Unlit", EViewMode::Unlit, EToolbarIcon::ViewModeUnlit);
-                    DrawViewModeOption("Wireframe", EViewMode::Wireframe, EToolbarIcon::ViewModeWireframe);
-                    DrawViewModeOption("Lit Gouraud", EViewMode::Lit_Gouraud, EToolbarIcon::ViewModeLit);
-                    DrawViewModeOption("Lit Lambert", EViewMode::Lit_Lambert, EToolbarIcon::ViewModeLit);
-                    DrawViewModeOption("Scene Depth", EViewMode::SceneDepth, EToolbarIcon::ViewModeSceneDepth);
-                    DrawViewModeOption("World Normal", EViewMode::WorldNormal, EToolbarIcon::ViewModeWorldNormal);
-                    DrawViewModeOption("Light Culling", EViewMode::LightCulling, EToolbarIcon::ViewModeLightCulling);
-
-                    Opts.ViewMode = static_cast<EViewMode>(CurrentMode);
-                    ImGui::EndPopup();
-                }
-                ImGui::PopStyleColor(4);
-
-                char SettingsPopupID[64];
-                snprintf(SettingsPopupID, sizeof(SettingsPopupID), "SettingsPopup_%d", SlotIndex);
-                if (bShowShowMenu)
-                {
-                    BeginRightToolbarItem(RightButtonSpacing);
-                    if (DrawDropdownToolbarButton("##SettingsIcon", EToolbarIcon::ShowFlag, "Show", "Show", PopupButtonWidth, false))
-                    {
-                        ImGui::OpenPopup(SettingsPopupID);
-                    }
-                }
-                ImGui::SetNextWindowSize(ImVec2(286.0f, 0.0f), ImGuiCond_Always);
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f, 2.0f));
-                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 3.0f));
-                ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(4.0f, 3.0f));
-                PushCommonPopupBgColor();
-                if (bShowShowMenu && ImGui::BeginPopup(SettingsPopupID))
-                {
-                    DrawShowFlagsPopupContent(Opts);
-                    ImGui::EndPopup();
-                }
-                ImGui::PopStyleColor();
-                ImGui::PopStyleVar(4);
-
-                char LayoutPopupID[64];
-                snprintf(LayoutPopupID, sizeof(LayoutPopupID), "LayoutPopup_%d", SlotIndex);
-                if (bShowLayoutButton)
-                {
-                    BeginRightToolbarItem(RightButtonSpacing);
-                    if (DrawDropdownToolbarButton("##Layout", EToolbarIcon::Menu, "Layout", "Viewport Layout", PopupButtonWidth, false))
-                    {
-                        ImGui::OpenPopup(LayoutPopupID);
-                    }
-                }
-                PushCommonPopupBgColor();
-                if (bShowLayoutButton && ImGui::BeginPopup(LayoutPopupID))
-                {
-                    constexpr int32 LayoutCount = static_cast<int32>(EViewportLayout::MAX);
-                    constexpr int32 Columns = 4;
-                    constexpr float IconSize = 32.0f;
-
-                    for (int32 i = 0; i < LayoutCount; ++i)
-                    {
-                        ImGui::PushID(i);
-                        const bool bSelected = (static_cast<EViewportLayout>(i) == CurrentLayout);
-                        if (bSelected)
-                        {
-                            ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
-                        }
-
-                        bool bClicked = false;
-                        if (LayoutIcons[i])
-                        {
-                            bClicked =
-                                ImGui::ImageButton("##icon", reinterpret_cast<ImTextureID>(LayoutIcons[i]), ImVec2(IconSize, IconSize));
-                        }
-                        else
-                        {
-                            char Label[4];
-                            snprintf(Label, sizeof(Label), "%d", i);
-                            bClicked = ImGui::Button(Label, ImVec2(IconSize + 8, IconSize + 8));
-                        }
-                        ShowItemTooltip(GetLayoutDisplayName(static_cast<EViewportLayout>(i)));
-
-                        if (bSelected)
-                        {
-                            ImGui::PopStyleColor();
-                        }
-
-                        if (bClicked)
-                        {
-                            SetLayout(static_cast<EViewportLayout>(i));
-                            ImGui::CloseCurrentPopup();
-                        }
-
-                        if ((i + 1) % Columns != 0 && i + 1 < LayoutCount)
-                        {
-                            ImGui::SameLine();
-                        }
-
-                        ImGui::PopID();
-                    }
-
-                    ImGui::EndPopup();
-                }
-                ImGui::PopStyleColor();
-
-                if (bShowToggleButton)
-                {
-                    BeginRightToolbarItem(PaneToolbarButtonSpacing);
-                    constexpr float ToggleIconSize = 16.0f;
-                    const int32 ToggleIdx = (CurrentLayout == EViewportLayout::OnePane) ? static_cast<int32>(EViewportLayout::FourPanes2x2)
-                                                                                        : static_cast<int32>(EViewportLayout::OnePane);
-                    if (bIsTransitioning)
-                    {
-                        ImGui::BeginDisabled();
-                    }
-                    if (LayoutIcons[ToggleIdx])
-                    {
-                        if (ImGui::ImageButton("##toggle", reinterpret_cast<ImTextureID>(LayoutIcons[ToggleIdx]),
-                                               ImVec2(ToggleIconSize, ToggleIconSize)))
-                        {
-                            ToggleViewportSplit(SlotIndex);
-                        }
-                    }
-                    else
-                    {
-                        const char *ToggleLabel = (CurrentLayout == EViewportLayout::OnePane) ? "Split" : "Merge";
-                        if (ImGui::Button(ToggleLabel))
-                        {
-                            ToggleViewportSplit(SlotIndex);
-                        }
-                    }
-                    ShowItemTooltip((CurrentLayout == EViewportLayout::OnePane) ? "Split Viewports" : "Merge Viewports");
-                    if (bIsTransitioning)
-                    {
-                        ImGui::EndDisabled();
-                    }
-                }
-
-                Editor->ApplyTransformSettingsToGizmo();
+                return;
             }
 
-            PopToolbarButtonStyle();
-            ImGui::PopID();
-        }
-        FViewportToolbar::EndInRect();
-        return;
+            switch (Mode)
+            {
+            case FEditorViewportToolbar::EToolMode::Rotate:
+                Gizmo->SetRotateMode();
+                break;
+            case FEditorViewportToolbar::EToolMode::Scale:
+                Gizmo->SetScaleMode();
+                break;
+            case FEditorViewportToolbar::EToolMode::Translate:
+            default:
+                Gizmo->SetTranslateMode();
+                break;
+            }
+        };
 
-        const bool bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
-
-        // Layout 드롭다운
-        char PopupID[64];
-        snprintf(PopupID, sizeof(PopupID), "LayoutPopup_%d", SlotIndex);
-
-        // if (bIsTransitioning) ImGui::BeginDisabled();
-        if (DrawToolbarIconButton("##Layout", EToolbarIcon::Menu, "Layout", PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
+        Desc.OnCoordSpaceToggled = [&]()
         {
-            ImGui::OpenPopup(PopupID);
-        }
-        ShowItemTooltip("Viewport Layout");
-        // if (bIsTransitioning) ImGui::EndDisabled();
+            Editor->ToggleCoordSystem();
+        };
 
-        PushCommonPopupBgColor();
-        if (ImGui::BeginPopup(PopupID))
+        Desc.DrawSnapPopup = [&]()
+        {
+            FEditorViewportToolbar::DrawCommonSnapPopup(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize,
+                                                       Settings.bEnableRotationSnap, Settings.RotationSnapSize,
+                                                       Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
+        };
+
+        Desc.DrawCameraPopup = [&]()
+        {
+            DrawCameraPopupContent(Camera, Settings);
+        };
+
+        Desc.DrawViewportTypePopup = [&]()
+        {
+            auto DrawViewportTypeOption = [&](const char *Label, ELevelViewportType Type)
+            {
+                const int32 TypeIndex = static_cast<int32>(Type);
+                if (FEditorViewportToolbar::DrawIconSelectable(Label, FEditorViewportToolbar::GetViewportTypeIconByIndex(TypeIndex),
+                                                               Label, Opts.ViewportType == Type, 220.0f))
+                {
+                    VC->SetViewportType(Type);
+                    ImGui::CloseCurrentPopup();
+                }
+            };
+
+            FEditorViewportToolbar::DrawPopupSectionHeader("PERSPECTIVE");
+            DrawViewportTypeOption("Perspective", ELevelViewportType::Perspective);
+            FEditorViewportToolbar::DrawPopupSectionHeader("ORTHOGRAPHIC");
+            DrawViewportTypeOption("Top", ELevelViewportType::Top);
+            DrawViewportTypeOption("Bottom", ELevelViewportType::Bottom);
+            DrawViewportTypeOption("Left", ELevelViewportType::Left);
+            DrawViewportTypeOption("Right", ELevelViewportType::Right);
+            DrawViewportTypeOption("Front", ELevelViewportType::Front);
+            DrawViewportTypeOption("Back", ELevelViewportType::Back);
+            DrawViewportTypeOption("Free Ortho", ELevelViewportType::FreeOrthographic);
+        };
+
+        Desc.DrawViewModePopup = [&]()
+        {
+            auto DrawViewModeOption = [&](const char *Label, EViewMode Mode)
+            {
+                const int32 ModeIndex = static_cast<int32>(Mode);
+                if (FEditorViewportToolbar::DrawIconSelectable(Label, FEditorViewportToolbar::GetViewModeIconByIndex(ModeIndex),
+                                                               Label, Opts.ViewMode == Mode, 260.0f))
+                {
+                    Opts.ViewMode = Mode;
+                    ImGui::CloseCurrentPopup();
+                }
+            };
+
+            FEditorViewportToolbar::DrawPopupSectionHeader("VIEW MODE");
+            DrawViewModeOption("Lit", EViewMode::Lit_Phong);
+            DrawViewModeOption("Unlit", EViewMode::Unlit);
+            DrawViewModeOption("Wireframe", EViewMode::Wireframe);
+            DrawViewModeOption("Lit Gouraud", EViewMode::Lit_Gouraud);
+            DrawViewModeOption("Lit Lambert", EViewMode::Lit_Lambert);
+            DrawViewModeOption("Scene Depth", EViewMode::SceneDepth);
+            DrawViewModeOption("World Normal", EViewMode::WorldNormal);
+            DrawViewModeOption("Light Culling", EViewMode::LightCulling);
+        };
+
+        Desc.DrawShowPopup = [&]()
+        {
+            DrawShowFlagsPopupContent(Opts);
+        };
+
+        Desc.DrawLayoutPopup = [&]()
         {
             constexpr int32 LayoutCount = static_cast<int32>(EViewportLayout::MAX);
             constexpr int32 Columns = 4;
             constexpr float IconSize = 32.0f;
 
+            FEditorViewportToolbar::DrawPopupSectionHeader("VIEWPORT LAYOUT");
             for (int32 i = 0; i < LayoutCount; ++i)
             {
                 ImGui::PushID(i);
-
-                bool bSelected = (static_cast<EViewportLayout>(i) == CurrentLayout);
+                const bool bSelected = (static_cast<EViewportLayout>(i) == CurrentLayout);
                 if (bSelected)
                 {
                     ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
@@ -2732,7 +2440,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                 bool bClicked = false;
                 if (LayoutIcons[i])
                 {
-                    bClicked = ImGui::ImageButton("##icon", (ImTextureID)LayoutIcons[i], ImVec2(IconSize, IconSize));
+                    bClicked = ImGui::ImageButton("##icon", reinterpret_cast<ImTextureID>(LayoutIcons[i]), ImVec2(IconSize, IconSize));
                 }
                 else
                 {
@@ -2754,310 +2462,29 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                 }
 
                 if ((i + 1) % Columns != 0 && i + 1 < LayoutCount)
+                {
                     ImGui::SameLine();
+                }
 
                 ImGui::PopID();
             }
-            ImGui::EndPopup();
-        }
-        ImGui::PopStyleColor();
 
-        // 전환 버튼 (같은 줄)
-        ImGui::SameLine();
-
-        constexpr float ToggleIconSize = 16.0f;
-        int32           ToggleIdx = (CurrentLayout == EViewportLayout::OnePane) ? static_cast<int32>(EViewportLayout::FourPanes2x2)
-                                                                                : static_cast<int32>(EViewportLayout::OnePane);
-
-        // if (bIsTransitioning) ImGui::BeginDisabled();
-        if (LayoutIcons[ToggleIdx])
-        {
-            if (ImGui::ImageButton("##toggle", (ImTextureID)LayoutIcons[ToggleIdx], ImVec2(ToggleIconSize, ToggleIconSize)))
+            FEditorViewportToolbar::DrawPopupSeparator(4.0f, 6.0f);
+            const bool bIsTransitioning = (LayoutTransition != EViewportLayoutTransition::None);
+            ImGui::BeginDisabled(bIsTransitioning);
+            if (ImGui::MenuItem((CurrentLayout == EViewportLayout::OnePane) ? "Split Viewports" : "Merge Viewports"))
             {
                 ToggleViewportSplit(SlotIndex);
+                ImGui::CloseCurrentPopup();
             }
-            ShowItemTooltip((CurrentLayout == EViewportLayout::OnePane) ? "Split Viewports" : "Merge Viewports");
-        }
-        else
-        {
-            const char *ToggleLabel = (CurrentLayout == EViewportLayout::OnePane) ? "Split" : "Merge";
-            if (ImGui::Button(ToggleLabel))
-            {
-                ToggleViewportSplit(SlotIndex);
-            }
-            ShowItemTooltip((CurrentLayout == EViewportLayout::OnePane) ? "Split Viewports" : "Merge Viewports");
-        }
-        // if (bIsTransitioning) ImGui::EndDisabled();
+            ImGui::EndDisabled();
+        };
 
-        // ViewportType + Settings 팝업
-        if (SlotIndex < static_cast<int32>(LevelViewportClients.size()))
-        {
-            FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
-            FViewportRenderOptions     &Opts = VC->GetRenderOptions();
-            FEditorViewportCamera      *Camera = VC->GetCamera();
-            UGizmoComponent            *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
-            FLevelEditorSettings            &Settings = Editor->GetSettings();
-
-            auto DrawSelectedToolbarIcon = [&](const char *Id, EToolbarIcon Icon, bool bSelected, const char *Tooltip) -> bool
-            {
-                if (bSelected)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, UIAccentColor::Value);
-                }
-                const bool bClicked = DrawToolbarIconButton(Id, Icon, Tooltip, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
-                if (bSelected)
-                {
-                    ImGui::PopStyleColor(3);
-                }
-                ShowItemTooltip(Tooltip);
-                return bClicked;
-            };
-
-            ImGui::SameLine(0.0f, 10.0f);
-            if (DrawSelectedToolbarIcon("##PlaceActor", EToolbarIcon::AddActor, false, "Place Actor"))
-            {
-                const FPoint MousePos = {ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y};
-                ContextMenuState.PendingPopupPos = MousePos;
-                ContextMenuState.PendingPopupSlot = SlotIndex;
-                ContextMenuState.PendingSpawnSlot = SlotIndex;
-                ContextMenuState.PendingSpawnPos = {PaneRect.X + PaneRect.Width * 0.5f, PaneRect.Y + PaneRect.Height * 0.5f};
-            }
-
-            if (Gizmo)
-            {
-                ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
-                if (DrawSelectedToolbarIcon("##TranslateTool", EToolbarIcon::Translate, Gizmo->GetMode() == EGizmoMode::Translate,
-                                            "Translate"))
-                {
-                    Gizmo->SetTranslateMode();
-                }
-                ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
-                if (DrawSelectedToolbarIcon("##RotateTool", EToolbarIcon::Rotate, Gizmo->GetMode() == EGizmoMode::Rotate, "Rotate"))
-                {
-                    Gizmo->SetRotateMode();
-                }
-                ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
-                if (DrawSelectedToolbarIcon("##ScaleTool", EToolbarIcon::Scale, Gizmo->GetMode() == EGizmoMode::Scale, "Scale"))
-                {
-                    Gizmo->SetScaleMode();
-                }
-            }
-
-            const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
-            ImGui::SameLine(0.0f, 10.0f);
-            if (DrawSelectedToolbarIcon("##CoordSystem", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace, false,
-                                        bWorldCoord ? "World Space" : "Local Space"))
-            {
-                Editor->ToggleCoordSystem();
-            }
-
-            ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
-            RenderSnapToolbarButton(SlotIndex, Settings, 36.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize);
-
-            const float ViewModeButtonWidth = 138.0f;
-            const float ViewportButtonWidth = 138.0f;
-            const float CameraButtonWidth = 32.0f;
-            const float ShowButtonWidth = 32.0f;
-            const float RightGroupWidth =
-                ViewModeButtonWidth + ViewportButtonWidth + CameraButtonWidth + ShowButtonWidth + PaneToolbarButtonSpacing * 3.0f;
-            const float RightX = ImGui::GetWindowWidth() - PaneToolbarPaddingX - RightGroupWidth;
-            ImGui::SameLine((std::max)(RightX, 0.0f), 0.0f);
-
-            // ── View Mode 팝업 ──
-            static const char *ViewModeNames[] = {"Lit",       "Unlit",       "Lit",          "Lit",
-                                                  "Wireframe", "Scene Depth", "World Normal", "Light Culling"};
-            static const char *ViewportTypeNames[] = {"Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Ortho"};
-            const char        *CurrentViewModeName = ViewModeNames[static_cast<int32>(Opts.ViewMode)];
-            const char        *CurrentViewportTypeName = ViewportTypeNames[static_cast<int32>(Opts.ViewportType)];
-
-            char ViewModePopupID[64];
-            snprintf(ViewModePopupID, sizeof(ViewModePopupID), "ViewModePopup_%d", SlotIndex);
-
-            if (DrawToolbarIconLabelButton("##ViewModeIcon", GetViewModeToolbarIcon(Opts.ViewMode), CurrentViewModeName,
-                                           ViewModeButtonWidth, 26.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
-            {
-                ImGui::OpenPopup(ViewModePopupID);
-            }
-            ShowItemTooltip("View Mode");
-
-            PushCommonPopupBgColor();
-            if (ImGui::BeginPopup(ViewModePopupID))
-            {
-                DrawPopupSectionHeader("View Mode");
-                int32 CurrentMode = static_cast<int32>(Opts.ViewMode);
-
-                auto DrawViewModeOption = [&](const char *Label, EViewMode Mode, EToolbarIcon Icon)
-                {
-                    const bool bSelected = CurrentMode == static_cast<int32>(Mode);
-                    ImGui::PushID(Label);
-                    if (ImGui::Selectable("##ViewModeOption", bSelected, 0, ImVec2(260.0f, 24.0f)))
-                    {
-                        CurrentMode = static_cast<int32>(Mode);
-                        ImGui::CloseCurrentPopup();
-                    }
-                    const ImVec2 Min = ImGui::GetItemRectMin();
-                    const ImVec2 Max = ImGui::GetItemRectMax();
-                    ImDrawList  *DrawList = ImGui::GetWindowDrawList();
-                    DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text), Label);
-                    if (ID3D11ShaderResourceView *IconSRV = GetToolbarIconTable()[static_cast<int32>(Icon)])
-                    {
-                        DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f),
-                                           ImVec2(Min.x + 18.0f, Min.y + 18.0f));
-                    }
-                    ImGui::PopID();
-                };
-
-                DrawViewModeOption("Lit", EViewMode::Lit_Phong, EToolbarIcon::ViewModeLit);
-                DrawViewModeOption("Unlit", EViewMode::Unlit, EToolbarIcon::ViewModeUnlit);
-                DrawViewModeOption("Wireframe", EViewMode::Wireframe, EToolbarIcon::ViewModeWireframe);
-                DrawViewModeOption("Lit Gouraud", EViewMode::Lit_Gouraud, EToolbarIcon::ViewModeLit);
-                DrawViewModeOption("Lit Lambert", EViewMode::Lit_Lambert, EToolbarIcon::ViewModeLit);
-                DrawViewModeOption("Scene Depth", EViewMode::SceneDepth, EToolbarIcon::ViewModeSceneDepth);
-                DrawViewModeOption("World Normal", EViewMode::WorldNormal, EToolbarIcon::ViewModeWorldNormal);
-                DrawViewModeOption("Light Culling", EViewMode::LightCulling, EToolbarIcon::ViewModeLightCulling);
-
-                if (false && ImGui::BeginTable("ViewModeTable", 3, ImGuiTableFlags_SizingStretchSame))
-                {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("Unlit", &CurrentMode, static_cast<int32>(EViewMode::Unlit));
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("Phong", &CurrentMode, static_cast<int32>(EViewMode::Lit_Phong));
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("Gouraud", &CurrentMode, static_cast<int32>(EViewMode::Lit_Gouraud));
-
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("Lambert", &CurrentMode, static_cast<int32>(EViewMode::Lit_Lambert));
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("Wireframe", &CurrentMode, static_cast<int32>(EViewMode::Wireframe));
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("SceneDepth", &CurrentMode, static_cast<int32>(EViewMode::SceneDepth));
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("WorldNormal", &CurrentMode, static_cast<int32>(EViewMode::WorldNormal));
-
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::RadioButton("LightCulling", &CurrentMode, static_cast<int32>(EViewMode::LightCulling));
-                    ImGui::TableNextColumn();
-                    ImGui::Dummy(ImVec2(0.0f, 0.0f));
-                    ImGui::TableNextColumn();
-                    ImGui::Dummy(ImVec2(0.0f, 0.0f));
-
-                    ImGui::EndTable();
-                }
-
-                Opts.ViewMode = static_cast<EViewMode>(CurrentMode);
-                ImGui::EndPopup();
-            }
-            ImGui::PopStyleColor();
-
-            // ── Camera 팝업 ──
-            ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
-
-            char ViewportPopupID[64];
-            snprintf(ViewportPopupID, sizeof(ViewportPopupID), "ViewportPopup_%d", SlotIndex);
-
-            if (DrawToolbarIconLabelButton("##ViewportTypeIcon", GetViewportTypeToolbarIcon(Opts.ViewportType), CurrentViewportTypeName,
-                                           ViewportButtonWidth, 26.0f, PaneToolbarFallbackIconSize, PaneToolbarMaxIconSize))
-            {
-                ImGui::OpenPopup(ViewportPopupID);
-            }
-            ShowItemTooltip("Viewport Type");
-
-            PushCommonPopupBgColor();
-            if (ImGui::BeginPopup(ViewportPopupID))
-            {
-                auto DrawViewportTypeOptions = [&](const char *SectionLabel, int32 StartIndex, int32 EndIndex)
-                {
-                    DrawPopupSectionHeader(SectionLabel);
-                    for (int32 TypeIndex = StartIndex; TypeIndex < EndIndex; ++TypeIndex)
-                    {
-                        const bool bSelected = static_cast<int32>(Opts.ViewportType) == TypeIndex;
-                        ImGui::PushID(TypeIndex);
-                        if (ImGui::Selectable("##ViewportTypeOption", bSelected, 0, ImVec2(220.0f, 24.0f)))
-                        {
-                            VC->SetViewportType(static_cast<ELevelViewportType>(TypeIndex));
-                            ImGui::CloseCurrentPopup();
-                        }
-                        const ImVec2 Min = ImGui::GetItemRectMin();
-                        ImDrawList  *DrawList = ImGui::GetWindowDrawList();
-                        if (ID3D11ShaderResourceView *IconSRV = GetToolbarIconTable()[static_cast<int32>(
-                                GetViewportTypeToolbarIcon(static_cast<ELevelViewportType>(TypeIndex)))])
-                        {
-                            DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f),
-                                               ImVec2(Min.x + 18.0f, Min.y + 18.0f));
-                        }
-                        DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text),
-                                          ViewportTypeNames[TypeIndex]);
-                        ImGui::PopID();
-                    }
-                };
-
-                DrawViewportTypeOptions("PERSPECTIVE", 0, 1);
-                DrawViewportTypeOptions("ORTHOGRAPHIC", 1, 8);
-                ImGui::EndPopup();
-            }
-            ImGui::PopStyleColor();
-
-            ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
-
-            char CameraPopupID[64];
-            snprintf(CameraPopupID, sizeof(CameraPopupID), "CameraPopup_%d", SlotIndex);
-
-            if (DrawToolbarIconButton("##CameraSettingsIcon", EToolbarIcon::CameraSettings, "Camera", PaneToolbarFallbackIconSize,
-                                      PaneToolbarMaxIconSize))
-            {
-                ImGui::OpenPopup(CameraPopupID);
-            }
-            ShowItemTooltip("Camera Settings");
-
-            ImGui::SetNextWindowSize(ImVec2(260.0f, 0.0f), ImGuiCond_Appearing);
-            PushCommonPopupBgColor();
-            if (ImGui::BeginPopup(CameraPopupID))
-            {
-                FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-                DrawCameraPopupContent(Camera, Settings);
-
-                ImGui::EndPopup();
-            }
-            ImGui::PopStyleColor();
-
-            // ── Settings 팝업 ──
-            ImGui::SameLine(0.0f, PaneToolbarButtonSpacing);
-
-            char SettingsPopupID[64];
-            snprintf(SettingsPopupID, sizeof(SettingsPopupID), "SettingsPopup_%d", SlotIndex);
-
-            if (DrawToolbarIconButton("##SettingsIcon", EToolbarIcon::ShowFlag, "Show", PaneToolbarFallbackIconSize,
-                                      PaneToolbarMaxIconSize))
-            {
-                ImGui::OpenPopup(SettingsPopupID);
-            }
-            ShowItemTooltip("Show");
-
-            ImGui::SetNextWindowSize(ImVec2(286.0f, 0.0f), ImGuiCond_Always);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.0f, 2.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(5.0f, 3.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(4.0f, 3.0f));
-            PushCommonPopupBgColor();
-            if (ImGui::BeginPopup(SettingsPopupID))
-            {
-                DrawShowFlagsPopupContent(Opts);
-                ImGui::EndPopup();
-            }
-            ImGui::PopStyleColor();
-            ImGui::PopStyleVar(4);
-
-            Editor->ApplyTransformSettingsToGizmo();
-        } // SlotIndex guard
-
-        PopToolbarButtonStyle();
-        ImGui::PopID();
+        FEditorViewportToolbar::RenderViewportToolbar(Desc);
+        Editor->ApplyTransformSettingsToGizmo();
     }
+
+    ImGui::PopID();
     FViewportToolbar::EndInRect();
 }
 

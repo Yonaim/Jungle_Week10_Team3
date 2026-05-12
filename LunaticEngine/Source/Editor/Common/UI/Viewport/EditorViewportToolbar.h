@@ -339,6 +339,112 @@ class FEditorViewportToolbar
         return bClicked;
     }
 
+
+
+    static const char *GetViewportTypeLabelByIndex(int32 TypeIndex)
+    {
+        static const char *ViewportTypeNames[] = {"Perspective", "Top", "Bottom", "Left", "Right", "Front", "Back", "Free Ortho"};
+        return (TypeIndex >= 0 && TypeIndex < 8) ? ViewportTypeNames[TypeIndex] : "Perspective";
+    }
+
+    static EIcon GetViewportTypeIconByIndex(int32 TypeIndex)
+    {
+        switch (TypeIndex)
+        {
+        case 1: return EIcon::ViewportTop;
+        case 2: return EIcon::ViewportBottom;
+        case 3: return EIcon::ViewportLeft;
+        case 4: return EIcon::ViewportRight;
+        case 5: return EIcon::ViewportFront;
+        case 6: return EIcon::ViewportBack;
+        case 7: return EIcon::ViewportFreeOrtho;
+        case 0:
+        default: return EIcon::ViewportPerspective;
+        }
+    }
+
+    static const char *GetViewModeLabelByIndex(int32 ModeIndex)
+    {
+        // Lit_Phong / Lit_Gouraud / Lit_Lambert 계열은 toolbar label을 모두 Lit으로 맞춘다.
+        static const char *ViewModeNames[] = {"Lit", "Unlit", "Lit", "Lit", "Wireframe", "Scene Depth", "World Normal", "Light Culling"};
+        return (ModeIndex >= 0 && ModeIndex < 8) ? ViewModeNames[ModeIndex] : "Lit";
+    }
+
+    static EIcon GetViewModeIconByIndex(int32 ModeIndex)
+    {
+        switch (ModeIndex)
+        {
+        case 1: return EIcon::ViewModeUnlit;
+        case 4: return EIcon::ViewModeWireframe;
+        case 5: return EIcon::ViewModeSceneDepth;
+        case 6: return EIcon::ViewModeWorldNormal;
+        case 7: return EIcon::ViewModeLightCulling;
+        case 0:
+        case 2:
+        case 3:
+        default: return EIcon::ViewModeLit;
+        }
+    }
+
+    static void DrawSnapValueRow(const char *Label, bool &bEnabled, float &Value, const float *Values, int32 Count, const char *Format)
+    {
+        ImGui::Checkbox(Label, &bEnabled);
+        ImGui::BeginDisabled(!bEnabled);
+        ImGui::Indent(12.0f);
+        for (int32 i = 0; i < Count; ++i)
+        {
+            ImGui::PushID(i);
+            char ButtonLabel[32];
+            snprintf(ButtonLabel, sizeof(ButtonLabel), Format, Values[i]);
+            const bool bSelected = Value == Values[i];
+            if (ImGui::Selectable(ButtonLabel, bSelected, 0, ImVec2(88.0f, 22.0f)))
+            {
+                Value = Values[i];
+            }
+            if ((i + 1) % 3 != 0 && i + 1 < Count)
+            {
+                ImGui::SameLine();
+            }
+            ImGui::PopID();
+        }
+        ImGui::Unindent(12.0f);
+        ImGui::EndDisabled();
+    }
+
+    static void DrawCommonSnapPopup(bool &bEnableTranslationSnap, float &TranslationSnapSize,
+                                    bool &bEnableRotationSnap, float &RotationSnapSize,
+                                    bool &bEnableScaleSnap, float &ScaleSnapSize)
+    {
+        static const float TranslationSnapSizes[] = {1.0f, 5.0f, 10.0f, 50.0f, 100.0f, 500.0f, 1000.0f, 5000.0f, 10000.0f};
+        static const float RotationSnapSizes[] = {1.0f, 5.0f, 10.0f, 15.0f, 30.0f, 45.0f, 60.0f, 90.0f};
+        static const float ScaleSnapSizes[] = {0.0625f, 0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 5.0f, 10.0f};
+
+        DrawPopupSectionHeader("SNAP SETTINGS");
+        DrawSnapValueRow("Location", bEnableTranslationSnap, TranslationSnapSize, TranslationSnapSizes, 9, "%.0f");
+        ImGui::Spacing();
+        DrawSnapValueRow("Rotation", bEnableRotationSnap, RotationSnapSize, RotationSnapSizes, 8, "%.0f deg");
+        ImGui::Spacing();
+        DrawSnapValueRow("Scale", bEnableScaleSnap, ScaleSnapSize, ScaleSnapSizes, 8, "%.5g");
+    }
+
+    static void DrawScalarFloat(const char *Label, float &Value, float Speed, float Min, float Max, const char *Format)
+    {
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::DragFloat(Label, &Value, Speed, Min, Max, Format);
+    }
+
+    static void DrawSliderFloat(const char *Label, float &Value, float Min, float Max, const char *Format = "%.2f")
+    {
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::SliderFloat(Label, &Value, Min, Max, Format);
+    }
+
+    static void DrawSliderInt(const char *Label, int32 &Value, int32 Min, int32 Max)
+    {
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::SliderInt(Label, &Value, Min, Max);
+    }
+
   private:
     static const char *GetIconResourceKey(EIcon Icon)
     {

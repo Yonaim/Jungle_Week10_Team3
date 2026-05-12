@@ -1,4 +1,4 @@
-#include "GizmoComponent.h"
+﻿#include "GizmoComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -48,6 +48,9 @@ void UGizmoComponent::DestroyRenderState()
 		if (InnerProxy) { Scene->RemovePrimitive(InnerProxy); InnerProxy = nullptr; }
 		if (SceneProxy) { Scene->RemovePrimitive(SceneProxy); SceneProxy = nullptr; }
 	}
+
+	// 같은 proxy를 죽은/교체된 FScene에서 다시 제거하지 않도록 명시적으로 끊어 둔다.
+	RegisteredScene = nullptr;
 }
 
 #include <cmath>

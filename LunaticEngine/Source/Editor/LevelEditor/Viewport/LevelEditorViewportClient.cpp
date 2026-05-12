@@ -19,7 +19,6 @@
 
 
 #include "Collision/RayUtils.h"
-#include "Component/BillboardComponent.h"
 #include "Component/GizmoComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/MeshComponent.h"
@@ -373,79 +372,8 @@ void BuildBoundingBoxCorners(const FBoundingBox &Bounds, FVector OutCorners[8])
     OutCorners[7] = FVector(Max.X, Max.Y, Max.Z);
 }
 
-bool ProjectBillboardToViewport(const UBillboardComponent *Billboard, const FEditorViewportCamera *Camera,
-                                const FViewportRenderOptions &RenderOptions, float ViewportWidth, float ViewportHeight,
-                                float &OutMinX, float &OutMinY, float &OutMaxX, float &OutMaxY, float &OutMinDepth)
-{
-    if (!Billboard || !Camera)
-    {
-        return false;
-    }
-
-    const float ScreenScale = Billboard->ComputeRenderedScreenScale(
-        Camera->GetWorldLocation(), Camera->IsOrthogonal(), Camera->GetOrthoWidth(), RenderOptions.ActorHelperBillboardScale);
-    FMatrix BillboardWorldMatrix = Billboard->ComputeBillboardMatrix(Camera->GetForwardVector());
-    const float BillboardWidth = Billboard->GetWidth() * ScreenScale;
-    const float BillboardHeight = Billboard->GetHeight() * ScreenScale;
-
-    BillboardWorldMatrix.M[1][0] *= BillboardWidth;
-    BillboardWorldMatrix.M[1][1] *= BillboardWidth;
-    BillboardWorldMatrix.M[1][2] *= BillboardWidth;
-    BillboardWorldMatrix.M[2][0] *= BillboardHeight;
-    BillboardWorldMatrix.M[2][1] *= BillboardHeight;
-    BillboardWorldMatrix.M[2][2] *= BillboardHeight;
-
-    const FVector LocalCorners[4] = {
-        FVector(0.0f, -0.5f, -0.5f),
-        FVector(0.0f,  0.5f, -0.5f),
-        FVector(0.0f, -0.5f,  0.5f),
-        FVector(0.0f,  0.5f,  0.5f),
-    };
-
-    const FMatrix ViewProjection = Camera->GetViewProjectionMatrix();
-    float MinX = FLT_MAX;
-    float MinY = FLT_MAX;
-    float MaxX = -FLT_MAX;
-    float MaxY = -FLT_MAX;
-    float MinDepth = FLT_MAX;
-    bool bProjectedAny = false;
-
-    for (const FVector &LocalCorner : LocalCorners)
-    {
-        const FVector WorldCorner = BillboardWorldMatrix.TransformPositionWithW(LocalCorner);
-
-        float ScreenX = 0.0f;
-        float ScreenY = 0.0f;
-        float Depth = 0.0f;
-        if (!ProjectWorldToViewport(ViewProjection, WorldCorner, ViewportWidth, ViewportHeight, ScreenX, ScreenY, Depth))
-        {
-            continue;
-        }
-
-        MinX = (std::min)(MinX, ScreenX);
-        MinY = (std::min)(MinY, ScreenY);
-        MaxX = (std::max)(MaxX, ScreenX);
-        MaxY = (std::max)(MaxY, ScreenY);
-        MinDepth = (std::min)(MinDepth, Depth);
-        bProjectedAny = true;
-    }
-
-    if (!bProjectedAny)
-    {
-        return false;
-    }
-
-    OutMinX = MinX;
-    OutMinY = MinY;
-    OutMaxX = MaxX;
-    OutMaxY = MaxY;
-    OutMinDepth = MinDepth;
-    return true;
-}
-
 AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *Camera, float MouseViewportX,
                                    float MouseViewportY, float ViewportWidth, float ViewportHeight,
-                                   const FViewportRenderOptions &RenderOptions,
                                    UPrimitiveComponent *&OutPrimitive)
 {
     OutPrimitive = nullptr;
@@ -478,6 +406,15 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
                 continue;
             }
 
+            const FBoundingBox Bounds = Primitive->GetWorldBoundingBox();
+            if (!Bounds.IsValid())
+            {
+                continue;
+            }
+
+            FVector Corners[8];
+            BuildBoundingBoxCorners(Bounds, Corners);
+
             float MinX = FLT_MAX;
             float MinY = FLT_MAX;
             float MaxX = -FLT_MAX;
@@ -485,40 +422,23 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
             float MinDepth = FLT_MAX;
             bool bProjectedAny = false;
 
-            if (const UBillboardComponent *Billboard = Cast<UBillboardComponent>(Primitive))
+            for (const FVector &Corner : Corners)
             {
-                bProjectedAny = ProjectBillboardToViewport(Billboard, Camera, RenderOptions, ViewportWidth,
-                                                           ViewportHeight, MinX, MinY, MaxX, MaxY, MinDepth);
-            }
-            else
-            {
-                const FBoundingBox Bounds = Primitive->GetWorldBoundingBox();
-                if (!Bounds.IsValid())
+                float ScreenX = 0.0f;
+                float ScreenY = 0.0f;
+                float Depth = 0.0f;
+                if (!ProjectWorldToViewport(ViewProjection, Corner, ViewportWidth, ViewportHeight, ScreenX, ScreenY,
+                                            Depth))
                 {
                     continue;
                 }
 
-                FVector Corners[8];
-                BuildBoundingBoxCorners(Bounds, Corners);
-
-                for (const FVector &Corner : Corners)
-                {
-                    float ScreenX = 0.0f;
-                    float ScreenY = 0.0f;
-                    float Depth = 0.0f;
-                    if (!ProjectWorldToViewport(ViewProjection, Corner, ViewportWidth, ViewportHeight, ScreenX, ScreenY,
-                                                Depth))
-                    {
-                        continue;
-                    }
-
-                    MinX = (std::min)(MinX, ScreenX);
-                    MinY = (std::min)(MinY, ScreenY);
-                    MaxX = (std::max)(MaxX, ScreenX);
-                    MaxY = (std::max)(MaxY, ScreenY);
-                    MinDepth = (std::min)(MinDepth, Depth);
-                    bProjectedAny = true;
-                }
+                MinX = (std::min)(MinX, ScreenX);
+                MinY = (std::min)(MinY, ScreenY);
+                MaxX = (std::max)(MaxX, ScreenX);
+                MaxY = (std::max)(MaxY, ScreenY);
+                MinDepth = (std::min)(MinDepth, Depth);
+                bProjectedAny = true;
             }
 
             if (!bProjectedAny)
@@ -692,6 +612,16 @@ void FLevelEditorViewportClient::ReleaseEditorGizmo()
     GizmoManager.SetVisualComponent(nullptr);
     UObjectManager::Get().DestroyObject(Gizmo);
     Gizmo = nullptr;
+}
+
+void FLevelEditorViewportClient::DetachSceneResourcesForWorldChange()
+{
+    // NEW SCENE / LOAD SCENE처럼 World가 교체될 때는 UWorld 내부의 FScene이 먼저 파괴될 수 있다.
+    // Transform Gizmo는 editor-only proxy를 FScene에 직접 등록하므로, World 파괴 전에 반드시 제거해야 한다.
+    UnregisterGizmoFromScene();
+
+    CurrentGizmoTargetComponent = nullptr;
+    GizmoManager.ClearTarget();
 }
 
 void FLevelEditorViewportClient::UnregisterGizmoFromScene()
@@ -957,12 +887,7 @@ void FLevelEditorViewportClient::SetupInput()
                                             if (Index >= 0 && Index < 10 && GCameraBookmarks[Index].bValid)
                                             {
                                                 const auto &BM = GCameraBookmarks[Index];
-                                                FocusStartLoc = GetCamera()->GetWorldLocation();
-                                                FocusStartRot = GetCamera()->GetRelativeRotation();
-                                                FocusEndLoc = BM.Location;
-                                                FocusEndRot = BM.Rotation;
-                                                bIsFocusAnimating = true;
-                                                FocusAnimTimer = 0.0f;
+                                                GetCameraController().StartFocusToTransform(BM.Location, BM.Rotation, FocusAnimDuration);
                                             }
                                         }
                                     });
@@ -1097,7 +1022,7 @@ void FLevelEditorViewportClient::OnEditorOrbit(const FInputActionValue &Value)
             if (GetCamera())
             {
                 float ScrubSpeed = 0.05f;
-                TargetLocation += GetCamera()->GetForwardVector() * (Value.GetVector().X * ScrubSpeed);
+                GetCameraController().AddForwardTargetDelta(Value.GetVector().X * ScrubSpeed);
             }
         }
     }
@@ -1107,39 +1032,26 @@ void FLevelEditorViewportClient::OnEditorFocus(const FInputActionValue &Value)
 {
     if (FInputManager::Get().IsMouseButtonDown(VK_RBUTTON))
         return;
-    if (SelectionManager && GetCamera())
+
+    if (!SelectionManager || !GetCamera())
+        return;
+
+    AActor *Selected = SelectionManager->GetPrimarySelection();
+    if (!Selected)
+        return;
+
+    FVector TargetLoc = Selected->GetActorLocation();
+    float FocusDistance = 5.0f;
+    if (UPrimitiveComponent *RootPrim = Cast<UPrimitiveComponent>(Selected->GetRootComponent()))
     {
-        AActor *Selected = SelectionManager->GetPrimarySelection();
-        if (Selected)
-        {
-            FVector TargetLoc = Selected->GetActorLocation();
-            FVector CameraForward = GetCamera()->GetForwardVector();
-            FVector OriginalLoc = GetCamera()->GetWorldLocation();
-            FRotator OriginalRot = GetCamera()->GetRelativeRotation();
-
-            float FocusDistance = 5.0f;
-            if (UPrimitiveComponent *RootPrim = Cast<UPrimitiveComponent>(Selected->GetRootComponent()))
-            {
-                FVector Extent = RootPrim->GetWorldBoundingBox().GetExtent();
-                float MaxDim = (std::max)({Extent.X, Extent.Y, Extent.Z});
-                FocusDistance = (std::max)(5.0f, MaxDim * 2.5f);
-            }
-
-            FVector NewCameraLoc = TargetLoc - CameraForward * FocusDistance;
-            GetCamera()->SetWorldLocation(NewCameraLoc);
-            GetCamera()->LookAt(TargetLoc);
-            FRotator TargetRot = GetCamera()->GetRelativeRotation();
-            GetCamera()->SetWorldLocation(OriginalLoc);
-            GetCamera()->SetRelativeRotation(OriginalRot);
-            bIsFocusAnimating = true;
-            FocusAnimTimer = 0.0f;
-            FocusStartLoc = OriginalLoc;
-            FocusStartRot = OriginalRot;
-            FocusEndLoc = NewCameraLoc;
-            FocusEndRot = TargetRot;
-        }
+        FVector Extent = RootPrim->GetWorldBoundingBox().GetExtent();
+        float MaxDim = (std::max)({Extent.X, Extent.Y, Extent.Z});
+        FocusDistance = (std::max)(5.0f, MaxDim * 2.5f);
     }
+
+    GetCameraController().StartFocus(TargetLoc, FocusDistance, FocusAnimDuration);
 }
+
 
 void FLevelEditorViewportClient::OnEditorDelete(const FInputActionValue &Value)
 {
@@ -1264,9 +1176,7 @@ void FLevelEditorViewportClient::ResetCamera()
 {
     if (!GetCamera() || !Settings)
         return;
-    GetCamera()->SetWorldLocation(Settings->InitViewPos);
-    GetCamera()->LookAt(Settings->InitLookAt);
-    SyncCameraSmoothingTarget();
+    GetCameraController().ResetLookAt(Settings->InitViewPos, Settings->InitLookAt);
 }
 
 bool FLevelEditorViewportClient::FocusActor(AActor *Actor)
@@ -1277,27 +1187,8 @@ bool FLevelEditorViewportClient::FocusActor(AActor *Actor)
     }
 
     const FVector TargetLoc = Actor->GetActorLocation();
-    const FVector CameraForward = GetCamera()->GetForwardVector();
-
-    const FVector OriginalLoc = GetCamera()->GetWorldLocation();
-    const FRotator OriginalRot = GetCamera()->GetRelativeRotation();
-
     constexpr float FocusDistance = 5.0f;
-    const FVector NewCameraLoc = TargetLoc - CameraForward * FocusDistance;
-
-    GetCamera()->SetWorldLocation(NewCameraLoc);
-    GetCamera()->LookAt(TargetLoc);
-    const FRotator TargetRot = GetCamera()->GetRelativeRotation();
-
-    GetCamera()->SetWorldLocation(OriginalLoc);
-    GetCamera()->SetRelativeRotation(OriginalRot);
-
-    bIsFocusAnimating = true;
-    FocusAnimTimer = 0.0f;
-    FocusStartLoc = OriginalLoc;
-    FocusStartRot = OriginalRot;
-    FocusEndLoc = NewCameraLoc;
-    FocusEndRot = TargetRot;
+    GetCameraController().StartFocus(TargetLoc, FocusDistance, FocusAnimDuration);
     return true;
 }
 
@@ -1305,56 +1196,11 @@ void FLevelEditorViewportClient::SetViewportType(ELevelViewportType NewType)
 {
     if (!GetCamera())
         return;
+
     RenderOptions.ViewportType = NewType;
-    if (NewType == ELevelViewportType::Perspective)
-    {
-        GetCamera()->SetOrthographic(false);
-        SyncCameraSmoothingTarget();
-        return;
-    }
-    if (NewType == ELevelViewportType::FreeOrthographic)
-    {
-        GetCamera()->SetOrthographic(true);
-        SyncCameraSmoothingTarget();
-        return;
-    }
-    GetCamera()->SetOrthographic(true);
-    constexpr float OrthoDistance = 50.0f;
-    FVector Position = FVector(0, 0, 0);
-    FVector Rotation = FVector(0, 0, 0);
-    switch (NewType)
-    {
-    case ELevelViewportType::Top:
-        Position = FVector(0, 0, OrthoDistance);
-        Rotation = FVector(0, 90.0f, 0);
-        break;
-    case ELevelViewportType::Bottom:
-        Position = FVector(0, 0, -OrthoDistance);
-        Rotation = FVector(0, -90.0f, 0);
-        break;
-    case ELevelViewportType::Front:
-        Position = FVector(OrthoDistance, 0, 0);
-        Rotation = FVector(0, 0, 180.0f);
-        break;
-    case ELevelViewportType::Back:
-        Position = FVector(-OrthoDistance, 0, 0);
-        Rotation = FVector(0, 0, 0.0f);
-        break;
-    case ELevelViewportType::Left:
-        Position = FVector(0, -OrthoDistance, 0);
-        Rotation = FVector(0, 0, 90.0f);
-        break;
-    case ELevelViewportType::Right:
-        Position = FVector(0, OrthoDistance, 0);
-        Rotation = FVector(0, 0, -90.0f);
-        break;
-    default:
-        break;
-    }
-    GetCamera()->SetRelativeLocation(Position);
-    GetCamera()->SetRelativeRotation(Rotation);
-    SyncCameraSmoothingTarget();
+    GetCameraController().SetViewportType(NewType, 50.0f);
 }
+
 
 void FLevelEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
 {
@@ -1407,30 +1253,10 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
             }
         }
     }
-    SyncCameraSmoothingTarget();
-    if (bIsFocusAnimating && GetCamera())
+    GetCameraController().SyncTargetToCamera();
+    if (!GetCameraController().TickFocus(DeltaTime))
     {
-        FocusAnimTimer += DeltaTime;
-        float Alpha = FocusAnimTimer / FocusAnimDuration;
-        if (Alpha >= 1.0f)
-        {
-            Alpha = 1.0f;
-            bIsFocusAnimating = false;
-        }
-        float SmoothAlpha = Alpha * Alpha * (3.0f - 2.0f * Alpha);
-        FVector NewLoc = FocusStartLoc * (1.0f - SmoothAlpha) + FocusEndLoc * SmoothAlpha;
-        FQuat StartQuat = FocusStartRot.ToQuaternion();
-        FQuat EndQuat = FocusEndRot.ToQuaternion();
-        FQuat BlendedQuat = FQuat::Slerp(StartQuat, EndQuat, SmoothAlpha);
-        GetCamera()->SetWorldLocation(NewLoc);
-        GetCamera()->SetRelativeRotation(FRotator::FromQuaternion(BlendedQuat));
-        TargetLocation = NewLoc;
-        LastAppliedCameraLocation = NewLoc;
-        bLastAppliedCameraLocationInitialized = true;
-    }
-    else
-    {
-        ApplySmoothedCameraLocation(DeltaTime);
+        GetCameraController().ApplySmoothedLocation(DeltaTime, SmoothLocationSpeed);
     }
     TickInput(DeltaTime);
     SyncGizmoTargetFromSelection();
@@ -1491,35 +1317,14 @@ bool FLevelEditorViewportClient::BuildRenderRequest(FEditorViewportRenderRequest
 
 void FLevelEditorViewportClient::SyncCameraSmoothingTarget()
 {
-    if (!GetCamera())
-    {
-        bTargetLocationInitialized = false;
-        bLastAppliedCameraLocationInitialized = false;
-        return;
-    }
-    const FVector CurrentLocation = GetCamera()->GetWorldLocation();
-    const bool bCameraMovedExternally = bLastAppliedCameraLocationInitialized &&
-                                        FVector::DistSquared(CurrentLocation, LastAppliedCameraLocation) > 0.0001f;
-    if (!bTargetLocationInitialized || bCameraMovedExternally)
-    {
-        TargetLocation = CurrentLocation;
-        bTargetLocationInitialized = true;
-    }
-    LastAppliedCameraLocation = CurrentLocation;
-    bLastAppliedCameraLocationInitialized = true;
+    GetCameraController().SyncTargetToCamera();
 }
 
 void FLevelEditorViewportClient::ApplySmoothedCameraLocation(float DeltaTime)
 {
-    if (!GetCamera())
-        return;
-    const FVector CurrentLocation = GetCamera()->GetWorldLocation();
-    const float LerpAlpha = Clamp(DeltaTime * SmoothLocationSpeed, 0.0f, 1.0f);
-    const FVector NewLocation = CurrentLocation + (TargetLocation - CurrentLocation) * LerpAlpha;
-    GetCamera()->SetWorldLocation(NewLocation);
-    LastAppliedCameraLocation = NewLocation;
-    bLastAppliedCameraLocationInitialized = true;
+    GetCameraController().ApplySmoothedLocation(DeltaTime, SmoothLocationSpeed);
 }
+
 
 void FLevelEditorViewportClient::TickEditorShortcuts()
 {
@@ -1615,16 +1420,14 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
     const float PanMouseScale = CameraSpeed * 0.01f;
     if (!bIsOrtho)
     {
-        FVector DeltaMove = (GetCamera()->GetForwardVector() * EditorMoveAccumulator.X +
-                             GetCamera()->GetRightVector() * EditorMoveAccumulator.Y) *
-                            (CameraSpeed * DeltaTime);
-        DeltaMove.Z += EditorMoveAccumulator.Z * (CameraSpeed * DeltaTime);
-        TargetLocation += DeltaMove;
+        GetCameraController().AddLocalTargetDelta(FVector(
+            EditorMoveAccumulator.X * CameraSpeed * DeltaTime,
+            EditorMoveAccumulator.Y * CameraSpeed * DeltaTime,
+            0.0f));
+        GetCameraController().AddWorldTargetDelta(FVector(0.0f, 0.0f, EditorMoveAccumulator.Z * CameraSpeed * DeltaTime));
         if (!EditorPanAccumulator.IsNearlyZero())
         {
-            FVector PanDelta = (GetCamera()->GetRightVector() * (-EditorPanAccumulator.X * PanMouseScale * 0.15f)) +
-                               (GetCamera()->GetUpVector() * (EditorPanAccumulator.Y * PanMouseScale * 0.15f));
-            TargetLocation += PanDelta;
+            GetCameraController().AddPanTargetDelta(EditorPanAccumulator.X, EditorPanAccumulator.Y, PanMouseScale * 0.15f);
         }
         if (!EditorRotateAccumulator.IsNearlyZero())
         {
@@ -1642,7 +1445,7 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
                 Yaw = EditorRotateAccumulator.X * MouseRotationSpeed;
                 Pitch = EditorRotateAccumulator.Y * MouseRotationSpeed;
             }
-            GetCamera()->Rotate(Yaw, Pitch);
+            GetCameraController().Rotate(Yaw, Pitch);
         }
     }
     else
@@ -1650,7 +1453,7 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
         if (!EditorRotateAccumulator.IsNearlyZero() && Input.IsMouseButtonDown(VK_RBUTTON))
         {
             float PanScale = CameraState.OrthoWidth * 0.002f * MoveSensitivity;
-            GetCamera()->MoveLocal(FVector(0, -EditorRotateAccumulator.Y * PanScale, EditorRotateAccumulator.Z * PanScale));
+            GetCameraController().MoveLocalImmediate(FVector(0, -EditorRotateAccumulator.Y * PanScale, EditorRotateAccumulator.Z * PanScale));
         }
     }
 }
@@ -1727,7 +1530,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         }
         else
         {
-            TargetLocation += GetCamera()->GetForwardVector() * (EditorZoomAccumulator * ZoomSpeed * 0.015f);
+            GetCameraController().AddForwardTargetDelta(EditorZoomAccumulator * ZoomSpeed * 0.015f);
         }
     }
     FInputManager &Input = FInputManager::Get();
@@ -1794,7 +1597,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
                     if (!BestV.IsNearlyZero())
                     {
                         GizmoManager.SetTargetWorldLocation(BestV);
-                        TargetLocation = BestV;
+                        GetCameraController().SyncTargetToCamera();
                     }
                 }
                 GizmoManager.UpdateDrag(Ray);
@@ -1946,7 +1749,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
                         const float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
                         const float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
                         BestActor = FindScreenSpacePrimitiveAt(W, GetCamera(), LocalMouseX, LocalMouseY, VPWidth, VPHeight,
-                                                               RenderOptions, ScreenHitPrimitive);
+                                                               ScreenHitPrimitive);
                         if (ScreenHitPrimitive)
                         {
                             HitResult.HitComponent = ScreenHitPrimitive;

@@ -37,6 +37,9 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void Shutdown() override;
     void Tick(float DeltaTime) override;
 
+    // World/FScene 교체 전에 viewport가 들고 있는 editor-only scene resource를 먼저 해제한다.
+    void DetachSceneResourcesForWorldChange();
+
     UWorld *GetWorld() const;
 
     void             SetOverlayStatSystem(FOverlayStatSystem *InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
@@ -120,18 +123,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     FVector MarqueeStartPos;
     FVector MarqueeCurrentPos;
 
-    bool        bIsFocusAnimating = false;
-    FVector     FocusStartLoc;
-    FRotator    FocusStartRot;
-    FVector     FocusEndLoc;
-    FRotator    FocusEndRot;
-    float       FocusAnimTimer = 0.0f;
     const float FocusAnimDuration = 0.5f;
-
-    FVector     TargetLocation;
-    bool        bTargetLocationInitialized = false;
-    FVector     LastAppliedCameraLocation;
-    bool        bLastAppliedCameraLocationInitialized = false;
     const float SmoothLocationSpeed = 10.0f;
 
     FEnhancedInputManager EnhancedInputManager;

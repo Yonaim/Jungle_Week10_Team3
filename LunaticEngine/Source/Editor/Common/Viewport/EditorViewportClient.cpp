@@ -43,6 +43,7 @@ bool TryConvertMouseToViewportPixel(const ImVec2 &MousePos, const FRect &Viewpor
 void FEditorViewportClient::Init(FWindowsWindow *InWindow)
 {
     Window = InWindow;
+    CameraController.SetCamera(&ViewCamera);
 }
 
 void FEditorViewportClient::Shutdown()
