@@ -54,7 +54,7 @@ public:
 	// --- Mesh (경로 레지스트리 전용) ---
 	FMeshResource* FindMesh(const FName& MeshName);
 	const FMeshResource* FindMesh(const FName& MeshName) const;
-	void RegisterMesh(const FName& MeshName, const FString& InPath);
+	void RegisterMesh(const FName& MeshName, const FString& InPath, EMeshResourceType MeshType = EMeshResourceType::Unknown);
 	TArray<FString> GetMeshNames() const;
 
 	// --- Sound (경로 레지스트리 전용) ---

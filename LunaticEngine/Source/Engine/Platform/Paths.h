@@ -30,6 +30,7 @@ public:
 	static std::wstring EditorResourceFilePath();   // Settings/Resource/EditorResources.ini
 	static std::wstring DefaultContentResourceFilePath(); // Settings/Resource/DefaultContentResources.ini
 	static std::wstring ProjectResourcePathsFilePath();  // Settings/Resource/ProjectResourcePaths.ini
+	static std::wstring ProjectResourceRegistryFilePath();  // Settings/Resource/ProjectResourceRegistry.ini
 	static std::wstring ProjectSettingsFilePath();  // Settings/ProjectSettings.ini
 
 	static std::wstring ProjectDir();

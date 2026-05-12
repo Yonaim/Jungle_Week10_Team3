@@ -117,6 +117,12 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	}
 
 	{
+		SCOPE_STARTUP_STAT("ResourceManager::LoadProjectResourceRegistry");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading project resource registry");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ProjectResourceRegistryFilePath()), Device);
+	}
+
+	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadFromDir");
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning resource directory: %s", FPaths::ToUtf8(FPaths::RootDir()).c_str());
 		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::RootDir()), Device);

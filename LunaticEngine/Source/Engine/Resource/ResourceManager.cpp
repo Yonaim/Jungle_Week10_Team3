@@ -15,6 +15,7 @@
 #include "Profiling/MemoryStats.h"
 #include "Engine/Texture/Texture2D.h"
 #include "Materials/MaterialManager.h"
+#include "Mesh/ObjManager.h"
 
 
 // SEH-guarded WIC 호출 (C++ 객체 unwind가 없는 별도 함수여야 __try/__except 사용 가능).
@@ -51,6 +52,8 @@ namespace ResourceKey
 	constexpr const char* Particle = "Particle";
 	constexpr const char* Texture  = "Texture";
 	constexpr const char* Mesh     = "Mesh";
+	constexpr const char* StaticMesh = "StaticMesh";
+	constexpr const char* SkeletalMesh = "SkeletalMesh";
 	constexpr const char* Sound    = "Sound";
 	constexpr const char* Material = "Material";
 	constexpr const char* PathMap  = "Path";
@@ -192,6 +195,98 @@ namespace
 
 		return ESoundCategory::SFX;
 	}
+
+	bool IsSkeletalMeshCachePath(const FString& Path)
+	{
+		const std::filesystem::path PathW(FPaths::ToWide(Path));
+		std::wstring Extension = PathW.extension().wstring();
+		std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::towlower);
+		if (Extension != L".bin")
+		{
+			return false;
+		}
+
+		const std::wstring Stem = PathW.stem().wstring();
+		constexpr wchar_t SkeletalSuffix[] = L"_Skeletal";
+		constexpr size_t SuffixLength = (sizeof(SkeletalSuffix) / sizeof(wchar_t)) - 1;
+		return Stem.size() >= SuffixLength && Stem.compare(Stem.size() - SuffixLength, SuffixLength, SkeletalSuffix) == 0;
+	}
+
+	void PreloadRegisteredMeshes(const TMap<FString, FMeshResource>& MeshResources, ID3D11Device* Device, const char* SourceLabel)
+	{
+		if (!Device)
+		{
+			UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Mesh preload skipped for %s: device is null", SourceLabel);
+			return;
+		}
+
+		size_t PreloadedStaticMeshCount = 0;
+		size_t PreloadedSkeletalMeshCount = 0;
+		size_t FailedMeshCount = 0;
+
+		for (const auto& [Key, Resource] : MeshResources)
+		{
+			if (Resource.Path.empty())
+			{
+				continue;
+			}
+
+			std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(Resource.Path);
+			FullPath = FullPath.lexically_normal();
+			const FString RelativePath = FPaths::ToUtf8(FullPath.lexically_relative(FPaths::RootDir()).generic_wstring());
+
+			if (!std::filesystem::exists(FullPath))
+			{
+				UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Mesh preload skipped: key=%s path=%s (missing)",
+					Key.c_str(),
+					Resource.Path.c_str());
+				++FailedMeshCount;
+				continue;
+			}
+
+			std::wstring Extension = FullPath.extension().wstring();
+			std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::towlower);
+
+			const bool bTreatAsSkeletal =
+				Resource.MeshType == EMeshResourceType::Skeletal
+				|| (Resource.MeshType == EMeshResourceType::Unknown
+					&& (IsSkeletalMeshCachePath(RelativePath)
+						|| (Extension == L".fbx" && FObjManager::IsFbxSkeletalMesh(RelativePath))));
+
+			bool bLoaded = false;
+			if (bTreatAsSkeletal)
+			{
+				bLoaded = (FObjManager::LoadObjSkeletalMesh(RelativePath, Device) != nullptr);
+				if (bLoaded)
+				{
+					++PreloadedSkeletalMeshCount;
+				}
+			}
+			else
+			{
+				bLoaded = (FObjManager::LoadObjStaticMesh(RelativePath, Device) != nullptr);
+				if (bLoaded)
+				{
+					++PreloadedStaticMeshCount;
+				}
+			}
+
+			if (!bLoaded)
+			{
+				UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Mesh preload failed: key=%s path=%s",
+					Key.c_str(),
+					Resource.Path.c_str());
+				++FailedMeshCount;
+			}
+		}
+
+		UE_LOG_CATEGORY(ResourceManager, Info,
+			"[INIT] Mesh preload complete for %s: static=%zu skeletal=%zu failed=%zu",
+			SourceLabel,
+			PreloadedStaticMeshCount,
+			PreloadedSkeletalMeshCount,
+			FailedMeshCount);
+	}
 }
 
 void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
@@ -276,19 +371,29 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 		}
 	}
 
-	// Mesh — { "Name": { "Path": "..." } }  (경로 레지스트리 전용)
-	if (Root.hasKey(ResourceKey::Mesh))
+	auto LoadMeshSection = [&](const char* SectionKey, EMeshResourceType MeshType)
 	{
-		JSON MeshSection = Root[ResourceKey::Mesh];
+		if (!Root.hasKey(SectionKey))
+		{
+			return;
+		}
+
+		JSON MeshSection = Root[SectionKey];
 		for (auto& Pair : MeshSection.ObjectRange())
 		{
 			JSON Entry = Pair.second;
 			FMeshResource Resource;
 			Resource.Name = FName(Pair.first.c_str());
 			Resource.Path = Entry[ResourceKey::Path].ToString();
+			Resource.MeshType = MeshType;
 			MeshResources[Pair.first] = Resource;
 		}
-	}
+	};
+
+	// 호환용 legacy "Mesh"와 신규 "StaticMesh" / "SkeletalMesh"를 모두 허용한다.
+	LoadMeshSection(ResourceKey::Mesh, EMeshResourceType::Unknown);
+	LoadMeshSection(ResourceKey::StaticMesh, EMeshResourceType::Static);
+	LoadMeshSection(ResourceKey::SkeletalMesh, EMeshResourceType::Skeletal);
 
 	// Sound — { "Name": { "Path": "..." } }  (경로 레지스트리 전용)
 	if (Root.hasKey(ResourceKey::Sound))
@@ -379,6 +484,8 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 	{
 		UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] GPU resource upload failed for: %s", Path.c_str());
 	}
+
+	PreloadRegisteredMeshes(MeshResources, InDevice, Path.c_str());
 
 	size_t PreloadedMaterialCount = 0;
 	for (const auto& [Key, Resource] : MaterialResources)
@@ -735,7 +842,15 @@ void FResourceManager::LoadFromScanFile(const FString& Path, ID3D11Device* InDev
 					}
 					else if (ResourceType == ResourceKey::Mesh)
 					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8);
+						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Unknown);
+					}
+					else if (ResourceType == ResourceKey::StaticMesh)
+					{
+						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Static);
+					}
+					else if (ResourceType == ResourceKey::SkeletalMesh)
+					{
+						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Skeletal);
 					}
 					else if (ResourceType == ResourceKey::Sound)
 					{
@@ -797,7 +912,15 @@ void FResourceManager::LoadFromScanFile(const FString& Path, ID3D11Device* InDev
 					}
 					else if (ResourceType == ResourceKey::Mesh)
 					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8);
+						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Unknown);
+					}
+					else if (ResourceType == ResourceKey::StaticMesh)
+					{
+						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Static);
+					}
+					else if (ResourceType == ResourceKey::SkeletalMesh)
+					{
+						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Skeletal);
 					}
 					else if (ResourceType == ResourceKey::Sound)
 					{
@@ -844,6 +967,8 @@ void FResourceManager::LoadFromScanFile(const FString& Path, ID3D11Device* InDev
 	{
 		UE_LOG_CATEGORY(ResourceManager, Error, "[INIT] GPU resource upload failed for scan file: %s", Path.c_str());
 	}
+
+	PreloadRegisteredMeshes(MeshResources, InDevice, Path.c_str());
 
 	size_t PreloadedMaterialCount = 0;
 	for (const auto& [Key, Resource] : MaterialResources)
@@ -1150,11 +1275,12 @@ const FMeshResource* FResourceManager::FindMesh(const FName& MeshName) const
 	return (It != MeshResources.end()) ? &It->second : nullptr;
 }
 
-void FResourceManager::RegisterMesh(const FName& MeshName, const FString& InPath)
+void FResourceManager::RegisterMesh(const FName& MeshName, const FString& InPath, EMeshResourceType MeshType)
 {
 	FMeshResource Resource;
 	Resource.Name = MeshName;
 	Resource.Path = InPath;
+	Resource.MeshType = MeshType;
 	MeshResources[MeshName.ToString()] = Resource;
 }
 
@@ -1291,4 +1417,3 @@ Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> FResourceManager::FindLoadedTex
 	auto It = LoadedResource.find(InPath);
 	return (It != LoadedResource.end()) ? It->second : nullptr;
 }
-

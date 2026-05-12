@@ -87,6 +87,7 @@ std::wstring FPaths::ResourceSettingsDir() { return RootDir() + L"Settings\\Reso
 std::wstring FPaths::EditorResourceFilePath() { return ResourceSettingsDir() + L"EditorResources.ini"; }
 std::wstring FPaths::DefaultContentResourceFilePath() { return ResourceSettingsDir() + L"DefaultContentResources.ini"; }
 std::wstring FPaths::ProjectResourcePathsFilePath() { return ResourceSettingsDir() + L"ProjectResourcePaths.ini"; }
+std::wstring FPaths::ProjectResourceRegistryFilePath() { return ResourceSettingsDir() + L"ProjectResourceRegistry.ini"; }
 std::wstring FPaths::ProjectSettingsFilePath() { return RootDir() + L"Settings\\ProjectSettings.ini"; }
 
 std::wstring FPaths::ProjectDir() { return RootDir(); }

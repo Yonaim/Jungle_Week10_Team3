@@ -66,7 +66,17 @@ struct FPathResource
 	FString Path; // Asset 상대 경로
 };
 
-using FMeshResource = FPathResource;
+enum class EMeshResourceType : uint8
+{
+	Unknown = 0,
+	Static,
+	Skeletal,
+};
+
+struct FMeshResource : FPathResource
+{
+	EMeshResourceType MeshType = EMeshResourceType::Unknown;
+};
 
 struct FSoundResource : FPathResource
 {
