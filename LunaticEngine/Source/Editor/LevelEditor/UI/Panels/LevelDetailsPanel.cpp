@@ -1,4 +1,4 @@
-#include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
+﻿#include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
 #include "Common/UI/Style/AccentColor.h"
 #include "Common/UI/Style/EditorUIStyle.h"
@@ -939,6 +939,10 @@ int32 GetDetailsSectionPriority(const char *SectionName)
     {
         return 10;
     }
+    if (strcmp(SectionName, "Skeletal Mesh") == 0)
+    {
+        return 10;
+    }
     return 50;
 }
 
@@ -1353,6 +1357,10 @@ FString FLevelDetailsPanel::GetPropertySectionName(const FPropertyDescriptor &Pr
     if (Prop.Type == EPropertyType::StaticMeshRef)
     {
         return "Static Mesh";
+    }
+    if (Prop.Type == EPropertyType::SkeletalMeshRef)
+    {
+        return "Skeletal Mesh";
     }
     if (Prop.Type == EPropertyType::MaterialSlot)
     {
@@ -2605,6 +2613,7 @@ void FLevelDetailsPanel::RenderComponentProperties(AActor *Actor, const TArray<A
     bool bAnyChanged = false;
     TArray<int32> TransformIndices;
     TArray<int32> StaticMeshIndices;
+    TArray<int32> SkeletalMeshIndices;
     TArray<int32> MaterialIndices;
     TArray<int32> LayoutIndices;
     TArray<int32> ContentIndices;
@@ -2625,6 +2634,10 @@ void FLevelDetailsPanel::RenderComponentProperties(AActor *Actor, const TArray<A
         else if (SectionName == "Static Mesh")
         {
             StaticMeshIndices.push_back(i);
+        }
+        else if (SectionName == "Skeletal Mesh")
+        {
+            SkeletalMeshIndices.push_back(i);
         }
         else if (SectionName == "Materials")
         {
@@ -2669,6 +2682,8 @@ void FLevelDetailsPanel::RenderComponentProperties(AActor *Actor, const TArray<A
         AvailableSections.push_back("Transform");
     if (!StaticMeshIndices.empty())
         AvailableSections.push_back("Static Mesh");
+    if (!SkeletalMeshIndices.empty())
+        AvailableSections.push_back("Skeletal Mesh");
     if (!MaterialIndices.empty() || (SelectedComponent && SelectedComponent->IsA<UStaticMeshComponent>()))
         AvailableSections.push_back("Materials");
     if (!LayoutIndices.empty())
@@ -2708,6 +2723,14 @@ void FLevelDetailsPanel::RenderComponentProperties(AActor *Actor, const TArray<A
             {
                 bRenderedAnySection = true;
                 RenderPropertySection("Static Mesh", Props, StaticMeshIndices, SelectedActors, bAnyChanged);
+            }
+        }
+        else if (strcmp(SectionName, "Skeletal Mesh") == 0)
+        {
+            if (ShouldDisplaySection("Skeletal Mesh", Props, SkeletalMeshIndices))
+            {
+                bRenderedAnySection = true;
+                RenderPropertySection("Skeletal Mesh", Props, SkeletalMeshIndices, SelectedActors, bAnyChanged);
             }
         }
         else if (strcmp(SectionName, "Materials") == 0)
