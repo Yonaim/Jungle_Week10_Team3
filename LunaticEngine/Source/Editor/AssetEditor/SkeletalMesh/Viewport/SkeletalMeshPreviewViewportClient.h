@@ -60,6 +60,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void ResetPreviewCamera();
     void FramePreviewMesh();
     void TickViewportInput(float DeltaTime);
+    void TickGizmoInteraction();
     void CycleGizmoModeFromShortcut();
     void RenderFallbackOverlay();
     void SubmitSkeletonDebugDraw();

@@ -7,6 +7,7 @@
 #include "Component/SkeletalMeshComponent.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "Engine/Mesh/SkeletalMesh.h"
+#include "Engine/Input/InputManager.h"
 #include "Object/Object.h"
 #include "Render/Proxy/PrimitiveSceneProxy.h"
 #include "Viewport/Viewport.h"
@@ -374,6 +375,13 @@ void FSkeletalMeshPreviewViewportClient::ApplyEditorStateToViewport()
         State->GizmoSharedState.bScaleSnapEnabled = State->bEnableScaleSnap;
         State->GizmoSharedState.ScaleSnapSize = State->ScaleSnapSize;
         State->GizmoSharedState.ApplyTo(GizmoManager);
+
+        // 의도치 않은 pose 변경을 막기 위해 Pose Edit Mode가 켜진 경우에만 실제 드래그를 허용한다.
+        const bool bHasEditableBone = ResolveSelectedBoneIndex(State, SelectionManager) >= 0;
+        const bool bAllowBoneGizmoInteraction = State->bEnablePoseEditMode && State->bShowGizmo && bHasEditableBone;
+        GizmoManager.SetInteractionPolicy(bAllowBoneGizmoInteraction
+            ? EGizmoInteractionPolicy::Interactive
+            : EGizmoInteractionPolicy::VisualOnly);
     }
 }
 
@@ -520,6 +528,7 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
     GetCameraController().SyncTargetToCamera();
     GetCameraController().TickFocus(DeltaTime);
     TickViewportInput(DeltaTime);
+    TickGizmoInteraction();
 
     if (State && State->bFramePreviewRequested)
     {
@@ -569,6 +578,7 @@ void FSkeletalMeshPreviewViewportClient::CycleGizmoModeFromShortcut()
         break;
     }
 
+    State->bEnablePoseEditMode = true;
     State->GizmoSharedState.Mode = State->GizmoMode;
     State->GizmoSharedState.ApplyTo(GizmoManager);
 }
@@ -601,12 +611,11 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         CycleGizmoModeFromShortcut();
     }
 
-    // 김형도 담당 예정:
-    // Bone gizmo의 실제 피킹/드래그/pose transform 적용은 Skeleton/Pose/Bone Gizmo 파트에서 구현한다.
-    // 김연하 담당 범위에서는 선택한 bone 위치에 UGizmoVisualComponent를 렌더링하고,
-    // toolbar/shortcut으로 표시 모드만 바꾸는 데서 멈춘다.
-    // 따라서 SkeletalMeshEditor preview에서는 manager를 VisualOnly 정책으로 유지한다.
-    GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::VisualOnly);
+    // 기즈모 드래그 중에는 카메라 입력이 동시에 먹지 않게 한다.
+    if (GizmoManager.IsDragging())
+    {
+        return;
+    }
 
     const bool bCanFreeLook = !State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho;
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && bCanFreeLook)
@@ -672,6 +681,117 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
     }
 
     ApplyViewportTypeToCamera();
+}
+
+
+void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
+{
+    if (!State || !PreviewComponent || !PreviewMesh || !SelectionManager)
+    {
+        return;
+    }
+
+    if (!GizmoManager.HasValidTarget())
+    {
+        return;
+    }
+
+    const bool bCanInteractWithGizmo =
+        State->bEnablePoseEditMode &&
+        State->bShowGizmo &&
+        ResolveSelectedBoneIndex(State, SelectionManager) >= 0 &&
+        GizmoManager.CanInteract();
+
+    if (!bCanInteractWithGizmo && !GizmoManager.IsDragging())
+    {
+        GizmoManager.ResetVisualInteractionState();
+        return;
+    }
+
+    ImGuiIO& IO = ImGui::GetIO();
+    FInputManager& Input = FInputManager::Get();
+
+    const bool bLeftPressed = Input.IsMouseButtonPressed(FInputManager::MOUSE_LEFT) || ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    const bool bLeftDown = Input.IsMouseButtonDown(FInputManager::MOUSE_LEFT) || ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    const bool bLeftReleased = Input.IsMouseButtonReleased(FInputManager::MOUSE_LEFT) || ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+
+    if (!bLeftDown)
+    {
+        if (GizmoManager.IsDragging())
+        {
+            GizmoManager.EndDrag();
+        }
+        else
+        {
+            GizmoManager.ResetVisualInteractionState();
+        }
+    }
+
+    const bool bCursorInViewport =
+        IO.MousePos.x >= ViewportScreenRect.X &&
+        IO.MousePos.y >= ViewportScreenRect.Y &&
+        IO.MousePos.x <= ViewportScreenRect.X + ViewportScreenRect.Width &&
+        IO.MousePos.y <= ViewportScreenRect.Y + ViewportScreenRect.Height;
+
+    if (!bCursorInViewport && !GizmoManager.IsDragging())
+    {
+        GizmoManager.ResetVisualInteractionState();
+        return;
+    }
+
+    const float VPWidth = ViewportScreenRect.Width > 0.0f
+        ? ViewportScreenRect.Width
+        : (Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth);
+    const float VPHeight = ViewportScreenRect.Height > 0.0f
+        ? ViewportScreenRect.Height
+        : (Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight);
+
+    if (VPWidth <= 0.0f || VPHeight <= 0.0f)
+    {
+        return;
+    }
+
+    const float LocalMouseX = IO.MousePos.x - ViewportScreenRect.X;
+    const float LocalMouseY = IO.MousePos.y - ViewportScreenRect.Y;
+    const FRay Ray = ViewCamera.DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
+
+    FGizmoHitProxyContext HitContext{};
+    HitContext.ViewProjection = ViewCamera.GetViewProjectionMatrix();
+    HitContext.ViewportWidth = VPWidth;
+    HitContext.ViewportHeight = VPHeight;
+    HitContext.MouseX = LocalMouseX;
+    HitContext.MouseY = LocalMouseY;
+    HitContext.PickRadius = 2; // 5x5 ID buffer
+
+    FGizmoHitProxyResult HitResult{};
+    const bool bGizmoHit = bCanInteractWithGizmo && GizmoManager.HitTestHitProxy(HitContext, HitResult);
+
+    if (bLeftPressed && bCursorInViewport)
+    {
+        if (bGizmoHit && HitResult.bHit)
+        {
+            GizmoManager.BeginDragFromHitProxy(HitResult);
+        }
+        else
+        {
+            GizmoManager.ResetVisualInteractionState();
+        }
+    }
+    else if (bLeftDown && GizmoManager.IsDragging())
+    {
+        GizmoManager.UpdateDrag(Ray);
+    }
+    else if (bLeftReleased)
+    {
+        if (GizmoManager.IsDragging())
+        {
+            GizmoManager.EndDrag();
+        }
+        else
+        {
+            GizmoManager.ResetVisualInteractionState();
+        }
+    }
 }
 
 bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRenderRequest &OutRequest)

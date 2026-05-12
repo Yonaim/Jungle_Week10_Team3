@@ -1,6 +1,7 @@
-#include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
+﻿#include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 
 #include "Component/SkeletalMeshComponent.h"
+#include "Engine/Mesh/SkeletalMesh.h"
 
 namespace
 {
@@ -95,6 +96,7 @@ void FBoneTransformGizmoTarget::SetLocalTransform(const FTransform& NewLocalTran
     }
 
     Component->SetBoneLocalTransform(BoneIndex, NewLocalTransform);
+    Component->RefreshSkinningNow();
 }
 
 void FBoneTransformGizmoTarget::BeginTransform()
