@@ -10,6 +10,7 @@ class USkeletalMesh;
 class USkeletalMeshComponent;
 class FPrimitiveSceneProxy;
 class FSkeletalMeshSelectionManager;
+struct FRay;
 
 /**
  * SkeletalMesh Editor 전용 Preview Viewport Client.
@@ -64,6 +65,8 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void CycleGizmoModeFromShortcut();
     void RenderFallbackOverlay();
     void SubmitSkeletonDebugDraw();
+    int32 HitTestBoneSelection(const FRay& Ray) const;
+    void ApplyBoneViewportSelection(int32 BoneIndex);
     void ApplyEditorStateToViewport();
     void SyncRenderOptionsFromState();
     void ApplyViewportTypeToCamera();

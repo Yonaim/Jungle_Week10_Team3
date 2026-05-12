@@ -5,6 +5,7 @@
 
 #include "Component/GizmoVisualComponent.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "Core/RayTypes.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Engine/Input/InputManager.h"
@@ -17,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 
 namespace
@@ -42,6 +44,16 @@ float ClampFloat(float Value, float MinValue, float MaxValue)
 bool IsFiniteVector(const FVector& Value)
 {
     return std::isfinite(Value.X) && std::isfinite(Value.Y) && std::isfinite(Value.Z);
+}
+
+void SyncLegacySelectedBoneIndex(FSkeletalMeshEditorState* State, const FSkeletalMeshSelectionManager* SelectionManager)
+{
+    if (!State)
+    {
+        return;
+    }
+
+    State->SelectedBoneIndex = SelectionManager ? SelectionManager->GetPrimaryBoneIndex() : -1;
 }
 
 int32 ResolveSelectedBoneIndex(const FSkeletalMeshEditorState* State, const FSkeletalMeshSelectionManager* SelectionManager)
@@ -146,6 +158,211 @@ float ComputeBoneConnectionBaseRadius(float BoneLength, float ReferenceSphereRad
     const float MinBaseRadius = ReferenceSphereRadius * 0.85f;
     const float MaxBaseRadius = (std::max)(MinBaseRadius, ReferenceSphereRadius * 2.0f);
     return ClampFloat(BoneLength * 0.08f, MinBaseRadius, MaxBaseRadius);
+}
+
+void BuildBoneDebugRadii(
+    const TArray<FBoneInfo>& Bones,
+    const FSkeletonPose& Pose,
+    TArray<float>& OutBoneSphereRadii,
+    TArray<float>& OutConnectionBaseRadii)
+{
+    const int32 BoneCount = static_cast<int32>(Bones.size());
+    const float DefaultSphereRadius = ComputeBoneSphereRadius(Bones, Pose);
+    constexpr float SphereRadiusScale = 10.f;
+
+    OutBoneSphereRadii.resize(BoneCount, DefaultSphereRadius * SphereRadiusScale);
+    OutConnectionBaseRadii.resize(BoneCount, 0.0f);
+
+    for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+    {
+        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+        if (ParentIndex < 0 || ParentIndex >= BoneCount)
+        {
+            continue;
+        }
+
+        const FVector BonePosition = Pose.ComponentTransforms[BoneIndex].GetLocation();
+        const FVector ParentPosition = Pose.ComponentTransforms[ParentIndex].GetLocation();
+        if (!IsFiniteVector(BonePosition) || !IsFiniteVector(ParentPosition))
+        {
+            continue;
+        }
+
+        const float BoneLength = FVector::Distance(ParentPosition, BonePosition);
+        const float ConnectionBaseRadius = ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius);
+        OutConnectionBaseRadii[BoneIndex] = ConnectionBaseRadius;
+        const float DesiredSphereRadius = ConnectionBaseRadius * SphereRadiusScale;
+        OutBoneSphereRadii[BoneIndex] = (std::max)(OutBoneSphereRadii[BoneIndex], DesiredSphereRadius);
+        OutBoneSphereRadii[ParentIndex] = (std::max)(OutBoneSphereRadii[ParentIndex], DesiredSphereRadius);
+    }
+}
+
+TArray<int32> BuildBoneSelectionOrder(int32 BoneCount)
+{
+    TArray<int32> BoneOrder;
+    BoneOrder.reserve((std::max)(0, BoneCount));
+
+    for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+    {
+        BoneOrder.push_back(BoneIndex);
+    }
+
+    return BoneOrder;
+}
+
+bool IntersectRaySphere(const FRay& Ray, const FVector& Center, float Radius, float& OutDistance)
+{
+    if (!IsFiniteVector(Ray.Origin) || !IsFiniteVector(Ray.Direction) || !IsFiniteVector(Center) || !std::isfinite(Radius) || Radius <= 1.0e-4f)
+    {
+        return false;
+    }
+
+    const float DirectionLengthSq = Ray.Direction.Dot(Ray.Direction);
+    if (!std::isfinite(DirectionLengthSq) || DirectionLengthSq <= 1.0e-8f)
+    {
+        return false;
+    }
+
+    const FVector Offset = Ray.Origin - Center;
+    const float A = DirectionLengthSq;
+    const float B = 2.0f * Ray.Direction.Dot(Offset);
+    const float C = Offset.Dot(Offset) - Radius * Radius;
+    const float Discriminant = B * B - 4.0f * A * C;
+    if (!std::isfinite(Discriminant) || Discriminant < 0.0f)
+    {
+        return false;
+    }
+
+    const float SqrtDiscriminant = std::sqrt(Discriminant);
+    const float InvDenominator = 0.5f / A;
+    const float NearT = (-B - SqrtDiscriminant) * InvDenominator;
+    const float FarT = (-B + SqrtDiscriminant) * InvDenominator;
+    const float HitDistance = NearT >= 0.0f ? NearT : FarT;
+    if (!std::isfinite(HitDistance) || HitDistance < 0.0f)
+    {
+        return false;
+    }
+
+    OutDistance = HitDistance;
+    return true;
+}
+
+bool BuildBonePickingBasis(const FVector& SegmentStart, const FVector& SegmentEnd, FVector& OutDirection, FVector& OutRight, FVector& OutUp, float& OutLength)
+{
+    if (!IsFiniteVector(SegmentStart) || !IsFiniteVector(SegmentEnd))
+    {
+        return false;
+    }
+
+    const FVector Segment = SegmentEnd - SegmentStart;
+    const float SegmentLength = Segment.Length();
+    if (!std::isfinite(SegmentLength) || SegmentLength <= 1.0e-4f)
+    {
+        return false;
+    }
+
+    const FVector Direction = Segment / SegmentLength;
+    FVector ReferenceAxis = FVector::UpVector;
+    if (std::abs(Direction.Dot(ReferenceAxis)) > 0.95f)
+    {
+        ReferenceAxis = FVector::RightVector;
+    }
+    if (std::abs(Direction.Dot(ReferenceAxis)) > 0.95f)
+    {
+        ReferenceAxis = FVector::ForwardVector;
+    }
+
+    FVector Right = Direction.Cross(ReferenceAxis);
+    const float RightLength = Right.Length();
+    if (!std::isfinite(RightLength) || RightLength <= 1.0e-4f)
+    {
+        return false;
+    }
+    Right /= RightLength;
+
+    FVector Up = Right.Cross(Direction);
+    const float UpLength = Up.Length();
+    if (!std::isfinite(UpLength) || UpLength <= 1.0e-4f)
+    {
+        return false;
+    }
+    Up /= UpLength;
+
+    OutDirection = Direction;
+    OutRight = Right;
+    OutUp = Up;
+    OutLength = SegmentLength;
+    return true;
+}
+
+bool IntersectRayBoneOBB(
+    const FRay& Ray,
+    const FVector& SegmentStart,
+    const FVector& SegmentEnd,
+    float HalfThickness,
+    float& OutRayDistance)
+{
+    if (!IsFiniteVector(Ray.Origin) || !IsFiniteVector(Ray.Direction) || !std::isfinite(HalfThickness) || HalfThickness <= 1.0e-4f)
+    {
+        return false;
+    }
+
+    FVector Direction = FVector::ZeroVector;
+    FVector Right = FVector::ZeroVector;
+    FVector Up = FVector::ZeroVector;
+    float SegmentLength = 0.0f;
+    if (!BuildBonePickingBasis(SegmentStart, SegmentEnd, Direction, Right, Up, SegmentLength))
+    {
+        return IntersectRaySphere(Ray, SegmentEnd, HalfThickness, OutRayDistance);
+    }
+
+    const FVector Center = (SegmentStart + SegmentEnd) * 0.5f;
+    const float HalfLength = SegmentLength * 0.5f + HalfThickness * 0.25f;
+    const FVector Extent(HalfLength, HalfThickness, HalfThickness);
+    const FVector Delta = Center - Ray.Origin;
+    const FVector Axes[3] = { Direction, Right, Up };
+
+    float TMin = 0.0f;
+    float TMax = (std::numeric_limits<float>::max)();
+
+    for (int32 AxisIndex = 0; AxisIndex < 3; ++AxisIndex)
+    {
+        const float AxisProjection = Axes[AxisIndex].Dot(Delta);
+        const float RayProjection = Axes[AxisIndex].Dot(Ray.Direction);
+        const float AxisExtent = Extent.Data[AxisIndex];
+
+        if (std::abs(RayProjection) <= 1.0e-6f)
+        {
+            if (std::abs(AxisProjection) > AxisExtent)
+            {
+                return false;
+            }
+            continue;
+        }
+
+        const float InvProjection = 1.0f / RayProjection;
+        float EntryT = (AxisProjection - AxisExtent) * InvProjection;
+        float ExitT = (AxisProjection + AxisExtent) * InvProjection;
+        if (EntryT > ExitT)
+        {
+            std::swap(EntryT, ExitT);
+        }
+
+        TMin = (std::max)(TMin, EntryT);
+        TMax = (std::min)(TMax, ExitT);
+        if (TMin > TMax)
+        {
+            return false;
+        }
+    }
+
+    OutRayDistance = TMin >= 0.0f ? TMin : TMax;
+    if (!std::isfinite(OutRayDistance) || OutRayDistance < 0.0f)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 bool IsLegacyImGuiKeyDown(int Key)
@@ -691,22 +908,12 @@ void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
         return;
     }
 
-    if (!GizmoManager.HasValidTarget())
-    {
-        return;
-    }
-
     const bool bCanInteractWithGizmo =
+        GizmoManager.HasValidTarget() &&
         State->bEnablePoseEditMode &&
         State->bShowGizmo &&
         ResolveSelectedBoneIndex(State, SelectionManager) >= 0 &&
         GizmoManager.CanInteract();
-
-    if (!bCanInteractWithGizmo && !GizmoManager.IsDragging())
-    {
-        GizmoManager.ResetVisualInteractionState();
-        return;
-    }
 
     ImGuiIO& IO = ImGui::GetIO();
     FInputManager& Input = FInputManager::Get();
@@ -721,7 +928,7 @@ void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
         {
             GizmoManager.EndDrag();
         }
-        else
+        else if (GizmoManager.HasValidTarget())
         {
             GizmoManager.ResetVisualInteractionState();
         }
@@ -735,7 +942,10 @@ void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
 
     if (!bCursorInViewport && !GizmoManager.IsDragging())
     {
-        GizmoManager.ResetVisualInteractionState();
+        if (GizmoManager.HasValidTarget())
+        {
+            GizmoManager.ResetVisualInteractionState();
+        }
         return;
     }
 
@@ -774,7 +984,14 @@ void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
         }
         else
         {
-            GizmoManager.ResetVisualInteractionState();
+            if (GizmoManager.HasValidTarget())
+            {
+                GizmoManager.ResetVisualInteractionState();
+            }
+            if (State->bShowBones)
+            {
+                ApplyBoneViewportSelection(HitTestBoneSelection(Ray));
+            }
         }
     }
     else if (bLeftDown && GizmoManager.IsDragging())
@@ -787,11 +1004,130 @@ void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
         {
             GizmoManager.EndDrag();
         }
-        else
+        else if (GizmoManager.HasValidTarget())
         {
             GizmoManager.ResetVisualInteractionState();
         }
     }
+}
+
+int32 FSkeletalMeshPreviewViewportClient::HitTestBoneSelection(const FRay& Ray) const
+{
+    if (!State || !State->bShowBones || !PreviewMesh || !PreviewComponent)
+    {
+        return -1;
+    }
+
+    const FSkeletalMesh* MeshAsset = PreviewMesh->GetSkeletalMeshAsset();
+    if (!MeshAsset)
+    {
+        return -1;
+    }
+
+    const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
+    const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
+    const int32 BoneCount = static_cast<int32>(Bones.size());
+    if (BoneCount <= 0 || static_cast<int32>(Pose.ComponentTransforms.size()) != BoneCount)
+    {
+        return -1;
+    }
+
+    TArray<float> BoneSphereRadii;
+    TArray<float> ConnectionBaseRadii;
+    BuildBoneDebugRadii(Bones, Pose, BoneSphereRadii, ConnectionBaseRadii);
+
+    int32 BestBoneIndex = -1;
+    float BestDistance = (std::numeric_limits<float>::max)();
+
+    for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+    {
+        const FVector BonePosition = Pose.ComponentTransforms[BoneIndex].GetLocation();
+        if (!IsFiniteVector(BonePosition))
+        {
+            continue;
+        }
+
+        const float SpherePickRadius = BoneSphereRadii[BoneIndex] * 1.2f;
+        float HitDistance = 0.0f;
+        if (IntersectRaySphere(Ray, BonePosition, SpherePickRadius, HitDistance) && HitDistance < BestDistance)
+        {
+            BestDistance = HitDistance;
+            BestBoneIndex = BoneIndex;
+        }
+    }
+
+    for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+    {
+        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+        if (ParentIndex < 0 || ParentIndex >= BoneCount)
+        {
+            continue;
+        }
+
+        const FVector ParentPosition = Pose.ComponentTransforms[ParentIndex].GetLocation();
+        const FVector BonePosition = Pose.ComponentTransforms[BoneIndex].GetLocation();
+        if (!IsFiniteVector(ParentPosition) || !IsFiniteVector(BonePosition))
+        {
+            continue;
+        }
+
+        const float ConnectionPickRadius = (std::max)(ConnectionBaseRadii[BoneIndex] * 1.75f, BoneSphereRadii[BoneIndex] * 0.85f);
+        if (ConnectionPickRadius <= 0.0f)
+        {
+            continue;
+        }
+
+        float HitDistance = 0.0f;
+        if (IntersectRayBoneOBB(Ray, ParentPosition, BonePosition, ConnectionPickRadius, HitDistance) && HitDistance < BestDistance)
+        {
+            BestDistance = HitDistance;
+            BestBoneIndex = BoneIndex;
+        }
+    }
+
+    return BestBoneIndex;
+}
+
+void FSkeletalMeshPreviewViewportClient::ApplyBoneViewportSelection(int32 BoneIndex)
+{
+    if (!State || !SelectionManager)
+    {
+        return;
+    }
+
+    ImGuiIO& IO = ImGui::GetIO();
+    FInputManager& Input = FInputManager::Get();
+    const bool bShiftDown = IO.KeyShift || Input.IsShiftDown();
+    const bool bCtrlDown = IO.KeyCtrl || Input.IsCtrlDown();
+
+    if (BoneIndex < 0)
+    {
+        if (!bShiftDown && !bCtrlDown)
+        {
+            SelectionManager->ClearSelection();
+            SyncLegacySelectedBoneIndex(State, SelectionManager);
+            SyncGizmoTargetFromSelection();
+        }
+        return;
+    }
+
+    if (bShiftDown)
+    {
+        const FSkeletalMesh* MeshAsset = PreviewMesh ? PreviewMesh->GetSkeletalMeshAsset() : nullptr;
+        const TArray<int32> BoneOrder = BuildBoneSelectionOrder(MeshAsset ? static_cast<int32>(MeshAsset->Bones.size()) : 0);
+        SelectionManager->SelectRange(BoneIndex, BoneOrder);
+    }
+    else if (bCtrlDown)
+    {
+        SelectionManager->ToggleBone(BoneIndex);
+    }
+    else
+    {
+        SelectionManager->SelectBone(BoneIndex);
+    }
+
+    SyncLegacySelectedBoneIndex(State, SelectionManager);
+    SyncGizmoTargetFromSelection();
 }
 
 bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRenderRequest &OutRequest)
@@ -928,39 +1264,14 @@ void FSkeletalMeshPreviewViewportClient::SubmitSkeletonDebugDraw()
 
     FScene& Scene = PreviewScene.GetScene();
     const int32 SelectedBoneIndex = ResolveSelectedBoneIndex(State, SelectionManager);
-    const float DefaultSphereRadius = ComputeBoneSphereRadius(Bones, Pose);
     TArray<float> BoneSphereRadii;
-    BoneSphereRadii.resize(BoneCount, DefaultSphereRadius * 1.35f);
     TArray<float> ConnectionBaseRadii;
-    ConnectionBaseRadii.resize(BoneCount, 0.0f);
+    BuildBoneDebugRadii(Bones, Pose, BoneSphereRadii, ConnectionBaseRadii);
     constexpr int32 SphereSegments = 12;
     const FColor NormalSphereColor(0, 255, 0, 255);
     const FColor HighlightSphereColor(255, 220, 40, 255);
     const FColor NormalConnectionColor(80, 220, 255, 220);
     const FColor HighlightConnectionColor(255, 220, 40, 255);
-
-    for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
-    {
-        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
-        if (ParentIndex < 0 || ParentIndex >= BoneCount)
-        {
-            continue;
-        }
-
-        const FVector BonePosition = Pose.ComponentTransforms[BoneIndex].GetLocation();
-        const FVector ParentPosition = Pose.ComponentTransforms[ParentIndex].GetLocation();
-        if (!IsFiniteVector(BonePosition) || !IsFiniteVector(ParentPosition))
-        {
-            continue;
-        }
-
-        const float BoneLength = FVector::Distance(ParentPosition, BonePosition);
-        const float ConnectionBaseRadius = ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius);
-        ConnectionBaseRadii[BoneIndex] = ConnectionBaseRadius;
-        const float DesiredSphereRadius = ConnectionBaseRadius * 1.35f;
-        BoneSphereRadii[BoneIndex] = (std::max)(BoneSphereRadii[BoneIndex], DesiredSphereRadius);
-        BoneSphereRadii[ParentIndex] = (std::max)(BoneSphereRadii[ParentIndex], DesiredSphereRadius);
-    }
 
     for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
     {
