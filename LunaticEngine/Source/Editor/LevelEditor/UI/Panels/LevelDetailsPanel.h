@@ -43,7 +43,7 @@ class FLevelDetailsPanel : public FUIElement
 
     void PropagatePropertyChange(const FString &PropName, const TArray<AActor *> &SelectedActors);
 
-    static FString OpenObjFileDialog();
+    static FString OpenStaticMeshFileDialog();
     static FString OpenFbxFileDialog();
     static FString GetDisplayPropertyLabel(const FString &RawName);
     static bool DrawColoredFloat2(const char *Label, float Values[3], float Speed, bool bShowReset = false,

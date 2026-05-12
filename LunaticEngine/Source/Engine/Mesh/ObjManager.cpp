@@ -38,7 +38,7 @@ namespace
 		return Ext;
 	}
 
-	FString GetSkeletalBinaryFilePath(const FString& OriginalPath)
+	FString MakeSkeletalBinaryFilePath(const FString& OriginalPath)
 	{
 		if (GetLowerExtension(OriginalPath) == L".bin")
 		{
@@ -78,19 +78,6 @@ namespace
 		return false;
 	}
 
-	bool IsFbxSkeletalMesh(const FString& FbxPath)
-	{
-		if (GetLowerExtension(FbxPath) != L".fbx")
-		{
-			return false;
-		}
-
-		FFbxInfo Context;
-		const bool bParsed = FFbxCommon::ParseFbx(FbxPath, Context);
-		const bool bHasSkin = bParsed && HasSkinDeformer(Context.Scene ? Context.Scene->GetRootNode() : nullptr);
-		FFbxCommon::Destroy(Context);
-		return bHasSkin;
-	}
 }
 
 FString FObjManager::GetBinaryFilePath(const FString& OriginalPath)
@@ -108,6 +95,25 @@ FString FObjManager::GetBinaryFilePath(const FString& OriginalPath)
 	std::filesystem::path BinPath = GetMeshCacheDirectory(OriginalPath) / SrcPath.stem();
 	BinPath += L".bin";
 	return FPaths::ToUtf8(BinPath.lexically_normal().generic_wstring());
+}
+
+bool FObjManager::IsFbxSkeletalMesh(const FString& FbxPath)
+{
+	if (GetLowerExtension(FbxPath) != L".fbx")
+	{
+		return false;
+	}
+
+	FFbxInfo Context;
+	const bool bParsed = FFbxCommon::ParseFbx(FbxPath, Context);
+	const bool bHasSkin = bParsed && HasSkinDeformer(Context.Scene ? Context.Scene->GetRootNode() : nullptr);
+	FFbxCommon::Destroy(Context);
+	return bHasSkin;
+}
+
+FString FObjManager::GetSkeletalBinaryFilePath(const FString& OriginalPath)
+{
+	return MakeSkeletalBinaryFilePath(OriginalPath);
 }
 
 
@@ -181,12 +187,6 @@ const TArray<FMeshAssetListItem>& FObjManager::GetAvailableObjFiles()
 
 UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, const FImportOptions& Options, ID3D11Device* InDevice)
 {
-	if (IsFbxSkeletalMesh(PathFileName))
-	{
-		LoadObjSkeletalMesh(PathFileName, InDevice);
-		return nullptr;
-	}
-
 	FString CacheKey = GetBinaryFilePath(PathFileName);
 
 	// 옵션이 다를 수 있으므로 기존 캐시 무효화
@@ -200,7 +200,12 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, const F
 	FStaticMesh* NewMeshAsset = new FStaticMesh();
 	TArray<FStaticMaterial> ParsedMaterials;
 
-	if (FObjImporter::Import(PathFileName, Options, *NewMeshAsset, ParsedMaterials))
+	const std::wstring RequestedExt = GetLowerExtension(PathFileName);
+	const bool bImported = RequestedExt == L".fbx"
+		? FFbxStaticMeshImporter::Import(PathFileName, *NewMeshAsset, ParsedMaterials)
+		: FObjImporter::Import(PathFileName, Options, *NewMeshAsset, ParsedMaterials);
+
+	if (bImported)
 	{
 		NewMeshAsset->PathFileName = PathFileName;
 		// MaterialIndex 캐싱을 위해 Materials를 먼저 설정
@@ -229,8 +234,15 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, const F
 
 USkeletalMesh* FObjManager::LoadObjSkeletalMesh(const std::string& PathFileName, ID3D11Device* InDevice)
 {
+	const std::wstring RequestedExt = GetLowerExtension(PathFileName);
+	if (RequestedExt != L".bin" && !IsFbxSkeletalMesh(PathFileName))
+	{
+		LoadObjStaticMesh(PathFileName, InDevice);
+		return nullptr;
+	}
+
 	(void)InDevice;
-	FString CacheKey = GetSkeletalBinaryFilePath(PathFileName);
+	FString CacheKey = MakeSkeletalBinaryFilePath(PathFileName);
 
 	// BinPath 기반 캐시 확인
 	auto It = SkeletalMeshCache.find(CacheKey);
@@ -245,7 +257,6 @@ USkeletalMesh* FObjManager::LoadObjSkeletalMesh(const std::string& PathFileName,
 	FString BinPath = CacheKey;
 	bool bNeedRebuild = true;
 	FString FbxPath = PathFileName;
-	std::wstring RequestedExt = GetLowerExtension(PathFileName);
 
 	if (RequestedExt == L".bin")
 	{
@@ -345,11 +356,11 @@ UStaticMesh* FObjManager::LoadObjStaticMesh(const FString& PathFileName, ID3D11D
 	FString ObjPath = PathFileName;
 	std::wstring RequestedExt = GetLowerExtension(PathFileName);
 
-	if (IsFbxSkeletalMesh(PathFileName))
-	{
-		LoadObjSkeletalMesh(PathFileName, InDevice);
-		return nullptr;
-	}
+	//if (IsFbxSkeletalMesh(PathFileName))
+	//{
+	//	LoadObjSkeletalMesh(PathFileName, InDevice);
+	//	return nullptr;
+	//}
 
 	// UStaticMesh 생성 + FStaticMesh 소유권 이전 + 머티리얼 설정
 	UStaticMesh* StaticMesh = UObjectManager::Get().CreateObject<UStaticMesh>();

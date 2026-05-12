@@ -283,9 +283,14 @@ void USkinnedMeshComponent::PostEditProperty(const char* PropertyName)
 		}
 		else
 		{
+			const FString RequestedMeshPath = SkeletalMeshPath;
 			ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 			USkeletalMesh* Loaded = FObjManager::LoadObjSkeletalMesh(SkeletalMeshPath, Device);
 			SetSkeletalMesh(Loaded);
+			if (Loaded)
+			{
+				SkeletalMeshPath = RequestedMeshPath;
+			}
 		}
 		MarkWorldBoundsDirty();
 	}
@@ -336,6 +341,7 @@ void USkinnedMeshComponent::PostDuplicate()
 
 	if (!SkeletalMeshPath.empty() && SkeletalMeshPath != "None")
 	{
+		const FString RequestedMeshPath = SkeletalMeshPath;
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
 		USkeletalMesh* Loaded = FObjManager::LoadObjSkeletalMesh(SkeletalMeshPath, Device);
 		if (Loaded)
@@ -343,6 +349,7 @@ void USkinnedMeshComponent::PostDuplicate()
 			// SetSkeletalMesh는 MaterialSlots를 덮어쓰므로, 직렬화된 슬롯 정보를 백업·복원한다.
 			TArray<FMaterialSlot> SavedSlots = MaterialSlots;
 			SetSkeletalMesh(Loaded);
+			SkeletalMeshPath = RequestedMeshPath;
 
 			// Override material 재로딩
 			for (int32 i = 0; i < (int32)MaterialSlots.size() && i < (int32)SavedSlots.size(); ++i)

@@ -1607,17 +1607,17 @@ bool FLevelDetailsPanel::DrawNamedFloat4(const char *Label, float Values[4], flo
     return bChanged;
 }
 
-FString FLevelDetailsPanel::OpenObjFileDialog()
+FString FLevelDetailsPanel::OpenStaticMeshFileDialog()
 {
     wchar_t FilePath[MAX_PATH] = {};
 
     OPENFILENAMEW Ofn = {};
     Ofn.lStructSize = sizeof(Ofn);
     Ofn.hwndOwner = nullptr;
-    Ofn.lpstrFilter = L"OBJ Files (*.obj)\0*.obj\0All Files (*.*)\0*.*\0";
+    Ofn.lpstrFilter = L"Static Mesh Files (*.obj;*.fbx)\0*.obj;*.fbx\0OBJ Files (*.obj)\0*.obj\0FBX Files (*.fbx)\0*.fbx\0All Files (*.*)\0*.*\0";
     Ofn.lpstrFile = FilePath;
     Ofn.nMaxFile = MAX_PATH;
-    Ofn.lpstrTitle = L"Import OBJ Mesh";
+    Ofn.lpstrTitle = L"Import Static Mesh";
     Ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 
     if (GetOpenFileNameW(&Ofn))
@@ -2985,6 +2985,7 @@ void FLevelDetailsPanel::PropagatePropertyChange(const FString &PropName, const 
                 case EPropertyType::String:
                 case EPropertyType::SceneComponentRef:
                 case EPropertyType::StaticMeshRef:
+                case EPropertyType::SkeletalMeshRef:
                     *static_cast<FString *>(DstProp.ValuePtr) = *static_cast<FString *>(SrcProp->ValuePtr);
                     break;
                 case EPropertyType::Name:
@@ -3386,7 +3387,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
         ImGui::Text("%s", Label);
         ImGui::SameLine(120);
 
-        float ButtonWidth = ImGui::CalcTextSize("Import OBJ").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+        float ButtonWidth = ImGui::CalcTextSize("Import").x + ImGui::GetStyle().FramePadding.x * 2.0f;
         float Spacing = ImGui::GetStyle().ItemSpacing.x;
         ImGui::SetNextItemWidth(-(ButtonWidth + Spacing));
 
@@ -3404,6 +3405,12 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             const TArray<FMeshAssetListItem> &MeshFiles = FObjManager::GetAvailableMeshFiles();
             for (const FMeshAssetListItem &Item : MeshFiles)
             {
+                const FString &DisplayName = Item.DisplayName;
+                if (DisplayName.size() >= 9 && DisplayName.substr(DisplayName.size() - 9) == "_Skeletal")
+                {
+                    continue;
+                }
+
                 bool bSelected = (*Val == Item.FullPath);
                 if (ImGui::Selectable(Item.DisplayName.c_str(), bSelected))
                 {
@@ -3416,20 +3423,19 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             ImGui::EndCombo();
         }
 
-        // .obj 임포트 버튼
         ImGui::SameLine();
 
         ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x - ButtonWidth);
-        if (ImGui::Button("Import OBJ"))
+        if (ImGui::Button("Import"))
         {
-            FString ObjPath = OpenObjFileDialog();
-            if (!ObjPath.empty())
+            FString MeshPath = OpenStaticMeshFileDialog();
+            if (!MeshPath.empty())
             {
                 ID3D11Device *Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-                UStaticMesh *Loaded = FObjManager::LoadObjStaticMesh(ObjPath, Device);
+                UStaticMesh *Loaded = FObjManager::LoadObjStaticMesh(MeshPath, Device);
                 if (Loaded)
                 {
-                    *Val = FObjManager::GetBinaryFilePath(ObjPath);
+                    *Val = FObjManager::GetBinaryFilePath(MeshPath);
                     bChanged = true;
                 }
             }
@@ -3459,17 +3465,15 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             if (bSelectedNone)
                 ImGui::SetItemDefaultFocus();
 
-            // ObjSourceFiles에서 .fbx만 필터링하여 표시
-            const TArray<FMeshAssetListItem> &SrcFiles = FObjManager::GetAvailableObjFiles();
-            for (const FMeshAssetListItem &Item : SrcFiles)
+            const TArray<FMeshAssetListItem> &MeshFiles = FObjManager::GetAvailableMeshFiles();
+            for (const FMeshAssetListItem &Item : MeshFiles)
             {
                 const FString &Path = Item.FullPath;
-                if (Path.size() < 4)
+                if (Path.size() < 4 || Path.substr(Path.size() - 4) != ".bin")
                     continue;
-                FString Ext = Path.substr(Path.size() - 4);
-                for (char &c : Ext)
-                    c = (char)tolower((unsigned char)c);
-                if (Ext != ".fbx")
+
+                const FString DisplayName = Item.DisplayName;
+                if (DisplayName.size() < 9 || DisplayName.substr(DisplayName.size() - 9) != "_Skeletal")
                     continue;
 
                 bool bSelected = (*Val == Path);
@@ -3492,12 +3496,58 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             if (!FbxPath.empty())
             {
                 ID3D11Device *Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-                USkeletalMesh *Loaded = FObjManager::LoadObjSkeletalMesh(FbxPath, Device);
-                if (Loaded)
+                if (FObjManager::IsFbxSkeletalMesh(FbxPath))
                 {
-                    *Val = FbxPath;
-                    bChanged = true;
-                    FObjManager::ScanObjSourceFiles();
+                    USkeletalMesh *Loaded = FObjManager::LoadObjSkeletalMesh(FbxPath, Device);
+                    if (Loaded)
+                    {
+                        *Val = FObjManager::GetSkeletalBinaryFilePath(FbxPath);
+                        bChanged = true;
+                        FObjManager::ScanMeshAssets();
+                    }
+                }
+                else
+                {
+                    UStaticMesh *Loaded = FObjManager::LoadObjStaticMesh(FbxPath, Device);
+                    USkinnedMeshComponent *OldSkinnedComponent = Cast<USkinnedMeshComponent>(SelectedComponent);
+                    AActor *OwnerActor = OldSkinnedComponent ? OldSkinnedComponent->GetOwner() : nullptr;
+                    if (Loaded && OwnerActor)
+                    {
+                        UStaticMeshComponent *NewStaticComponent = OwnerActor->AddComponent<UStaticMeshComponent>();
+                        NewStaticComponent->SetCanDeleteFromDetails(false);
+                        NewStaticComponent->SetStaticMesh(Loaded);
+
+                        if (USceneComponent *OldSceneComponent = Cast<USceneComponent>(OldSkinnedComponent))
+                        {
+                            NewStaticComponent->SetRelativeLocation(OldSceneComponent->GetRelativeLocation());
+                            NewStaticComponent->SetRelativeRotation(OldSceneComponent->GetRelativeRotation());
+                            NewStaticComponent->SetRelativeScale(OldSceneComponent->GetRelativeScale());
+
+                            TArray<USceneComponent *> Children = OldSceneComponent->GetChildren();
+                            for (USceneComponent *Child : Children)
+                            {
+                                if (Child)
+                                {
+                                    Child->AttachToComponent(NewStaticComponent);
+                                }
+                            }
+
+                            if (OwnerActor->GetRootComponent() == OldSceneComponent)
+                            {
+                                OwnerActor->SetRootComponent(NewStaticComponent);
+                            }
+                            else if (USceneComponent *Parent = OldSceneComponent->GetParent())
+                            {
+                                NewStaticComponent->AttachToComponent(Parent);
+                            }
+                        }
+
+                        SelectedComponent = NewStaticComponent;
+                        EditorEngine->GetSelectionManager().SelectComponent(NewStaticComponent);
+                        OwnerActor->RemoveComponent(OldSkinnedComponent);
+                        bActorSelected = false;
+                        FObjManager::ScanObjSourceFiles();
+                    }
                 }
             }
         }
