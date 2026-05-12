@@ -2,7 +2,6 @@
 
 #include "Component/GizmoVisualComponent.h"
 #include "Object/Object.h"
-#include "Collision/RayUtils.h"
 #include "Math/MathUtils.h"
 
 #include <algorithm>
@@ -280,19 +279,15 @@ void FGizmoManager::ResetVisualInteractionState()
     }
 }
 
-bool FGizmoManager::HitTest(const FRay& Ray, FRayHitResult& OutHitResult)
+bool FGizmoManager::HitTestHitProxy(const FGizmoHitProxyContext& Context, FGizmoHitProxyResult& OutHitResult)
 {
-    OutHitResult = {};
+    OutHitResult.Reset();
 
     if (!CanInteract() || Mode == EGizmoMode::Select)
     {
         return false;
     }
 
-    // Always refresh the visual from the current target immediately before picking.
-    // Selection/tabs/viewports can update the target in a different phase than input;
-    // without this guard the visual may remain at an old location, commonly world origin,
-    // while the manager still has a valid target.
     SyncVisualFromTarget();
 
     if (!VisualComponent || !VisualComponent->IsVisible() || !VisualComponent->HasVisualTarget())
@@ -307,56 +302,47 @@ bool FGizmoManager::HitTest(const FRay& Ray, FRayHitResult& OutHitResult)
         const float AllowedErrorSq = 0.01f;
         if (FVector::DistSquared(TargetLocation, VisualLocation) > AllowedErrorSq)
         {
-            // A stale visual should never be pickable. Keep rendering/picking tied to
-            // the same target transform instead of allowing an invisible old handle to
-            // eat clicks at the origin.
             VisualComponent->ClearGizmoWorldTransform();
             return false;
         }
     }
 
-    // Picking is part of the gizmo interaction state, so do not route it through
-    // the generic primitive raycast path. The generic path performs a world AABB
-    // broad phase first, but the editor gizmo is an independently owned,
-    // screen-scaled visual component whose proxy can be recreated on mode changes.
-    // If the cached bounds and the current visual handle state ever diverge,
-    // broad phase rejects the ray even though the gizmo is visible.
-    //
-    // The gizmo component already has analytical hit tests for translate / rotate /
-    // scale handles, so call it directly and let the manager own all interaction
-    // state.
     if (!bDragging && VisualComponent->IsHolding())
     {
-        // A missed mouse-up or focus handoff can leave the visual in Holding=true
-        // while the manager is no longer dragging. In that stale state
-        // UGizmoVisualComponent::LineTraceComponent intentionally refuses to update
-        // SelectedAxis, which makes the next BeginDrag fail. Recover before every
-        // idle pick.
         VisualComponent->ResetVisualInteractionState();
     }
 
-    return VisualComponent->LineTraceComponent(Ray, OutHitResult);
+    if (!VisualComponent->HitProxyTest(Context, OutHitResult))
+    {
+        if (!VisualComponent->IsHolding())
+        {
+            VisualComponent->SetSelectedAxis(-1);
+        }
+        return false;
+    }
+
+    if (!VisualComponent->IsHolding())
+    {
+        VisualComponent->SetSelectedAxis(OutHitResult.Axis);
+    }
+    return true;
 }
 
-bool FGizmoManager::BeginDrag(const FRay& Ray)
+bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
 {
-    if (!CanInteract())
+    if (!CanInteract() || !HitResult.bHit || HitResult.Axis < 0)
     {
+        if (VisualComponent)
+        {
+            VisualComponent->SetPressedOnHandle(false);
+        }
         return false;
     }
 
-    FRayHitResult HitResult{};
-    if (!HitTest(Ray, HitResult))
+    ActiveAxis = HitResult.Axis;
+    if (VisualComponent)
     {
-        VisualComponent->SetPressedOnHandle(false);
-        return false;
-    }
-
-    ActiveAxis = VisualComponent->GetSelectedAxis();
-    if (ActiveAxis < 0)
-    {
-        VisualComponent->SetPressedOnHandle(false);
-        return false;
+        VisualComponent->SetSelectedAxis(ActiveAxis);
     }
 
     Target->BeginTransform();
@@ -366,8 +352,11 @@ bool FGizmoManager::BeginDrag(const FRay& Ray)
     bDragging = true;
     ResetSnapAccumulation();
 
-    VisualComponent->SetPressedOnHandle(true);
-    VisualComponent->SetHolding(true);
+    if (VisualComponent)
+    {
+        VisualComponent->SetPressedOnHandle(true);
+        VisualComponent->SetHolding(true);
+    }
     return true;
 }
 

@@ -6,6 +6,7 @@
 #include "Math/Transform.h"
 #include "Render/Types/ViewTypes.h"
 #include "Component/Gizmo/GizmoTypes.h"
+#include "Component/Gizmo/GizmoHitProxyTypes.h"
 
 class FPrimitiveSceneProxy;
 class FScene;
@@ -18,13 +19,14 @@ public:
     DECLARE_CLASS(UGizmoVisualComponent, UPrimitiveComponent)
     UGizmoVisualComponent();
 
+    // Gizmo picking no longer uses component raycast.
+    // Use HitProxyTest() so picking follows the actually rendered handle mesh.
     bool LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult) override;
+    bool HitProxyTest(const FGizmoHitProxyContext& Context, FGizmoHitProxyResult& OutResult) const;
 
     FVector GetVectorForAxis(int32 Axis) const;
     int32 GetSelectedAxis() const { return SelectedAxis; }
     void SetSelectedAxis(int32 InAxis) { SelectedAxis = (InAxis >= 0 && InAxis <= 3) ? InAxis : -1; }
-    void UpdateHoveredAxis(int Index);
-
     void SetHolding(bool bHold);
     bool IsHolding() const { return bIsHolding; }
     bool IsHovered() const { return SelectedAxis != -1; }
@@ -69,9 +71,6 @@ public:
     void SetScene(FScene* InScene) { RegisteredScene = InScene; }
 
 private:
-    bool IntersectRayAxis(const FRay& Ray, FVector AxisEnd, float AxisScale, float& OutRayT);
-    bool IntersectRayRotationHandle(const FRay& Ray, int32 Axis, float& OutRayT) const;
-    bool IntersectRayCenterHandle(const FRay& Ray, float& OutRayT) const;
     void UpdateVisualTransform();
 
 private:
@@ -89,7 +88,7 @@ private:
     bool bPressedOnHandle = false;
 
     const FMeshData* MeshData = nullptr;
-    uint32 AxisMask = 0x7; // 비트 0=X, 1=Y, 2=Z — LineTrace와 렌더링에서 함께 사용한다.
+    uint32 AxisMask = 0x7; // 비트 0=X, 1=Y, 2=Z — hit proxy와 렌더링에서 함께 사용한다.
     FPrimitiveSceneProxy* InnerProxy = nullptr;
     FScene* RegisteredScene = nullptr;
 };

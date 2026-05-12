@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Component/Gizmo/GizmoTypes.h"
+#include "Component/Gizmo/GizmoHitProxyTypes.h"
 #include "Component/Gizmo/TransformGizmoTarget.h"
 #include "Core/RayTypes.h"
 #include "Core/CollisionTypes.h"
@@ -101,8 +102,10 @@ public:
     void SetAxisMask(uint32 InAxisMask);
     void ResetVisualInteractionState();
 
-    bool HitTest(const FRay& Ray, FRayHitResult& OutHitResult);
-    bool BeginDrag(const FRay& Ray);
+    // Gizmo handle selection uses a small ID-buffer hit proxy, not raycast.
+    // The ray is still used after a handle has been selected to compute drag deltas.
+    bool HitTestHitProxy(const FGizmoHitProxyContext& Context, FGizmoHitProxyResult& OutHitResult);
+    bool BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult);
     void UpdateDrag(const FRay& Ray);
     void EndDrag();
     void CancelDrag();

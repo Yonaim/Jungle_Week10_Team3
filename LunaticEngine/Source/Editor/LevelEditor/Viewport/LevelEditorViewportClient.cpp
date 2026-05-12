@@ -1517,10 +1517,18 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         LocalMouseY = MousePos.y - ViewportScreenRect.Y;
     }
     FRay Ray = GetCamera()->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
-    FRayHitResult HitResult;
+    FGizmoHitProxyContext GizmoPickContext{};
+    GizmoPickContext.ViewProjection = GetCamera()->GetViewProjectionMatrix();
+    GizmoPickContext.ViewportWidth = VPWidth;
+    GizmoPickContext.ViewportHeight = VPHeight;
+    GizmoPickContext.MouseX = LocalMouseX;
+    GizmoPickContext.MouseY = LocalMouseY;
+    GizmoPickContext.PickRadius = 2; // 5x5 ID buffer
+
+    FGizmoHitProxyResult GizmoHitResult{};
     const bool bCanInteractWithGizmo =
         SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
-    bool bGizmoHit = bCanInteractWithGizmo && GizmoManager.HitTest(Ray, HitResult);
+    bool bGizmoHit = bCanInteractWithGizmo && GizmoManager.HitTestHitProxy(GizmoPickContext, GizmoHitResult);
     if (Input.IsKeyPressed(FInputManager::MOUSE_LEFT) && bIsHovered)
     {
         if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyDown(VK_MENU))
@@ -1544,7 +1552,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
                 for (AActor *Actor : NewSelection)
                     SelectionManager->ToggleSelect(Actor);
             }
-            HandleDragStart(Ray);
+            HandleDragStart(Ray, GizmoHitResult, bGizmoHit);
         }
     }
     else if (Input.IsMouseButtonDown(FInputManager::MOUSE_LEFT))
@@ -1632,7 +1640,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     }
 }
 
-void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
+void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray, const FGizmoHitProxyResult& GizmoHitResult, bool bHasGizmoHit)
 {
     FInputManager &Input = FInputManager::Get();
     if (!bIsHovered)
@@ -1642,10 +1650,9 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
         return;
     }
     FScopeCycleCounter PickCounter;
-    FRayHitResult HitResult{};
     const bool bCanInteractWithGizmo =
         SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
-    if (bCanInteractWithGizmo && GizmoManager.HitTest(Ray, HitResult))
+    if (bCanInteractWithGizmo && bHasGizmoHit && GizmoHitResult.bHit)
     {
         if (SelectionManager)
         {
@@ -1662,7 +1669,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
         {
             EditorEngine->BeginTrackedTransformChange();
         }
-        GizmoManager.BeginDrag(Ray);
+        GizmoManager.BeginDragFromHitProxy(GizmoHitResult);
     }
     else
     {
@@ -1699,6 +1706,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
         }
         else
         {
+            FRayHitResult HitResult{};
             AActor *BestActor = nullptr;
             if (UWorld *W = GetWorld())
             {

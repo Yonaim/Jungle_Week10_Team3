@@ -1,4 +1,4 @@
-#include "GizmoVisualComponent.h"
+﻿#include "GizmoVisualComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -7,10 +7,13 @@
 #include "Math/Matrix.h"
 #include "Render/Resource/MeshBufferManager.h"
 #include "Render/Shader/ShaderManager.h"
-#include "Collision/RayUtils.h"
 #include "Render/Proxy/GizmoSceneProxy.h"
 #include "Render/Scene/FScene.h"
+#include <algorithm>
+#include <array>
 #include <cfloat>
+#include <cmath>
+#include <limits>
 
 IMPLEMENT_CLASS(UGizmoVisualComponent, UPrimitiveComponent)
 HIDE_FROM_COMPONENT_LIST(UGizmoVisualComponent)
@@ -57,7 +60,6 @@ void UGizmoVisualComponent::DestroyRenderState()
 	// DestroyRenderState() 이후 SetScene(nullptr)를 호출한다.
 }
 
-#include <cmath>
 UGizmoVisualComponent::UGizmoVisualComponent()
 {
 	MeshData = &FMeshBufferManager::Get().GetMeshData(EMeshShape::TransGizmo);
@@ -73,212 +75,229 @@ void UGizmoVisualComponent::SetHolding(bool bHold)
     }
 }
 
-bool UGizmoVisualComponent::IntersectRayAxis(const FRay& Ray, FVector AxisEnd, float AxisScale, float& OutRayT)
-{
-	FVector AxisStart = GetWorldLocation();
-	FVector RayOrigin = Ray.Origin;
-	FVector RayDirection = Ray.Direction;
-
-	FVector AxisVector = AxisEnd - AxisStart;
-	FVector DiffOrigin = RayOrigin - AxisStart;
-
-	float RayDirDotRayDir = RayDirection.X * RayDirection.X + RayDirection.Y * RayDirection.Y + RayDirection.Z * RayDirection.Z;
-	float RayDirDotAxis = RayDirection.X * AxisVector.X + RayDirection.Y * AxisVector.Y + RayDirection.Z * AxisVector.Z;
-	float AxisDotAxis = AxisVector.X * AxisVector.X + AxisVector.Y * AxisVector.Y + AxisVector.Z * AxisVector.Z;
-	float RayDirDotDiff = RayDirection.X * DiffOrigin.X + RayDirection.Y * DiffOrigin.Y + RayDirection.Z * DiffOrigin.Z;
-	float AxisDotDiff = AxisVector.X * DiffOrigin.X + AxisVector.Y * DiffOrigin.Y + AxisVector.Z * DiffOrigin.Z;
-
-	float Denominator = (RayDirDotRayDir * AxisDotAxis) - (RayDirDotAxis * RayDirDotAxis);
-
-	float RayT;
-	float AxisS;
-
-	if (Denominator < 1e-6f)
-	{
-		RayT = 0.0f;
-		AxisS = (AxisDotAxis > 0.0f) ? (AxisDotDiff / AxisDotAxis) : 0.0f;
-	}
-	else
-	{
-		RayT = (RayDirDotAxis * AxisDotDiff - AxisDotAxis * RayDirDotDiff) / Denominator;
-		AxisS = (RayDirDotRayDir * AxisDotDiff - RayDirDotAxis * RayDirDotDiff) / Denominator;
-	}
-
-	// Do not clamp the ray/axis parameters before the hit decision.
-	// Clamping made the infinite axis extension behave like a real handle, so
-	// clicking around the world origin could still select a gizmo whose visible
-	// handle was elsewhere. The transform gizmo should only pick the finite
-	// visible handle segment in front of the camera.
-	if (RayT < 0.0f)
-	{
-		return false;
-	}
-
-	constexpr float AxisSegmentTolerance = 0.06f;
-	if (AxisS < -AxisSegmentTolerance || AxisS > 1.0f + AxisSegmentTolerance)
-	{
-		return false;
-	}
-	if (AxisS < 0.0f) AxisS = 0.0f;
-	else if (AxisS > 1.0f) AxisS = 1.0f;
-
-	FVector ClosestPointOnRay = RayOrigin + (RayDirection * RayT);
-	FVector ClosestPointOnAxis = AxisStart + (AxisVector * AxisS);
-
-	FVector DistanceVector = ClosestPointOnRay - ClosestPointOnAxis;
-	float DistanceSquared = (DistanceVector.X * DistanceVector.X) +
-		(DistanceVector.Y * DistanceVector.Y) +
-		(DistanceVector.Z * DistanceVector.Z);
-
-	//기즈모 픽킹에 원기둥 크기를 반영합니다.
-	float ClickThreshold = Radius * AxisScale;
-	constexpr float StemRadius = 0.06f;
-	ClickThreshold = StemRadius * AxisScale;
-	float ClickThresholdSquared = ClickThreshold * ClickThreshold;
-
-	if (DistanceSquared < ClickThresholdSquared)
-	{
-		OutRayT = RayT;
-		return true;
-	}
-
-	return false;
-}
-
-bool UGizmoVisualComponent::IntersectRayRotationHandle(const FRay& Ray, int32 Axis, float& OutRayT) const
-{
-	const FVector AxisVector = GetVectorForAxis(Axis).Normalized();
-	const float Scale = (Axis == 0) ? GetWorldScale().X : (Axis == 1 ? GetWorldScale().Y : GetWorldScale().Z);
-	const float RingRadius = AxisLength * Scale;
-	const float RingThickness = Radius * Scale * 1.75f;
-
-	const float Denom = Ray.Direction.Dot(AxisVector);
-	if (std::abs(Denom) < 1e-6f)
-	{
-		return false;
-	}
-
-	const float RayT = (GetWorldLocation() - Ray.Origin).Dot(AxisVector) / Denom;
-	if (RayT <= 0.0f)
-	{
-		return false;
-	}
-
-	const FVector HitPoint = Ray.Origin + Ray.Direction * RayT;
-	const FVector Radial = HitPoint - GetWorldLocation();
-	const FVector Planar = Radial - AxisVector * Radial.Dot(AxisVector);
-	const float DistanceToRing = std::abs(Planar.Length() - RingRadius);
-	if (DistanceToRing <= RingThickness)
-	{
-		OutRayT = RayT;
-		return true;
-	}
-
-	return false;
-}
-
-bool UGizmoVisualComponent::IntersectRayCenterHandle(const FRay& Ray, float& OutRayT) const
-{
-	const FVector Center = GetWorldLocation();
-	const float CenterScale = GetWorldScale().X;
-	const float CenterRadius = 0.14f * CenterScale;
-
-	const FVector ToCenter = Center - Ray.Origin;
-	const float Projection = ToCenter.Dot(Ray.Direction);
-	if (Projection < 0.0f)
-	{
-		return false;
-	}
-
-	const FVector ClosestPoint = Ray.Origin + Ray.Direction * Projection;
-	const float DistanceSq = (ClosestPoint - Center).Dot(ClosestPoint - Center);
-	const float RadiusSq = CenterRadius * CenterRadius;
-	if (DistanceSq > RadiusSq)
-	{
-		return false;
-	}
-
-	const float Offset = std::sqrt((std::max)(0.0f, RadiusSq - DistanceSq));
-	OutRayT = Projection - Offset;
-	if (OutRayT < 0.0f)
-	{
-		OutRayT = Projection;
-	}
-	return true;
-}
 
 bool UGizmoVisualComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
-	OutHitResult = {};
-	if (!IsVisible() || CurMode == EGizmoMode::Select || !HasVisualTarget() || !MeshData || MeshData->Indices.empty())
-	{
-		if (!IsHolding())
-		{
-			SelectedAxis = -1;
-		}
-		return false;
-	}
+    (void)Ray;
+    OutHitResult = {};
+    // Transform gizmo picking is intentionally not raycast-based anymore.
+    // FGizmoManager must use HitProxyTest(), then keep the returned handle id
+    // as the interaction source of truth. This prevents the old visual-state /
+    // analytical-raycast path from eating clicks at stale locations.
+    return false;
+}
 
-	float BestRayT = FLT_MAX;
-	int32 BestAxis = -1;
-	const FVector GizmoLocation = GetWorldLocation();
+namespace
+{
+struct FGizmoPickPixel
+{
+    int32 Axis = -1;
+    float Depth = -std::numeric_limits<float>::max();
+};
 
-	for (int32 Axis = 0; Axis < 3; ++Axis)
-	{
-		if ((AxisMask & (1u << Axis)) == 0)
-		{
-			continue;
-		}
+static float EdgeFunction(float Ax, float Ay, float Bx, float By, float Cx, float Cy)
+{
+    return (Cx - Ax) * (By - Ay) - (Cy - Ay) * (Bx - Ax);
+}
 
-		float RayT = 0.0f;
-		bool bAxisHit = false;
-		if (CurMode == EGizmoMode::Rotate)
-		{
-			bAxisHit = IntersectRayRotationHandle(Ray, Axis, RayT);
-		}
-		else
-		{
-			const FVector AxisDir = GetVectorForAxis(Axis).Normalized();
-			const float AxisScale = (Axis == 0) ? GetWorldScale().X : (Axis == 1 ? GetWorldScale().Y : GetWorldScale().Z);
-			const FVector AxisEnd = GizmoLocation + AxisDir * AxisLength * AxisScale;
-			bAxisHit = IntersectRayAxis(Ray, AxisEnd, AxisScale, RayT);
-		}
+static bool IsFiniteVec3(const FVector& V)
+{
+    return std::isfinite(V.X) && std::isfinite(V.Y) && std::isfinite(V.Z);
+}
 
-		if (bAxisHit && RayT < BestRayT)
-		{
-			BestRayT = RayT;
-			BestAxis = Axis;
-		}
-	}
+static bool IsAxisPickable(int32 Axis, uint32 AxisMask, EGizmoMode Mode)
+{
+    if (Axis >= 0 && Axis <= 2)
+    {
+        return (AxisMask & (1u << Axis)) != 0;
+    }
 
-	if (CurMode == EGizmoMode::Translate)
-	{
-		float CenterRayT = 0.0f;
-		if (IntersectRayCenterHandle(Ray, CenterRayT) && CenterRayT < BestRayT)
-		{
-			BestRayT = CenterRayT;
-			BestAxis = 3;
-		}
-	}
+    // Center/plane handle exists for translate gizmo only.
+    return Axis == 3 && Mode == EGizmoMode::Translate;
+}
 
-	if (BestAxis >= 0)
-	{
-		OutHitResult.bHit = true;
-		OutHitResult.Distance = BestRayT;
-		OutHitResult.WorldHitLocation = Ray.Origin + Ray.Direction * BestRayT;
-		OutHitResult.HitComponent = this;
-		if (!IsHolding())
-		{
-			SelectedAxis = BestAxis;
-		}
-		return true;
-	}
+static int32 ChooseTriangleAxis(const FVertex& A, const FVertex& B, const FVertex& C)
+{
+    if (A.SubID == B.SubID || A.SubID == C.SubID)
+    {
+        return A.SubID;
+    }
+    if (B.SubID == C.SubID)
+    {
+        return B.SubID;
+    }
+    return A.SubID;
+}
+}
 
-	if (!IsHolding())
-	{
-		SelectedAxis = -1;
-	}
-	return false;
+bool UGizmoVisualComponent::HitProxyTest(const FGizmoHitProxyContext& Context, FGizmoHitProxyResult& OutResult) const
+{
+    OutResult.Reset();
+
+    if (!IsVisible() || CurMode == EGizmoMode::Select || !HasVisualTarget() || !MeshData || MeshData->Indices.empty())
+    {
+        return false;
+    }
+
+    if (Context.ViewportWidth <= 0.0f || Context.ViewportHeight <= 0.0f || Context.PickRadius < 0)
+    {
+        return false;
+    }
+
+    constexpr int32 MaxPickRadius = 4; // 9x9 safety cap; default caller uses 2 => 5x5.
+    const int32 RadiusPixels = std::min(Context.PickRadius, MaxPickRadius);
+    const int32 PickSize = RadiusPixels * 2 + 1;
+    constexpr int32 MaxPickSize = MaxPickRadius * 2 + 1;
+    std::array<FGizmoPickPixel, MaxPickSize * MaxPickSize> PickBuffer{};
+
+    const float PickMinX = Context.MouseX - static_cast<float>(RadiusPixels);
+    const float PickMinY = Context.MouseY - static_cast<float>(RadiusPixels);
+
+    const FMatrix WorldMatrix =
+        FMatrix::MakeScaleMatrix(GetWorldScale()) *
+        FMatrix::MakeRotationEuler(GetRelativeRotation().ToVector()) *
+        FMatrix::MakeTranslationMatrix(GetWorldLocation());
+    const FMatrix WorldViewProjection = WorldMatrix * Context.ViewProjection;
+
+    auto ProjectToViewport = [&](const FVector& LocalPosition, float& OutX, float& OutY, float& OutDepth) -> bool
+    {
+        const FVector Ndc = WorldViewProjection.TransformPositionWithW(LocalPosition);
+        if (!IsFiniteVec3(Ndc))
+        {
+            return false;
+        }
+
+        // Keep a loose clip. The 5x5 pick buffer will clip rasterization anyway,
+        // but rejecting completely invalid depth prevents handles behind the camera
+        // from becoming pickable through projection artifacts.
+        if (Ndc.Z < -1.0f || Ndc.Z > 1.0f)
+        {
+            return false;
+        }
+
+        OutX = (Ndc.X * 0.5f + 0.5f) * Context.ViewportWidth;
+        OutY = (-Ndc.Y * 0.5f + 0.5f) * Context.ViewportHeight;
+        OutDepth = Ndc.Z;
+        return std::isfinite(OutX) && std::isfinite(OutY) && std::isfinite(OutDepth);
+    };
+
+    for (uint32 Tri = 0; Tri + 2 < static_cast<uint32>(MeshData->Indices.size()); Tri += 3)
+    {
+        const uint32 I0 = MeshData->Indices[Tri + 0];
+        const uint32 I1 = MeshData->Indices[Tri + 1];
+        const uint32 I2 = MeshData->Indices[Tri + 2];
+        if (I0 >= MeshData->Vertices.size() || I1 >= MeshData->Vertices.size() || I2 >= MeshData->Vertices.size())
+        {
+            continue;
+        }
+
+        const FVertex& V0 = MeshData->Vertices[I0];
+        const FVertex& V1 = MeshData->Vertices[I1];
+        const FVertex& V2 = MeshData->Vertices[I2];
+        const int32 Axis = ChooseTriangleAxis(V0, V1, V2);
+        if (!IsAxisPickable(Axis, AxisMask, CurMode))
+        {
+            continue;
+        }
+
+        float X0, Y0, Z0;
+        float X1, Y1, Z1;
+        float X2, Y2, Z2;
+        if (!ProjectToViewport(V0.Position, X0, Y0, Z0) ||
+            !ProjectToViewport(V1.Position, X1, Y1, Z1) ||
+            !ProjectToViewport(V2.Position, X2, Y2, Z2))
+        {
+            continue;
+        }
+
+        const float MinX = std::min({ X0, X1, X2 });
+        const float MaxX = std::max({ X0, X1, X2 });
+        const float MinY = std::min({ Y0, Y1, Y2 });
+        const float MaxY = std::max({ Y0, Y1, Y2 });
+        if (MaxX < PickMinX || MinX > PickMinX + static_cast<float>(PickSize) ||
+            MaxY < PickMinY || MinY > PickMinY + static_cast<float>(PickSize))
+        {
+            continue;
+        }
+
+        const int32 StartX = std::max(0, static_cast<int32>(std::floor(MinX - PickMinX)));
+        const int32 EndX = std::min(PickSize - 1, static_cast<int32>(std::ceil(MaxX - PickMinX)));
+        const int32 StartY = std::max(0, static_cast<int32>(std::floor(MinY - PickMinY)));
+        const int32 EndY = std::min(PickSize - 1, static_cast<int32>(std::ceil(MaxY - PickMinY)));
+        if (StartX > EndX || StartY > EndY)
+        {
+            continue;
+        }
+
+        const float Area = EdgeFunction(X0, Y0, X1, Y1, X2, Y2);
+        if (std::abs(Area) < 1e-6f)
+        {
+            continue;
+        }
+
+        for (int32 Py = StartY; Py <= EndY; ++Py)
+        {
+            for (int32 Px = StartX; Px <= EndX; ++Px)
+            {
+                const float SampleX = PickMinX + static_cast<float>(Px) + 0.5f;
+                const float SampleY = PickMinY + static_cast<float>(Py) + 0.5f;
+
+                const float W0 = EdgeFunction(X1, Y1, X2, Y2, SampleX, SampleY) / Area;
+                const float W1 = EdgeFunction(X2, Y2, X0, Y0, SampleX, SampleY) / Area;
+                const float W2 = EdgeFunction(X0, Y0, X1, Y1, SampleX, SampleY) / Area;
+                const float Epsilon = -0.0001f;
+                if (W0 < Epsilon || W1 < Epsilon || W2 < Epsilon)
+                {
+                    continue;
+                }
+
+                const float Depth = W0 * Z0 + W1 * Z1 + W2 * Z2;
+                FGizmoPickPixel& Pixel = PickBuffer[Py * MaxPickSize + Px];
+                // This renderer uses reversed-Z in most paths, so larger Z is closer.
+                if (Pixel.Axis < 0 || Depth > Pixel.Depth)
+                {
+                    Pixel.Axis = Axis;
+                    Pixel.Depth = Depth;
+                }
+            }
+        }
+    }
+
+    int32 BestPixel = -1;
+    int32 BestDistanceSq = std::numeric_limits<int32>::max();
+    float BestDepth = -std::numeric_limits<float>::max();
+    for (int32 Py = 0; Py < PickSize; ++Py)
+    {
+        for (int32 Px = 0; Px < PickSize; ++Px)
+        {
+            const FGizmoPickPixel& Pixel = PickBuffer[Py * MaxPickSize + Px];
+            if (Pixel.Axis < 0)
+            {
+                continue;
+            }
+
+            const int32 Dx = Px - RadiusPixels;
+            const int32 Dy = Py - RadiusPixels;
+            const int32 DistSq = Dx * Dx + Dy * Dy;
+            if (DistSq < BestDistanceSq || (DistSq == BestDistanceSq && Pixel.Depth > BestDepth))
+            {
+                BestDistanceSq = DistSq;
+                BestDepth = Pixel.Depth;
+                BestPixel = Py * MaxPickSize + Px;
+            }
+        }
+    }
+
+    if (BestPixel < 0)
+    {
+        return false;
+    }
+
+    const FGizmoPickPixel& HitPixel = PickBuffer[BestPixel];
+    OutResult.bHit = true;
+    OutResult.Axis = HitPixel.Axis;
+    OutResult.Depth = HitPixel.Depth;
+    return true;
 }
 
 
@@ -297,30 +316,6 @@ FVector UGizmoVisualComponent::GetVectorForAxis(int32 Axis) const
 	}
 }
 
-void UGizmoVisualComponent::UpdateHoveredAxis(int Index)
-{
-	if (Index < 0)
-	{
-		if (IsHolding() == false) SelectedAxis = -1;
-	}
-	else
-	{
-		if (IsHolding() == false)
-		{
-			uint32 VertexIndex = MeshData->Indices[Index];
-			uint32 HitAxis = MeshData->Vertices[VertexIndex].SubID;
-
-			if (HitAxis == 3 || (AxisMask & (1u << HitAxis)))
-			{
-				SelectedAxis = HitAxis;
-			}
-			else
-			{
-				SelectedAxis = -1;
-			}
-		}
-	}
-}
 
 void UGizmoVisualComponent::UpdateGizmoMode(EGizmoMode NewMode)
 {

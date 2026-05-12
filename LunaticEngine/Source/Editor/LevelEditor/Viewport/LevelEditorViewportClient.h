@@ -97,7 +97,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void  TickInput(float DeltaTime);
     void  TickInteraction(float DeltaTime);
     void  SyncGizmoTargetFromSelection();
-    void  HandleDragStart(const FRay &Ray);
+    void  HandleDragStart(const FRay &Ray, const FGizmoHitProxyResult& GizmoHitResult, bool bHasGizmoHit);
     void  DrawUIScreenTranslateGizmo();
     bool  HasUIScreenTranslateGizmo() const;
     int32 HitTestUIScreenTranslateGizmo(const ImVec2 &MousePos) const;
