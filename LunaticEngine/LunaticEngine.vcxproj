@@ -648,6 +648,7 @@
     <ClInclude Include="Source\Editor\Common\UI\Panels\PanelTitleUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\AccentColor.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h" />
+    <ClInclude Include="Source\Editor\Common\UI\Tabs\EditorDocumentTabBar.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportCamera.h" />

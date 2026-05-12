@@ -144,7 +144,7 @@ bool FAssetEditorManager::OpenLoadedAsset(UObject *Asset, const std::filesystem:
 
     const std::filesystem::path NormalizedPath = AssetPath.lexically_normal();
 
-    if (AssetEditorWindow.IsOpen() && AssetEditorWindow.ActivateTabByAssetPath(NormalizedPath))
+    if (AssetEditorWindow.ActivateTabByAssetPath(NormalizedPath))
     {
         AssetEditorWindow.Show();
         if (EditorEngine)

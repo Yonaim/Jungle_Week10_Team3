@@ -67,4 +67,8 @@ class IAssetEditor
 
     virtual const char *GetEditorName() const = 0;
     virtual const std::filesystem::path &GetAssetPath() const = 0;
+
+    /** Document tab strip에 표시할 에셋 타입 아이콘. */
+    virtual const char *GetDocumentTabIconKey() const { return "Editor.Icon.Panel.Asset"; }
+    virtual ImVec4 GetDocumentTabIconTint() const { return ImVec4(1.0f, 1.0f, 1.0f, 1.0f); }
 };

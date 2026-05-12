@@ -3,7 +3,9 @@
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 
 #include "Common/UI/Style/EditorUIStyle.h"
+#include "Common/UI/Details/EditorMaterialSlotUI.h"
 #include "Engine/Mesh/SkeletalMesh.h"
+#include "Component/SkeletalMeshComponent.h"
 #include "Platform/Paths.h"
 #include "ImGui/imgui.h"
 
@@ -23,7 +25,7 @@ const char *PreviewModeToText(ESkeletalMeshPreviewMode Mode)
 }
 } // namespace
 
-void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
+void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent, const std::filesystem::path &AssetPath,
                                             FSkeletalMeshEditorState &State,
                                             FSkeletalMeshSelectionManager &SelectionManager,
                                             const FPanelDesc &PanelDesc)
@@ -44,6 +46,8 @@ void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::file
     RenderMeshInfo(Mesh, AssetPath, State, SelectionManager);
     ImGui::Spacing();
     RenderLODSectionMaterialInfo(Mesh, State);
+    ImGui::Spacing();
+    RenderOverrideMaterials(PreviewComponent);
     ImGui::Spacing();
     RenderViewerActions(State, SelectionManager);
     ImGui::Spacing();
@@ -139,6 +143,23 @@ void FAssetDetailsPanel::RenderLODSectionMaterialInfo(USkeletalMesh *Mesh, FSkel
         ImGui::Text("%s", State.SelectedMaterialSlotIndex >= 0 ? "Selected" : "Pending API");
 
         ImGui::EndTable();
+    }
+}
+
+
+void FAssetDetailsPanel::RenderOverrideMaterials(USkeletalMeshComponent *PreviewComponent)
+{
+    if (!FEditorUIStyle::BeginDetailsSection("Override Materials"))
+    {
+        return;
+    }
+
+    ImGui::TextDisabled("Preview USkeletalMeshComponent override material slots.");
+    ImGui::Spacing();
+    if (FEditorMaterialSlotUI::RenderComponentOverrideMaterials(PreviewComponent, "No override material slots."))
+    {
+        // Preview component material override changed. The preview proxy consumes the component state.
+        // The asset itself is still treated as read-only in this viewer, so bDirty is not set here.
     }
 }
 

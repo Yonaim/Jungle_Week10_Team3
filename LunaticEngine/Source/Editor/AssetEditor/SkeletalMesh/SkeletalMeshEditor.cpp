@@ -2,6 +2,7 @@
 
 #include "Common/UI/Docking/DockLayoutUtils.h"
 #include "Core/Notification.h"
+#include "Component/SkeletalMeshComponent.h"
 #include "EditorEngine.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Object/Object.h"
@@ -16,14 +17,6 @@ namespace
 {
 uint32 GNextSkeletalMeshEditorId = 1;
 
-std::string MakeAssetTabTitle(const std::filesystem::path &AssetPath, const char *FallbackName)
-{
-    if (!AssetPath.empty())
-    {
-        return FPaths::ToUtf8(AssetPath.filename().wstring());
-    }
-    return FallbackName ? FallbackName : "Asset";
-}
 }
 
 void FSkeletalMeshEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
@@ -61,6 +54,13 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
 
     bOpen = true;
     bDirty = false;
+
+    // 탭이 비활성 상태에서 열리거나, 탭 전환 직후 첫 UI 프레임보다 render collection이 먼저 돌더라도
+    // preview viewport가 빈 텍스처를 보여주지 않도록 asset과 component/proxy를 미리 연결한다.
+    if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+    {
+        PreviewClient->SetPreviewMesh(EditingAsset);
+    }
 
     FNotificationManager::Get().AddNotification("Opened asset: " + FPaths::ToUtf8(EditingAssetPath.filename().wstring()),
                                                 ENotificationType::Success, 3.0f);
@@ -227,7 +227,7 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
     SkeletonDesc.StableId = SkeletonId.c_str();
     SkeletonDesc.bOpen = &bSkeletonTreePanelOpen;
 
-    const std::string PreviewTitle = MakeAssetTabTitle(EditingAssetPath, "Preview Viewport");
+    const std::string PreviewTitle = std::string("Viewport (") + std::to_string(EditorInstanceId) + ")";
     FPanelDesc PreviewDesc = MakePanelDesc(PreviewTitle.c_str(), "PreviewViewport", "Editor.Icon.Panel.Viewport");
     PreviewDesc.StableId = PreviewId.c_str();
 
@@ -254,7 +254,7 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     SkeletonDesc.StableId = SkeletonId.c_str();
     SkeletonDesc.bOpen = &bSkeletonTreePanelOpen;
 
-    const std::string PreviewTitle = MakeAssetTabTitle(EditingAssetPath, "Preview Viewport");
+    const std::string PreviewTitle = std::string("Viewport (") + std::to_string(EditorInstanceId) + ")";
     FPanelDesc PreviewDesc = MakePanelDesc(PreviewTitle.c_str(), "PreviewViewport", "Editor.Icon.Panel.Viewport",
                                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                                                      ImGuiWindowFlags_NoScrollWithMouse);
@@ -277,6 +277,11 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     }
     if (bDetailsPanelOpen)
     {
-        AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, EditingAssetPath, State, SelectionManager, DetailsDesc);
+        USkeletalMeshComponent *PreviewComponent = nullptr;
+        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        {
+            PreviewComponent = PreviewClient->GetPreviewComponent();
+        }
+        AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, PreviewComponent, EditingAssetPath, State, SelectionManager, DetailsDesc);
     }
 }

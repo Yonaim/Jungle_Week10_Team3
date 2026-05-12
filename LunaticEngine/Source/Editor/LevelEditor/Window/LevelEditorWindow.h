@@ -4,6 +4,10 @@
 #include "Common/Menu/EditorMenuProvider.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "ImGui/imgui.h"
+
+#include <filesystem>
+#include <string>
+#include <vector>
 #include "LevelEditor/UI/Debug/ShadowMapDebugPanel.h"
 #include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowser.h"
 #include "LevelEditor/UI/Panels/LevelConsolePanel.h"
@@ -126,6 +130,17 @@ class FLevelEditorWindow : public IEditorMenuProvider
     FLevelStatPanel StatPanel;
     FContentBrowser ContentBrowser;
     FShadowMapDebugPanel ShadowMapDebugPanel;
+
+    struct FLevelDocumentTab
+    {
+        std::filesystem::path ScenePath;
+        std::string Title;
+        bool bDirty = false;
+    };
+
+    std::vector<FLevelDocumentTab> LevelDocumentTabs;
+    int32 ActiveLevelDocumentTabIndex = -1;
+    uint32 NextUntitledSceneIndex = 1;
 
     bool bShowPanelList = false;
     bool bHideEditorWindows = false;

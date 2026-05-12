@@ -7,6 +7,17 @@
 
 #include "ImGui/imgui.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Tabs/EditorDocumentTabBar.h"
+
+#include <algorithm>
+
+
+namespace
+{
+    const float AssetDocumentTabBarHeight = FEditorDocumentTabBar::GetHeight();
+    constexpr float EditorWindowOuterPadding = 6.0f;
+    constexpr float EditorTitleBarHeight = 42.0f;
+}
 
 void FAssetEditorWindow::Initialize(UEditorEngine *InEditorEngine, FAssetEditorManager *InOwnerManager)
 {
@@ -111,11 +122,23 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
     //   Skeleton Tree / Details를 각각 독립 panel로 렌더링한다.
     if (TabManager.HasOpenTabs())
     {
+        RenderDocumentTabBar();
+
         // Asset Editor도 Level Editor와 같은 panel chrome / surface 색을 사용한다.
         // 개별 패널의 body 색은 FPanel::Begin()에서 공통으로 적용한다.
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::ColorConvertU32ToFloat4(PanelTitleUtils::GetDockTabBarGapColor()));
         TabManager.Render(DeltaTime, DockspaceId);
         ImGui::PopStyleColor();
+
+        if (!TabManager.HasOpenTabs())
+        {
+            Hide();
+            if (EditorEngine)
+            {
+                EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+            }
+            return;
+        }
 
         bCapturingInput = TabManager.IsCapturingInput();
         return;
@@ -125,6 +148,50 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
     // 사용자는 Level Editor의 Content Browser에서 .fbx / .uasset을 열거나,
     // File 메뉴의 Open UAsset / Open FBX 진입점으로 에셋 패널을 추가한다.
     bCapturingInput = false;
+}
+
+void FAssetEditorWindow::RenderDocumentTabBar()
+{
+    if (!IsOpen() || !TabManager.HasOpenTabs())
+    {
+        return;
+    }
+
+    const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
+    if (!MainViewport)
+    {
+        return;
+    }
+
+    const ImVec2 BarPos(MainViewport->Pos.x + EditorWindowOuterPadding,
+                        MainViewport->Pos.y + EditorWindowOuterPadding + EditorTitleBarHeight);
+    const ImVec2 BarSize((std::max)(0.0f, MainViewport->Size.x - EditorWindowOuterPadding * 2.0f), AssetDocumentTabBarHeight);
+    if (BarSize.x <= 1.0f || BarSize.y <= 1.0f)
+    {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(BarPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(BarSize, ImGuiCond_Always);
+    ImGui::SetNextWindowViewport(MainViewport->ID);
+
+    const ImGuiWindowFlags Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
+                                  ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.035f, 0.040f, 1.0f));
+    if (ImGui::Begin("##AssetEditorDocumentTabBar", nullptr, Flags))
+    {
+        TabManager.RenderDocumentTabBar();
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar(4);
 }
 
 void FAssetEditorWindow::RenderEmptyState(ImGuiID DockspaceId)

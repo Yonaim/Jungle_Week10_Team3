@@ -103,6 +103,9 @@
     <Filter Include="Source\Editor\Common\UI\Style">
       <UniqueIdentifier>{923facfc-da32-1bce-ab95-9da8418232c5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\Common\UI\Tabs">
+      <UniqueIdentifier>{1403f173-fecd-d607-fe8a-574322231af6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Common\UI\Viewport">
       <UniqueIdentifier>{315bc4ff-3a25-a257-693b-b9448fc7301a}</UniqueIdentifier>
     </Filter>
@@ -1501,6 +1504,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h">
       <Filter>Source\Editor\Common\UI\Style</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Tabs\EditorDocumentTabBar.h">
+      <Filter>Source\Editor\Common\UI\Tabs</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h">
       <Filter>Source\Editor\Common\UI\Viewport</Filter>

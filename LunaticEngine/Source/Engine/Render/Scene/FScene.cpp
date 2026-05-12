@@ -118,7 +118,7 @@ void FScene::RemovePrimitive(FPrimitiveSceneProxy* Proxy)
 	// 각 목록에서 제거
 	if (Proxy->bQueuedForDirtyUpdate)
 	{
-		auto DirtyIt = std::find(DirtyProxies.begin(), DirtyProxies.end(), Proxy);
+ 		auto DirtyIt = std::find(DirtyProxies.begin(), DirtyProxies.end(), Proxy);
 		if (DirtyIt != DirtyProxies.end())
 		{
 			*DirtyIt = DirtyProxies.back();
