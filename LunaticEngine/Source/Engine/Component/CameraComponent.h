@@ -54,6 +54,7 @@ public:
 	bool IsOrthogonal() const { return CameraState.bIsOrthogonal; }
 
 	FRay DeprojectScreenToWorld(float MouseX, float MouseY, float ScreenWidth, float ScreenHeight);
+	class UBillboardComponent* EnsureEditorBillboard();
 
 private:
 	// Function : Copy current world transform into camera state

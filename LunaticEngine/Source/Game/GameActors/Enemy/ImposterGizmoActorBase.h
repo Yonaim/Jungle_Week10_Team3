@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "GimmickActorBase.h"
 #include "Scripting/LuaActorProxy.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 
 class UPrimitiveComponent;
 
@@ -28,7 +28,7 @@ protected:
 	void ReleaseCapturedActorTint();
 
 protected:
-	UGizmoComponent* PreviewGizmo = nullptr; 
+	UGizmoVisualComponent* PreviewGizmo = nullptr; 
 	AActor* Target			= nullptr;
 	float	ActivationDelay = 1.5f;
 	float   ElapsedDelay	= 0.f;

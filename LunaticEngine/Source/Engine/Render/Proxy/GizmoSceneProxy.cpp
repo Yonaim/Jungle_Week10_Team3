@@ -1,5 +1,5 @@
 ﻿#include "Render/Proxy/GizmoSceneProxy.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Types/FrameContext.h"
 #include "Materials/Material.h"
@@ -8,7 +8,7 @@
 // ============================================================
 // FGizmoSceneProxy
 // ============================================================
-FGizmoSceneProxy::FGizmoSceneProxy(UGizmoComponent* InComponent, bool bInner)
+FGizmoSceneProxy::FGizmoSceneProxy(UGizmoVisualComponent* InComponent, bool bInner)
 	: FPrimitiveSceneProxy(InComponent)
 	, bIsInner(bInner)
 {
@@ -21,7 +21,7 @@ FGizmoSceneProxy::FGizmoSceneProxy(UGizmoComponent* InComponent, bool bInner)
 		bInner ? ERenderPass::GizmoInner : ERenderPass::GizmoOuter,
 		bInner ? EBlendState::AlphaBlend : EBlendState::Opaque,
 		bInner ? EDepthStencilState::GizmoInside : EDepthStencilState::GizmoOutside,
-		ERasterizerState::SolidBackCull,
+		ERasterizerState::SolidNoCull,
 		FShaderManager::Get().GetOrCreate(EShaderPath::Gizmo));
 }
 
@@ -35,9 +35,9 @@ FGizmoSceneProxy::~FGizmoSceneProxy()
 	}
 }
 
-UGizmoComponent* FGizmoSceneProxy::GetGizmoComponent() const
+UGizmoVisualComponent* FGizmoSceneProxy::GetGizmoVisualComponent() const
 {
-	return static_cast<UGizmoComponent*>(GetOwner());
+	return static_cast<UGizmoVisualComponent*>(GetOwner());
 }
 
 // ============================================================
@@ -45,7 +45,7 @@ UGizmoComponent* FGizmoSceneProxy::GetGizmoComponent() const
 // ============================================================
 void FGizmoSceneProxy::UpdateMesh()
 {
-	UGizmoComponent* Gizmo = GetGizmoComponent();
+	UGizmoVisualComponent* Gizmo = GetGizmoVisualComponent();
 	MeshBuffer = Gizmo->GetMeshBuffer();
 	RebuildGizmoSectionDraws();
 }
@@ -55,9 +55,9 @@ void FGizmoSceneProxy::UpdateMesh()
 // ============================================================
 void FGizmoSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 {
-	UGizmoComponent* Gizmo = GetGizmoComponent();
+	UGizmoVisualComponent* Gizmo = GetGizmoVisualComponent();
 
-	if (!Frame.RenderOptions.ShowFlags.bGizmo || !Gizmo->IsVisible() || !Gizmo->HasTarget() || Gizmo->GetMode() == EGizmoMode::Select)
+	if (!Frame.RenderOptions.ShowFlags.bGizmo || !Gizmo->IsVisible() || !Gizmo->HasVisualTarget() || Gizmo->GetMode() == EGizmoMode::Select)
 	{
 		bVisible = false;
 		return;
@@ -71,7 +71,7 @@ void FGizmoSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 	// Per-viewport 스케일 계산
 	const FVector CameraPos = Frame.View.GetInverseFast().GetLocation();
 	float PerViewScale = Gizmo->ComputeScreenSpaceScale(
-		CameraPos, Frame.bIsOrtho, Frame.OrthoWidth);
+		CameraPos, Frame.bIsOrtho, Frame.OrthoWidth, Frame.ViewportHeight);
 
 	FMatrix WorldMatrix = FMatrix::MakeScaleMatrix(FVector(PerViewScale, PerViewScale, PerViewScale))
 		* FMatrix::MakeRotationEuler(Gizmo->GetRelativeRotation().ToVector())
@@ -91,7 +91,7 @@ void FGizmoSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 		? static_cast<uint32>(Gizmo->GetSelectedAxis())
 		: 0xFFFFFFFFu;
 	G.HoveredAxisOpacity = 0.7f;
-	G.AxisMask = UGizmoComponent::ComputeAxisMask(Frame.RenderOptions.ViewportType, Gizmo->GetMode());
+	G.AxisMask = UGizmoVisualComponent::ComputeAxisMask(Frame.RenderOptions.ViewportType, Gizmo->GetMode());
 }
 
 void FGizmoSceneProxy::RebuildGizmoSectionDraws()

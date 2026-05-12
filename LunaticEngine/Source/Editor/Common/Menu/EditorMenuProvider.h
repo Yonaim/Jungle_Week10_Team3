@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/CoreTypes.h"
+#include "ImGui/imgui.h"
 
 /**
  * 공통 EditorMenuBar에 메뉴 내용을 제공하는 인터페이스.

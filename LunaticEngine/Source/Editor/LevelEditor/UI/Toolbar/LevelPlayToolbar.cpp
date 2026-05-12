@@ -89,7 +89,7 @@ void FLevelPlayToolbar::Render(float Width)
     const float GroupY = (ToolbarHeight - GroupHeight) * 0.5f;
     const float GroupInnerPadding = 6.0f;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 7.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 7.0f));
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UIAccentColor::Value);
@@ -137,7 +137,7 @@ void FLevelPlayToolbar::Render(float Width)
     auto DrawToolbarGroup = [&](const char *Id, float X, float Width) {
         ImGui::SetCursorPos(ImVec2(X, GroupY));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.11f, 0.11f, 0.13f, 0.95f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
         ImGui::BeginChild(Id, ImVec2(Width, GroupHeight), true,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
@@ -154,8 +154,8 @@ void FLevelPlayToolbar::Render(float Width)
     const float PlayGroupWidth =
         GroupPaddingX * 2.0f + GroupInnerPadding * 2.0f + ButtonSize * 3.0f + ButtonSpacing * 2.0f;
     const float HistoryGroupWidth = GroupPaddingX * 2.0f + GroupInnerPadding * 2.0f + ButtonSize * 2.0f + ButtonSpacing;
-    const float HistoryGroupX = (std::max)(ButtonPadding, Width - ButtonPadding - HistoryGroupWidth);
     const float PlayGroupX = ButtonPadding;
+    const float HistoryGroupX = PlayGroupX + PlayGroupWidth + GroupSpacing;
 
     DrawToolbarGroup("##PlayGroup", PlayGroupX, PlayGroupWidth);
     if (DrawIconButton("##PIE_Play", PlayIcon, "Play", bPlaying, PlayTint))

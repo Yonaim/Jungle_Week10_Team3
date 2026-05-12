@@ -436,10 +436,12 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
         ImGui::BeginDisabled();
     }
     PushOutlinerButtonStyle();
+    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.52f));
     if (ImGui::Button("Select All", ImVec2(SelectAllWidth, OutlinerFooterButtonHeight)))
     {
         SelectAllVisibleActors();
     }
+    ImGui::PopStyleVar();
     PopOutlinerButtonStyle();
     if (!bCanSelectAll)
     {

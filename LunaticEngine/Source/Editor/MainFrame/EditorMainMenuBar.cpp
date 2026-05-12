@@ -64,8 +64,8 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
     float MenuEndX = 54.0f;
     if (ImGui::BeginMenuBar())
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20.0f, 7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(16.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
         if (Context.TitleBarFont)
@@ -83,7 +83,6 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
         const float RightControlsStartX = ImGui::GetWindowWidth() - RightControlsWidth;
         const float FrameTabX = RightControlsStartX - FrameTabWidth - 12.0f;
         float MenuStartX = ImGui::GetStyle().WindowPadding.x;
-
         if (LogoTexture)
         {
             const float LogoX = 8.0f;
@@ -98,7 +97,7 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
         ImGui::SetCursorPos(ImVec2(MenuStartX, ContentStartY));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(18.0f, 6.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, UnrealPanelSurface);
         ImGui::PushStyleColor(ImGuiCol_Header, UnrealPanelSurface);
@@ -167,24 +166,26 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
 
         MenuEndX = ImGui::GetCursorPosX();
 
-        ImGui::SetCursorPos(ImVec2(FrameTabX, ContentStartY));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.72f, 0.72f, 0.74f, 1.0f));
-        ImGui::Button(FrameTitle.c_str(), ImVec2(FrameTabWidth, FrameTabHeight));
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
         {
-            ImGui::BeginTooltip();
-            ImGui::PushTextWrapPos(520.0f);
-            ImGui::Text("Current: %s", FrameTitleTooltip.c_str());
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
+            ImGui::SetCursorPos(ImVec2(FrameTabX, ContentStartY));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.72f, 0.72f, 0.74f, 1.0f));
+            ImGui::Button(FrameTitle.c_str(), ImVec2(FrameTabWidth, FrameTabHeight));
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(520.0f);
+                ImGui::Text("Current: %s", FrameTitleTooltip.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+            ImGui::PopStyleColor(4);
+            ImGui::PopStyleVar(2);
         }
-        ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar(2);
 
         if (Context.Window)
         {

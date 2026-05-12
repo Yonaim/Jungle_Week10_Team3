@@ -11,6 +11,7 @@
 #include "Texture/Texture2D.h"
 #include "Engine/Runtime/Engine.h"
 #include "Platform/Paths.h"
+#include "Render/Types/EditorViewportScale.h"
 
 #include <algorithm>
 #include <cmath>
@@ -23,8 +24,6 @@ IMPLEMENT_CLASS(UBillboardComponent, UPrimitiveComponent)
 
 namespace
 {
-constexpr float EditorBillboardScreenScale = 0.10f;
-
 FString ResolveLegacyBillboardTexturePath(const FString& InPath)
 {
 	const FString FileName = std::filesystem::path(InPath).filename().string();
@@ -72,6 +71,10 @@ const char* GetDefaultBillboardFallbackIconKey(const AActor* Actor)
 	if (ClassName.find("Pawn") != FString::npos)
 	{
 		return "Editor.Icon.Pawn";
+	}
+	if (ClassName.find("Camera") != FString::npos)
+	{
+		return "Editor.Icon.Camera";
 	}
 	if (ClassName.find("SpotLight") != FString::npos)
 	{
@@ -264,35 +267,34 @@ FMatrix UBillboardComponent::ComputeBillboardMatrix(const FVector& CameraForward
 }
 
 float UBillboardComponent::ComputeRenderedScreenScale(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth,
-	float BillboardScale) const
+	float BillboardScale, float ViewportHeight) const
 {
 	if (!IsEditorOnly())
 	{
 		return 1.0f;
 	}
 
-	float Scale = 1.0f;
-	if (bIsOrtho)
-	{
-		Scale = OrthoWidth * EditorBillboardScreenScale;
-	}
-	else
-	{
-		const float Distance = FVector::Distance(CameraLocation, GetWorldLocation());
-		Scale = Distance * EditorBillboardScreenScale;
-	}
+	const float Scale = FEditorViewportScale::ComputeWorldScale(
+		CameraLocation,
+		GetWorldLocation(),
+		bIsOrtho,
+		OrthoWidth,
+		ViewportHeight,
+		FEditorViewportScaleRules::Billboard);
 
-	return (std::max)(0.01f, Scale) * BillboardScale;
+	return Scale * BillboardScale;
 }
 
 bool UBillboardComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
 {
-	float ScreenScale = 1.0f;
-	if (IsEditorOnly())
+	if (!IsVisible())
 	{
-		// Perspective picking uses the click ray origin as the active view position so the hit area tracks the rendered helper size.
-		ScreenScale = ComputeRenderedScreenScale(Ray.Origin, false, 10.0f, 1.0f);
+		return false;
 	}
+
+	const float ScreenScale = IsEditorOnly()
+		? (std::max)(0.0001f, LastRenderedEditorScreenScale)
+		: 1.0f;
 
 	return IntersectBillboard(Ray, OutHitResult, true, ScreenScale);
 }

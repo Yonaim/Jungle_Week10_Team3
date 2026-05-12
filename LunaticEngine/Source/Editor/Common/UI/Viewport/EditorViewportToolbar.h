@@ -326,15 +326,23 @@ class FEditorViewportToolbar
     static bool DrawIconSelectable(const char *Id, EIcon Icon, const char *Label, bool bSelected, float Width = 240.0f)
     {
         ImGui::PushID(Id);
-        const bool bClicked = ImGui::Selectable("##Option", bSelected, 0, ImVec2(Width, 24.0f));
+        const float RowWidth = Width <= 0.0f ? ImGui::GetContentRegionAvail().x : Width;
+        const bool bClicked = ImGui::Selectable("##Option", bSelected, ImGuiSelectableFlags_None, ImVec2(RowWidth, 24.0f));
+        const bool bHovered = ImGui::IsItemHovered();
         const ImVec2 Min = ImGui::GetItemRectMin();
+        const ImVec2 Max = ImGui::GetItemRectMax();
         ImDrawList *DrawList = ImGui::GetWindowDrawList();
+        if (bHovered || bSelected)
+        {
+            DrawList->AddRectFilled(Min, Max, ImGui::GetColorU32(UIAccentColor::Value));
+        }
+        const ImU32 RowTextColor = ImGui::GetColorU32((bHovered || bSelected) ? ImVec4(0.02f, 0.02f, 0.025f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
         if (ID3D11ShaderResourceView *IconSRV = GetIconTable()[static_cast<int32>(Icon)])
         {
-            DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 4.0f, Min.y + 4.0f),
-                               ImVec2(Min.x + 18.0f, Min.y + 18.0f));
+            DrawList->AddImage(reinterpret_cast<ImTextureID>(IconSRV), ImVec2(Min.x + 6.0f, Min.y + 4.0f),
+                               ImVec2(Min.x + 20.0f, Min.y + 18.0f), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), RowTextColor);
         }
-        DrawList->AddText(ImVec2(Min.x + 24.0f, Min.y + 4.0f), ImGui::GetColorU32(ImGuiCol_Text), Label ? Label : "");
+        DrawList->AddText(ImVec2(Min.x + 28.0f, Min.y + 4.0f), RowTextColor, Label ? Label : "");
         ImGui::PopID();
         return bClicked;
     }

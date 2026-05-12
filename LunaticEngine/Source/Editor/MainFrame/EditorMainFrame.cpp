@@ -69,7 +69,7 @@ namespace
     void ApplyEditorTabStyle()
     {
         ImGuiStyle &Style = ImGui::GetStyle();
-        Style.TabRounding = (std::max)(Style.TabRounding, 9.0f);
+        Style.TabRounding = (std::max)(Style.TabRounding, 7.0f);
         Style.TabBorderSize = (std::max)(Style.TabBorderSize, 1.0f);
         Style.TabBarBorderSize = 0.0f;
         Style.TabBarOverlineSize = 0.0f;

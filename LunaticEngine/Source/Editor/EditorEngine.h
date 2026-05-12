@@ -11,12 +11,13 @@
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "LevelEditor/Window/LevelEditorWindow.h"
 #include "Common/Viewport/EditorViewportCamera.h"
+#include "Common/Gizmo/EditorGizmoSharedState.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #endif
 
-class UGizmoComponent;
+class UGizmoVisualComponent;
 class FLevelEditorViewportClient;
 class FEditorViewportClient;
 class FOverlayStatSystem;
@@ -54,7 +55,6 @@ class UEditorEngine : public UEngine
     bool IsScoreSavePopupOpen() const override;
 
     // 에디터 전용 API
-    UGizmoComponent  *GetGizmo() const;
     FEditorViewportCamera *GetCamera() const;
     bool              FocusActorInViewport(AActor *Actor);
 
@@ -90,7 +90,10 @@ class UEditorEngine : public UEngine
     bool           IsShowingEditorOnlyComponents() const { return LevelEditorWindow.IsShowingEditorOnlyComponents(); }
     bool           IsWorldCoordSystem() const { return FLevelEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
     void           ToggleCoordSystem();
+    void           SetEditorGizmoMode(EGizmoMode NewMode);
+    EGizmoMode     GetEditorGizmoMode() const { return EditorGizmoSharedState.Mode; }
     void           ApplyTransformSettingsToGizmo();
+    void           SyncActiveGizmoVisualFromTarget();
     void           BeginTrackedSceneChange();
     void           CommitTrackedSceneChange();
     void           CancelTrackedSceneChange();
@@ -210,6 +213,7 @@ class UEditorEngine : public UEngine
     void              InvalidateTrackedSceneSnapshotCache();
 
     EEditorContextType ActiveEditorContextType = EEditorContextType::LevelEditor;
+    FEditorGizmoSharedState EditorGizmoSharedState;
 
     FLevelEditor       LevelEditor;
     FEditorImGuiSystem ImGuiSystem;

@@ -16,14 +16,6 @@ namespace
 {
 uint32 GNextSkeletalMeshEditorId = 1;
 
-std::string MakeAssetTabTitle(const std::filesystem::path &AssetPath, const char *FallbackName)
-{
-    if (!AssetPath.empty())
-    {
-        return FPaths::ToUtf8(AssetPath.filename().wstring());
-    }
-    return FallbackName ? FallbackName : "Asset";
-}
 }
 
 void FSkeletalMeshEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
@@ -227,7 +219,7 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
     SkeletonDesc.StableId = SkeletonId.c_str();
     SkeletonDesc.bOpen = &bSkeletonTreePanelOpen;
 
-    const std::string PreviewTitle = MakeAssetTabTitle(EditingAssetPath, "Preview Viewport");
+    const std::string PreviewTitle = std::string("Viewport ") + std::to_string(EditorInstanceId);
     FPanelDesc PreviewDesc = MakePanelDesc(PreviewTitle.c_str(), "PreviewViewport", "Editor.Icon.Panel.Viewport");
     PreviewDesc.StableId = PreviewId.c_str();
 
@@ -254,7 +246,7 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     SkeletonDesc.StableId = SkeletonId.c_str();
     SkeletonDesc.bOpen = &bSkeletonTreePanelOpen;
 
-    const std::string PreviewTitle = MakeAssetTabTitle(EditingAssetPath, "Preview Viewport");
+    const std::string PreviewTitle = std::string("Viewport ") + std::to_string(EditorInstanceId);
     FPanelDesc PreviewDesc = MakePanelDesc(PreviewTitle.c_str(), "PreviewViewport", "Editor.Icon.Panel.Viewport",
                                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
                                                      ImGuiWindowFlags_NoScrollWithMouse);

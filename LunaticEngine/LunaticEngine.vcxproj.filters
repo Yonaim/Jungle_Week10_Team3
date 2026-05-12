@@ -103,6 +103,9 @@
     <Filter Include="Source\Editor\Common\UI\Style">
       <UniqueIdentifier>{923facfc-da32-1bce-ab95-9da8418232c5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\Common\UI\Tabs">
+      <UniqueIdentifier>{1403f173-fecd-d607-fe8a-574322231af6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Common\UI\Viewport">
       <UniqueIdentifier>{315bc4ff-3a25-a257-693b-b9448fc7301a}</UniqueIdentifier>
     </Filter>
@@ -581,6 +584,9 @@
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.cpp">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp">
       <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClCompile>
@@ -770,7 +776,7 @@
     <ClCompile Include="Source\Engine\Component\DecalComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Component\GizmoComponent.cpp">
+    <ClCompile Include="Source\Engine\Component\GizmoVisualComponent.cpp">
       <Filter>Source\Engine\Component</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Component\HeightFogComponent.cpp">
@@ -1460,6 +1466,9 @@
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h">
       <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClInclude>
@@ -1502,6 +1511,9 @@
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h">
       <Filter>Source\Editor\Common\UI\Style</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Tabs\EditorDocumentTabBar.h">
+      <Filter>Source\Editor\Common\UI\Tabs</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h">
       <Filter>Source\Editor\Common\UI\Viewport</Filter>
     </ClInclude>
@@ -1512,6 +1524,9 @@
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportInputController.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h">
@@ -1703,7 +1718,7 @@
     <ClInclude Include="Source\Engine\Component\DecalComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Component\GizmoComponent.h">
+    <ClInclude Include="Source\Engine\Component\GizmoVisualComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\HeightFogComponent.h">
@@ -1756,6 +1771,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h">
       <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoHitProxyTypes.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h">
       <Filter>Source\Engine\Component\Gizmo</Filter>
@@ -2248,6 +2266,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Shadow\ShadowAtlasQuadTree.h">
       <Filter>Source\Engine\Render\Shadow</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Types\EditorViewportScale.h">
+      <Filter>Source\Engine\Render\Types</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Types\FogParams.h">
       <Filter>Source\Engine\Render\Types</Filter>

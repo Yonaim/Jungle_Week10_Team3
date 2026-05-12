@@ -339,6 +339,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp" />
     <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp" />
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp" />
+    <ClCompile Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.cpp" />
     <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp" />
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp" />
@@ -402,7 +403,7 @@
     <ClCompile Include="Source\Engine\Component\CanvasRootComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\CylindricalBillboardComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\DecalComponent.cpp" />
-    <ClCompile Include="Source\Engine\Component\GizmoComponent.cpp" />
+    <ClCompile Include="Source\Engine\Component\GizmoVisualComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\HeightFogComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\MeshComponent.cpp" />
     <ClCompile Include="Source\Engine\Component\PrimitiveComponent.cpp" />
@@ -634,6 +635,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h" />
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
+    <ClInclude Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\TransformGizmoTargets.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
@@ -648,10 +650,12 @@
     <ClInclude Include="Source\Editor\Common\UI\Panels\PanelTitleUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\AccentColor.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h" />
+    <ClInclude Include="Source\Editor\Common\UI\Tabs\EditorDocumentTabBar.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportCamera.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportInputController.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\PreviewScene.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\ViewportCameraController.h" />
@@ -715,7 +719,7 @@
     <ClInclude Include="Source\Engine\Component\CanvasRootComponent.h" />
     <ClInclude Include="Source\Engine\Component\CylindricalBillboardComponent.h" />
     <ClInclude Include="Source\Engine\Component\DecalComponent.h" />
-    <ClInclude Include="Source\Engine\Component\GizmoComponent.h" />
+    <ClInclude Include="Source\Engine\Component\GizmoVisualComponent.h" />
     <ClInclude Include="Source\Engine\Component\HeightFogComponent.h" />
     <ClInclude Include="Source\Engine\Component\MeshComponent.h" />
     <ClInclude Include="Source\Engine\Component\PrimitiveComponent.h" />
@@ -733,6 +737,7 @@
     <ClInclude Include="Source\Engine\Component\UIImageComponent.h" />
     <ClInclude Include="Source\Engine\Component\UIScreenTextComponent.h" />
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoHitProxyTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\TransformGizmoTarget.h" />
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h" />
@@ -897,6 +902,7 @@
     <ClInclude Include="Source\Engine\Render\Shadow\AtlasQuadTreeBase.h" />
     <ClInclude Include="Source\Engine\Render\Shadow\AtlasQuadTreePoint.h" />
     <ClInclude Include="Source\Engine\Render\Shadow\ShadowAtlasQuadTree.h" />
+    <ClInclude Include="Source\Engine\Render\Types\EditorViewportScale.h" />
     <ClInclude Include="Source\Engine\Render\Types\FogParams.h" />
     <ClInclude Include="Source\Engine\Render\Types\ForwardLightData.h" />
     <ClInclude Include="Source\Engine\Render\Types\FrameContext.h" />

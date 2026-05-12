@@ -7,28 +7,8 @@
 #include "Render/Resource/MeshBufferManager.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Types/FrameContext.h"
+#include "Render/Types/EditorViewportScale.h"
 #include "Texture/Texture2D.h"
-
-namespace
-{
-	constexpr float EditorBillboardScreenScale = 0.10f;
-
-	float ComputeEditorBillboardScale(const FFrameContext& Frame, const FVector& WorldLocation)
-	{
-		float Scale = 1.0f;
-		if (Frame.bIsOrtho)
-		{
-			Scale = Frame.OrthoWidth * EditorBillboardScreenScale;
-		}
-		else
-		{
-			const float Distance = FVector::Distance(Frame.CameraPosition, WorldLocation);
-			Scale = Distance * EditorBillboardScreenScale;
-		}
-
-		return (Scale < 0.01f) ? 0.01f : Scale;
-	}
-}
 
 FBillboardSceneProxy::FBillboardSceneProxy(UBillboardComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent)
@@ -135,12 +115,23 @@ void FBillboardSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 	FVector BillboardScale = CachedScale;
 	if (UBillboardComponent* Comp = GetBillboardComponent())
 	{
+		float EditorScale = 1.0f;
 		if (Comp->IsEditorOnlyComponent())
 		{
-			const float EditorScale = ComputeEditorBillboardScale(Frame, CachedLocation)
+			EditorScale = FEditorViewportScale::ComputeWorldScale(
+				Frame.CameraPosition,
+				CachedLocation,
+				Frame.bIsOrtho,
+				Frame.OrthoWidth,
+				Frame.ViewportHeight,
+				FEditorViewportScaleRules::Billboard)
 				* Frame.RenderOptions.ActorHelperBillboardScale;
 			BillboardScale *= EditorScale;
 		}
+
+		// 렌더에서 사용한 screen-space 보정값을 피킹에도 그대로 사용한다.
+		// Ray.Origin만으로 재계산하면 ortho/viewport height/min-max clamp 정보가 빠져 hit area가 렌더 크기와 어긋난다.
+		Comp->SetLastRenderedEditorScreenScale(EditorScale);
 	}
 	BillboardScale.Y *= CachedWidth;
 	BillboardScale.Z *= CachedHeight;

@@ -1,7 +1,7 @@
 #include "Common/Gizmo/GizmoManager.h"
 
-#include "Component/GizmoComponent.h"
-#include "Collision/RayUtils.h"
+#include "Component/GizmoVisualComponent.h"
+#include "Object/Object.h"
 #include "Math/MathUtils.h"
 
 #include <algorithm>
@@ -16,7 +16,28 @@ void FGizmoManager::SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget)
     }
 
     Target = InTarget;
+    bHasTargetKey = false;
     SyncVisualFromTarget();
+}
+
+bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey, std::shared_ptr<ITransformGizmoTarget> InTarget)
+{
+    if (bHasTargetKey && TargetKey == InKey && HasValidTarget())
+    {
+        SyncVisualFromTarget();
+        return false;
+    }
+
+    if (bDragging)
+    {
+        EndDrag();
+    }
+
+    TargetKey = InKey;
+    bHasTargetKey = true;
+    Target = InTarget;
+    SyncVisualFromTarget();
+    return true;
 }
 
 void FGizmoManager::ClearTarget()
@@ -27,6 +48,7 @@ void FGizmoManager::ClearTarget()
     }
 
     Target.reset();
+    bHasTargetKey = false;
     SyncVisualFromTarget();
 }
 
@@ -35,14 +57,145 @@ bool FGizmoManager::HasValidTarget() const
     return Target && Target->IsValid();
 }
 
-void FGizmoManager::SetVisualComponent(UGizmoComponent* InComponent)
+void FGizmoManager::EnsureVisualComponent()
 {
-    VisualComponent = InComponent;
+    if (VisualComponent)
+    {
+        SyncVisualFromTarget();
+        return;
+    }
+
+    VisualComponent = UObjectManager::Get().CreateObject<UGizmoVisualComponent>();
     SyncVisualFromTarget();
+}
+
+void FGizmoManager::ReleaseVisualComponent()
+{
+    if (!VisualComponent)
+    {
+        RegisteredVisualScene = nullptr;
+        return;
+    }
+
+    UnregisterVisualFromScene();
+    VisualComponent->ResetVisualInteractionState();
+    UObjectManager::Get().DestroyObject(VisualComponent);
+    VisualComponent = nullptr;
+}
+
+void FGizmoManager::SetVisualWorldLocation(const FVector& InLocation)
+{
+    EnsureVisualComponent();
+    if (VisualComponent)
+    {
+        VisualComponent->SetWorldLocation(InLocation);
+    }
+}
+
+void FGizmoManager::SetVisualScene(FScene* InScene)
+{
+    EnsureVisualComponent();
+    if (VisualComponent)
+    {
+        VisualComponent->SetScene(InScene);
+    }
+}
+
+void FGizmoManager::ClearVisualScene()
+{
+    if (VisualComponent)
+    {
+        VisualComponent->SetScene(nullptr);
+    }
+}
+
+void FGizmoManager::CreateVisualRenderState()
+{
+    EnsureVisualComponent();
+    if (VisualComponent)
+    {
+        VisualComponent->CreateRenderState();
+    }
+}
+
+void FGizmoManager::DestroyVisualRenderState()
+{
+    if (VisualComponent)
+    {
+        VisualComponent->DestroyRenderState();
+    }
+}
+
+void FGizmoManager::RegisterVisualToScene(FScene* InScene)
+{
+    if (!InScene)
+    {
+        UnregisterVisualFromScene();
+        return;
+    }
+
+    EnsureVisualComponent();
+
+    // Mode 전환 시 UGizmoVisualComponent::MarkRenderStateDirty()가 호출되면
+    // DestroyRenderState() -> CreateRenderState() 순서로 proxy가 재생성된다.
+    // 이때 Actor 없이 독립 생성된 gizmo는 Scene 포인터가 반드시 다시 보장되어야 한다.
+    // 따라서 같은 Scene이어도 SetVisualScene/CreateVisualRenderState를 idempotent하게 호출해
+    // stale registration 상태를 회복할 수 있게 한다.
+    if (RegisteredVisualScene != InScene)
+    {
+        UnregisterVisualFromScene();
+        RegisteredVisualScene = InScene;
+    }
+
+    SetVisualScene(InScene);
+    CreateVisualRenderState();
+    SyncVisualFromTarget();
+}
+
+void FGizmoManager::UnregisterVisualFromScene()
+{
+    if (RegisteredVisualScene)
+    {
+        DestroyVisualRenderState();
+    }
+    ClearVisualScene();
+    RegisteredVisualScene = nullptr;
+}
+
+void FGizmoManager::SetInteractionPolicy(EGizmoInteractionPolicy InPolicy)
+{
+    if (InteractionPolicy == InPolicy)
+    {
+        return;
+    }
+
+    InteractionPolicy = InPolicy;
+    if (InteractionPolicy == EGizmoInteractionPolicy::VisualOnly)
+    {
+        CancelDrag();
+        ResetVisualInteractionState();
+    }
+}
+
+bool FGizmoManager::CanInteract() const
+{
+    return InteractionPolicy == EGizmoInteractionPolicy::Interactive && VisualComponent && HasValidTarget();
 }
 
 void FGizmoManager::SetMode(EGizmoMode InMode)
 {
+    if (Mode == InMode)
+    {
+        SyncVisualFromTarget();
+        return;
+    }
+
+    // Mode change invalidates the currently selected handle and drag plane.
+    // Keep this transition manager-owned so toolbar/shortcut paths cannot leave
+    // UGizmoVisualComponent in a stale pressed/holding state.
+    CancelDrag();
+    ResetVisualInteractionState();
+
     Mode = InMode;
     if (VisualComponent)
     {
@@ -71,6 +224,18 @@ void FGizmoManager::SetSpace(EGizmoSpace InSpace)
     SyncVisualFromTarget();
 }
 
+void FGizmoManager::SetSnapSettings(bool bTranslationEnabled, float InTranslationSnapSize,
+                                    bool bRotationEnabled, float InRotationSnapSizeDegrees,
+                                    bool bScaleEnabled, float InScaleSnapSize)
+{
+    bTranslationSnapEnabled = bTranslationEnabled;
+    TranslationSnapSize = (InTranslationSnapSize > FMath::Epsilon) ? InTranslationSnapSize : 10.0f;
+    bRotationSnapEnabled = bRotationEnabled;
+    RotationSnapSizeRadians = ((InRotationSnapSizeDegrees > FMath::Epsilon) ? InRotationSnapSizeDegrees : 15.0f) * DEG_TO_RAD;
+    bScaleSnapEnabled = bScaleEnabled;
+    ScaleSnapSize = (InScaleSnapSize > FMath::Epsilon) ? InScaleSnapSize : 0.1f;
+}
+
 void FGizmoManager::SyncVisualFromTarget()
 {
     if (!VisualComponent)
@@ -90,11 +255,11 @@ void FGizmoManager::SyncVisualFromTarget()
     VisualComponent->SetGizmoWorldTransform(Target->GetWorldTransform());
 }
 
-void FGizmoManager::ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth)
+void FGizmoManager::ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth, float ViewportHeight)
 {
     if (VisualComponent && HasValidTarget())
     {
-        VisualComponent->ApplyScreenSpaceScaling(CameraLocation, bIsOrtho, OrthoWidth);
+        VisualComponent->ApplyScreenSpaceScaling(CameraLocation, bIsOrtho, OrthoWidth, ViewportHeight);
     }
 }
 
@@ -106,34 +271,78 @@ void FGizmoManager::SetAxisMask(uint32 InAxisMask)
     }
 }
 
-bool FGizmoManager::HitTest(const FRay& Ray, FRayHitResult& OutHitResult)
+void FGizmoManager::ResetVisualInteractionState()
 {
-    if (!VisualComponent || !HasValidTarget())
+    if (VisualComponent)
     {
-        return false;
+        VisualComponent->ResetVisualInteractionState();
     }
-    return FRayUtils::RaycastComponent(VisualComponent, Ray, OutHitResult);
 }
 
-bool FGizmoManager::BeginDrag(const FRay& Ray)
+bool FGizmoManager::HitTestHitProxy(const FGizmoHitProxyContext& Context, FGizmoHitProxyResult& OutHitResult)
 {
-    if (!VisualComponent || !HasValidTarget())
+    OutHitResult.Reset();
+
+    if (!CanInteract() || Mode == EGizmoMode::Select)
     {
         return false;
     }
 
-    FRayHitResult HitResult{};
-    if (!HitTest(Ray, HitResult))
+    SyncVisualFromTarget();
+
+    if (!VisualComponent || !VisualComponent->IsVisible() || !VisualComponent->HasVisualTarget())
     {
-        VisualComponent->SetPressedOnHandle(false);
         return false;
     }
 
-    ActiveAxis = VisualComponent->GetSelectedAxis();
-    if (ActiveAxis < 0)
+    if (Target && Target->IsValid())
     {
-        VisualComponent->SetPressedOnHandle(false);
+        const FVector TargetLocation = Target->GetWorldTransform().GetLocation();
+        const FVector VisualLocation = VisualComponent->GetWorldLocation();
+        const float AllowedErrorSq = 0.01f;
+        if (FVector::DistSquared(TargetLocation, VisualLocation) > AllowedErrorSq)
+        {
+            VisualComponent->ClearGizmoWorldTransform();
+            return false;
+        }
+    }
+
+    if (!bDragging && VisualComponent->IsHolding())
+    {
+        VisualComponent->ResetVisualInteractionState();
+    }
+
+    if (!VisualComponent->HitProxyTest(Context, OutHitResult))
+    {
+        if (!VisualComponent->IsHolding())
+        {
+            VisualComponent->SetSelectedAxis(-1);
+        }
         return false;
+    }
+
+    if (!VisualComponent->IsHolding())
+    {
+        VisualComponent->SetSelectedAxis(OutHitResult.Axis);
+    }
+    return true;
+}
+
+bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
+{
+    if (!CanInteract() || !HitResult.bHit || HitResult.Axis < 0)
+    {
+        if (VisualComponent)
+        {
+            VisualComponent->SetPressedOnHandle(false);
+        }
+        return false;
+    }
+
+    ActiveAxis = HitResult.Axis;
+    if (VisualComponent)
+    {
+        VisualComponent->SetSelectedAxis(ActiveAxis);
     }
 
     Target->BeginTransform();
@@ -141,15 +350,19 @@ bool FGizmoManager::BeginDrag(const FRay& Ray)
     LastIntersectionLocation = FVector::ZeroVector;
     bFirstDragUpdate = true;
     bDragging = true;
+    ResetSnapAccumulation();
 
-    VisualComponent->SetPressedOnHandle(true);
-    VisualComponent->SetHolding(true);
+    if (VisualComponent)
+    {
+        VisualComponent->SetPressedOnHandle(true);
+        VisualComponent->SetHolding(true);
+    }
     return true;
 }
 
 void FGizmoManager::UpdateDrag(const FRay& Ray)
 {
-    if (!bDragging || !VisualComponent || !HasValidTarget())
+    if (!bDragging || !CanInteract())
     {
         return;
     }
@@ -176,11 +389,9 @@ void FGizmoManager::EndDrag()
     bDragging = false;
     bFirstDragUpdate = true;
     ActiveAxis = -1;
+    ResetSnapAccumulation();
 
-    if (VisualComponent)
-    {
-        VisualComponent->DragEnd();
-    }
+    ResetVisualInteractionState();
     SyncVisualFromTarget();
 }
 
@@ -191,7 +402,13 @@ void FGizmoManager::CancelDrag()
         Target->SetWorldTransform(DragStartTransform);
         Target->EndTransform();
     }
-    EndDrag();
+
+    bDragging = false;
+    bFirstDragUpdate = true;
+    ActiveAxis = -1;
+    ResetSnapAccumulation();
+    ResetVisualInteractionState();
+    SyncVisualFromTarget();
 }
 
 void FGizmoManager::SetTargetWorldLocation(const FVector& NewLocation)
@@ -278,6 +495,48 @@ bool FGizmoManager::ComputeAngularIntersection(const FRay& Ray, FVector& OutPoin
     return true;
 }
 
+
+float FGizmoManager::ApplySnapToDragAmount(float DragAmount)
+{
+    bool bSnapEnabled = false;
+    float SnapSize = 0.0f;
+
+    switch (Mode)
+    {
+    case EGizmoMode::Translate:
+        bSnapEnabled = bTranslationSnapEnabled;
+        SnapSize = TranslationSnapSize;
+        break;
+    case EGizmoMode::Rotate:
+        bSnapEnabled = bRotationSnapEnabled;
+        SnapSize = RotationSnapSizeRadians;
+        break;
+    case EGizmoMode::Scale:
+        bSnapEnabled = bScaleSnapEnabled;
+        SnapSize = ScaleSnapSize;
+        break;
+    default:
+        break;
+    }
+
+    if (!bSnapEnabled || SnapSize <= FMath::Epsilon)
+    {
+        return DragAmount;
+    }
+
+    AccumulatedRawDragAmount += DragAmount;
+    const float SnappedTotal = std::floor((AccumulatedRawDragAmount / SnapSize) + 0.5f) * SnapSize;
+    const float DeltaToApply = SnappedTotal - LastAppliedSnappedDragAmount;
+    LastAppliedSnappedDragAmount = SnappedTotal;
+    return DeltaToApply;
+}
+
+void FGizmoManager::ResetSnapAccumulation()
+{
+    AccumulatedRawDragAmount = 0.0f;
+    LastAppliedSnappedDragAmount = 0.0f;
+}
+
 void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
 {
     FVector CurrentIntersection;
@@ -310,7 +569,13 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
     else
     {
         const FVector AxisVector = GetAxisVector(ActiveAxis);
-        const float DragAmount = FullDelta.Dot(AxisVector);
+        float DragAmount = FullDelta.Dot(AxisVector);
+        DragAmount = ApplySnapToDragAmount(DragAmount);
+        if (std::abs(DragAmount) <= FMath::Epsilon)
+        {
+            LastIntersectionLocation = CurrentIntersection;
+            return;
+        }
         if (Mode == EGizmoMode::Scale)
         {
             FVector NewScale = NewTransform.Scale;
@@ -356,7 +621,14 @@ void FGizmoManager::ApplyAngularDrag(const FRay& Ray)
     const float Sign = (CrossProduct.Dot(AxisVector) >= 0.0f) ? 1.0f : -1.0f;
 
     FTransform NewTransform = Target->GetWorldTransform();
-    const FQuat DeltaQuat = FQuat::FromAxisAngle(AxisVector, Sign * AngleRadians);
+    const float DeltaAngle = ApplySnapToDragAmount(Sign * AngleRadians);
+    if (std::abs(DeltaAngle) <= FMath::Epsilon)
+    {
+        LastIntersectionLocation = CurrentIntersection;
+        return;
+    }
+
+    const FQuat DeltaQuat = FQuat::FromAxisAngle(AxisVector, DeltaAngle);
     NewTransform.Rotation = (DeltaQuat * NewTransform.Rotation).GetNormalized();
     Target->SetWorldTransform(NewTransform);
 

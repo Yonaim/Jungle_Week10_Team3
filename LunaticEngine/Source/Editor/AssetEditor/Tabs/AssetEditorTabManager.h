@@ -13,15 +13,16 @@ class FEditorViewportClient;
 /**
  * 열린 Asset Editor 문서들을 관리하는 관리자.
  *
- * 현재 구현에서는 실제 ImGui TabBar만 의미하지 않는다.
- * UsesExternalPanels()가 true인 에디터는 하나의 탭이 아니라 여러 개의 도킹 패널을 렌더링할 수 있다.
- * 예: SkeletalMeshEditor는 Toolbar / Preview Viewport / Skeleton Tree / Details 패널을 따로 연다.
+ * 하나의 Asset Editor Window 안에서 여러 에셋 문서 탭을 관리한다.
+ * 탭 UI는 Main Menu Bar 바로 아래의 별도 Document Tab Bar로 그리되,
+ * 실제 에디터 패널은 항상 ActiveTab 하나만 렌더링한다.
  *
  * 역할:
  * - 열린 에디터 목록 관리
- * - 같은 에셋 중복 열기 방지 및 기존 패널 활성화
- * - 활성 에디터 저장/닫기
- * - Asset Editor 패널 렌더링
+ * - 같은 에셋 중복 열기 방지 및 기존 탭 활성화
+ * - 활성 탭 저장/닫기
+ * - title-bar document tab 렌더링
+ * - 활성 에디터 패널 렌더링
  */
 class FAssetEditorTabManager
 {
@@ -37,12 +38,21 @@ class FAssetEditorTabManager
     void Render(float DeltaTime, ImGuiID DockspaceId = 0);
     void InvalidateEditorLayouts();
 
+    /** 현재 ImGui window 안에 Unreal식 asset document tab bar를 그린다. */
+    bool RenderDocumentTabBar();
+
     bool HasOpenTabs() const;
     int32 GetTabCount() const;
     bool IsCapturingInput() const;
     IAssetEditor *GetActiveEditor() const;
     FEditorViewportClient *GetActiveViewportClient() const;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
+
+  private:
+    FAssetEditorTab *GetActiveTab() const;
+    bool SetActiveTabIndex(int32 NewIndex);
+    void RenderActiveTab(float DeltaTime, ImGuiID DockspaceId);
+    void CompactInvalidTabs();
 
   private:
     TArray<std::unique_ptr<FAssetEditorTab>> Tabs;

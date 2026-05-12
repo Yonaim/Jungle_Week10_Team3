@@ -57,6 +57,8 @@ class FSkeletalMeshEditor final : public IAssetEditor
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) override;
     const char *GetEditorName() const override { return "Skeletal Mesh"; }
     const std::filesystem::path &GetAssetPath() const override { return EditingAssetPath; }
+    const char *GetDocumentTabIconKey() const override { return "Editor.Icon.SkeletalMeshActor"; }
+    ImVec4 GetDocumentTabIconTint() const override { return ImVec4(1.0f, 0.42f, 0.78f, 1.0f); }
 
   private:
     void RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId);

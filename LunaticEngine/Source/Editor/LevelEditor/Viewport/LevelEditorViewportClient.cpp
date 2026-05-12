@@ -19,7 +19,8 @@
 
 
 #include "Collision/RayUtils.h"
-#include "Component/GizmoComponent.h"
+#include "Component/BillboardComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/MeshComponent.h"
 #include "Component/PrimitiveComponent.h"
@@ -87,6 +88,40 @@ bool IsUIComponentSelectable(const UActorComponent *Component)
 {
     return Component && !Component->IsHiddenInComponentTree() && !Component->IsEditorOnlyComponent() &&
            Component->SupportsUIScreenPicking();
+}
+
+bool IsLevelEditorPickablePrimitive(const UPrimitiveComponent *Primitive)
+{
+    if (!Primitive || !Primitive->IsVisible())
+    {
+        return false;
+    }
+
+    if (!Primitive->ParticipatesInPickingSpatialStructure())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool HasLevelEditorPickablePrimitive(const AActor *Actor)
+{
+    if (!Actor || !Actor->IsVisible())
+    {
+        return false;
+    }
+
+    for (UActorComponent *Component : Actor->GetComponents())
+    {
+        const UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
+        if (IsLevelEditorPickablePrimitive(Primitive))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 USceneComponent *FindTopmostUIComponentAt(UWorld *World, float X, float Y)
@@ -318,7 +353,7 @@ bool EditorRaycastAllVisiblePrimitives(UWorld *World, const FRay &Ray, FRayHitRe
         for (UActorComponent *Component : Actor->GetComponents())
         {
             UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
-            if (!Primitive || !Primitive->IsVisible())
+            if (!IsLevelEditorPickablePrimitive(Primitive))
             {
                 continue;
             }
@@ -401,7 +436,15 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
         for (UActorComponent *Component : Actor->GetComponents())
         {
             UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
-            if (!Primitive || !Primitive->IsVisible())
+            if (!IsLevelEditorPickablePrimitive(Primitive))
+            {
+                continue;
+            }
+
+            // 이 함수는 raycast가 실패한 뒤 screen-space helper를 보조 선택하기 위한 fallback이다.
+            // StaticMesh까지 여기서 AABB screen rect로 잡으면 빈 공간 클릭도 hit로 오인되어 선택 해제가 막힌다.
+            const UBillboardComponent *Billboard = Cast<UBillboardComponent>(Primitive);
+            if (!Billboard || !Billboard->IsEditorOnlyComponent())
             {
                 continue;
             }
@@ -478,7 +521,22 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
     {
         for (AActor *Actor : World->GetActors())
         {
-            if (!Actor || !Actor->IsVisible())
+            if (!HasLevelEditorPickablePrimitive(Actor))
+            {
+                continue;
+            }
+
+            bool bHasEditorBillboard = false;
+            for (UActorComponent *Component : Actor->GetComponents())
+            {
+                const UBillboardComponent *Billboard = Cast<UBillboardComponent>(Component);
+                if (Billboard && Billboard->IsEditorOnlyComponent() && IsLevelEditorPickablePrimitive(Billboard))
+                {
+                    bHasEditorBillboard = true;
+                    break;
+                }
+            }
+            if (!bHasEditorBillboard)
             {
                 continue;
             }
@@ -504,10 +562,10 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
             BestDepth = Depth;
             for (UActorComponent *Component : Actor->GetComponents())
             {
-                UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
-                if (Primitive && Primitive->IsVisible())
+                UBillboardComponent *Billboard = Cast<UBillboardComponent>(Component);
+                if (Billboard && Billboard->IsEditorOnlyComponent() && IsLevelEditorPickablePrimitive(Billboard))
                 {
-                    BestPrimitive = Primitive;
+                    BestPrimitive = Billboard;
                     break;
                 }
             }
@@ -542,20 +600,9 @@ FLevelEditorViewportClient::~FLevelEditorViewportClient()
         delete EditorMappingContext;
     }
 
-    delete ActionEditorMove;
-    delete ActionEditorRotate;
-    delete ActionEditorPan;
-    delete ActionEditorZoom;
-    delete ActionEditorOrbit;
-    delete ActionEditorFocus;
     delete ActionEditorDelete;
     delete ActionEditorDuplicate;
-    delete ActionEditorToggleGizmoMode;
-    delete ActionEditorToggleCoordSystem;
-    delete ActionEditorEscape;
     delete ActionEditorTogglePIE;
-    delete ActionEditorDecreaseSnap;
-    delete ActionEditorIncreaseSnap;
     delete ActionEditorVertexSnap;
     delete ActionEditorSnapToFloor;
     delete ActionEditorSetBookmark;
@@ -564,9 +611,6 @@ FLevelEditorViewportClient::~FLevelEditorViewportClient()
     delete ActionEditorSetViewportTop;
     delete ActionEditorSetViewportFront;
     delete ActionEditorSetViewportRight;
-    delete ActionEditorToggleGridSnap;
-    delete ActionEditorToggleRotationSnap;
-    delete ActionEditorToggleScaleSnap;
 }
 
 void FLevelEditorViewportClient::Init(FWindowsWindow *InWindow)
@@ -578,46 +622,28 @@ void FLevelEditorViewportClient::Init(FWindowsWindow *InWindow)
 void FLevelEditorViewportClient::Shutdown()
 {
     bIsMarqueeSelecting = false;
-    bDraggingUIScreenGizmo = false;
-    HoveredUIScreenGizmoAxis = 0;
-    ActiveUIScreenGizmoAxis = 0;
+    GizmoManager.GetUIScreenInteractionState().Reset();
     ReleaseEditorGizmo();
     FEditorViewportClient::Shutdown();
 }
 
 void FLevelEditorViewportClient::EnsureEditorGizmo()
 {
-    if (Gizmo)
-    {
-        GizmoManager.SetVisualComponent(Gizmo);
-        return;
-    }
-
-    Gizmo = UObjectManager::Get().CreateObject<UGizmoComponent>();
-    Gizmo->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
-    Gizmo->Deactivate();
-    GizmoManager.SetVisualComponent(Gizmo);
+    GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::Interactive);
+    GizmoManager.EnsureVisualComponent();
+    GizmoManager.SetVisualWorldLocation(FVector(0.0f, 0.0f, 0.0f));
 }
 
 void FLevelEditorViewportClient::ReleaseEditorGizmo()
 {
-    if (!Gizmo)
-    {
-        GizmoManager.SetVisualComponent(nullptr);
-        RegisteredGizmoScene = nullptr;
-        return;
-    }
-
     UnregisterGizmoFromScene();
-    GizmoManager.SetVisualComponent(nullptr);
-    UObjectManager::Get().DestroyObject(Gizmo);
-    Gizmo = nullptr;
+    GizmoManager.ReleaseVisualComponent();
 }
 
 void FLevelEditorViewportClient::DetachSceneResourcesForWorldChange()
 {
     // NEW SCENE / LOAD SCENE처럼 World가 교체될 때는 UWorld 내부의 FScene이 먼저 파괴될 수 있다.
-    // Transform Gizmo는 editor-only proxy를 FScene에 직접 등록하므로, World 파괴 전에 반드시 제거해야 한다.
+    // Transform GizmoVisual는 editor-only proxy를 FScene에 직접 등록하므로, World 파괴 전에 반드시 제거해야 한다.
     UnregisterGizmoFromScene();
 
     CurrentGizmoTargetComponent = nullptr;
@@ -626,23 +652,10 @@ void FLevelEditorViewportClient::DetachSceneResourcesForWorldChange()
 
 void FLevelEditorViewportClient::UnregisterGizmoFromScene()
 {
-    if (!Gizmo)
-    {
-        RegisteredGizmoScene = nullptr;
-        GizmoManager.SetVisualComponent(nullptr);
-        return;
-    }
-
     // Editor gizmo must never survive across PIE world swaps.
-    // Destroy while the currently registered editor scene is still alive, then clear the
-    // explicit scene pointer so a later PIE shutdown cannot remove from a dead FScene.
-    if (RegisteredGizmoScene)
-    {
-        Gizmo->DestroyRenderState();
-    }
-    Gizmo->SetScene(nullptr);
+    // The visual component is owned by FGizmoManager, so scene unregistration also goes through it.
+    GizmoManager.UnregisterVisualFromScene();
     RegisteredGizmoScene = nullptr;
-    GizmoManager.SetVisualComponent(nullptr);
 }
 
 void FLevelEditorViewportClient::RegisterGizmoToScene(FScene* Scene)
@@ -659,37 +672,27 @@ void FLevelEditorViewportClient::RegisterGizmoToScene(FScene* Scene)
     }
 
     EnsureEditorGizmo();
-    if (!Gizmo || !Scene || RegisteredGizmoScene == Scene)
+    if (!Scene)
     {
         return;
     }
 
-    UnregisterGizmoFromScene();
-    Gizmo->SetScene(Scene);
-    Gizmo->CreateRenderState();
+    // 같은 Scene이어도 manager에 재등록을 요청한다.
+    // Gizmo mode 변경은 mesh buffer 교체를 위해 MarkRenderStateDirty()를 타고,
+    // 이 과정에서 proxy가 잠시 파괴될 수 있다. manager의 RegisterVisualToScene()은
+    // idempotent하므로 매 render request마다 호출해 stale proxy 상태를 복구한다.
+    GizmoManager.RegisterVisualToScene(Scene);
     RegisteredGizmoScene = Scene;
-    GizmoManager.SetVisualComponent(Gizmo);
 }
 
 void FLevelEditorViewportClient::SetupInput()
 {
     // 1. Create Actions
-    ActionEditorMove = new FInputAction("IA_EditorMove", EInputActionValueType::Axis3D);
-    ActionEditorRotate = new FInputAction("IA_EditorRotate", EInputActionValueType::Axis2D);
-    ActionEditorPan = new FInputAction("IA_EditorPan", EInputActionValueType::Axis2D);
-    ActionEditorZoom = new FInputAction("IA_EditorZoom", EInputActionValueType::Float);
-    ActionEditorOrbit = new FInputAction("IA_EditorOrbit", EInputActionValueType::Axis2D);
+    CommonInput.CreateCommonActions();
 
-    ActionEditorFocus = new FInputAction("IA_EditorFocus", EInputActionValueType::Bool);
     ActionEditorDelete = new FInputAction("IA_EditorDelete", EInputActionValueType::Bool);
     ActionEditorDuplicate = new FInputAction("IA_EditorDuplicate", EInputActionValueType::Bool);
-    ActionEditorToggleGizmoMode = new FInputAction("IA_EditorToggleGizmoMode", EInputActionValueType::Bool);
-    ActionEditorToggleCoordSystem = new FInputAction("IA_EditorToggleCoordSystem", EInputActionValueType::Bool);
-    ActionEditorEscape = new FInputAction("IA_EditorEscape", EInputActionValueType::Bool);
     ActionEditorTogglePIE = new FInputAction("IA_EditorTogglePIE", EInputActionValueType::Bool);
-
-    ActionEditorDecreaseSnap = new FInputAction("IA_EditorDecreaseSnap", EInputActionValueType::Bool);
-    ActionEditorIncreaseSnap = new FInputAction("IA_EditorIncreaseSnap", EInputActionValueType::Bool);
     ActionEditorVertexSnap = new FInputAction("IA_EditorVertexSnap", EInputActionValueType::Bool);
     ActionEditorSnapToFloor = new FInputAction("IA_EditorSnapToFloor", EInputActionValueType::Bool);
     ActionEditorSetBookmark = new FInputAction("IA_EditorSetBookmark", EInputActionValueType::Float);
@@ -700,67 +703,63 @@ void FLevelEditorViewportClient::SetupInput()
     ActionEditorSetViewportFront = new FInputAction("IA_SetViewportFront", EInputActionValueType::Bool);
     ActionEditorSetViewportRight = new FInputAction("IA_SetViewportRight", EInputActionValueType::Bool);
 
-    ActionEditorToggleGridSnap = new FInputAction("IA_ToggleGridSnap", EInputActionValueType::Bool);
-    ActionEditorToggleRotationSnap = new FInputAction("IA_ToggleRotationSnap", EInputActionValueType::Bool);
-    ActionEditorToggleScaleSnap = new FInputAction("IA_ToggleScaleSnap", EInputActionValueType::Bool);
-
     // 2. Create Mapping Context
     EditorMappingContext = new FInputMappingContext();
     EditorMappingContext->ContextName = "IMC_Editor";
 
     // Move: WASD QE
-    EditorMappingContext->AddMapping(ActionEditorMove, 'W');
-    EditorMappingContext->AddMapping(ActionEditorMove, 'S').Modifiers.push_back(new FModifierScale(FVector(-1, 1, 1)));
-    EditorMappingContext->AddMapping(ActionEditorMove, 'D')
+    EditorMappingContext->AddMapping(CommonInput.Move, 'W');
+    EditorMappingContext->AddMapping(CommonInput.Move, 'S').Modifiers.push_back(new FModifierScale(FVector(-1, 1, 1)));
+    EditorMappingContext->AddMapping(CommonInput.Move, 'D')
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
-    EditorMappingContext->AddMapping(ActionEditorMove, 'A')
+    EditorMappingContext->AddMapping(CommonInput.Move, 'A')
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
     EditorMappingContext->Mappings.back().Modifiers.push_back(new FModifierScale(FVector(1, -1, 1)));
-    EditorMappingContext->AddMapping(ActionEditorMove, 'E')
+    EditorMappingContext->AddMapping(CommonInput.Move, 'E')
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::ZYX));
-    EditorMappingContext->AddMapping(ActionEditorMove, 'Q')
+    EditorMappingContext->AddMapping(CommonInput.Move, 'Q')
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::ZYX));
     EditorMappingContext->Mappings.back().Modifiers.push_back(new FModifierScale(FVector(1, 1, -1)));
 
     // Rotate: Arrows + Right Mouse
-    EditorMappingContext->AddMapping(ActionEditorRotate, VK_UP)
+    EditorMappingContext->AddMapping(CommonInput.Rotate, VK_UP)
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
-    EditorMappingContext->AddMapping(ActionEditorRotate, VK_DOWN)
+    EditorMappingContext->AddMapping(CommonInput.Rotate, VK_DOWN)
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
     EditorMappingContext->Mappings.back().Modifiers.push_back(new FModifierScale(FVector(1, -1, 1)));
-    EditorMappingContext->AddMapping(ActionEditorRotate, VK_LEFT)
+    EditorMappingContext->AddMapping(CommonInput.Rotate, VK_LEFT)
         .Modifiers.push_back(new FModifierScale(FVector(-1, 1, 1)));
-    EditorMappingContext->AddMapping(ActionEditorRotate, VK_RIGHT);
+    EditorMappingContext->AddMapping(CommonInput.Rotate, VK_RIGHT);
 
     // Mouse Rotate
-    EditorMappingContext->AddMapping(ActionEditorRotate, static_cast<int32>(EInputKey::MouseX));
-    EditorMappingContext->AddMapping(ActionEditorRotate, static_cast<int32>(EInputKey::MouseY))
+    EditorMappingContext->AddMapping(CommonInput.Rotate, static_cast<int32>(EInputKey::MouseX));
+    EditorMappingContext->AddMapping(CommonInput.Rotate, static_cast<int32>(EInputKey::MouseY))
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
 
     // Pan: Middle Mouse
-    EditorMappingContext->AddMapping(ActionEditorPan, static_cast<int32>(EInputKey::MouseX));
-    EditorMappingContext->AddMapping(ActionEditorPan, static_cast<int32>(EInputKey::MouseY))
+    EditorMappingContext->AddMapping(CommonInput.Pan, static_cast<int32>(EInputKey::MouseX));
+    EditorMappingContext->AddMapping(CommonInput.Pan, static_cast<int32>(EInputKey::MouseY))
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
 
     // Zoom: Wheel
-    EditorMappingContext->AddMapping(ActionEditorZoom, static_cast<int32>(EInputKey::MouseWheel));
+    EditorMappingContext->AddMapping(CommonInput.Zoom, static_cast<int32>(EInputKey::MouseWheel));
 
     // Orbit: Alt + Left Mouse
-    EditorMappingContext->AddMapping(ActionEditorOrbit, static_cast<int32>(EInputKey::MouseX));
-    EditorMappingContext->AddMapping(ActionEditorOrbit, static_cast<int32>(EInputKey::MouseY))
+    EditorMappingContext->AddMapping(CommonInput.Orbit, static_cast<int32>(EInputKey::MouseX));
+    EditorMappingContext->AddMapping(CommonInput.Orbit, static_cast<int32>(EInputKey::MouseY))
         .Modifiers.push_back(new FModifierSwizzleAxis(FModifierSwizzleAxis::ESwizzleOrder::YXZ));
 
     // --- Shortcuts ---
-    EditorMappingContext->AddMapping(ActionEditorFocus, 'F');
+    EditorMappingContext->AddMapping(CommonInput.Focus, 'F');
     EditorMappingContext->AddMapping(ActionEditorDelete, VK_DELETE);
     EditorMappingContext->AddMapping(ActionEditorDuplicate, 'D');
-    EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, VK_SPACE);
-    EditorMappingContext->AddMapping(ActionEditorToggleCoordSystem, 'X');
-    EditorMappingContext->AddMapping(ActionEditorEscape, VK_ESCAPE);
+    EditorMappingContext->AddMapping(CommonInput.ToggleGizmoMode, VK_SPACE);
+    EditorMappingContext->AddMapping(CommonInput.ToggleCoordSystem, 'X');
+    EditorMappingContext->AddMapping(CommonInput.Escape, VK_ESCAPE);
     EditorMappingContext->AddMapping(ActionEditorTogglePIE, VK_F8);
 
-    EditorMappingContext->AddMapping(ActionEditorDecreaseSnap, VK_OEM_4); // [
-    EditorMappingContext->AddMapping(ActionEditorIncreaseSnap, VK_OEM_6); // ]
+    EditorMappingContext->AddMapping(CommonInput.DecreaseSnap, VK_OEM_4); // [
+    EditorMappingContext->AddMapping(CommonInput.IncreaseSnap, VK_OEM_6); // ]
     EditorMappingContext->AddMapping(ActionEditorVertexSnap, 'V');
     EditorMappingContext->AddMapping(ActionEditorSnapToFloor, VK_END);
 
@@ -771,9 +770,9 @@ void FLevelEditorViewportClient::SetupInput()
     EditorMappingContext->AddMapping(ActionEditorSetViewportRight, 'K');       // Alt+K
 
     // Snap Toggles
-    EditorMappingContext->AddMapping(ActionEditorToggleGridSnap, 'G');     // Shift+G
-    EditorMappingContext->AddMapping(ActionEditorToggleRotationSnap, 'R'); // Shift+R
-    EditorMappingContext->AddMapping(ActionEditorToggleScaleSnap, 'S');    // Shift+S
+    EditorMappingContext->AddMapping(CommonInput.ToggleGridSnap, 'G');     // Shift+G
+    EditorMappingContext->AddMapping(CommonInput.ToggleRotationSnap, 'R'); // Shift+R
+    EditorMappingContext->AddMapping(CommonInput.ToggleScaleSnap, 'S');    // Shift+S
 
     // Bookmarks 0-9
     for (int32 i = 0; i < 10; ++i)
@@ -785,11 +784,11 @@ void FLevelEditorViewportClient::SetupInput()
             .Modifiers.push_back(new FModifierScale(FVector(static_cast<float>(i), 0, 0)));
     }
 
-    // UE Style Gizmo Shortcuts (QWER)
-    EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'Q'); // Select
-    EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'W'); // Translate
-    EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'E'); // Rotate
-    EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'R'); // Scale
+    // UE Style GizmoVisual Shortcuts (QWER)
+    EditorMappingContext->AddMapping(CommonInput.ToggleGizmoMode, 'Q'); // Select
+    EditorMappingContext->AddMapping(CommonInput.ToggleGizmoMode, 'W'); // Translate
+    EditorMappingContext->AddMapping(CommonInput.ToggleGizmoMode, 'E'); // Rotate
+    EditorMappingContext->AddMapping(CommonInput.ToggleGizmoMode, 'R'); // Scale
 
     // Game View Toggle (G)
     FInputAction *ActionEditorToggleGameView = new FInputAction("IA_EditorToggleGameView", EInputActionValueType::Bool);
@@ -804,33 +803,33 @@ void FLevelEditorViewportClient::SetupInput()
     EnhancedInputManager.AddMappingContext(EditorMappingContext, 0);
 
     // 4. Bind Actions
-    EnhancedInputManager.BindAction(ActionEditorMove, ETriggerEvent::Triggered,
+    EnhancedInputManager.BindAction(CommonInput.Move, ETriggerEvent::Triggered,
                                     [this](const FInputActionValue &V) { OnEditorMove(V); });
-    EnhancedInputManager.BindAction(ActionEditorRotate, ETriggerEvent::Triggered,
+    EnhancedInputManager.BindAction(CommonInput.Rotate, ETriggerEvent::Triggered,
                                     [this](const FInputActionValue &V) { OnEditorRotate(V); });
-    EnhancedInputManager.BindAction(ActionEditorPan, ETriggerEvent::Triggered,
+    EnhancedInputManager.BindAction(CommonInput.Pan, ETriggerEvent::Triggered,
                                     [this](const FInputActionValue &V) { OnEditorPan(V); });
-    EnhancedInputManager.BindAction(ActionEditorZoom, ETriggerEvent::Triggered,
+    EnhancedInputManager.BindAction(CommonInput.Zoom, ETriggerEvent::Triggered,
                                     [this](const FInputActionValue &V) { OnEditorZoom(V); });
-    EnhancedInputManager.BindAction(ActionEditorOrbit, ETriggerEvent::Triggered,
+    EnhancedInputManager.BindAction(CommonInput.Orbit, ETriggerEvent::Triggered,
                                     [this](const FInputActionValue &V) { OnEditorOrbit(V); });
 
-    EnhancedInputManager.BindAction(ActionEditorFocus, ETriggerEvent::Started,
+    EnhancedInputManager.BindAction(CommonInput.Focus, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) { OnEditorFocus(V); });
     EnhancedInputManager.BindAction(ActionEditorDelete, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) { OnEditorDelete(V); });
     EnhancedInputManager.BindAction(ActionEditorDuplicate, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) { OnEditorDuplicate(V); });
-    EnhancedInputManager.BindAction(ActionEditorToggleGizmoMode, ETriggerEvent::Started,
+    EnhancedInputManager.BindAction(CommonInput.ToggleGizmoMode, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) { OnEditorToggleGizmoMode(V); });
-    EnhancedInputManager.BindAction(ActionEditorToggleCoordSystem, ETriggerEvent::Started,
+    EnhancedInputManager.BindAction(CommonInput.ToggleCoordSystem, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) { OnEditorToggleCoordSystem(V); });
-    EnhancedInputManager.BindAction(ActionEditorEscape, ETriggerEvent::Started,
+    EnhancedInputManager.BindAction(CommonInput.Escape, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) { OnEditorEscape(V); });
     EnhancedInputManager.BindAction(ActionEditorTogglePIE, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) { OnEditorTogglePIE(V); });
 
-    EnhancedInputManager.BindAction(ActionEditorDecreaseSnap, ETriggerEvent::Started,
+    EnhancedInputManager.BindAction(CommonInput.DecreaseSnap, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) {
                                         FLevelEditorSettings &S = FLevelEditorSettings::Get();
                                         if (FInputManager::Get().IsKeyDown(VK_SHIFT))
@@ -838,7 +837,7 @@ void FLevelEditorViewportClient::SetupInput()
                                         else
                                             S.TranslationSnapSize = (std::max)(0.1f, S.TranslationSnapSize / 2.0f);
                                     });
-    EnhancedInputManager.BindAction(ActionEditorIncreaseSnap, ETriggerEvent::Started,
+    EnhancedInputManager.BindAction(CommonInput.IncreaseSnap, ETriggerEvent::Started,
                                     [this](const FInputActionValue &V) {
                                         FLevelEditorSettings &S = FLevelEditorSettings::Get();
                                         if (FInputManager::Get().IsKeyDown(VK_SHIFT))
@@ -864,8 +863,7 @@ void FLevelEditorViewportClient::SetupInput()
                         Actor->SetActorLocation(DownRay.Origin + DownRay.Direction * Hit.Distance);
                     }
                 }
-                if (Gizmo)
-                    Gizmo->UpdateGizmoTransform();
+                GizmoManager.SyncVisualFromTarget();
             }
         });
 
@@ -914,17 +912,17 @@ void FLevelEditorViewportClient::SetupInput()
                                     });
 
     EnhancedInputManager.BindAction(
-        ActionEditorToggleGridSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
+        CommonInput.ToggleGridSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
             if (FInputManager::Get().IsKeyDown(VK_SHIFT))
                 FLevelEditorSettings::Get().bEnableTranslationSnap = !FLevelEditorSettings::Get().bEnableTranslationSnap;
         });
     EnhancedInputManager.BindAction(
-        ActionEditorToggleRotationSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
+        CommonInput.ToggleRotationSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
             if (FInputManager::Get().IsKeyDown(VK_SHIFT))
                 FLevelEditorSettings::Get().bEnableRotationSnap = !FLevelEditorSettings::Get().bEnableRotationSnap;
         });
     EnhancedInputManager.BindAction(
-        ActionEditorToggleScaleSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
+        CommonInput.ToggleScaleSnap, ETriggerEvent::Started, [this](const FInputActionValue &V) {
             if (FInputManager::Get().IsKeyDown(VK_SHIFT))
                 FLevelEditorSettings::Get().bEnableScaleSnap = !FLevelEditorSettings::Get().bEnableScaleSnap;
         });
@@ -936,7 +934,7 @@ void FLevelEditorViewportClient::OnEditorMove(const FInputActionValue &Value)
         return;
     if (FInputManager::Get().IsMouseButtonDown(VK_RBUTTON))
     {
-        EditorMoveAccumulator = EditorMoveAccumulator + Value.GetVector();
+        CommonInput.InputState.MoveAccumulator = CommonInput.InputState.MoveAccumulator + Value.GetVector();
     }
 }
 
@@ -945,7 +943,7 @@ void FLevelEditorViewportClient::OnEditorRotate(const FInputActionValue &Value)
     FInputManager &Input = FInputManager::Get();
     if (Input.IsMouseButtonDown(VK_RBUTTON))
     {
-        EditorRotateAccumulator = EditorRotateAccumulator + Value.GetVector();
+        CommonInput.InputState.RotateAccumulator = CommonInput.InputState.RotateAccumulator + Value.GetVector();
     }
     else
     {
@@ -960,7 +958,7 @@ void FLevelEditorViewportClient::OnEditorRotate(const FInputActionValue &Value)
             KeyboardRotate.Y -= 1.0f;
         if (!KeyboardRotate.IsNearlyZero())
         {
-            EditorRotateAccumulator = EditorRotateAccumulator + KeyboardRotate;
+            CommonInput.InputState.RotateAccumulator = CommonInput.InputState.RotateAccumulator + KeyboardRotate;
         }
     }
 }
@@ -969,11 +967,11 @@ void FLevelEditorViewportClient::OnEditorPan(const FInputActionValue &Value)
 {
     if (FInputManager::Get().IsMouseButtonDown(VK_MBUTTON))
     {
-        EditorPanAccumulator = EditorPanAccumulator + Value.GetVector();
+        CommonInput.InputState.PanAccumulator = CommonInput.InputState.PanAccumulator + Value.GetVector();
     }
     else if (FInputManager::Get().IsKeyDown(VK_MENU) && FInputManager::Get().IsMouseButtonDown(VK_MBUTTON)) // Alt + MMB
     {
-        EditorPanAccumulator = EditorPanAccumulator + Value.GetVector();
+        CommonInput.InputState.PanAccumulator = CommonInput.InputState.PanAccumulator + Value.GetVector();
     }
 }
 
@@ -986,7 +984,7 @@ void FLevelEditorViewportClient::OnEditorZoom(const FInputActionValue &Value)
         Speed = Clamp(Speed + Value.Get() * 2.0f, 1.0f, 100.0f);
         return;
     }
-    EditorZoomAccumulator += Value.Get();
+    CommonInput.InputState.ZoomAccumulator += Value.Get();
 }
 
 void FLevelEditorViewportClient::OnEditorOrbit(const FInputActionValue &Value)
@@ -1013,7 +1011,7 @@ void FLevelEditorViewportClient::OnEditorOrbit(const FInputActionValue &Value)
             }
             else
             {
-                EditorRotateAccumulator = EditorRotateAccumulator + Value.GetVector();
+                CommonInput.InputState.RotateAccumulator = CommonInput.InputState.RotateAccumulator + Value.GetVector();
             }
         }
         // Alt + RMB = Scrub Zoom
@@ -1084,8 +1082,7 @@ void FLevelEditorViewportClient::OnEditorDuplicate(const FInputActionValue &Valu
             SelectionManager->ClearSelection();
             for (AActor *Actor : NewSelection)
                 SelectionManager->ToggleSelect(Actor);
-            if (GEngine && Cast<UEditorEngine>(GEngine)->GetGizmo())
-                Cast<UEditorEngine>(GEngine)->GetGizmo()->UpdateGizmoTransform();
+            GizmoManager.SyncVisualFromTarget();
         }
     }
 }
@@ -1094,30 +1091,44 @@ void FLevelEditorViewportClient::OnEditorToggleGizmoMode(const FInputActionValue
 {
     FInputManager &Input = FInputManager::Get();
     if (Input.IsMouseButtonDown(VK_RBUTTON))
-        return;
-
-    if (Gizmo)
     {
-        const bool bHasGizmoTarget = SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
-        if (!bHasGizmoTarget)
+        return;
+    }
+
+    EGizmoMode NewMode = GizmoManager.GetMode();
+    if (Input.IsKeyPressed('W'))
+    {
+        NewMode = EGizmoMode::Translate;
+    }
+    else if (Input.IsKeyPressed('E'))
+    {
+        NewMode = EGizmoMode::Rotate;
+    }
+    else if (Input.IsKeyPressed('R'))
+    {
+        NewMode = EGizmoMode::Scale;
+    }
+    else if (Input.IsKeyPressed('Q'))
+    {
+        NewMode = EGizmoMode::Select;
+    }
+    else
+    {
+        int NextInt = (static_cast<int>(NewMode) + 1) % static_cast<int>(EGizmoMode::End);
+        if (NextInt == 0)
         {
-            Gizmo->Deactivate();
-            return;
+            NextInt = 1;
         }
+        NewMode = static_cast<EGizmoMode>(NextInt);
+    }
 
-        if (Input.IsKeyPressed('W'))
-            GizmoManager.SetMode(EGizmoMode::Translate);
-        else if (Input.IsKeyPressed('E'))
-            GizmoManager.SetMode(EGizmoMode::Rotate);
-        else if (Input.IsKeyPressed('R'))
-            GizmoManager.SetMode(EGizmoMode::Scale);
-        else if (Input.IsKeyPressed('Q'))
-            GizmoManager.SetMode(EGizmoMode::Select);
-        else
-            GizmoManager.CycleMode();
-
-        if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
-            EditorEngine->ApplyTransformSettingsToGizmo();
+    if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
+    {
+        EditorEngine->SetEditorGizmoMode(NewMode);
+    }
+    else
+    {
+        GizmoManager.SetMode(NewMode);
     }
 }
 
@@ -1281,14 +1292,9 @@ void FLevelEditorViewportClient::SyncGizmoTargetFromSelection()
         return;
     }
 
-    if (CurrentGizmoTargetComponent == SelectedComponent && GizmoManager.HasValidTarget())
-    {
-        GizmoManager.SyncVisualFromTarget();
-        return;
-    }
-
+    FGizmoTargetKey TargetKey{SelectedComponent, 0};
     CurrentGizmoTargetComponent = SelectedComponent;
-    GizmoManager.SetTarget(Target);
+    GizmoManager.SetTargetIfChanged(TargetKey, Target);
 }
 
 bool FLevelEditorViewportClient::BuildRenderRequest(FEditorViewportRenderRequest &OutRequest)
@@ -1391,10 +1397,7 @@ void FLevelEditorViewportClient::TickEditorShortcuts()
             {
                 SelectionManager->ToggleSelect(Actor);
             }
-            if (EditorEngine->GetGizmo())
-            {
-                EditorEngine->GetGizmo()->UpdateGizmoTransform();
-            }
+            GizmoManager.SyncVisualFromTarget();
             EditorEngine->CommitTrackedSceneChange();
         }
     }
@@ -1407,10 +1410,7 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
     if (IsViewingFromLight())
         return;
     FInputManager &Input = FInputManager::Get();
-    EditorMoveAccumulator = FVector::ZeroVector;
-    EditorRotateAccumulator = FVector::ZeroVector;
-    EditorPanAccumulator = FVector::ZeroVector;
-    EditorZoomAccumulator = 0.0f;
+    CommonInput.InputState.ResetFrame();
     bool bForceInput = bIsHovered || bIsActive || Input.IsMouseButtonDown(VK_RBUTTON);
     EnhancedInputManager.ProcessInput(&Input, DeltaTime, bForceInput);
     const FMinimalViewInfo &CameraState = GetCamera()->GetCameraState();
@@ -1421,15 +1421,15 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
     if (!bIsOrtho)
     {
         GetCameraController().AddLocalTargetDelta(FVector(
-            EditorMoveAccumulator.X * CameraSpeed * DeltaTime,
-            EditorMoveAccumulator.Y * CameraSpeed * DeltaTime,
+            CommonInput.InputState.MoveAccumulator.X * CameraSpeed * DeltaTime,
+            CommonInput.InputState.MoveAccumulator.Y * CameraSpeed * DeltaTime,
             0.0f));
-        GetCameraController().AddWorldTargetDelta(FVector(0.0f, 0.0f, EditorMoveAccumulator.Z * CameraSpeed * DeltaTime));
-        if (!EditorPanAccumulator.IsNearlyZero())
+        GetCameraController().AddWorldTargetDelta(FVector(0.0f, 0.0f, CommonInput.InputState.MoveAccumulator.Z * CameraSpeed * DeltaTime));
+        if (!CommonInput.InputState.PanAccumulator.IsNearlyZero())
         {
-            GetCameraController().AddPanTargetDelta(EditorPanAccumulator.X, EditorPanAccumulator.Y, PanMouseScale * 0.15f);
+            GetCameraController().AddPanTargetDelta(CommonInput.InputState.PanAccumulator.X, CommonInput.InputState.PanAccumulator.Y, PanMouseScale * 0.15f);
         }
-        if (!EditorRotateAccumulator.IsNearlyZero())
+        if (!CommonInput.InputState.RotateAccumulator.IsNearlyZero())
         {
             const float RotateSensitivity = RenderOptions.CameraRotateSensitivity;
             const float MouseRotationSpeed = 0.15f * RotateSensitivity;
@@ -1437,23 +1437,23 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
             float Yaw = 0.0f, Pitch = 0.0f;
             if (!Input.IsMouseButtonDown(VK_RBUTTON))
             {
-                Yaw = EditorRotateAccumulator.X * AngleVelocity * DeltaTime;
-                Pitch = EditorRotateAccumulator.Y * AngleVelocity * DeltaTime;
+                Yaw = CommonInput.InputState.RotateAccumulator.X * AngleVelocity * DeltaTime;
+                Pitch = CommonInput.InputState.RotateAccumulator.Y * AngleVelocity * DeltaTime;
             }
             else
             {
-                Yaw = EditorRotateAccumulator.X * MouseRotationSpeed;
-                Pitch = EditorRotateAccumulator.Y * MouseRotationSpeed;
+                Yaw = CommonInput.InputState.RotateAccumulator.X * MouseRotationSpeed;
+                Pitch = CommonInput.InputState.RotateAccumulator.Y * MouseRotationSpeed;
             }
             GetCameraController().Rotate(Yaw, Pitch);
         }
     }
     else
     {
-        if (!EditorRotateAccumulator.IsNearlyZero() && Input.IsMouseButtonDown(VK_RBUTTON))
+        if (!CommonInput.InputState.RotateAccumulator.IsNearlyZero() && Input.IsMouseButtonDown(VK_RBUTTON))
         {
             float PanScale = CameraState.OrthoWidth * 0.002f * MoveSensitivity;
-            GetCameraController().MoveLocalImmediate(FVector(0, -EditorRotateAccumulator.Y * PanScale, EditorRotateAccumulator.Z * PanScale));
+            GetCameraController().MoveLocalImmediate(FVector(0, -CommonInput.InputState.RotateAccumulator.Y * PanScale, CommonInput.InputState.RotateAccumulator.Z * PanScale));
         }
     }
 }
@@ -1468,7 +1468,7 @@ static FVector FindClosestVertex(UWorld *World, const FRay &Ray, float MaxDistan
     bool bFound = false;
     for (AActor *Actor : World->GetActors())
     {
-        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoComponent>())
+        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoVisualComponent>())
             continue;
         for (UActorComponent *Comp : Actor->GetComponents())
         {
@@ -1502,15 +1502,11 @@ static FVector FindClosestVertex(UWorld *World, const FRay &Ray, float MaxDistan
 void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
 {
     (void)DeltaTime;
-    if (!GetCamera() || !Gizmo || !GetWorld())
+    if (!GetCamera() || !GetWorld())
         return;
-    if (Gizmo->GetMode() != GizmoManager.GetMode())
-    {
-        GizmoManager.SetMode(Gizmo->GetMode());
-    }
-    GizmoManager.SetSpace(Gizmo->IsWorldSpace() ? EGizmoSpace::World : EGizmoSpace::Local);
-    GizmoManager.ApplyScreenSpaceScaling(GetCamera()->GetWorldLocation(), GetCamera()->IsOrthogonal(), GetCamera()->GetOrthoWidth());
-    GizmoManager.SetAxisMask(UGizmoComponent::ComputeAxisMask(RenderOptions.ViewportType, GizmoManager.GetMode()));
+    EnsureEditorGizmo();
+    GizmoManager.ApplyScreenSpaceScaling(GetCamera()->GetWorldLocation(), GetCamera()->IsOrthogonal(), GetCamera()->GetOrthoWidth(), Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f);
+    GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(RenderOptions.ViewportType, GizmoManager.GetMode()));
 
     uint32 CursorViewportX = 0;
     uint32 CursorViewportY = 0;
@@ -1521,21 +1517,53 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     }
 
     const float ZoomSpeed = Settings ? Settings->CameraZoomSpeed : 300.f;
-    if (std::abs(EditorZoomAccumulator) > 1e-6f)
+    if (std::abs(CommonInput.InputState.ZoomAccumulator) > 1e-6f)
     {
         if (GetCamera()->IsOrthogonal())
         {
-            float NewWidth = GetCamera()->GetOrthoWidth() - EditorZoomAccumulator * ZoomSpeed * DeltaTime;
+            float NewWidth = GetCamera()->GetOrthoWidth() - CommonInput.InputState.ZoomAccumulator * ZoomSpeed * DeltaTime;
             GetCamera()->SetOrthoWidth(Clamp(NewWidth, 0.1f, 1000.0f));
         }
         else
         {
-            GetCameraController().AddForwardTargetDelta(EditorZoomAccumulator * ZoomSpeed * 0.015f);
+            GetCameraController().AddForwardTargetDelta(CommonInput.InputState.ZoomAccumulator * ZoomSpeed * 0.015f);
         }
     }
     FInputManager &Input = FInputManager::Get();
+
+    // Mouse-up can be missed when the cursor leaves the viewport, a tab changes focus,
+    // or ImGui captures the mouse for one frame. In that case the manager/visual keeps
+    // Holding=true and every later hit test uses stale axis state. Treat "not down"
+    // as the source of truth and recover before doing another pick.
+    if (!Input.IsMouseButtonDown(FInputManager::MOUSE_LEFT))
+    {
+        bool bCommittedInteraction = false;
+        if (GizmoManager.GetUIScreenInteractionState().bDragging)
+        {
+            EndUIScreenTranslateDrag(true);
+            bCommittedInteraction = true;
+        }
+        if (GizmoManager.IsDragging())
+        {
+            GizmoManager.EndDrag();
+            bCommittedInteraction = true;
+        }
+        else
+        {
+            GizmoManager.ResetVisualInteractionState();
+        }
+
+        if (bCommittedInteraction)
+        {
+            if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
+            {
+                EditorEngine->CommitTrackedTransformChange();
+            }
+        }
+    }
+
     ImVec2 MousePos = ImGui::GetIO().MousePos;
-    HoveredUIScreenGizmoAxis = HasUIScreenTranslateGizmo() ? HitTestUIScreenTranslateGizmo(MousePos) : 0;
+    GizmoManager.GetUIScreenInteractionState().HoveredAxis = HasUIScreenTranslateGizmo() ? HitTestUIScreenTranslateGizmo(MousePos) : 0;
     float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
     float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
     float LocalMouseX = 0.0f;
@@ -1547,10 +1575,18 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         LocalMouseY = MousePos.y - ViewportScreenRect.Y;
     }
     FRay Ray = GetCamera()->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
-    FRayHitResult HitResult;
+    FGizmoHitProxyContext GizmoPickContext{};
+    GizmoPickContext.ViewProjection = GetCamera()->GetViewProjectionMatrix();
+    GizmoPickContext.ViewportWidth = VPWidth;
+    GizmoPickContext.ViewportHeight = VPHeight;
+    GizmoPickContext.MouseX = LocalMouseX;
+    GizmoPickContext.MouseY = LocalMouseY;
+    GizmoPickContext.PickRadius = 2; // 5x5 ID buffer
+
+    FGizmoHitProxyResult GizmoHitResult{};
     const bool bCanInteractWithGizmo =
         SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
-    bool bGizmoHit = bCanInteractWithGizmo && GizmoManager.HitTest(Ray, HitResult);
+    bool bGizmoHit = bCanInteractWithGizmo && GizmoManager.HitTestHitProxy(GizmoPickContext, GizmoHitResult);
     if (Input.IsKeyPressed(FInputManager::MOUSE_LEFT) && bIsHovered)
     {
         if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyDown(VK_MENU))
@@ -1574,7 +1610,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
                 for (AActor *Actor : NewSelection)
                     SelectionManager->ToggleSelect(Actor);
             }
-            HandleDragStart(Ray);
+            HandleDragStart(Ray, GizmoHitResult, bGizmoHit);
         }
     }
     else if (Input.IsMouseButtonDown(FInputManager::MOUSE_LEFT))
@@ -1583,7 +1619,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         {
             MarqueeCurrentPos = FVector(MousePos.x, MousePos.y, 0);
         }
-        else if (bDraggingUIScreenGizmo)
+        else if (GizmoManager.GetUIScreenInteractionState().bDragging)
         {
             UpdateUIScreenTranslateDrag(MousePos);
         }
@@ -1605,7 +1641,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         }    }
     else if (Input.IsKeyReleased(FInputManager::MOUSE_LEFT))
     {
-        if (bDraggingUIScreenGizmo)
+        if (GizmoManager.GetUIScreenInteractionState().bDragging)
         {
             EndUIScreenTranslateDrag(true);
         }
@@ -1626,7 +1662,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
                     FMatrix VP = GetCamera()->GetViewProjectionMatrix();
                     for (AActor *Actor : World->GetActors())
                     {
-                        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoComponent>())
+                        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoVisualComponent>())
                             continue;
                         FVector WorldPos = Actor->GetActorLocation();
                         FVector ClipSpace = VP.TransformPositionWithW(WorldPos);
@@ -1649,11 +1685,11 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     }
     else if (Input.IsKeyReleased(VK_LBUTTON))
     {
-        if (bDraggingUIScreenGizmo)
+        if (GizmoManager.GetUIScreenInteractionState().bDragging)
         {
             EndUIScreenTranslateDrag(true);
         }
-        if (Gizmo) Gizmo->SetPressedOnHandle(false);
+        GizmoManager.ResetVisualInteractionState();
         if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
         {
             EditorEngine->CommitTrackedTransformChange();
@@ -1662,7 +1698,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     }
 }
 
-void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
+void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray, const FGizmoHitProxyResult& GizmoHitResult, bool bHasGizmoHit)
 {
     FInputManager &Input = FInputManager::Get();
     if (!bIsHovered)
@@ -1672,10 +1708,9 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
         return;
     }
     FScopeCycleCounter PickCounter;
-    FRayHitResult HitResult{};
     const bool bCanInteractWithGizmo =
         SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
-    if (bCanInteractWithGizmo && GizmoManager.HitTest(Ray, HitResult))
+    if (bCanInteractWithGizmo && bHasGizmoHit && GizmoHitResult.bHit)
     {
         if (SelectionManager)
         {
@@ -1683,7 +1718,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
             {
                 if (Actor && Actor->IsActorMovementLocked())
                 {
-                    if (Gizmo) Gizmo->SetPressedOnHandle(false);
+                    GizmoManager.ResetVisualInteractionState();
                     return;
                 }
             }
@@ -1692,7 +1727,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
         {
             EditorEngine->BeginTrackedTransformChange();
         }
-        GizmoManager.BeginDrag(Ray);
+        GizmoManager.BeginDragFromHitProxy(GizmoHitResult);
     }
     else
     {
@@ -1729,6 +1764,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
         }
         else
         {
+            FRayHitResult HitResult{};
             AActor *BestActor = nullptr;
             if (UWorld *W = GetWorld())
             {
@@ -1790,7 +1826,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
 
 bool FLevelEditorViewportClient::HasUIScreenTranslateGizmo() const
 {
-    if (!SelectionManager || !Gizmo || Gizmo->GetMode() != EGizmoMode::Translate)
+    if (!SelectionManager || GizmoManager.GetMode() != EGizmoMode::Translate)
     {
         return false;
     }
@@ -1873,25 +1909,25 @@ bool FLevelEditorViewportClient::BeginUIScreenTranslateDrag(const ImVec2 &MouseP
         EditorEngine->BeginTrackedTransformChange();
     }
 
-    ActiveUIScreenGizmoAxis = HitAxis;
+    GizmoManager.GetUIScreenInteractionState().ActiveAxis = HitAxis;
     float ViewportMouseX = 0.0f;
     float ViewportMouseY = 0.0f;
     if (TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight,
                                        ViewportMouseX, ViewportMouseY))
     {
-        LastUIScreenGizmoMousePos = ImVec2(ViewportMouseX, ViewportMouseY);
+        GizmoManager.GetUIScreenInteractionState().LastMousePos = ImVec2(ViewportMouseX, ViewportMouseY);
     }
     else
     {
-        LastUIScreenGizmoMousePos = MousePos;
+        GizmoManager.GetUIScreenInteractionState().LastMousePos = MousePos;
     }
-    bDraggingUIScreenGizmo = true;
+    GizmoManager.GetUIScreenInteractionState().bDragging = true;
     return true;
 }
 
 void FLevelEditorViewportClient::UpdateUIScreenTranslateDrag(const ImVec2 &MousePos)
 {
-    if (!bDraggingUIScreenGizmo || !SelectionManager)
+    if (!GizmoManager.GetUIScreenInteractionState().bDragging || !SelectionManager)
     {
         return;
     }
@@ -1917,9 +1953,9 @@ void FLevelEditorViewportClient::UpdateUIScreenTranslateDrag(const ImVec2 &Mouse
         CurrentMouseInViewport = ImVec2(ViewportMouseX, ViewportMouseY);
     }
 
-    const ImVec2 Delta(CurrentMouseInViewport.x - LastUIScreenGizmoMousePos.x,
-                       CurrentMouseInViewport.y - LastUIScreenGizmoMousePos.y);
-    switch (static_cast<EUIScreenGizmoAxis>(ActiveUIScreenGizmoAxis))
+    const ImVec2 Delta(CurrentMouseInViewport.x - GizmoManager.GetUIScreenInteractionState().LastMousePos.x,
+                       CurrentMouseInViewport.y - GizmoManager.GetUIScreenInteractionState().LastMousePos.y);
+    switch (static_cast<EUIScreenGizmoAxis>(GizmoManager.GetUIScreenInteractionState().ActiveAxis))
     {
     case EUIScreenGizmoAxis::X:
         ScreenPosition.X += Delta.x;
@@ -1936,18 +1972,18 @@ void FLevelEditorViewportClient::UpdateUIScreenTranslateDrag(const ImVec2 &Mouse
     }
 
     SetUIScreenComponentPosition(SelectedComponent, ScreenPosition);
-    LastUIScreenGizmoMousePos = CurrentMouseInViewport;
+    GizmoManager.GetUIScreenInteractionState().LastMousePos = CurrentMouseInViewport;
 }
 
 void FLevelEditorViewportClient::EndUIScreenTranslateDrag(bool bCommitChange)
 {
-    if (!bDraggingUIScreenGizmo)
+    if (!GizmoManager.GetUIScreenInteractionState().bDragging)
     {
         return;
     }
 
-    bDraggingUIScreenGizmo = false;
-    ActiveUIScreenGizmoAxis = static_cast<int32>(EUIScreenGizmoAxis::None);
+    GizmoManager.GetUIScreenInteractionState().bDragging = false;
+    GizmoManager.GetUIScreenInteractionState().ActiveAxis = static_cast<int32>(EUIScreenGizmoAxis::None);
     if (bCommitChange)
     {
         if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
@@ -2081,12 +2117,12 @@ void FLevelEditorViewportClient::DrawUIScreenTranslateGizmo()
     const float AxisLength = 48.0f;
     const float CenterHalf = 8.0f;
     const float Thickness = 3.0f;
-    const bool bHoverX = HoveredUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::X);
-    const bool bHoverY = HoveredUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::Y);
-    const bool bHoverXY = HoveredUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::XY);
-    const bool bActiveX = ActiveUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::X);
-    const bool bActiveY = ActiveUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::Y);
-    const bool bActiveXY = ActiveUIScreenGizmoAxis == static_cast<int32>(EUIScreenGizmoAxis::XY);
+    const bool bHoverX = GizmoManager.GetUIScreenInteractionState().HoveredAxis == static_cast<int32>(EUIScreenGizmoAxis::X);
+    const bool bHoverY = GizmoManager.GetUIScreenInteractionState().HoveredAxis == static_cast<int32>(EUIScreenGizmoAxis::Y);
+    const bool bHoverXY = GizmoManager.GetUIScreenInteractionState().HoveredAxis == static_cast<int32>(EUIScreenGizmoAxis::XY);
+    const bool bActiveX = GizmoManager.GetUIScreenInteractionState().ActiveAxis == static_cast<int32>(EUIScreenGizmoAxis::X);
+    const bool bActiveY = GizmoManager.GetUIScreenInteractionState().ActiveAxis == static_cast<int32>(EUIScreenGizmoAxis::Y);
+    const bool bActiveXY = GizmoManager.GetUIScreenInteractionState().ActiveAxis == static_cast<int32>(EUIScreenGizmoAxis::XY);
     const ImU32 XColor = (bHoverX || bActiveX) ? IM_COL32(255, 120, 120, 255) : IM_COL32(230, 70, 70, 255);
     const ImU32 YColor = (bHoverY || bActiveY) ? IM_COL32(120, 255, 160, 255) : IM_COL32(70, 210, 110, 255);
     const ImU32 CenterColor = (bHoverXY || bActiveXY) ? IM_COL32(120, 190, 255, 255) : IM_COL32(26, 138, 245, 255);

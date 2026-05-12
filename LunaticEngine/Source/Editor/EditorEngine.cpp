@@ -4,7 +4,6 @@
 #include "Audio/AudioManager.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Component/CameraComponent.h"
-#include "Component/GizmoComponent.h"
 #include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
 #include "Engine/Input/InputManager.h"
@@ -290,46 +289,81 @@ void UEditorEngine::ToggleCoordSystem()
     ApplyTransformSettingsToGizmo();
 }
 
-UGizmoComponent *UEditorEngine::GetGizmo() const
+void UEditorEngine::SetEditorGizmoMode(EGizmoMode NewMode)
 {
-    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
-    {
-        return ActiveClient->GetGizmoManager().GetVisualComponent();
-    }
-    if (FLevelEditorViewportClient *LevelClient = GetActiveViewport())
-    {
-        return LevelClient->GetGizmo();
-    }
-    return nullptr;
+    EditorGizmoSharedState.Mode = NewMode;
+    ApplyTransformSettingsToGizmo();
 }
 
 void UEditorEngine::ApplyTransformSettingsToGizmo()
 {
-    UGizmoComponent *Gizmo = GetGizmo();
-    if (!Gizmo)
-    {
-        return;
-    }
-
     const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    const bool bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
-    const EGizmoSpace DesiredSpace =
+
+    const bool bForceLocalForScale = EditorGizmoSharedState.Mode == EGizmoMode::Scale;
+    EditorGizmoSharedState.Space =
         bForceLocalForScale || Settings.CoordSystem != EEditorCoordSystem::World
             ? EGizmoSpace::Local
             : EGizmoSpace::World;
 
-    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    EditorGizmoSharedState.bTranslationSnapEnabled = Settings.bEnableTranslationSnap;
+    EditorGizmoSharedState.TranslationSnapSize = Settings.TranslationSnapSize;
+    EditorGizmoSharedState.bRotationSnapEnabled = Settings.bEnableRotationSnap;
+    EditorGizmoSharedState.RotationSnapSizeDegrees = Settings.RotationSnapSize;
+    EditorGizmoSharedState.bScaleSnapEnabled = Settings.bEnableScaleSnap;
+    EditorGizmoSharedState.ScaleSnapSize = Settings.ScaleSnapSize;
+
+    // The tool state is editor-context-wide. Each viewport still owns its own
+    // FGizmoManager / visual / drag state, but mode/space/snap must be identical
+    // across all visible Level viewport managers.
+    if (IsLevelEditorContextActive())
     {
-        ActiveClient->GetGizmoManager().SetSpace(DesiredSpace);
-    }
-    else
-    {
-        Gizmo->SetGizmoSpace(DesiredSpace);
+        for (FLevelEditorViewportClient* Client : GetLevelViewportClients())
+        {
+            if (Client)
+            {
+                EditorGizmoSharedState.ApplyTo(Client->GetGizmoManager());
+            }
+        }
+        return;
     }
 
-    // 에디터 설정의 좌표계/스냅 값을 매 프레임 Gizmo 상태와 동기화한다.
-    Gizmo->SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, Settings.bEnableRotationSnap,
-                           Settings.RotationSnapSize, Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
+    // Asset editor viewport clients use their own editor state where available.
+    // For generic asset viewports, apply the current shared editor tool state to
+    // every collected asset viewport instead of only the active one.
+    TArray<FEditorViewportClient*> AssetClients;
+    CollectAssetViewportClients(AssetClients);
+    for (FEditorViewportClient* Client : AssetClients)
+    {
+        if (Client)
+        {
+            EditorGizmoSharedState.ApplyTo(Client->GetGizmoManager());
+        }
+    }
+}
+
+void UEditorEngine::SyncActiveGizmoVisualFromTarget()
+{
+    if (IsLevelEditorContextActive())
+    {
+        for (FLevelEditorViewportClient* Client : GetLevelViewportClients())
+        {
+            if (Client)
+            {
+                Client->GetGizmoManager().SyncVisualFromTarget();
+            }
+        }
+        return;
+    }
+
+    TArray<FEditorViewportClient*> AssetClients;
+    CollectAssetViewportClients(AssetClients);
+    for (FEditorViewportClient* Client : AssetClients)
+    {
+        if (Client)
+        {
+            Client->GetGizmoManager().SyncVisualFromTarget();
+        }
+    }
 }
 
 void UEditorEngine::RequestPlaySession(const FRequestPlaySessionParams &InParams)

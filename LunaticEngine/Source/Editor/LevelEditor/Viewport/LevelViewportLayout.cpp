@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/Style/AccentColor.h"
 #include "Common/UI/Style/EditorUIStyle.h"
@@ -7,7 +7,7 @@
 #include "Common/UI/Viewport/ViewportToolbar.h"
 #include "Common/UI/Viewport/EditorViewportToolbar.h"
 #include "Component/CameraComponent.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Core/ProjectSettings.h"
 #include "EditorEngine.h"
 #include "Engine/Input/InputManager.h"
@@ -126,6 +126,7 @@ namespace
         ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+        ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, PopupMenuItemHoverColor);
     }
 
     bool DrawCameraPopupScalarRow(const char *Id, const char *Label, float &Value, float Speed, float Min, float Max, const char *Format)
@@ -1222,6 +1223,16 @@ void FLevelViewportLayout::Release()
     PlayToolbar.Release();
 }
 
+float FLevelViewportLayout::GetFrameToolbarHeight() const
+{
+    return PlayToolbar.GetDesiredHeight();
+}
+
+void FLevelViewportLayout::RenderFrameToolbar(float Width)
+{
+    PlayToolbar.Render(Width);
+}
+
 // ─── 활성 뷰포트 ────────────────────────────────────────────
 
 void FLevelViewportLayout::SetActiveViewport(FLevelEditorViewportClient *InClient)
@@ -1947,7 +1958,8 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
     if (ContentSize.x > 0 && ContentSize.y > 0)
     {
-        // 상단에 Play/Stop 툴바 영역 확보 후 나머지를 뷰포트에 할당
+        // Play/Stop/Undo/Redo frame toolbar는 document tab bar 아래의 Level Editor frame 영역으로 이동했다.
+        // 이 viewport panel은 이제 순수 viewport layout과 pane toolbar만 담당한다.
         for (FLevelEditorViewportClient *VC : LevelViewportClients)
         {
             if (VC)
@@ -1956,11 +1968,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
             }
         }
 
-        const float MainToolbarHeight = PlayToolbar.GetDesiredHeight();
-        ImGui::SetCursorScreenPos(ContentPos);
-        PlayToolbar.Render(ContentSize.x);
-
-        FRect ContentRect = {ContentPos.x, ContentPos.y + MainToolbarHeight, ContentSize.x, ContentSize.y - MainToolbarHeight};
+        FRect ContentRect = {ContentPos.x, ContentPos.y, ContentSize.x, ContentSize.y};
         auto  IsSlotVisibleEnough = [&](int32 SlotIndex) -> bool
         {
             if (SlotIndex < 0 || SlotIndex >= MaxViewportSlots || !ViewportWindows[SlotIndex])
@@ -2131,13 +2139,7 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
         return;
     }
 
-    UGizmoComponent *Gizmo = Editor->GetGizmo();
-    if (!Gizmo)
-    {
-        return;
-    }
-
-    EnsureToolbarIconsLoaded(RendererPtr);
+        EnsureToolbarIconsLoaded(RendererPtr);
 
     constexpr float ToolbarHeight = 40.0f;
     constexpr float IconSize = 18.0f;
@@ -2160,7 +2162,8 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
 
     auto DrawGizmoIcon = [&](const char *Id, EToolbarIcon Icon, EGizmoMode TargetMode, const char *FallbackLabel) -> bool
     {
-        const bool bSelected = (Gizmo->GetMode() == TargetMode);
+        const EGizmoMode CurrentMode = ActiveViewportClient ? ActiveViewportClient->GetGizmoManager().GetMode() : EGizmoMode::Translate;
+        const bool bSelected = (CurrentMode == TargetMode);
         if (bSelected)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
@@ -2203,19 +2206,28 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
     ImGui::SameLine(0.0f, GroupSpacing);
     if (DrawGizmoIcon("##SharedTranslateToolIcon", EToolbarIcon::Translate, EGizmoMode::Translate, "Translate"))
     {
-        Gizmo->SetTranslateMode();
+        if (ActiveViewportClient)
+        {
+            Editor->SetEditorGizmoMode(EGizmoMode::Translate);
+        }
     }
     ShowItemTooltip("Translate");
     ImGui::SameLine(0.0f, ButtonSpacing);
     if (DrawGizmoIcon("##SharedRotateToolIcon", EToolbarIcon::Rotate, EGizmoMode::Rotate, "Rotate"))
     {
-        Gizmo->SetRotateMode();
+        if (ActiveViewportClient)
+        {
+            Editor->SetEditorGizmoMode(EGizmoMode::Rotate);
+        }
     }
     ShowItemTooltip("Rotate");
     ImGui::SameLine(0.0f, ButtonSpacing);
     if (DrawGizmoIcon("##SharedScaleToolIcon", EToolbarIcon::Scale, EGizmoMode::Scale, "Scale"))
     {
-        Gizmo->SetScaleMode();
+        if (ActiveViewportClient)
+        {
+            Editor->SetEditorGizmoMode(EGizmoMode::Scale);
+        }
     }
     ShowItemTooltip("Scale");
 
@@ -2307,7 +2319,6 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
         FViewportRenderOptions &Opts = VC->GetRenderOptions();
         FEditorViewportCamera *Camera = VC->GetCamera();
-        UGizmoComponent *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
         FLevelEditorSettings &Settings = Editor->GetSettings();
 
         FEditorViewportToolbar::FDesc Desc;
@@ -2315,9 +2326,12 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         Desc.ToolbarWidth = PaneRect.Width;
         Desc.Renderer = RendererPtr;
         Desc.bEnabled = Editor != nullptr && VC != nullptr;
-        Desc.ToolMode = Gizmo && Gizmo->GetMode() == EGizmoMode::Rotate
+        // 각 pane toolbar는 자기 ViewportClient의 gizmo state를 표시한다.
+        // ActiveViewportClient를 읽으면 다른 pane의 toolbar 렌더 순서에 따라 선택 표시가 꼬일 수 있다.
+        const EGizmoMode CurrentGizmoMode = VC ? VC->GetGizmoManager().GetMode() : EGizmoMode::Translate;
+        Desc.ToolMode = CurrentGizmoMode == EGizmoMode::Rotate
                             ? FEditorViewportToolbar::EToolMode::Rotate
-                            : (Gizmo && Gizmo->GetMode() == EGizmoMode::Scale
+                            : (CurrentGizmoMode == EGizmoMode::Scale
                                    ? FEditorViewportToolbar::EToolMode::Scale
                                    : FEditorViewportToolbar::EToolMode::Translate);
         Desc.CoordSpace = Settings.CoordSystem == EEditorCoordSystem::World ? FEditorViewportToolbar::ECoordSpace::World
@@ -2328,26 +2342,34 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         Desc.ViewModeIcon = FEditorViewportToolbar::GetViewModeIconByIndex(static_cast<int32>(Opts.ViewMode));
         Desc.ViewModeLabel = FEditorViewportToolbar::GetViewModeLabelByIndex(static_cast<int32>(Opts.ViewMode));
 
-        Desc.OnToolModeChanged = [Gizmo](FEditorViewportToolbar::EToolMode Mode)
+        Desc.OnToolModeChanged = [this, VC, &Settings](FEditorViewportToolbar::EToolMode Mode)
         {
-            if (!Gizmo)
+            if (!VC)
             {
                 return;
             }
 
+            // 툴바를 누른 pane을 먼저 active viewport로 만든 뒤, 그 viewport의 manager만 갱신한다.
+            // 이전 코드처럼 ActiveViewportClient를 직접 쓰면 비활성 pane toolbar 클릭 시 다른 viewport의
+            // manager가 바뀌거나, 다음 프레임에 mode 표시가 되돌아가는 문제가 생긴다.
+            SetActiveViewport(VC);
+
+            EGizmoMode NewMode = EGizmoMode::Translate;
             switch (Mode)
             {
             case FEditorViewportToolbar::EToolMode::Rotate:
-                Gizmo->SetRotateMode();
+                NewMode = EGizmoMode::Rotate;
                 break;
             case FEditorViewportToolbar::EToolMode::Scale:
-                Gizmo->SetScaleMode();
+                NewMode = EGizmoMode::Scale;
                 break;
             case FEditorViewportToolbar::EToolMode::Translate:
             default:
-                Gizmo->SetTranslateMode();
+                NewMode = EGizmoMode::Translate;
                 break;
             }
+
+            Editor->SetEditorGizmoMode(NewMode);
         };
 
         Desc.OnCoordSpaceToggled = [&]()
@@ -2481,7 +2503,10 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         };
 
         FEditorViewportToolbar::RenderViewportToolbar(Desc);
-        Editor->ApplyTransformSettingsToGizmo();
+        if (Editor && VC == ActiveViewportClient)
+        {
+            Editor->ApplyTransformSettingsToGizmo();
+        }
     }
 
     ImGui::PopID();

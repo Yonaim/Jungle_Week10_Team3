@@ -27,7 +27,7 @@ void AImposterScaleGizmo::Capture(AActor* InTarget) {
 	AImposterGizmoActorBase::Capture(InTarget);
 	if (!HasAliveTarget() || !PreviewGizmo) return;
 	PreviewGizmo->SetScaleMode();
-	PreviewGizmo->SetTarget(Target);
+	PreviewGizmo->SetGizmoWorldTransform(FTransform(Target->GetActorLocation(), Target->GetActorRotation(), Target->GetActorScale()));
 	PreviewGizmo->SetSelectedAxis(SetOffsetAxis());
 }
 

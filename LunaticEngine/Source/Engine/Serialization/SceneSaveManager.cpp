@@ -205,6 +205,10 @@ static void EnsureEditorBillboardMetadata(UActorComponent* Comp)
 	{
 		LightComponent->EnsureEditorBillboard();
 	}
+	else if (UCameraComponent* CameraComponent = Cast<UCameraComponent>(Comp))
+	{
+		CameraComponent->EnsureEditorBillboard();
+	}
 	else if (UDecalComponent* DecalComponent = Cast<UDecalComponent>(Comp))
 	{
 		DecalComponent->EnsureEditorBillboard();

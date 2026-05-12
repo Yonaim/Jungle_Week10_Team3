@@ -65,6 +65,7 @@ class FAssetEditorWindow : public IEditorMenuProvider
     FString GetFrameTitleTooltip() const override;
 
   private:
+    void RenderDocumentTabBar();
     void RenderEmptyState(ImGuiID DockspaceId);
 
   private:

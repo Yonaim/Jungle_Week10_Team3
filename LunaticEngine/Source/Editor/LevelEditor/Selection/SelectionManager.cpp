@@ -51,6 +51,15 @@ void FSelectionManager::Init()
 
 void FSelectionManager::SetWorld(UWorld *InWorld)
 {
+    if (World != InWorld)
+    {
+        // Selection/gizmo targets are only valid inside the currently edited world.
+        // Keeping actors/components from a previous world can make an invisible
+        // object appear selectable/transformable although it is not listed in the
+        // current Outliner.
+        ClearSelection();
+    }
+
     World = InWorld;
     if (World)
     {
@@ -66,6 +75,11 @@ void FSelectionManager::Shutdown()
 
 void FSelectionManager::Select(AActor *Actor)
 {
+    if (Actor && World && Actor->GetWorld() != World)
+    {
+        return;
+    }
+
     if (SelectedActors.size() == 1 && SelectedActors.front() == Actor &&
         (!Actor || SelectedComponent == Actor->GetRootComponent()))
     {
@@ -113,7 +127,7 @@ void FSelectionManager::SelectActors(const TArray<AActor *> &Actors)
 
     for (AActor *Actor : Actors)
     {
-        if (!Actor)
+        if (!Actor || (World && Actor->GetWorld() != World))
         {
             continue;
         }
@@ -142,7 +156,7 @@ void FSelectionManager::SelectActors(const TArray<AActor *> &Actors)
 
 void FSelectionManager::AddSelect(AActor *Actor)
 {
-    if (!Actor)
+    if (!Actor || (World && Actor->GetWorld() != World))
     {
         return;
     }
@@ -248,7 +262,7 @@ void FSelectionManager::SelectRange(AActor *ClickedActor, const TArray<AActor *>
 
 void FSelectionManager::ToggleSelect(AActor *Actor)
 {
-    if (!Actor)
+    if (!Actor || (World && Actor->GetWorld() != World))
         return;
 
     auto It = std::find(SelectedActors.begin(), SelectedActors.end(), Actor);
@@ -374,6 +388,10 @@ void FSelectionManager::SelectComponent(USceneComponent *Component)
     {
         return;
     }
+    if (World && Component->GetWorld() != World)
+    {
+        return;
+    }
 
     // [버그 수정] 에디터 전용 컴포넌트(광원 아이콘 등)는 개별 조작 대상이 아니므로,
     // 부모 컴포넌트로 리다이렉트하여 함께 움직이도록 합니다.
@@ -414,7 +432,16 @@ std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarg
         return nullptr;
     }
 
-    return std::make_shared<FSceneComponentTransformGizmoTarget>(SelectedComponent);
+    USceneComponent* TargetComponent = SelectedComponent;
+    if (AActor* SelectedActor = GetPrimarySelection())
+    {
+        if (USceneComponent* RootComponent = SelectedActor->GetRootComponent())
+        {
+            TargetComponent = RootComponent;
+        }
+    }
+
+    return std::make_shared<FSceneComponentTransformGizmoTarget>(TargetComponent);
 }
 
 void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
@@ -434,6 +461,6 @@ void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
 
 void FSelectionManager::SyncGizmo()
 {
-    // 의도된 no-op이다. SelectionManager는 더 이상 UGizmoComponent를 소유하지 않는다.
+    // 의도된 no-op이다. SelectionManager는 더 이상 UGizmoVisualComponent를 소유하지 않는다.
     // FLevelEditorViewportClient가 MakeTransformGizmoTarget()을 읽어 FGizmoManager를 갱신한다.
 }

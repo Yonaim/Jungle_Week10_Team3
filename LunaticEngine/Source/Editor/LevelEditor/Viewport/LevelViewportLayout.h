@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreTypes.h"
 #include "LevelEditor/UI/Toolbar/LevelPlayToolbar.h"
@@ -70,6 +70,11 @@ class FLevelViewportLayout
 
     // ImGui "Viewport" 창에 레이아웃 계산 + 렌더
     void RenderViewportUI(float DeltaTime);
+
+    // Level Editor 전용 frame toolbar를 렌더한다.
+    // 이 toolbar는 더 이상 viewport panel 내부에 살지 않고, document tab bar 바로 아래에 배치된다.
+    float GetFrameToolbarHeight() const;
+    void RenderFrameToolbar(float Width);
 
     bool IsMouseOverViewport() const
     {

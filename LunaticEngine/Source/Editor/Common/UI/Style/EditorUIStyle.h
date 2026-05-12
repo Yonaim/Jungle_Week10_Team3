@@ -19,6 +19,7 @@ namespace FEditorUIStyle
 inline constexpr ImVec4 PopupMenuItemColor = ImVec4(0.18f, 0.18f, 0.20f, 0.96f);
 inline constexpr ImVec4 PopupMenuItemHoverColor = UIAccentColor::Value;
 inline constexpr ImVec4 PopupMenuItemActiveColor = UIAccentColor::Value;
+inline constexpr ImVec4 PopupMenuItemHoverTextColor = ImVec4(0.02f, 0.02f, 0.025f, 1.0f);
 inline constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
 inline constexpr ImVec4 PopupSectionLineColor = PopupSectionHeaderTextColor;
 inline constexpr float PopupSectionLineThickness = 1.0f;
@@ -129,6 +130,7 @@ inline void PushPopupWindowStyle()
     ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+    ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, PopupMenuItemHoverColor);
     ImGui::PushStyleColor(ImGuiCol_Separator, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorHovered, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorActive, PopupSectionLineColor);
@@ -142,7 +144,7 @@ inline void PushPopupWindowStyle()
 inline void PopPopupWindowStyle()
 {
     ImGui::PopStyleVar(5);
-    ImGui::PopStyleColor(7);
+    ImGui::PopStyleColor(8);
 }
 
 inline void PushHeaderButtonStyle(float FrameRounding = 6.0f)
@@ -167,6 +169,7 @@ inline void PushPopupMenuStyle()
     ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+    ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, PopupMenuItemHoverColor);
     ImGui::PushStyleColor(ImGuiCol_Separator, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorHovered, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorActive, PopupSectionLineColor);
@@ -174,7 +177,7 @@ inline void PushPopupMenuStyle()
 
 inline void PopPopupMenuStyle()
 {
-    ImGui::PopStyleColor(7);
+    ImGui::PopStyleColor(8);
 }
 
 inline bool DrawSearchInputWithIcon(const char *Id, const char *Hint, char *Buffer, size_t BufferSize, float Width)
