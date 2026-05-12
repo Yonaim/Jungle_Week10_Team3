@@ -85,6 +85,9 @@
     <Filter Include="Source\Editor\Common\UI\Base">
       <UniqueIdentifier>{9f9f98bd-1115-0cc8-56ae-5017c670f8cf}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\Common\UI\Details">
+      <UniqueIdentifier>{78cfa82c-8488-a4c2-bbf3-d832640a5ace}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Common\UI\Docking">
       <UniqueIdentifier>{e6f446a4-0492-a61a-c87e-5c59f6fec508}</UniqueIdentifier>
     </Filter>
@@ -1489,6 +1492,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Base\UIElement.h">
       <Filter>Source\Editor\Common\UI\Base</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Details\EditorDetailsWidgets.h">
+      <Filter>Source\Editor\Common\UI\Details</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.h">
       <Filter>Source\Editor\Common\UI\Docking</Filter>

@@ -660,6 +660,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\PCH\LunaticPCH.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
     <ClInclude Include="Source\Editor\AssetEditor\AssetEditorManager.h" />
     <ClInclude Include="Source\Editor\AssetEditor\IAssetEditor.h" />
@@ -689,6 +690,7 @@
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuProvider.h" />
     <ClInclude Include="Source\Editor\Common\UI\Base\UIElement.h" />
+    <ClInclude Include="Source\Editor\Common\UI\Details\EditorDetailsWidgets.h" />
     <ClInclude Include="Source\Editor\Common\UI\Docking\DockLayoutUtils.h" />
     <ClInclude Include="Source\Editor\Common\UI\DragDrop\DragSource.h" />
     <ClInclude Include="Source\Editor\Common\UI\ImGui\EditorImGuiStyleSettings.h" />
