@@ -11,6 +11,39 @@
 #include "Render/Proxy/GizmoSceneProxy.h"
 #include "Render/Scene/FScene.h"
 #include <cfloat>
+#include <cmath>
+
+namespace
+{
+	FQuat ExtractRotationWithoutScale(const FMatrix& Matrix)
+	{
+		FVector Forward(Matrix.M[0][0], Matrix.M[0][1], Matrix.M[0][2]);
+		FVector Right(Matrix.M[1][0], Matrix.M[1][1], Matrix.M[1][2]);
+		FVector Up(Matrix.M[2][0], Matrix.M[2][1], Matrix.M[2][2]);
+
+		if (Forward.Length() <= FMath::Epsilon) Forward = FVector(1.0f, 0.0f, 0.0f);
+		if (Right.Length() <= FMath::Epsilon) Right = FVector(0.0f, 1.0f, 0.0f);
+		if (Up.Length() <= FMath::Epsilon) Up = FVector(0.0f, 0.0f, 1.0f);
+
+		Forward.Normalize();
+		Right.Normalize();
+		Up.Normalize();
+
+		FMatrix RotationOnly = FMatrix::Identity;
+		RotationOnly.M[0][0] = Forward.X; RotationOnly.M[0][1] = Forward.Y; RotationOnly.M[0][2] = Forward.Z;
+		RotationOnly.M[1][0] = Right.X;   RotationOnly.M[1][1] = Right.Y;   RotationOnly.M[1][2] = Right.Z;
+		RotationOnly.M[2][0] = Up.X;      RotationOnly.M[2][1] = Up.Y;      RotationOnly.M[2][2] = Up.Z;
+		return FQuat::FromMatrix(RotationOnly).GetNormalized();
+	}
+
+	bool IsSameRotation(const FQuat& A, const FQuat& B)
+	{
+		const FQuat NA = A.GetNormalized();
+		const FQuat NB = B.GetNormalized();
+		const float Dot = NA.X * NB.X + NA.Y * NB.Y + NA.Z * NB.Z + NA.W * NB.W;
+		return std::abs(std::abs(Dot) - 1.0f) <= 1.0e-4f;
+	}
+}
 
 IMPLEMENT_CLASS(UGizmoComponent, UPrimitiveComponent)
 HIDE_FROM_COMPONENT_LIST(UGizmoComponent)
@@ -53,7 +86,6 @@ void UGizmoComponent::DestroyRenderState()
 	RegisteredScene = nullptr;
 }
 
-#include <cmath>
 UGizmoComponent::UGizmoComponent()
 {
 	MeshData = &FMeshBufferManager::Get().GetMeshData(EMeshShape::TransGizmo);
@@ -770,7 +802,11 @@ void UGizmoComponent::UpdateGizmoTransform()
 {
 	if (TargetComponent)
 	{
-		ApplyGizmoWorldTransform(FTransform(TargetComponent->GetWorldLocation(), TargetComponent->GetWorldMatrix().ToRotator(), TargetComponent->GetWorldScale()));
+		const FMatrix& TargetWorldMatrix = TargetComponent->GetWorldMatrix();
+		ApplyGizmoWorldTransform(FTransform(
+			TargetComponent->GetWorldLocation(),
+			ExtractRotationWithoutScale(TargetWorldMatrix),
+			TargetComponent->GetWorldScale()));
 		return;
 	}
 
@@ -798,11 +834,10 @@ void UGizmoComponent::ApplyGizmoWorldTransform(const FTransform& InWorldTransfor
 	}
 
 	const FVector DesiredLocation = InWorldTransform.GetLocation();
-	
-	FRotator DesiredRotation = FRotator();
+	FQuat DesiredRotation = FQuat::Identity;
 	if (CurMode == EGizmoMode::Scale || !bIsWorldSpace)
 	{
-		DesiredRotation = InWorldTransform.ToMatrix().ToRotator();
+		DesiredRotation = InWorldTransform.Rotation.GetNormalized();
 	}
 
 	const FMeshData* DesiredMeshData = nullptr;
@@ -830,7 +865,7 @@ void UGizmoComponent::ApplyGizmoWorldTransform(const FTransform& InWorldTransfor
 		SetWorldLocation(DesiredLocation);
 	}
 
-	if (GetRelativeRotation() != DesiredRotation)
+	if (!IsSameRotation(GetRelativeQuat(), DesiredRotation))
 	{
 		SetRelativeRotation(DesiredRotation);
 	}

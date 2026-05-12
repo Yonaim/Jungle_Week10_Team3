@@ -1,6 +1,7 @@
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 
 #include "Component/SkeletalMeshComponent.h"
+#include "Engine/Mesh/SkeletalMesh.h"
 
 namespace
 {
@@ -37,6 +38,57 @@ namespace
 
         return FTransform(Matrix.GetLocation(), FQuat::FromMatrix(RotationMatrix), Scale);
     }
+
+    const TArray<FBoneInfo>* GetBones(const USkeletalMeshComponent* Component)
+    {
+        if (!Component || !Component->GetSkeletalMesh() || !Component->GetSkeletalMesh()->GetSkeletalMeshAsset())
+        {
+            return nullptr;
+        }
+
+        return &Component->GetSkeletalMesh()->GetSkeletalMeshAsset()->Bones;
+    }
+
+    FMatrix ConvertWorldToBoneLocalMatrix(
+        const USkeletalMeshComponent* Component,
+        int32 BoneIndex,
+        const TArray<FBoneInfo>& Bones,
+        const FSkeletonPose& Pose,
+        const FMatrix& WorldMatrix)
+    {
+        const FMatrix ComponentMatrix = WorldMatrix * Component->GetWorldMatrix().GetInverse();
+        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+        if (ParentIndex == InvalidBoneIndex ||
+            ParentIndex < 0 ||
+            ParentIndex >= static_cast<int32>(Pose.ComponentTransforms.size()))
+        {
+            return ComponentMatrix;
+        }
+
+        return ComponentMatrix * Pose.ComponentTransforms[ParentIndex].GetInverse();
+    }
+
+    FQuat ConvertWorldToBoneLocalRotation(
+        const USkeletalMeshComponent* Component,
+        int32 BoneIndex,
+        const TArray<FBoneInfo>& Bones,
+        const FSkeletonPose& Pose,
+        const FQuat& WorldRotation)
+    {
+        const FQuat ComponentWorldRotation = MakeTransformFromMatrix(Component->GetWorldMatrix()).Rotation.GetNormalized();
+        FQuat ComponentRotation = WorldRotation * ComponentWorldRotation.Inverse();
+
+        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+        if (ParentIndex != InvalidBoneIndex &&
+            ParentIndex >= 0 &&
+            ParentIndex < static_cast<int32>(Pose.ComponentTransforms.size()))
+        {
+            const FQuat ParentComponentRotation = MakeTransformFromMatrix(Pose.ComponentTransforms[ParentIndex]).Rotation.GetNormalized();
+            ComponentRotation = ComponentRotation * ParentComponentRotation.Inverse();
+        }
+
+        return ComponentRotation.GetNormalized();
+    }
 }
 
 FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent, int32 InBoneIndex)
@@ -65,15 +117,80 @@ FTransform FBoneTransformGizmoTarget::GetWorldTransform() const
     }
 
     const FSkeletonPose& Pose = Component->GetCurrentPose();
-    return MakeTransformFromMatrix(Pose.ComponentTransforms[BoneIndex]);
+    const FMatrix BoneWorldMatrix = Pose.ComponentTransforms[BoneIndex] * Component->GetWorldMatrix();
+    return MakeTransformFromMatrix(BoneWorldMatrix);
 }
 
 void FBoneTransformGizmoTarget::SetWorldTransform(const FTransform& NewWorldTransform)
 {
-    // 현재 Runtime 쪽 공개 API가 local pose 수정 중심이므로,
-    // 실제 저장은 SetLocalTransform 경로로 통일한다.
-    // 향후 ParentWorld 역산 API가 정리되면 여기서 World -> Local 변환을 수행하면 된다.
-    SetLocalTransform(NewWorldTransform);
+    // The editable pose is stored as bone-local transforms, so convert the gizmo world transform
+    // back through component space and the parent bone component transform before writing.
+    const TArray<FBoneInfo>* Bones = GetBones(Component);
+    if (!IsValid() || !Bones || BoneIndex >= static_cast<int32>(Bones->size()))
+    {
+        return;
+    }
+
+    const FSkeletonPose& Pose = Component->GetCurrentPose();
+    const FMatrix DesiredLocalMatrix = ConvertWorldToBoneLocalMatrix(
+        Component,
+        BoneIndex,
+        *Bones,
+        Pose,
+        NewWorldTransform.ToMatrix());
+
+    SetLocalTransform(MakeTransformFromMatrix(DesiredLocalMatrix));
+}
+
+void FBoneTransformGizmoTarget::SetWorldLocation(const FVector& NewWorldLocation)
+{
+    const TArray<FBoneInfo>* Bones = GetBones(Component);
+    if (!IsValid() || !Bones || BoneIndex >= static_cast<int32>(Bones->size()))
+    {
+        return;
+    }
+
+    const FSkeletonPose& Pose = Component->GetCurrentPose();
+    FTransform Local = Pose.LocalTransforms[BoneIndex];
+
+    const FVector DesiredComponentLocation = Component->GetWorldMatrix().GetInverse().TransformPositionWithW(NewWorldLocation);
+    FVector DesiredLocalLocation = DesiredComponentLocation;
+    const int32 ParentIndex = (*Bones)[BoneIndex].ParentIndex;
+    if (ParentIndex != InvalidBoneIndex &&
+        ParentIndex >= 0 &&
+        ParentIndex < static_cast<int32>(Pose.ComponentTransforms.size()))
+    {
+        DesiredLocalLocation = Pose.ComponentTransforms[ParentIndex].GetInverse().TransformPositionWithW(DesiredComponentLocation);
+    }
+
+    Local.SetLocation(DesiredLocalLocation);
+    SetLocalTransform(Local);
+}
+
+void FBoneTransformGizmoTarget::SetWorldRotation(const FQuat& NewWorldRotation)
+{
+    const TArray<FBoneInfo>* Bones = GetBones(Component);
+    if (!IsValid() || !Bones || BoneIndex >= static_cast<int32>(Bones->size()))
+    {
+        return;
+    }
+
+    const FSkeletonPose& Pose = Component->GetCurrentPose();
+    FTransform Local = Pose.LocalTransforms[BoneIndex];
+    Local.SetRotation(ConvertWorldToBoneLocalRotation(Component, BoneIndex, *Bones, Pose, NewWorldRotation.GetNormalized()));
+    SetLocalTransform(Local);
+}
+
+void FBoneTransformGizmoTarget::SetWorldScale(const FVector& NewWorldScale)
+{
+    if (!IsValid())
+    {
+        return;
+    }
+
+    FTransform Local = GetLocalTransform();
+    Local.Scale = NewWorldScale;
+    SetLocalTransform(Local);
 }
 
 FTransform FBoneTransformGizmoTarget::GetLocalTransform() const
@@ -94,7 +211,10 @@ void FBoneTransformGizmoTarget::SetLocalTransform(const FTransform& NewLocalTran
         return;
     }
 
-    Component->SetBoneLocalTransform(BoneIndex, NewLocalTransform);
+    if (Component->SetBoneLocalTransform(BoneIndex, NewLocalTransform))
+    {
+        Component->RefreshSkinningNow();
+    }
 }
 
 void FBoneTransformGizmoTarget::BeginTransform()
@@ -110,6 +230,6 @@ void FBoneTransformGizmoTarget::EndTransform()
         return;
     }
 
-    Component->RefreshSkinningForEditor(0.0f);
+    Component->RefreshSkinningNow();
     bTransforming = false;
 }

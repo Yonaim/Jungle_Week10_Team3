@@ -14,6 +14,24 @@ public:
 
     virtual FTransform GetWorldTransform() const = 0;
     virtual void SetWorldTransform(const FTransform& NewWorldTransform) = 0;
+    virtual void SetWorldLocation(const FVector& NewWorldLocation)
+    {
+        FTransform Transform = GetWorldTransform();
+        Transform.SetLocation(NewWorldLocation);
+        SetWorldTransform(Transform);
+    }
+    virtual void SetWorldRotation(const FQuat& NewWorldRotation)
+    {
+        FTransform Transform = GetWorldTransform();
+        Transform.SetRotation(NewWorldRotation);
+        SetWorldTransform(Transform);
+    }
+    virtual void SetWorldScale(const FVector& NewWorldScale)
+    {
+        FTransform Transform = GetWorldTransform();
+        Transform.Scale = NewWorldScale;
+        SetWorldTransform(Transform);
+    }
 
     virtual FTransform GetLocalTransform() const = 0;
     virtual void SetLocalTransform(const FTransform& NewLocalTransform) = 0;

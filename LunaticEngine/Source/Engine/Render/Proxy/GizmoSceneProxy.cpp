@@ -5,6 +5,30 @@
 #include "Materials/Material.h"
 #include "Object/ObjectFactory.h"
 
+namespace
+{
+	FMatrix MakeRotationMatrixFromComponentAxes(const UGizmoComponent* Gizmo)
+	{
+		FVector Forward = Gizmo->GetForwardVector();
+		FVector Right = Gizmo->GetRightVector();
+		FVector Up = Gizmo->GetUpVector();
+
+		if (Forward.Length() <= 1.0e-6f) Forward = FVector(1.0f, 0.0f, 0.0f);
+		if (Right.Length() <= 1.0e-6f) Right = FVector(0.0f, 1.0f, 0.0f);
+		if (Up.Length() <= 1.0e-6f) Up = FVector(0.0f, 0.0f, 1.0f);
+
+		Forward.Normalize();
+		Right.Normalize();
+		Up.Normalize();
+
+		FMatrix RotationOnly = FMatrix::Identity;
+		RotationOnly.M[0][0] = Forward.X; RotationOnly.M[0][1] = Forward.Y; RotationOnly.M[0][2] = Forward.Z;
+		RotationOnly.M[1][0] = Right.X;   RotationOnly.M[1][1] = Right.Y;   RotationOnly.M[1][2] = Right.Z;
+		RotationOnly.M[2][0] = Up.X;      RotationOnly.M[2][1] = Up.Y;      RotationOnly.M[2][2] = Up.Z;
+		return RotationOnly;
+	}
+}
+
 // ============================================================
 // FGizmoSceneProxy
 // ============================================================
@@ -73,8 +97,9 @@ void FGizmoSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 	float PerViewScale = Gizmo->ComputeScreenSpaceScale(
 		CameraPos, Frame.bIsOrtho, Frame.OrthoWidth);
 
+	const FMatrix RotationOnly = MakeRotationMatrixFromComponentAxes(Gizmo);
 	FMatrix WorldMatrix = FMatrix::MakeScaleMatrix(FVector(PerViewScale, PerViewScale, PerViewScale))
-		* FMatrix::MakeRotationEuler(Gizmo->GetRelativeRotation().ToVector())
+		* RotationOnly
 		* FMatrix::MakeTranslationMatrix(Gizmo->GetWorldLocation());
 
 	PerObjectConstants = FPerObjectConstants::FromWorldMatrix(WorldMatrix);

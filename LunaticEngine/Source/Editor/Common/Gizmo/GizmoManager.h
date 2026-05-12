@@ -65,7 +65,13 @@ private:
     bool bDragging = false;
     bool bFirstDragUpdate = true;
     int32 ActiveAxis = -1;
+    EGizmoMode DragMode = EGizmoMode::Translate;
+    EGizmoSpace DragSpace = EGizmoSpace::Local;
     FTransform DragStartTransform;
+    FTransform DragStartLocalTransform;
+    FVector DragOriginLocation = FVector::ZeroVector;
+    FVector DragAxisVector = FVector::ZeroVector;
+    FVector DragStartIntersectionLocation = FVector::ZeroVector;
     FVector LastIntersectionLocation;
     FVector DragPlaneNormal = FVector(0.0f, 0.0f, 1.0f);
 };

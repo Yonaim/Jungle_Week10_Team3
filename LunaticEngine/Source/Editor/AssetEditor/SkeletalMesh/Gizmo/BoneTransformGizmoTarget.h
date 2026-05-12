@@ -16,6 +16,9 @@ public:
 
     FTransform GetWorldTransform() const override;
     void SetWorldTransform(const FTransform& NewWorldTransform) override;
+    void SetWorldLocation(const FVector& NewWorldLocation) override;
+    void SetWorldRotation(const FQuat& NewWorldRotation) override;
+    void SetWorldScale(const FVector& NewWorldScale) override;
 
     FTransform GetLocalTransform() const override;
     void SetLocalTransform(const FTransform& NewLocalTransform) override;
