@@ -72,10 +72,29 @@ FTransform FBoneTransformGizmoTarget::GetWorldTransform() const
 
 void FBoneTransformGizmoTarget::SetWorldTransform(const FTransform& NewWorldTransform)
 {
-    // 현재 Runtime 쪽 공개 API가 local pose 수정 중심이므로,
-    // 실제 저장은 SetLocalTransform 경로로 통일한다.
-    // 향후 ParentWorld 역산 API가 정리되면 여기서 World -> Local 변환을 수행하면 된다.
-    SetLocalTransform(NewWorldTransform);
+    if (!IsValid() || !Component || !Component->GetSkeletalMesh() || !Component->GetSkeletalMesh()->GetSkeletalMeshAsset())
+    {
+        return;
+    }
+
+    // Bone gizmo의 WorldTransform은 현재 preview component space transform이다.
+    // 이를 그대로 LocalTransforms[BoneIndex]에 넣으면 parent가 있는 본에서 회전/이동이
+    // 부모 기준으로 한 번 더 누적되어 기즈모 회전이 크게 틀어진다.
+    const FSkeletalMesh* MeshAsset = Component->GetSkeletalMesh()->GetSkeletalMeshAsset();
+    const FSkeletonPose& Pose = Component->GetCurrentPose();
+    const int32 ParentIndex = MeshAsset->Bones[BoneIndex].ParentIndex;
+
+    FMatrix NewComponentMatrix = NewWorldTransform.ToMatrix();
+    FTransform NewLocalTransform = NewWorldTransform;
+    if (ParentIndex != InvalidBoneIndex &&
+        ParentIndex >= 0 &&
+        ParentIndex < static_cast<int32>(Pose.ComponentTransforms.size()))
+    {
+        const FMatrix ParentComponentInverse = Pose.ComponentTransforms[ParentIndex].GetInverse();
+        NewLocalTransform = MakeTransformFromMatrix(NewComponentMatrix * ParentComponentInverse);
+    }
+
+    SetLocalTransform(NewLocalTransform);
 }
 
 FTransform FBoneTransformGizmoTarget::GetLocalTransform() const
