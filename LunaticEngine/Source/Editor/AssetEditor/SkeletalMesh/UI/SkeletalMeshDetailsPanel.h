@@ -3,35 +3,21 @@
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
 #include "Common/UI/Panels/Panel.h"
 
-#include <filesystem>
-
-#include "ImGui/imgui.h"
-
+class FSkeletalMeshSelectionManager;
 class USkeletalMesh;
+class USkeletalMeshComponent;
 
-/**
- * SkeletalMesh Editor의 오른쪽 Details 패널.
- *
- * 김연하 담당 범위:
- * - Mesh 기본 정보 표시
- * - LOD / Section / Material 정보 표시를 위한 자리 제공
- * - 현재 선택된 Bone index / Preview mode 상태 표시
- *
- * 김형도 담당 예정 영역:
- * - Bone Transform Inspector
- * - Local / World Transform 표시
- * - Pose Edit Mode에서의 값 편집 UI
- */
+// Skeletal Mesh Editor의 선택 Details 패널.
+// Asset Details가 애셋 자체 정보를 보여준다면, 이 패널은 현재 선택한 Bone의 정보를 보여준다.
 class FSkeletalMeshDetailsPanel
 {
   public:
-    void Render(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State,
-                const FPanelDesc &PanelDesc);
+    void Render(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent, FSkeletalMeshEditorState &State,
+                FSkeletalMeshSelectionManager &SelectionManager, const FPanelDesc &PanelDesc);
 
   private:
-    void RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State);
-    void RenderLODSectionMaterialInfo(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State);
-    void RenderViewerActions(FSkeletalMeshEditorState &State);
-    void RenderRuntimePlaceholder();
-    void RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State);
+    void RenderSearchToolbar();
+    void RenderBoneSection(USkeletalMesh *Mesh, FSkeletalMeshSelectionManager &SelectionManager);
+    void RenderTransformSection(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);
 };

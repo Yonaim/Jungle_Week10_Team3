@@ -50,6 +50,7 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
     bPreviewPanelOpen = true;
     bSkeletonTreePanelOpen = true;
     bDetailsPanelOpen = true;
+    bBoneDetailsPanelOpen = true;
 
     bOpen = true;
     bDirty = false;
@@ -75,6 +76,7 @@ void FSkeletalMeshEditor::Close()
     bPreviewPanelOpen = true;
     bSkeletonTreePanelOpen = true;
     bDetailsPanelOpen = true;
+    bBoneDetailsPanelOpen = true;
 
     bOpen = false;
     bDirty = false;
@@ -153,6 +155,8 @@ void FSkeletalMeshEditor::BuildWindowMenu()
         bSkeletonTreePanelOpen = !bSkeletonTreePanelOpen;
     if (ImGui::MenuItem("Asset Details", nullptr, bDetailsPanelOpen))
         bDetailsPanelOpen = !bDetailsPanelOpen;
+    if (ImGui::MenuItem("Details", nullptr, bBoneDetailsPanelOpen))
+        bBoneDetailsPanelOpen = !bBoneDetailsPanelOpen;
 
     ImGui::Separator();
     if (ImGui::MenuItem("Reset Skeletal Mesh Editor Layout"))
@@ -160,6 +164,7 @@ void FSkeletalMeshEditor::BuildWindowMenu()
         bPreviewPanelOpen = true;
         bSkeletonTreePanelOpen = true;
         bDetailsPanelOpen = true;
+        bBoneDetailsPanelOpen = true;
         BuiltDockspaceId = 0;
     }
 }
@@ -214,6 +219,7 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
     const std::string SkeletonId = MakePanelStableId("SkeletonTree");
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
     const std::string DetailsId = MakePanelStableId("AssetDetails");
+    const std::string BoneDetailsId = MakePanelStableId("Details");
 
     FPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.SkeletonTree");
     SkeletonDesc.StableId = SkeletonId.c_str();
@@ -226,10 +232,14 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
     FPanelDesc DetailsDesc = MakePanelDesc("Asset Details", "AssetDetails", "Editor.Icon.SkeletalMesh");
     DetailsDesc.StableId = DetailsId.c_str();
 
+    FPanelDesc BoneDetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
+    BoneDetailsDesc.StableId = BoneDetailsId.c_str();
+
     FAssetPreviewDockLayoutDesc LayoutDesc;
     LayoutDesc.CenterWindow = FPanel::MakeTitle(PreviewDesc);
     LayoutDesc.RightTopWindow = FPanel::MakeTitle(SkeletonDesc);
     LayoutDesc.RightBottomWindow = FPanel::MakeTitle(DetailsDesc);
+    LayoutDesc.RightBottomSecondWindow = FPanel::MakeTitle(BoneDetailsDesc);
 
     FDockLayoutUtils::DockAssetPreviewLayout(DockspaceId, LayoutDesc);
 }
@@ -241,6 +251,7 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     const std::string SkeletonId = MakePanelStableId("SkeletonTree");
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
     const std::string DetailsId = MakePanelStableId("AssetDetails");
+    const std::string BoneDetailsId = MakePanelStableId("Details");
 
     FPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.SkeletonTree");
     SkeletonDesc.StableId = SkeletonId.c_str();
@@ -259,6 +270,10 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     DetailsDesc.StableId = DetailsId.c_str();
     DetailsDesc.bOpen = &bDetailsPanelOpen;
 
+    FPanelDesc BoneDetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
+    BoneDetailsDesc.StableId = BoneDetailsId.c_str();
+    BoneDetailsDesc.bOpen = &bBoneDetailsPanelOpen;
+
     if (bPreviewPanelOpen)
     {
         PreviewViewport.Render(EditingAsset, State, &SelectionManager, &Toolbar, DeltaTime, PreviewDesc);
@@ -270,5 +285,14 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     if (bDetailsPanelOpen)
     {
         AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, EditingAssetPath, State, SelectionManager, DetailsDesc);
+    }
+    if (bBoneDetailsPanelOpen)
+    {
+        USkeletalMeshComponent *PreviewComponent = nullptr;
+        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        {
+            PreviewComponent = PreviewClient->GetPreviewComponent();
+        }
+        DetailsPanel.Render(EditingAsset, PreviewComponent, State, SelectionManager, BoneDetailsDesc);
     }
 }

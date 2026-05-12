@@ -41,6 +41,7 @@ struct FAssetPreviewDockLayoutDesc
     std::string CenterWindow;
     std::string RightTopWindow;
     std::string RightBottomWindow;
+    std::string RightBottomSecondWindow;
 
     float LeftToolbarRatio = 0.12f;
     float RightColumnRatio = 0.28f;
@@ -151,6 +152,10 @@ class FDockLayoutUtils
         if (!Desc.RightBottomWindow.empty())
         {
             ImGui::DockBuilderDockWindow(Desc.RightBottomWindow.c_str(), RightBottomId);
+        }
+        if (!Desc.RightBottomSecondWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.RightBottomSecondWindow.c_str(), RightBottomId);
         }
 
         ImGui::DockBuilderFinish(DockspaceId);

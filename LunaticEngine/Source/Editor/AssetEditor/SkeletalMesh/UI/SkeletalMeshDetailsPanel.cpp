@@ -1,44 +1,165 @@
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshDetailsPanel.h"
 
-#include "Common/UI/Panels/Panel.h"
-
+#include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
+#include "Common/UI/Details/EditorDetailsWidgets.h"
+#include "Common/UI/Style/EditorUIStyle.h"
+#include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
-#include "Platform/Paths.h"
+#include "Math/Rotator.h"
+#include "Mesh/SkeletonPose.h"
 #include "ImGui/imgui.h"
+
+#include <algorithm>
+#include <cstring>
+#include <string>
 
 namespace
 {
-const char *PreviewModeToText(ESkeletalMeshPreviewMode Mode)
+FTransform MakeTransformFromMatrix(const FMatrix &Matrix)
 {
-    switch (Mode)
+    FVector AxisX(Matrix.M[0][0], Matrix.M[0][1], Matrix.M[0][2]);
+    FVector AxisY(Matrix.M[1][0], Matrix.M[1][1], Matrix.M[1][2]);
+    FVector AxisZ(Matrix.M[2][0], Matrix.M[2][1], Matrix.M[2][2]);
+
+    FVector Scale(AxisX.Length(), AxisY.Length(), AxisZ.Length());
+    if (Scale.X > 1e-6f)
     {
-    case ESkeletalMeshPreviewMode::ReferencePose:
-        return "Reference Pose";
-    case ESkeletalMeshPreviewMode::SkinnedPose:
-        return "Skinned Pose";
-    default:
-        return "Unknown";
+        AxisX /= Scale.X;
+    }
+    if (Scale.Y > 1e-6f)
+    {
+        AxisY /= Scale.Y;
+    }
+    if (Scale.Z > 1e-6f)
+    {
+        AxisZ /= Scale.Z;
+    }
+
+    FMatrix RotationMatrix = FMatrix::Identity;
+    RotationMatrix.M[0][0] = AxisX.X;
+    RotationMatrix.M[0][1] = AxisX.Y;
+    RotationMatrix.M[0][2] = AxisX.Z;
+    RotationMatrix.M[1][0] = AxisY.X;
+    RotationMatrix.M[1][1] = AxisY.Y;
+    RotationMatrix.M[1][2] = AxisY.Z;
+    RotationMatrix.M[2][0] = AxisZ.X;
+    RotationMatrix.M[2][1] = AxisZ.Y;
+    RotationMatrix.M[2][2] = AxisZ.Z;
+
+    return FTransform(Matrix.GetLocation(), FQuat::FromMatrix(RotationMatrix), Scale);
+}
+
+void DrawSmallIconButton(const char *Id, const char *Label, const char *Tooltip)
+{
+    FEditorUIStyle::PushHeaderButtonStyle(4.0f);
+    ImGui::Button(Id, ImVec2(22.0f, 22.0f));
+    FEditorUIStyle::PopHeaderButtonStyle();
+    const ImVec2 Min = ImGui::GetItemRectMin();
+    const ImVec2 LabelSize = ImGui::CalcTextSize(Label);
+    ImGui::GetWindowDrawList()->AddText(
+        ImVec2(Min.x + (22.0f - LabelSize.x) * 0.5f, Min.y + (22.0f - LabelSize.y) * 0.5f),
+        ImGui::GetColorU32(ImGuiCol_Text), Label);
+    if (Tooltip && ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("%s", Tooltip);
     }
 }
 
-void DrawReadOnlyIntRow(const char *Label, int32 Value)
+bool DrawModeButton(const char *Label, bool bSelected)
 {
-    ImGui::TextUnformatted(Label);
-    ImGui::TableNextColumn();
-    ImGui::Text("%d", Value);
-    ImGui::TableNextColumn();
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    if (bSelected)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.24f, 0.24f, 0.26f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.28f, 0.30f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.30f, 0.30f, 0.32f, 1.0f));
+    }
+    else
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, FEditorUIStyle::HeaderButtonColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, FEditorUIStyle::HeaderButtonHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, FEditorUIStyle::HeaderButtonActiveColor);
+    }
+    ImGui::PushStyleColor(ImGuiCol_Border, FEditorUIStyle::HeaderButtonBorderColor);
+    const bool bClicked = ImGui::Button(Label, ImVec2(96.0f, 24.0f));
+    ImGui::PopStyleColor(4);
+    ImGui::PopStyleVar(2);
+    return bClicked;
 }
 
-void DrawReadOnlyTextRow(const char *Label, const char *Value)
+void DrawAxisField(const char *Id, const char *AxisLabel, float &Value, bool bReadOnly, float Width)
 {
-    ImGui::TextUnformatted(Label);
-    ImGui::TableNextColumn();
-    ImGui::TextUnformatted(Value ? Value : "");
-    ImGui::TableNextColumn();
+    ImGui::PushID(Id);
+    ImGui::PushStyleColor(ImGuiCol_Text, FEditorUIStyle::DetailsVectorLabelColor);
+    ImGui::TextUnformatted(AxisLabel);
+    ImGui::PopStyleColor();
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(Width);
+    FEditorUIStyle::PushDetailsVectorFieldStyle();
+    if (bReadOnly)
+    {
+        ImGui::BeginDisabled();
+    }
+    ImGui::InputFloat("##Value", &Value, 0.0f, 0.0f, "%.6g");
+    if (bReadOnly)
+    {
+        ImGui::EndDisabled();
+    }
+    FEditorUIStyle::PopDetailsVectorFieldStyle();
+    ImGui::PopID();
+}
+
+bool DrawTransformRow(const char *Label, FVector &Values, bool bReadOnly)
+{
+    bool bChanged = false;
+    ImGui::PushID(Label);
+    if (ImGui::BeginTable("##TransformRow", 5,
+                          ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+    {
+        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, FEditorUIStyle::DetailsLabelWidth);
+        ImGui::TableSetupColumn("X", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Y", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Z", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, 28.0f);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(Label);
+
+        const float AxisWidth = (std::max)(54.0f, ImGui::GetContentRegionAvail().x * 0.55f);
+        ImGui::TableNextColumn();
+        float OldX = Values.X;
+        DrawAxisField("X", "X", Values.X, bReadOnly, AxisWidth);
+        bChanged |= OldX != Values.X;
+
+        ImGui::TableNextColumn();
+        float OldY = Values.Y;
+        DrawAxisField("Y", "Y", Values.Y, bReadOnly, AxisWidth);
+        bChanged |= OldY != Values.Y;
+
+        ImGui::TableNextColumn();
+        float OldZ = Values.Z;
+        DrawAxisField("Z", "Z", Values.Z, bReadOnly, AxisWidth);
+        bChanged |= OldZ != Values.Z;
+
+        ImGui::TableNextColumn();
+        DrawSmallIconButton("##Reset", "↶", "Reset placeholder");
+        ImGui::EndTable();
+    }
+    ImGui::PopID();
+    return bChanged;
+}
+
+bool IsValidBone(USkeletalMesh *Mesh, int32 BoneIndex)
+{
+    return Mesh && BoneIndex >= 0 && BoneIndex < Mesh->GetBoneCount();
 }
 } // namespace
 
-void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State,
+void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                       FSkeletalMeshEditorState &State,
+                                       FSkeletalMeshSelectionManager &SelectionManager,
                                        const FPanelDesc &PanelDesc)
 {
     if (!FPanel::Begin(PanelDesc))
@@ -47,6 +168,8 @@ void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, const std::filesyste
         return;
     }
 
+    RenderSearchToolbar();
+
     if (!Mesh)
     {
         ImGui::TextDisabled("No SkeletalMesh asset selected.");
@@ -54,152 +177,124 @@ void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, const std::filesyste
         return;
     }
 
-    RenderMeshInfo(Mesh, AssetPath, State);
+    RenderBoneSection(Mesh, SelectionManager);
     ImGui::Spacing();
-    RenderLODSectionMaterialInfo(Mesh, State);
-    ImGui::Spacing();
-    RenderViewerActions(State);
-    ImGui::Spacing();
-    RenderRuntimePlaceholder();
-    ImGui::Spacing();
-    RenderBoneEditingPlaceholder(State);
+    RenderTransformSection(Mesh, PreviewComponent, State, SelectionManager);
 
     FPanel::End();
 }
 
-void FSkeletalMeshDetailsPanel::RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State)
+void FSkeletalMeshDetailsPanel::RenderSearchToolbar()
 {
-    if (!ImGui::CollapsingHeader("Mesh Info", ImGuiTreeNodeFlags_DefaultOpen))
+    static char SearchBuffer[128] = {};
+    FEditorDetailsWidgets::DrawDetailsSearchToolbar("##SkeletalMeshDetailsSearch", SearchBuffer, sizeof(SearchBuffer));
+}
+
+void FSkeletalMeshDetailsPanel::RenderBoneSection(USkeletalMesh *Mesh, FSkeletalMeshSelectionManager &SelectionManager)
+{
+    if (!FEditorDetailsWidgets::BeginSection("Bone"))
     {
         return;
     }
 
-    const FString FileName = AssetPath.empty() ? FString("Untitled") : FPaths::ToUtf8(AssetPath.filename().wstring());
-    const FString FullPath = AssetPath.empty() ? FString("") : FPaths::ToUtf8(AssetPath.wstring());
+    const int32 BoneIndex = SelectionManager.GetPrimaryBoneIndex();
+    const char *BoneName = IsValidBone(Mesh, BoneIndex) ? Mesh->GetBoneName(BoneIndex) : "None";
 
-    if (ImGui::BeginTable("##SkeletalMeshInfoTable", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg))
+    if (FEditorDetailsWidgets::BeginReadOnlyTable("##SkeletalMeshDetailsBoneTable"))
     {
-        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-
-        ImGui::TableNextColumn();
-        DrawReadOnlyTextRow("Asset", FileName.c_str());
-        if (!FullPath.empty() && ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip("%s", FullPath.c_str());
-        }
-
-        DrawReadOnlyIntRow("Bone Count", Mesh->GetBoneCount());
-        DrawReadOnlyIntRow("Vertex Count", Mesh->GetVertexCount());
-        DrawReadOnlyIntRow("Index Count", Mesh->GetIndexCount());
-        DrawReadOnlyIntRow("Current LOD", State.CurrentLODIndex);
-        DrawReadOnlyIntRow("Selected Bone", State.SelectedBoneIndex);
-        DrawReadOnlyTextRow("Preview Mode", PreviewModeToText(State.PreviewMode));
-
+        FEditorDetailsWidgets::DrawReadOnlyTextRow("Bone Name", BoneName);
+        FEditorDetailsWidgets::DrawReadOnlyIntRow("Bone Index", BoneIndex);
+        FEditorDetailsWidgets::DrawReadOnlyIntRow("Selected Count", SelectionManager.GetSelectedCount());
         ImGui::EndTable();
     }
 }
 
-void FSkeletalMeshDetailsPanel::RenderLODSectionMaterialInfo(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State)
+void FSkeletalMeshDetailsPanel::RenderTransformSection(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                                       FSkeletalMeshEditorState &State,
+                                                       FSkeletalMeshSelectionManager &SelectionManager)
 {
-    (void)Mesh;
-
-    if (!ImGui::CollapsingHeader("LOD / Section / Material", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!FEditorDetailsWidgets::BeginSection("Transforms"))
     {
         return;
     }
 
-    ImGui::TextDisabled("김연하 담당 Viewer UI 영역");
-    ImGui::BulletText("현재 선택 LOD / Section / Material Slot 상태를 보관한다.");
-    ImGui::BulletText("FBX / Asset Pipeline에서 LOD, Section, Material accessor가 확정되면 실제 목록으로 교체한다.");
-
-    ImGui::Separator();
-
-    ImGui::SetNextItemWidth(120.0f);
-    if (ImGui::InputInt("Current LOD", &State.CurrentLODIndex, 1, 1))
+    const int32 BoneIndex = SelectionManager.GetPrimaryBoneIndex();
+    if (!IsValidBone(Mesh, BoneIndex))
     {
-        if (State.CurrentLODIndex < 0)
-        {
-            State.CurrentLODIndex = 0;
-        }
-    }
-
-    ImGui::SetNextItemWidth(120.0f);
-    ImGui::InputInt("Selected Section", &State.SelectedSectionIndex, 1, 1);
-    if (State.SelectedSectionIndex < -1)
-    {
-        State.SelectedSectionIndex = -1;
-    }
-
-    ImGui::SetNextItemWidth(120.0f);
-    ImGui::InputInt("Material Slot", &State.SelectedMaterialSlotIndex, 1, 1);
-    if (State.SelectedMaterialSlotIndex < -1)
-    {
-        State.SelectedMaterialSlotIndex = -1;
-    }
-
-    if (ImGui::BeginTable("##SkeletalMeshLODPlaceholderTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-    {
-        ImGui::TableSetupColumn("LOD");
-        ImGui::TableSetupColumn("Section");
-        ImGui::TableSetupColumn("Material");
-        ImGui::TableHeadersRow();
-
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("%d", State.CurrentLODIndex);
-        ImGui::TableNextColumn();
-        ImGui::Text("%s", State.SelectedSectionIndex >= 0 ? "Selected" : "Pending API");
-        ImGui::TableNextColumn();
-        ImGui::Text("%s", State.SelectedMaterialSlotIndex >= 0 ? "Selected" : "Pending API");
-
-        ImGui::EndTable();
-    }
-}
-
-void FSkeletalMeshDetailsPanel::RenderViewerActions(FSkeletalMeshEditorState &State)
-{
-    if (!ImGui::CollapsingHeader("Viewer Actions", ImGuiTreeNodeFlags_DefaultOpen))
-    {
+        ImGui::TextDisabled("Select a bone in Skeleton Tree or viewport.");
         return;
     }
 
-    if (ImGui::Button("Frame Mesh"))
+    const FSkeletalMesh *MeshAsset = Mesh->GetSkeletalMeshAsset();
+    if (!MeshAsset || BoneIndex >= static_cast<int32>(MeshAsset->Bones.size()))
     {
-        State.bFramePreviewRequested = true;
+        ImGui::TextDisabled("Invalid skeletal mesh data.");
+        return;
+    }
+
+    if (FEditorDetailsWidgets::DrawModeButton("Bone", State.BoneDetailsSpace == ESkeletalMeshBoneDetailsSpace::Bone))
+    {
+        State.BoneDetailsSpace = ESkeletalMeshBoneDetailsSpace::Bone;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Clear Bone Selection"))
+    if (FEditorDetailsWidgets::DrawModeButton("Reference", State.BoneDetailsSpace == ESkeletalMeshBoneDetailsSpace::Reference))
     {
-        State.SelectedBoneIndex = -1;
+        State.BoneDetailsSpace = ESkeletalMeshBoneDetailsSpace::Reference;
+    }
+    ImGui::SameLine();
+    if (FEditorDetailsWidgets::DrawModeButton("Mesh Relative", State.BoneDetailsSpace == ESkeletalMeshBoneDetailsSpace::MeshRelative))
+    {
+        State.BoneDetailsSpace = ESkeletalMeshBoneDetailsSpace::MeshRelative;
     }
 
-    ImGui::Checkbox("Show Mesh Stats Overlay", &State.bShowMeshStatsOverlay);
-    ImGui::Checkbox("Show Bones", &State.bShowBones);
-}
+    FTransform DisplayTransform = MeshAsset->Bones[BoneIndex].LocalBindTransform;
+    bool bCanEdit = false;
 
-void FSkeletalMeshDetailsPanel::RenderRuntimePlaceholder()
-{
-    if (ImGui::CollapsingHeader("Runtime / Skinning", ImGuiTreeNodeFlags_DefaultOpen))
+    if (PreviewComponent)
     {
-        ImGui::TextDisabled("남윤지 담당 영역 Placeholder");
-        ImGui::BulletText("USkinnedMeshComponent / USkeletalMeshComponent 연동 예정");
-        ImGui::BulletText("Reference Pose / CPU Skinning 결과 표시 예정");
-        ImGui::BulletText("Preview Viewport의 실제 렌더링 입력으로 연결 예정");
+        const FSkeletonPose &Pose = PreviewComponent->GetCurrentPose();
+        if (BoneIndex < static_cast<int32>(Pose.LocalTransforms.size()))
+        {
+            if (State.BoneDetailsSpace == ESkeletalMeshBoneDetailsSpace::Bone)
+            {
+                DisplayTransform = Pose.LocalTransforms[BoneIndex];
+                bCanEdit = State.bEnablePoseEditMode;
+            }
+            else if (State.BoneDetailsSpace == ESkeletalMeshBoneDetailsSpace::MeshRelative &&
+                     BoneIndex < static_cast<int32>(Pose.ComponentTransforms.size()))
+            {
+                DisplayTransform = MakeTransformFromMatrix(Pose.ComponentTransforms[BoneIndex]);
+            }
+        }
     }
-}
 
-void FSkeletalMeshDetailsPanel::RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State)
-{
-    if (ImGui::CollapsingHeader("Skeleton / Pose / Bone Gizmo", ImGuiTreeNodeFlags_DefaultOpen))
+    const bool bReadOnly = !bCanEdit;
+    if (State.BoneDetailsSpace != ESkeletalMeshBoneDetailsSpace::Bone)
     {
-        ImGui::TextDisabled("김형도 담당 영역 Placeholder");
-        ImGui::BulletText("Bone local / world transform inspector 예정");
-        ImGui::BulletText("Bone Gizmo 조작 예정");
-        ImGui::BulletText("Pose dirty 표시 후 skinning refresh 요청 예정");
+        ImGui::TextDisabled("Reference / Mesh Relative values are displayed as read-only.");
+    }
+    else if (!State.bEnablePoseEditMode)
+    {
+        ImGui::TextDisabled("Enable Pose Edit Mode to edit Bone transform values.");
+    }
 
-        ImGui::Separator();
-        ImGui::Checkbox("Pose Edit Mode", &State.bEnablePoseEditMode);
-        ImGui::Text("Selected Bone Index: %d", State.SelectedBoneIndex);
+    FVector Location = DisplayTransform.Location;
+    FVector RotationEuler = DisplayTransform.Rotation.ToRotator().ToVector();
+    FVector Scale = DisplayTransform.Scale;
+
+    ImGui::Spacing();
+    bool bChanged = false;
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Location", Location, bReadOnly);
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Rotation", RotationEuler, bReadOnly);
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Scale", Scale, bReadOnly);
+
+    if (bChanged && bCanEdit && PreviewComponent)
+    {
+        FTransform NewLocal = DisplayTransform;
+        NewLocal.Location = Location;
+        NewLocal.Rotation = FRotator(RotationEuler).ToQuaternion();
+        NewLocal.Scale = Scale;
+        PreviewComponent->SetBoneLocalTransform(BoneIndex, NewLocal);
+        PreviewComponent->RefreshSkinningNow();
     }
 }

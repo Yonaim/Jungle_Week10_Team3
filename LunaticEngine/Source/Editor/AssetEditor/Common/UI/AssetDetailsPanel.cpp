@@ -2,10 +2,19 @@
 
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 
+#include "Common/UI/Details/EditorDetailsWidgets.h"
 #include "Common/UI/Style/EditorUIStyle.h"
 #include "Engine/Mesh/SkeletalMesh.h"
+#include "Materials/Material.h"
+#include "Materials/MaterialManager.h"
 #include "Platform/Paths.h"
+#include "Texture/Texture2D.h"
 #include "ImGui/imgui.h"
+
+#include <algorithm>
+#include <cstring>
+#include <cstdio>
+#include <string>
 
 namespace
 {
@@ -21,6 +30,27 @@ const char *PreviewModeToText(ESkeletalMeshPreviewMode Mode)
         return "Unknown";
     }
 }
+
+const char *SafeText(const FString &Text)
+{
+    return Text.empty() ? "None" : Text.c_str();
+}
+
+void DrawSmallIconButton(const char *Id, const char *Label, const char *Tooltip)
+{
+    FEditorUIStyle::PushHeaderButtonStyle(4.0f);
+    ImGui::Button(Id, ImVec2(22.0f, 22.0f));
+    FEditorUIStyle::PopHeaderButtonStyle();
+    const ImVec2 Min = ImGui::GetItemRectMin();
+    const ImVec2 LabelSize = ImGui::CalcTextSize(Label);
+    ImGui::GetWindowDrawList()->AddText(
+        ImVec2(Min.x + (22.0f - LabelSize.x) * 0.5f, Min.y + (22.0f - LabelSize.y) * 0.5f),
+        ImGui::GetColorU32(ImGuiCol_Text), Label);
+    if (Tooltip && ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("%s", Tooltip);
+    }
+}
 } // namespace
 
 void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
@@ -34,6 +64,8 @@ void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::file
         return;
     }
 
+    RenderSearchToolbar();
+
     if (!Mesh)
     {
         ImGui::TextDisabled("No SkeletalMesh asset selected.");
@@ -41,17 +73,74 @@ void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::file
         return;
     }
 
-    RenderMeshInfo(Mesh, AssetPath, State, SelectionManager);
+    RenderMaterialSlots(Mesh, State);
     ImGui::Spacing();
-    RenderLODSectionMaterialInfo(Mesh, State);
+    RenderMeshInfo(Mesh, AssetPath, State, SelectionManager);
     ImGui::Spacing();
     RenderViewerActions(State, SelectionManager);
     ImGui::Spacing();
-    RenderRuntimePlaceholder();
-    ImGui::Spacing();
-    RenderBoneEditingPlaceholder(State, SelectionManager);
+    RenderBoneSelectionSummary(State, SelectionManager);
 
     FPanel::End();
+}
+
+void FAssetDetailsPanel::RenderSearchToolbar()
+{
+    static char SearchBuffer[128] = {};
+    FEditorDetailsWidgets::DrawDetailsSearchToolbar("##AssetDetailsSearch", SearchBuffer, sizeof(SearchBuffer));
+}
+
+void FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State)
+{
+    if (!FEditorDetailsWidgets::BeginSection("Material Slots"))
+    {
+        return;
+    }
+
+    const TArray<FStaticMaterial> &Materials = Mesh->GetStaticMaterials();
+    const int32 MaterialCount = static_cast<int32>(Materials.size());
+
+    if (FEditorDetailsWidgets::BeginReadOnlyTable("##AssetDetailsMaterialSlotSummary"))
+    {
+        FEditorDetailsWidgets::DrawReadOnlyIntRow("Material Slots", MaterialCount);
+        ImGui::EndTable();
+    }
+
+    if (MaterialCount <= 0)
+    {
+        ImGui::TextDisabled("No material slots.");
+        return;
+    }
+
+    ImGui::Spacing();
+    for (int32 Index = 0; Index < MaterialCount; ++Index)
+    {
+        const FStaticMaterial &StaticSlot = Materials[Index];
+        FMaterialSlot Slot;
+        Slot.Path = StaticSlot.MaterialInterface ? StaticSlot.MaterialInterface->GetAssetPathFileName() : "None";
+
+        ImGui::PushID(Index);
+        const bool bChanged = FEditorDetailsWidgets::DrawMaterialSlotRow({
+            Index,
+            StaticSlot.MaterialSlotName.empty() ? "None" : StaticSlot.MaterialSlotName.c_str(),
+            &Slot,
+            true,
+            false,
+            120.0f,
+        });
+        (void)bChanged;
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            State.SelectedMaterialSlotIndex = Index;
+        }
+
+        if (Index + 1 < MaterialCount)
+        {
+            ImGui::Spacing();
+        }
+        ImGui::PopID();
+    }
 }
 
 void FAssetDetailsPanel::RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
@@ -77,67 +166,7 @@ void FAssetDetailsPanel::RenderMeshInfo(USkeletalMesh *Mesh, const std::filesyst
         FEditorUIStyle::DrawReadOnlyIntRow("Bone Count", Mesh->GetBoneCount());
         FEditorUIStyle::DrawReadOnlyIntRow("Vertex Count", Mesh->GetVertexCount());
         FEditorUIStyle::DrawReadOnlyIntRow("Index Count", Mesh->GetIndexCount());
-        FEditorUIStyle::DrawReadOnlyIntRow("Current LOD", State.CurrentLODIndex);
-        FEditorUIStyle::DrawReadOnlyIntRow("Primary Bone", SelectionManager.GetPrimaryBoneIndex());
-        FEditorUIStyle::DrawReadOnlyIntRow("Selected Bones", SelectionManager.GetSelectedCount());
         FEditorUIStyle::DrawReadOnlyTextRow("Preview Mode", PreviewModeToText(State.PreviewMode));
-        ImGui::EndTable();
-    }
-}
-
-void FAssetDetailsPanel::RenderLODSectionMaterialInfo(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State)
-{
-    (void)Mesh;
-
-    if (!FEditorUIStyle::BeginDetailsSection("LOD / Section / Material"))
-    {
-        return;
-    }
-
-    ImGui::TextDisabled("김연하 담당 Viewer UI 영역");
-    ImGui::BulletText("현재 선택 LOD / Section / Material Slot 상태를 보관한다.");
-    ImGui::BulletText("FBX / Asset Pipeline에서 LOD, Section, Material accessor가 확정되면 실제 목록으로 교체한다.");
-
-    ImGui::Separator();
-
-    FEditorUIStyle::PushDetailsPropertyEditStyle();
-    ImGui::SetNextItemWidth(120.0f);
-    if (ImGui::InputInt("Current LOD", &State.CurrentLODIndex, 1, 1) && State.CurrentLODIndex < 0)
-    {
-        State.CurrentLODIndex = 0;
-    }
-
-    ImGui::SetNextItemWidth(120.0f);
-    ImGui::InputInt("Selected Section", &State.SelectedSectionIndex, 1, 1);
-    if (State.SelectedSectionIndex < -1)
-    {
-        State.SelectedSectionIndex = -1;
-    }
-
-    ImGui::SetNextItemWidth(120.0f);
-    ImGui::InputInt("Material Slot", &State.SelectedMaterialSlotIndex, 1, 1);
-    if (State.SelectedMaterialSlotIndex < -1)
-    {
-        State.SelectedMaterialSlotIndex = -1;
-    }
-    FEditorUIStyle::PopDetailsPropertyEditStyle();
-
-    if (ImGui::BeginTable("##AssetDetailsSkeletalMeshLODPlaceholderTable", 3,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-    {
-        ImGui::TableSetupColumn("LOD");
-        ImGui::TableSetupColumn("Section");
-        ImGui::TableSetupColumn("Material");
-        ImGui::TableHeadersRow();
-
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("%d", State.CurrentLODIndex);
-        ImGui::TableNextColumn();
-        ImGui::Text("%s", State.SelectedSectionIndex >= 0 ? "Selected" : "Pending API");
-        ImGui::TableNextColumn();
-        ImGui::Text("%s", State.SelectedMaterialSlotIndex >= 0 ? "Selected" : "Pending API");
-
         ImGui::EndTable();
     }
 }
@@ -166,30 +195,20 @@ void FAssetDetailsPanel::RenderViewerActions(FSkeletalMeshEditorState &State, FS
     ImGui::Checkbox("Show Bones", &State.bShowBones);
 }
 
-void FAssetDetailsPanel::RenderRuntimePlaceholder()
+void FAssetDetailsPanel::RenderBoneSelectionSummary(FSkeletalMeshEditorState &State,
+                                                    FSkeletalMeshSelectionManager &SelectionManager)
 {
-    if (FEditorUIStyle::BeginDetailsSection("Runtime / Skinning"))
+    if (!FEditorUIStyle::BeginDetailsSection("Bone Editing"))
     {
-        ImGui::TextDisabled("남윤지 담당 영역 Placeholder");
-        ImGui::BulletText("USkinnedMeshComponent / USkeletalMeshComponent 연동 예정");
-        ImGui::BulletText("Reference Pose / CPU Skinning 결과 표시 예정");
-        ImGui::BulletText("Preview Viewport의 실제 렌더링 입력으로 연결 예정");
+        return;
     }
-}
 
-void FAssetDetailsPanel::RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State,
-                                                        FSkeletalMeshSelectionManager &SelectionManager)
-{
-    if (FEditorUIStyle::BeginDetailsSection("Skeleton / Pose / Bone Gizmo"))
+    ImGui::Checkbox("Pose Edit Mode", &State.bEnablePoseEditMode);
+
+    if (FEditorUIStyle::BeginDetailsReadOnlyTable("##AssetDetailsBoneSelectionSummary"))
     {
-        ImGui::TextDisabled("김형도 담당 영역 Placeholder");
-        ImGui::BulletText("Bone local / world transform inspector 예정");
-        ImGui::BulletText("Bone Gizmo 조작 예정");
-        ImGui::BulletText("Pose dirty 표시 후 skinning refresh 요청 예정");
-
-        ImGui::Separator();
-        ImGui::Checkbox("Pose Edit Mode", &State.bEnablePoseEditMode);
-        ImGui::Text("Primary Bone Index: %d", SelectionManager.GetPrimaryBoneIndex());
-        ImGui::Text("Selected Bone Count: %d", SelectionManager.GetSelectedCount());
+        FEditorUIStyle::DrawReadOnlyIntRow("Primary Bone Index", SelectionManager.GetPrimaryBoneIndex());
+        FEditorUIStyle::DrawReadOnlyIntRow("Selected Bone Count", SelectionManager.GetSelectedCount());
+        ImGui::EndTable();
     }
 }

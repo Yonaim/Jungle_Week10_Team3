@@ -47,6 +47,15 @@ enum class ESkeletalMeshPreviewLayout : uint8
     FourPanes2x2,
 };
 
+// Details 패널에서 선택한 Bone transform 기준.
+// Unreal Skeletal Mesh Editor의 Bone / Reference / Mesh Relative 토글과 같은 용도다.
+enum class ESkeletalMeshBoneDetailsSpace : uint8
+{
+    Bone = 0,          // 현재 포즈의 부모 기준 Local transform
+    Reference = 1,     // 애셋 Reference/Bind pose의 부모 기준 Local transform
+    MeshRelative = 2,  // 현재 포즈의 Mesh/Component 기준 transform
+};
+
 // Skeletal Mesh Viewer / Asset Editor의 현재 편집 상태.
 struct FSkeletalMeshEditorState
 {
@@ -103,4 +112,5 @@ struct FSkeletalMeshEditorState
     ESkeletalMeshPreviewViewportType PreviewViewportType = ESkeletalMeshPreviewViewportType::Perspective;
     ESkeletalMeshPreviewViewMode PreviewViewMode = ESkeletalMeshPreviewViewMode::Lit;
     ESkeletalMeshPreviewLayout PreviewLayout = ESkeletalMeshPreviewLayout::OnePane;
+    ESkeletalMeshBoneDetailsSpace BoneDetailsSpace = ESkeletalMeshBoneDetailsSpace::Bone;
 };
