@@ -1,4 +1,4 @@
-﻿#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
+#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
@@ -762,7 +762,9 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
         ViewCamera.GetWorldLocation(),
         ViewCamera.IsOrthogonal(),
         ViewCamera.GetOrthoWidth(),
-        Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f);
+        ViewportScreenRect.Height > 0.0f
+            ? ViewportScreenRect.Height
+            : (Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f));
     GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(
         RenderOptions.ViewportType,
         GizmoManager.GetMode()));
@@ -967,6 +969,9 @@ void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
 
     FGizmoHitProxyContext HitContext{};
     HitContext.ViewProjection = ViewCamera.GetViewProjectionMatrix();
+    HitContext.CameraLocation = ViewCamera.GetWorldLocation();
+    HitContext.bIsOrtho = ViewCamera.IsOrthogonal();
+    HitContext.OrthoWidth = ViewCamera.GetOrthoWidth();
     HitContext.ViewportWidth = VPWidth;
     HitContext.ViewportHeight = VPHeight;
     HitContext.MouseX = LocalMouseX;
@@ -1169,7 +1174,9 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
         ViewCamera.GetWorldLocation(),
         ViewCamera.IsOrthogonal(),
         ViewCamera.GetOrthoWidth(),
-        Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f);
+        ViewportScreenRect.Height > 0.0f
+            ? ViewportScreenRect.Height
+            : (Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f));
     GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(
         RenderOptions.ViewportType,
         GizmoManager.GetMode()));

@@ -377,10 +377,25 @@ void FDrawCommandBuilder::BuildDecalCommands(FPrimitiveSceneProxy* Proxy, const 
 // ============================================================
 void FDrawCommandBuilder::BuildMeshCommands(const FPrimitiveSceneProxy* Proxy)
 {
-	if (Proxy->GetRenderPass() == ERenderPass::Opaque)
+	const ERenderPass ProxyPass = Proxy->GetRenderPass();
+	const bool bDebugViewMode =
+		CollectViewMode == EViewMode::SceneDepth ||
+		CollectViewMode == EViewMode::WorldNormal ||
+		CollectViewMode == EViewMode::LightCulling;
+
+	// 디버그 뷰(SceneDepth/WorldNormal/LightCulling)는 최종 화면을 포스트프로세스가 덮어쓴다.
+	// 따라서 반투명 머티리얼이어도 Opaque 경로로 한 번 제출해 depth/normal MRT를 채워 주는 편이
+	// 에셋 프리뷰에서 훨씬 기대한 결과에 가깝다.
+	if (bDebugViewMode && ProxyPass != ERenderPass::Opaque)
+	{
+		BuildCommandForProxy(*Proxy, ERenderPass::Opaque);
+		return;
+	}
+
+	if (ProxyPass == ERenderPass::Opaque)
 		BuildCommandForProxy(*Proxy, ERenderPass::PreDepth);
 
-	BuildCommandForProxy(*Proxy, Proxy->GetRenderPass());
+	BuildCommandForProxy(*Proxy, ProxyPass);
 }
 
 // ============================================================
@@ -586,6 +601,10 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 	ID3D11DeviceContext* Ctx = CachedContext;
 	EViewMode ViewMode = Frame.RenderOptions.ViewMode;
 	const FDrawCommandRenderState PPRS = PassRenderStateTable->ToDrawCommandState(ERenderPass::PostProcess, ViewMode);
+	FDrawCommandRenderState DebugViewRS = PPRS;
+	// SceneDepth / WorldNormal / LightCulling은 최종 디버그 화면을 그대로 덮어써야 한다.
+	// PostProcessPass의 기본 AlphaBlend를 그대로 쓰면 기존 SceneColor와 섞여 보일 수 있다.
+	DebugViewRS.Blend = EBlendState::Opaque;
 
 	// HeightFog (UserBits=0 → Outline보다 먼저)
 	if (Frame.RenderOptions.ShowFlags.bFog && CollectScene && CollectScene->GetEnvironment().HasFog())
@@ -644,7 +663,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			SceneDepthCB.Update(Ctx, &depthData, sizeof(FSceneDepthPConstants));
 
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
-			Cmd.InitFullscreenTriangle(DepthShader, ERenderPass::PostProcess, PPRS);
+			Cmd.InitFullscreenTriangle(DepthShader, ERenderPass::PostProcess, DebugViewRS);
 			Cmd.Bindings.PerShaderCB[0] = &SceneDepthCB;
 			Cmd.SortKey = MakePostProcessSortKey(2);
 		}
@@ -657,7 +676,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 		if (NormalShader)
 		{
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
-			Cmd.InitFullscreenTriangle(NormalShader, ERenderPass::PostProcess, PPRS);
+			Cmd.InitFullscreenTriangle(NormalShader, ERenderPass::PostProcess, DebugViewRS);
 			Cmd.SortKey = MakePostProcessSortKey(3);
 		}
 	}
@@ -669,7 +688,7 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 		if (CullingShader)
 		{
 			FDrawCommand& Cmd = DrawCommandList.AddCommand();
-			Cmd.InitFullscreenTriangle(CullingShader, ERenderPass::PostProcess, PPRS);
+			Cmd.InitFullscreenTriangle(CullingShader, ERenderPass::PostProcess, DebugViewRS);
 			Cmd.SortKey = MakePostProcessSortKey(4);
 		}
 	}
@@ -726,8 +745,14 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 		}
 	}
 
-	// FXAA
-	if (Frame.RenderOptions.ShowFlags.bFXAA)
+	const bool bDebugViewMode =
+		ViewMode == EViewMode::SceneDepth ||
+		ViewMode == EViewMode::WorldNormal ||
+		ViewMode == EViewMode::LightCulling;
+
+	// FXAA는 lit/unlit 최종 컬러용이다. Depth/Normal 같은 디버그 버퍼에는
+	// 경계 보정이 오히려 값을 흐리게 만들기 때문에 적용하지 않는다.
+	if (!bDebugViewMode && Frame.RenderOptions.ShowFlags.bFXAA)
 	{
 		FShader* FXAAShader = FShaderManager::Get().GetOrCreate(EShaderPath::FXAA);
 		if (FXAAShader)
@@ -745,7 +770,8 @@ void FDrawCommandBuilder::BuildPostProcessCommands(const FFrameContext& Frame, c
 			Cmd.BuildSortKey(0);
 		}
 	}
-	if (Frame.RenderOptions.ShowFlags.bGammaCorrection)
+	// Debug view color는 이미 화면 표시용 값이므로 감마 보정을 다시 태우지 않는다.
+	if (!bDebugViewMode && Frame.RenderOptions.ShowFlags.bGammaCorrection)
 	{
 		FShader* GammaShader = FShaderManager::Get().GetOrCreate(EShaderPath::GammaCorrection);
 		if (GammaShader)

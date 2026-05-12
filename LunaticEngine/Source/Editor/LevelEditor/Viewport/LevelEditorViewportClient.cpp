@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 
 #include "Core/ProjectSettings.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
@@ -1577,6 +1577,9 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     FRay Ray = GetCamera()->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
     FGizmoHitProxyContext GizmoPickContext{};
     GizmoPickContext.ViewProjection = GetCamera()->GetViewProjectionMatrix();
+    GizmoPickContext.CameraLocation = GetCamera()->GetWorldLocation();
+    GizmoPickContext.bIsOrtho = GetCamera()->IsOrthogonal();
+    GizmoPickContext.OrthoWidth = GetCamera()->GetOrthoWidth();
     GizmoPickContext.ViewportWidth = VPWidth;
     GizmoPickContext.ViewportHeight = VPHeight;
     GizmoPickContext.MouseX = LocalMouseX;

@@ -162,8 +162,19 @@ bool UGizmoVisualComponent::HitProxyTest(const FGizmoHitProxyContext& Context, F
     const float PickMinX = Context.MouseX - static_cast<float>(RadiusPixels);
     const float PickMinY = Context.MouseY - static_cast<float>(RadiusPixels);
 
+    // Render path does not rely on the component's relative scale.
+    // FGizmoSceneProxy::UpdatePerViewport() recomputes a per-viewport
+    // screen-space scale every frame from camera + viewport data.
+    // Do the same here so the software ID-buffer pick mesh exactly matches
+    // the rendered gizmo size after zoom/dolly/ortho-size changes.
+    const float HitProxyScale = ComputeScreenSpaceScale(
+        Context.CameraLocation,
+        Context.bIsOrtho,
+        Context.OrthoWidth,
+        Context.ViewportHeight);
+
     const FMatrix WorldMatrix =
-        FMatrix::MakeScaleMatrix(GetWorldScale()) *
+        FMatrix::MakeScaleMatrix(FVector(HitProxyScale, HitProxyScale, HitProxyScale)) *
         FMatrix::MakeRotationEuler(GetRelativeRotation().ToVector()) *
         FMatrix::MakeTranslationMatrix(GetWorldLocation());
     const FMatrix WorldViewProjection = WorldMatrix * Context.ViewProjection;
