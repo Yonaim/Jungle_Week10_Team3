@@ -1,4 +1,5 @@
-﻿#include "Render/Proxy/GizmoSceneProxy.h"
+#include "PCH/LunaticPCH.h"
+#include "Render/Proxy/GizmoSceneProxy.h"
 #include "Component/GizmoVisualComponent.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Types/FrameContext.h"

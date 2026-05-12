@@ -1,4 +1,5 @@
-﻿#include "ImposterRotationGizmo.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ImposterRotationGizmo.h"
 #include "Game/GameActors/Obstacle/ObstacleActorBase.h"
 
 #include <algorithm>

@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Common/Gizmo/EditorGizmoSharedState.h"
 
 #include "Common/Gizmo/GizmoManager.h"

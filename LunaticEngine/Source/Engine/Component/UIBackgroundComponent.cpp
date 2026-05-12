@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Component/UIBackgroundComponent.h"
 
 #include "Component/CanvasRootComponent.h"

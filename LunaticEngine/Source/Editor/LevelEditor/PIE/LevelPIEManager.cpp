@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/PIE/LevelPIEManager.h"
 
 #include "Audio/AudioManager.h"

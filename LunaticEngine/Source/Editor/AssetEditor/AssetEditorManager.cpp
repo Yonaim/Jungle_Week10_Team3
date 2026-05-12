@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/AssetEditorManager.h"
 
 #include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"

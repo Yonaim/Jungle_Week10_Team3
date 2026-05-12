@@ -1,4 +1,5 @@
-﻿#include "OpaquePass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "OpaquePass.h"
 #include "RenderPassRegistry.h"
 
 #include "Render/Device/D3DDevice.h"

@@ -1,4 +1,5 @@
-﻿#include "Render/Proxy/DecalSceneProxy.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Render/Proxy/DecalSceneProxy.h"
 
 #include "Component/DecalComponent.h"
 #include "Component/StaticMeshComponent.h"

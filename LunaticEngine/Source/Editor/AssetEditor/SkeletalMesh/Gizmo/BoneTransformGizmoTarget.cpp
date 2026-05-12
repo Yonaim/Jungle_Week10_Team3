@@ -1,4 +1,5 @@
-﻿#include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
+#include "PCH/LunaticPCH.h"
+#include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"

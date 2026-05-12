@@ -1,4 +1,5 @@
-﻿#include "Component/MeshComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Component/MeshComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Object/ObjectFactory.h"
 

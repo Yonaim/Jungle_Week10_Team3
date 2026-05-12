@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Engine/Platform/ScriptPaths.h"
 
 #include "Engine/Platform/Paths.h"

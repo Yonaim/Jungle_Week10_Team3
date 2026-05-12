@@ -1,4 +1,5 @@
-﻿#include "SpotLightActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "SpotLightActor.h"
 #include "Component/BillboardComponent.h"
 #include "Component/Light/SpotLightComponent.h"
 #include "Materials/MaterialManager.h"

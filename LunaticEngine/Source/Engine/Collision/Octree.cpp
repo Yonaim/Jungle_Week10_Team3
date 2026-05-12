@@ -1,4 +1,5 @@
-﻿#include "Octree.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Octree.h"
 #include <Collision/RayUtils.h>
 #include <algorithm>
 #include "Core/Log.h"

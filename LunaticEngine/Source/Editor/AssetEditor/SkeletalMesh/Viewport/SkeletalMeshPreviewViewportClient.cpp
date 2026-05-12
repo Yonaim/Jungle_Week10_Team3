@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"

@@ -1,4 +1,5 @@
-﻿#include "Resource/ResourceManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Resource/ResourceManager.h"
 #include "Platform/Paths.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 

@@ -1,4 +1,5 @@
-﻿#include "MinimalViewInfo.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "MinimalViewInfo.h"
 
 float FPostProcessSettings::GetScalar(FName Name, float DefaultValue) const
 {

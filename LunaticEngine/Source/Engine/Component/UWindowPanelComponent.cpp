@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Component/UWindowPanelComponent.h"
 
 #include "Object/ObjectFactory.h"

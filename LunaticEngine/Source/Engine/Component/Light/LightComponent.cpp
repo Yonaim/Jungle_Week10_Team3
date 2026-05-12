@@ -1,4 +1,5 @@
-﻿#include "Component/Light/LightComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Component/Light/LightComponent.h"
 #include "Serialization/Archive.h"
 #include "Object/ObjectFactory.h"
 

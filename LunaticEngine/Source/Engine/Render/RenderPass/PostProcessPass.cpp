@@ -1,4 +1,5 @@
-﻿#include "PostProcessPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PostProcessPass.h"
 #include "RenderPassRegistry.h"
 
 #include "Render/Device/D3DDevice.h"

@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "BoxComponent.h"
 #include "Render/Scene/FScene.h"
 #include "Serialization/Archive.h"

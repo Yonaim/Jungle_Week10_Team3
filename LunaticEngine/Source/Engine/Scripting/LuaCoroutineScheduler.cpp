@@ -1,4 +1,5 @@
-﻿#include "Scripting/LuaCoroutineScheduler.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Scripting/LuaCoroutineScheduler.h"
 
 #include "Core/AsciiUtils.h"
 #include "Core/Log.h"

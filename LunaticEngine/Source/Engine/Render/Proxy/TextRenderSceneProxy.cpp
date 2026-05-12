@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Render/Proxy/TextRenderSceneProxy.h"
 
 #include "Component/TextRenderComponent.h"

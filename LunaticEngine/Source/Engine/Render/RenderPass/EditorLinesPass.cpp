@@ -1,4 +1,5 @@
-﻿#include "EditorLinesPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "EditorLinesPass.h"
 #include "RenderPassRegistry.h"
 
 REGISTER_RENDER_PASS(FEditorLinesPass)

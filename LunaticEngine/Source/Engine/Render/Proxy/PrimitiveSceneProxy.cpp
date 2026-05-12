@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Render/Proxy/PrimitiveSceneProxy.h"
 #include "Component/PrimitiveComponent.h"
 #include "GameFramework/AActor.h"

@@ -1,4 +1,5 @@
-﻿#include "DirectionalLightComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "DirectionalLightComponent.h"
 #include "Render/Types/GlobalLightParams.h"
 #include "Render/Types/LightFrustumUtils.h"
 #include "Component/CameraComponent.h"

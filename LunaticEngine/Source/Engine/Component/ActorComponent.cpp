@@ -1,4 +1,5 @@
-﻿#include "ActorComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ActorComponent.h"
 #include "Object/ObjectFactory.h"
 #include "Serialization/Archive.h"
 #include "GameFramework/AActor.h"

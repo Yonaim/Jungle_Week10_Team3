@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "WorldTextPass.h"
 
 #include "RenderPassRegistry.h"

@@ -1,4 +1,5 @@
-﻿#include "LevelEditor/Subsystem/OverlayStatSystem.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "LevelEditor/Subsystem/OverlayStatSystem.h"
 
 #include "EditorEngine.h"
 #include "Engine/Profiling/GPUProfiler.h"

@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Component/CameraComponent.h"
 
 #include <cmath>

@@ -1,4 +1,5 @@
-﻿#include "AmbientLightComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AmbientLightComponent.h"
 #include "Render/Types/GlobalLightParams.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"

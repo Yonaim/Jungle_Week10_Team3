@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Component/CanvasRootComponent.h"
 
 #include "Object/ObjectFactory.h"

@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 
 #include <algorithm>

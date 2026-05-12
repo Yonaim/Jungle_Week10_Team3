@@ -1,4 +1,5 @@
-﻿#include "RenderPassBase.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "RenderPassBase.h"
 
 #include "Render/Command/DrawCommandList.h"
 #include "Render/Device/D3DDevice.h"

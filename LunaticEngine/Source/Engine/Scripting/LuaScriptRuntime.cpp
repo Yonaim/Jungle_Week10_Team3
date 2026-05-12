@@ -1,4 +1,5 @@
-﻿#include "Scripting/LuaScriptRuntime.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Scripting/LuaScriptRuntime.h"
 
 #include "Component/ScriptComponent.h"
 #include "Core/EngineTypes.h"

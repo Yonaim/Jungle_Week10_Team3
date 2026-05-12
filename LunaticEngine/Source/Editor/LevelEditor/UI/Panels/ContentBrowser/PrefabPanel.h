@@ -2,7 +2,7 @@
 #include "Common/UI/DragDrop/DragSource.h"
 #include "LevelEditor/UI/Panels/ContentBrowser/ContentBrowserElement.h"
 #include "Render/Types/RenderTypes.h"
-#include "imgui.h"
+#include "ImGui/imgui.h"
 
 
 class PrefabDragSource final : public FDragSource

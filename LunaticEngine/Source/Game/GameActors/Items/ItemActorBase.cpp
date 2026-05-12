@@ -1,4 +1,5 @@
-﻿#include "ItemActorBase.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ItemActorBase.h"
 
 #include "Component/BillboardComponent.h"
 #include "Component/ScriptComponent.h"

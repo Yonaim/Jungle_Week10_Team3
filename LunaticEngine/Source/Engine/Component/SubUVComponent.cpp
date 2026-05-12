@@ -1,4 +1,5 @@
-﻿#include "SubUVComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "SubUVComponent.h"
 #include "Object/ObjectFactory.h"
 
 #include <cstring>

@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Camera/CameraShake.h"
 
 IMPLEMENT_CLASS(UCameraShakeBase, UObject)

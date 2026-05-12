@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "GameFramework/WorldTextActor.h"
 
 #include "Component/TextRenderComponent.h"

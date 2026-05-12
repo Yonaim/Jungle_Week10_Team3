@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "AssetTools/AssetImportManager.h"
 
 #include "Common/File/EditorFileUtils.h"

@@ -1,4 +1,5 @@
-﻿#include "Engine/Profiling/Timer.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Engine/Profiling/Timer.h"
 
 void FTimer::Initialize()
 {

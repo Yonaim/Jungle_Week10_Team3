@@ -1,4 +1,5 @@
-﻿#include "RenderPassRegistry.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "RenderPassRegistry.h"
 
 #include <algorithm>
 

@@ -1,4 +1,5 @@
-﻿#include "PendulumObstacleActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PendulumObstacleActor.h"
 #include "Component/Movement/PendulumMovementComponent.h"
 #include "Resource/ResourceManager.h"
 #include "Engine/Runtime/Engine.h"

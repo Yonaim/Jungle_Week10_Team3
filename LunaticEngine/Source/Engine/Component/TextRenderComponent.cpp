@@ -1,4 +1,5 @@
-﻿#include "TextRenderComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "TextRenderComponent.h"
 
 #include <cstring>
 #include "GameFramework/AActor.h"

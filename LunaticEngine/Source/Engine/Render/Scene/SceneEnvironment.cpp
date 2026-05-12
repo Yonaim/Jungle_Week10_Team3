@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Render/Scene/SceneEnvironment.h"
 #include <algorithm>
 

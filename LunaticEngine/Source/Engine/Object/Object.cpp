@@ -1,4 +1,5 @@
-﻿#include "Object.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Object.h"
 #include "UUIDGenerator.h"
 #include "Serialization/Archive.h"
 #include "Serialization/MemoryArchive.h"

@@ -1,4 +1,5 @@
-﻿#include "Input/InputManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Input/InputManager.h"
 #include "ImGui/imgui.h"
 #include <cstring>
 #include <cmath>

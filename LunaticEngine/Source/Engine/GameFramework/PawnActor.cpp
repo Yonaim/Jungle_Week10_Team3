@@ -1,4 +1,5 @@
-﻿#include "PawnActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PawnActor.h"
 
 #include "Component/BillboardComponent.h"
 #include "Component/CameraComponent.h"

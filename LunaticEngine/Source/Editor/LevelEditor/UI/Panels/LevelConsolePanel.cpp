@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/UI/Panels/LevelConsolePanel.h"
 #include "Component/CameraComponent.h"
 #include "Core/AsciiUtils.h"

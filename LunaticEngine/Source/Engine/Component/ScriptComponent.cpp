@@ -1,4 +1,5 @@
-﻿#include "Component/ScriptComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Component/ScriptComponent.h"
 
 #include "Core/Log.h"
 #include "Core/PropertyTypes.h"

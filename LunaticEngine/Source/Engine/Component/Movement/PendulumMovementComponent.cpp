@@ -1,4 +1,5 @@
-﻿#include "PendulumMovementComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PendulumMovementComponent.h"
 
 #include "Component/SceneComponent.h"
 #include "Math/Matrix.h"

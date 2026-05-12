@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "RasterizerStateManager.h"
 
 #define SAFE_RELEASE(Obj) if (Obj) { Obj->Release(); Obj = nullptr; }

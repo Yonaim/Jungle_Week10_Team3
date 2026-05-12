@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "SamplerStateManager.h"
 
 void FSamplerStateManager::Create(ID3D11Device* InDevice)

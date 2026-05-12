@@ -1,4 +1,5 @@
-﻿#include "InterpToMovementComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "InterpToMovementComponent.h"
 #include "Object/ObjectFactory.h"
 #include "Component/SceneComponent.h"
 #include "Math/Quat.h"

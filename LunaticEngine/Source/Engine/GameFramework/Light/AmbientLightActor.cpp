@@ -1,4 +1,5 @@
-﻿#include "AmbientLightActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AmbientLightActor.h"
 #include "Component/BillboardComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/Light/AmbientLightComponent.h"

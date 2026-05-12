@@ -1,4 +1,5 @@
-﻿#include "Collision/MeshTriangleBVH.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Collision/MeshTriangleBVH.h"
 
 #include "Collision/RayUtils.h"
 #include "Collision/RayUtilsSIMD.h"

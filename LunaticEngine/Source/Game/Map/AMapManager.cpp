@@ -1,4 +1,5 @@
-﻿#include "AMapManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AMapManager.h"
 #include "GameFramework/World.h"
 #include "Game/Map/MapRandom.h"
 #include "Game/GameActors/Obstacle/ObstacleActorBase.h"

@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Notification.h"
 
 void FNotificationManager::AddNotification(const FString& Message, ENotificationType Type, float Duration)

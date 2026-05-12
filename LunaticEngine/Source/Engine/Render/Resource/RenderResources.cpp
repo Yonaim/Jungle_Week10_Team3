@@ -1,4 +1,5 @@
-﻿#include "RenderResources.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "RenderResources.h"
 #include "Render/Device/D3DDevice.h"
 #include "Materials/MaterialManager.h"
 #include "Render/Types/ForwardLightData.h"

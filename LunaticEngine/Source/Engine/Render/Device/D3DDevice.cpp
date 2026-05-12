@@ -1,4 +1,5 @@
-﻿#include "D3DDevice.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "D3DDevice.h"
 #include <fstream>
 
 //	Safe Release Macro

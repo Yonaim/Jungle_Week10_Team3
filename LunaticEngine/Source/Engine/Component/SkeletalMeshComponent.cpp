@@ -1,4 +1,5 @@
-﻿#include "SkeletalMeshComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "SkeletalMeshComponent.h"
 #include "Serialization/Archive.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/SkeletalMeshCommon.h"

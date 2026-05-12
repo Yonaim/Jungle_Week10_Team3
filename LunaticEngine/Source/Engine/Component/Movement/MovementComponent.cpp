@@ -1,4 +1,5 @@
-﻿#include "Component/Movement/MovementComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Component/Movement/MovementComponent.h"
 
 #include "Component/SceneComponent.h"
 #include "GameFramework/AActor.h"

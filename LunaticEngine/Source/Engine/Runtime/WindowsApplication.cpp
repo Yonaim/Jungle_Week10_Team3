@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Engine/Runtime/WindowsApplication.h"
 #include "Engine/Runtime/resource.h"
 #include "Core/ProjectSettings.h"

@@ -1,4 +1,5 @@
-﻿#include "Input/EnhancedInputManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Input/EnhancedInputManager.h"
 #include "Input/InputModifier.h"
 #include "Input/InputManager.h"
 #include "Input/InputAction.h"

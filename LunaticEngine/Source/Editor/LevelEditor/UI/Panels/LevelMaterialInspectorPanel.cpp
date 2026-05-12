@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "LevelMaterialInspectorPanel.h"
 #include "Common/UI/Panels/Panel.h"
 #include "LevelEditor/UI/Panels/ContentBrowser/ContentItem.h"

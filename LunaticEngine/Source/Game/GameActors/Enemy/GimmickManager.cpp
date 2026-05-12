@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "GimmickManager.h"
 
 #include "Game/GameActors/Enemy/ImposterRotationGizmo.h"

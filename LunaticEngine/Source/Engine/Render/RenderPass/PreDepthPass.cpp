@@ -1,4 +1,5 @@
-﻿#include "PreDepthPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PreDepthPass.h"
 #include "RenderPassRegistry.h"
 
 #include "Render/Device/D3DDevice.h"

@@ -1,4 +1,5 @@
-﻿#include "PlayerCameraManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PlayerCameraManager.h"
 
 #include "Camera/CameraModifier_CameraShake.h"
 #include "Camera/CameraShake.h"

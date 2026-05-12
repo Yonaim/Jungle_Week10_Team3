@@ -1,4 +1,5 @@
-﻿#include "AlphaBlendPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AlphaBlendPass.h"
 #include "RenderPassRegistry.h"
 
 REGISTER_RENDER_PASS(FAlphaBlendPass)

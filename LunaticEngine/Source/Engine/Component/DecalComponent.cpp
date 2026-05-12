@@ -1,4 +1,5 @@
-﻿#include "DecalComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "DecalComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Materials/MaterialManager.h"
 #include "Collision/OBB.h"

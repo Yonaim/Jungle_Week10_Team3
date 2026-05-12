@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "BlendStateManager.h"
 
 #define SAFE_RELEASE(Obj) if (Obj) { Obj->Release(); Obj = nullptr; }

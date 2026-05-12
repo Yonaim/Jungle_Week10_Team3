@@ -1,4 +1,5 @@
-﻿#include "DecalActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "DecalActor.h"
 #include "Component/DecalComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Component/TextRenderComponent.h"

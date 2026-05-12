@@ -319,6 +319,9 @@
     <Filter Include="Source\ObjViewer">
       <UniqueIdentifier>{c24236b0-50c3-3eb0-a473-1cc1de562d78}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\PCH">
+      <UniqueIdentifier>{9acf7ddb-e8cb-46b1-92dd-b59d7d1a2034}</UniqueIdentifier>
+    </Filter>
     <Filter Include="ThirdParty">
       <UniqueIdentifier>{79954428-c734-efb9-6f5d-35a0c2056b24}</UniqueIdentifier>
     </Filter>
@@ -1366,6 +1369,9 @@
     </ClCompile>
     <ClCompile Include="Source\ObjViewer\ObjViewerViewportClient.cpp">
       <Filter>Source\ObjViewer</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\PCH\LunaticPCH.cpp">
+      <Filter>Source\PCH</Filter>
     </ClCompile>
     <ClCompile Include="ThirdParty\ImGui\ImCurveEdit.cpp">
       <Filter>ThirdParty\ImGui</Filter>
@@ -2467,6 +2473,9 @@
     </ClInclude>
     <ClInclude Include="Source\ObjViewer\ObjViewerViewportClient.h">
       <Filter>Source\ObjViewer</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\PCH\LunaticPCH.h">
+      <Filter>Source\PCH</Filter>
     </ClInclude>
     <ClInclude Include="ThirdParty\FBXSDK\include\fbxsdk.h">
       <Filter>ThirdParty\FBXSDK\include</Filter>

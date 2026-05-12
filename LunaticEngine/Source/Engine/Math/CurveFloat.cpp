@@ -1,4 +1,5 @@
-﻿#include "CurveFloat.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "CurveFloat.h"
 #include <algorithm>
 
 IMPLEMENT_CLASS(UCurveFloat, UObject)

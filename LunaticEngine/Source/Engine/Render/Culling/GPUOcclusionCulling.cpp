@@ -1,4 +1,5 @@
-﻿#include "GPUOcclusionCulling.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "GPUOcclusionCulling.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Proxy/PrimitiveSceneProxy.h"
 #include "Profiling/Stats.h"

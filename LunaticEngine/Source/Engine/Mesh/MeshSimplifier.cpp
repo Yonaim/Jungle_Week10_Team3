@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Mesh/MeshSimplifier.h"
 
 #include <algorithm>

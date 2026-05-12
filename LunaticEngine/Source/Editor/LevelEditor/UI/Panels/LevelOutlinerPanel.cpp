@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 
 #include "Common/UI/Style/AccentColor.h"

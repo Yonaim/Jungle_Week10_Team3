@@ -1,4 +1,5 @@
-﻿#include "AssetEditor/Common/UI/BezierCurveEditor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AssetEditor/Common/UI/BezierCurveEditor.h"
 
 #include "ImGui/imgui_internal.h"
 #include <algorithm>

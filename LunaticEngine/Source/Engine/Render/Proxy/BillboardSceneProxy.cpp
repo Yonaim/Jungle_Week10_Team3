@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Render/Proxy/BillboardSceneProxy.h"
 
 #include "Component/BillboardComponent.h"

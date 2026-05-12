@@ -1,4 +1,5 @@
-﻿#include "AtlasQuadTreePoint.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AtlasQuadTreePoint.h"
 #include "Render/Types/GlobalLightParams.h"
 
 #include <algorithm>

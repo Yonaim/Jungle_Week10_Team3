@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Common/UI/ImGui/EditorImGuiStyleSettings.h"
 
 #include "Common/UI/Style/AccentColor.h"
@@ -7,7 +8,7 @@
 #include "Math/Vector.h"
 #include "Platform/Paths.h"
 
-#include "imgui.h"
+#include "ImGui/imgui.h"
 
 #include <filesystem>
 #include <fstream>

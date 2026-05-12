@@ -1,4 +1,5 @@
-﻿#include "Mesh/SkeletalMesh.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Mesh/SkeletalMesh.h"
 
 IMPLEMENT_CLASS(USkeletalMesh, UObject)
 

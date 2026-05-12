@@ -1,4 +1,5 @@
-﻿#include "ObjViewer/ObjViewerRenderPipeline.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ObjViewer/ObjViewerRenderPipeline.h"
 
 #include "ObjViewer/ObjViewerEngine.h"
 #include "Render/Pipeline/Renderer.h"

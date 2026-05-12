@@ -1,4 +1,5 @@
-﻿#include "Vector.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Vector.h"
 #include <DirectXMath.h>
 
 #pragma region __FVECTOR__

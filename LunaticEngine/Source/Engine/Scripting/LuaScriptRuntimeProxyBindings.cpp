@@ -1,4 +1,5 @@
-﻿#include "Scripting/LuaScriptRuntime.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Scripting/LuaScriptRuntime.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/World.h"

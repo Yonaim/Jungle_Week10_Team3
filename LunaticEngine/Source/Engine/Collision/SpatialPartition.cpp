@@ -1,4 +1,5 @@
-﻿#include "SpatialPartition.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "SpatialPartition.h"
 
 #include "Collision/Octree.h"
 #include "Collision/RayUtils.h"

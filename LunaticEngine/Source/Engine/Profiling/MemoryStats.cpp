@@ -1,4 +1,5 @@
-﻿#include "MemoryStats.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "MemoryStats.h"
 
 #include <d3d11.h>
 #include <algorithm>

@@ -1,4 +1,5 @@
-﻿#include "ShapeComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ShapeComponent.h"
 #include "Serialization/Archive.h"
 #include "GameFramework/World.h"
 #include "Collision/CollisionDispatcher.h"

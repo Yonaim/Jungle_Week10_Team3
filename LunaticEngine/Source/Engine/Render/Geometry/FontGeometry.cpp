@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "FontGeometry.h"
 #include "Resource/ResourceManager.h"
 

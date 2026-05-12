@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Common/Menu/EditorMenuBar.h"
 
 #include "Common/UI/Style/AccentColor.h"

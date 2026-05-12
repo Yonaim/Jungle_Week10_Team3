@@ -1,4 +1,5 @@
-﻿#include "DirectionalLightActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "DirectionalLightActor.h"
 #include "Component/BillboardComponent.h"
 #include "Component/Light/DirectionalLightComponent.h"
 #include "Materials/MaterialManager.h"

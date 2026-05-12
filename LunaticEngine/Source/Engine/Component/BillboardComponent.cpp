@@ -1,4 +1,5 @@
-﻿#include "BillboardComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "BillboardComponent.h"
 #include "GameFramework/World.h"
 #include "Component/CameraComponent.h"
 #include "Render/Proxy/BillboardSceneProxy.h"

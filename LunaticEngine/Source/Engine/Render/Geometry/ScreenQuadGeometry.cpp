@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Render/Geometry/ScreenQuadGeometry.h"
 
 void FScreenQuadGeometry::Create(ID3D11Device* InDevice)

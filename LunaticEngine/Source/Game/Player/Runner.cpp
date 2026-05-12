@@ -1,4 +1,5 @@
-﻿#include "Runner.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Runner.h"
 #include "Object/Object.h"
 #include "Component/Shape/BoxComponent.h"
 #include "Component/ScriptComponent.h"

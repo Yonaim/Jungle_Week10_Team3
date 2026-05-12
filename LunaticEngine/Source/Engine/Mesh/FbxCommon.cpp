@@ -1,4 +1,5 @@
-﻿#include "Mesh/FbxCommon.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Mesh/FbxCommon.h"
 
 #include "Core/Log.h"
 #include "Engine/Platform/Paths.h"

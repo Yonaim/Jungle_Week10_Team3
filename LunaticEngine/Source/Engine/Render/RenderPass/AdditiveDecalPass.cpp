@@ -1,4 +1,5 @@
-﻿#include "AdditiveDecalPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AdditiveDecalPass.h"
 #include "RenderPassRegistry.h"
 
 REGISTER_RENDER_PASS(FAdditiveDecalPass)

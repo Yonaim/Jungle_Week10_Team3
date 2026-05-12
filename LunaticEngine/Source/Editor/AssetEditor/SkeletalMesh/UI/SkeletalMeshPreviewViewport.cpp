@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshPreviewViewport.h"
 
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshEditorToolbar.h"

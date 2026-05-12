@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "UI/SWindow.h"
 
 bool SWindow::IsHover(FPoint coord) const

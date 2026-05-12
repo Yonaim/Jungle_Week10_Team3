@@ -13,7 +13,7 @@
 #include "Render/Types/RenderTypes.h"
 #include "Render/Types/ViewTypes.h"
 
-#include "imgui.h"
+#include "ImGui/imgui.h"
 
 class UWorld;
 class ULightComponentBase;

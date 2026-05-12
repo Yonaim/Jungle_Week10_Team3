@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
 #include "Common/UI/Panels/Panel.h"
 #include "Common/UI/Tabs/EditorDocumentTabBar.h"

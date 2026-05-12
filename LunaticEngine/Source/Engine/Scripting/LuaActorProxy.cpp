@@ -1,4 +1,5 @@
-﻿#include "Scripting/LuaActorProxy.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Scripting/LuaActorProxy.h"
 
 #include "Component/ActorComponent.h"
 #include "Component/PrimitiveComponent.h"

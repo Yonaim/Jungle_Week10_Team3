@@ -1,4 +1,5 @@
-﻿#include "FXAAPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "FXAAPass.h"
 #include "RenderPassRegistry.h"
 
 #include "Render/Device/D3DDevice.h"

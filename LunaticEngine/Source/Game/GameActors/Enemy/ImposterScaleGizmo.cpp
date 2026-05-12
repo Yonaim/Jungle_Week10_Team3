@@ -1,4 +1,5 @@
-﻿#include "ImposterScaleGizmo.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ImposterScaleGizmo.h"
 #include "Game/GameActors/Obstacle/MustSlideObstacleActor.h"
 
 #include <algorithm>

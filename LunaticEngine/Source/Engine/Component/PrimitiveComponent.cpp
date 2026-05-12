@@ -1,4 +1,5 @@
-﻿#include "PrimitiveComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PrimitiveComponent.h"
 #include "Object/ObjectFactory.h"
 #include "Serialization/Archive.h"
 #include "Core/RayTypes.h"

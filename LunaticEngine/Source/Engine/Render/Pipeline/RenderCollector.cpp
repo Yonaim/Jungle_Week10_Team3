@@ -1,4 +1,5 @@
-﻿#include "RenderCollector.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "RenderCollector.h"
 
 #include "Collision/ConvexVolume.h"
 #include "Component/ActorComponent.h"

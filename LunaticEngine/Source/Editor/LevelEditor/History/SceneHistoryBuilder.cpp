@@ -1,4 +1,5 @@
-﻿#include "LevelEditor/History/SceneHistoryBuilder.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "LevelEditor/History/SceneHistoryBuilder.h"
 
 #include "Common/Viewport/EditorViewportCamera.h"
 #include "EditorEngine.h"

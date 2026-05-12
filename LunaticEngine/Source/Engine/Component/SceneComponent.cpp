@@ -1,4 +1,5 @@
-﻿#include "SceneComponent.h"
+#include "PCH/LunaticPCH.h"
+#include "SceneComponent.h"
 #include "Object/ObjectFactory.h"
 #include <GameFramework/World.h>
 #include "Serialization/Archive.h"

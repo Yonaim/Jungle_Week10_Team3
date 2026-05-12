@@ -1,4 +1,5 @@
-﻿#include "GammaCorrectionPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "GammaCorrectionPass.h"
 #include "RenderPassRegistry.h"
 
 #include "Render/Device/D3DDevice.h"

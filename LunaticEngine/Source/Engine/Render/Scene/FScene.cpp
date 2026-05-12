@@ -1,4 +1,5 @@
-﻿#include "Render/Scene/FScene.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Render/Scene/FScene.h"
 #include "Component/PrimitiveComponent.h"
 #include "GameFramework/AActor.h"
 #include "Profiling/Stats.h"

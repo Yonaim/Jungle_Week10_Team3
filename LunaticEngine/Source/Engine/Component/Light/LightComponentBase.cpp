@@ -1,4 +1,5 @@
-﻿#include "LightComponentBase.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "LightComponentBase.h"
 #include "Serialization/Archive.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"

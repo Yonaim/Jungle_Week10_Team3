@@ -1,4 +1,5 @@
-﻿#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
 
 #include "AssetEditor/Common/UI/BezierCurveEditor.h"
 #include "Common/File/EditorFileUtils.h"

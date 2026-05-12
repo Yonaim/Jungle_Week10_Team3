@@ -1,4 +1,5 @@
-﻿#include "PointLightComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "PointLightComponent.h"
 #include "Engine/Serialization/Archive.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"

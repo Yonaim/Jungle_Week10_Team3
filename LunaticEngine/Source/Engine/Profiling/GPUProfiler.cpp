@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Profiling/GPUProfiler.h"
 
 #include <algorithm>

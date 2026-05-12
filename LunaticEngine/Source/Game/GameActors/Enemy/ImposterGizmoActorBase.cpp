@@ -1,4 +1,5 @@
-﻿#include "ImposterGizmoActorBase.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ImposterGizmoActorBase.h"
 #include "Component/PrimitiveComponent.h"
 #include "GameFramework/World.h"
 #include "Object/Object.h"

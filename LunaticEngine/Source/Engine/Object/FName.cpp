@@ -1,4 +1,5 @@
-﻿#include "FName.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "FName.h"
 #include "Core/AsciiUtils.h"
 
 #include <algorithm>

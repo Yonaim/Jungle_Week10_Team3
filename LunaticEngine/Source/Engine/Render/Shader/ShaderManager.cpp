@@ -1,4 +1,5 @@
-﻿#include "ShaderManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ShaderManager.h"
 #include "Platform/Paths.h"
 #include "Core/Log.h"
 #include "Core/Notification.h"

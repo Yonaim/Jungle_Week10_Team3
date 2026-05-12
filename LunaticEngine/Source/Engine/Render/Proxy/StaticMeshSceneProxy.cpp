@@ -1,4 +1,5 @@
-﻿#include "Render/Proxy/StaticMeshSceneProxy.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Render/Proxy/StaticMeshSceneProxy.h"
 #include "Component/StaticMeshComponent.h"
 #include "Mesh/StaticMesh.h"
 #include "Mesh/StaticMeshCommon.h"

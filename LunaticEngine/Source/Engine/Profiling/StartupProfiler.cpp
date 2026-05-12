@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Profiling/StartupProfiler.h"
 #include "Core/Log.h"
 

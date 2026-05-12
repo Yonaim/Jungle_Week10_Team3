@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/History/LevelEditorHistoryManager.h"
 
 #include "Component/CameraComponent.h"

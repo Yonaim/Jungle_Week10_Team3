@@ -1,4 +1,5 @@
-﻿#include "Mesh/ObjManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Mesh/ObjManager.h"
 #include "Mesh/StaticMesh.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/ObjImporter.h"

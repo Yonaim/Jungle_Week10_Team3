@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Engine/Asset/AssetFileSerializer.h"
 
 #include "Engine/Asset/AssetData.h"

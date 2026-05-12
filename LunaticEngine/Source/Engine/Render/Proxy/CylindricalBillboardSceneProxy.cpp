@@ -1,4 +1,5 @@
-﻿#include "Render/Proxy/CylindricalBillboardSceneProxy.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Render/Proxy/CylindricalBillboardSceneProxy.h"
 #include "Component/CylindricalBillboardComponent.h"
 #include "Render/Resource/MeshBufferManager.h"
 #include "Render/Types/FrameContext.h"

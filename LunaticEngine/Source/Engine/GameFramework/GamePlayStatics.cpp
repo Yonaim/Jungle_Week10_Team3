@@ -1,4 +1,5 @@
-﻿#include "GamePlayStatics.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "GamePlayStatics.h"
 #include "GameFramework/World.h"
 
 void UGamePlayStatics::SetGlobalTimeDilation(UWorld* World, float TimeDilation)

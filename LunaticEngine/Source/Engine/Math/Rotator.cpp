@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Rotator.h"
 #include "Quat.h"
 #include "Matrix.h"

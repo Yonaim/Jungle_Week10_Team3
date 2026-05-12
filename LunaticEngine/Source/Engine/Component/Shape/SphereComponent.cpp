@@ -1,4 +1,5 @@
-﻿#include "SphereComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "SphereComponent.h"
 #include "Render/Scene/FScene.h"
 #include "Serialization/Archive.h"
 

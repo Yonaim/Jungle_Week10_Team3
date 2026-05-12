@@ -1,4 +1,5 @@
-﻿#include "MaterialManager.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "MaterialManager.h"
 #include <filesystem>
 #include <fstream>
 #include "Materials/Material.h"

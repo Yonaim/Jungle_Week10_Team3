@@ -1,4 +1,5 @@
-﻿#include "AtlasQuadTreeBase.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "AtlasQuadTreeBase.h"
 
 void FAtlasQuadTreeBase::Init(float InAtlasSize, float inMinShadowMapResolution) {
 	if (inMinShadowMapResolution <= 0.f || InAtlasSize <= 0.f) {

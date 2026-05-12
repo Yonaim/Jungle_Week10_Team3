@@ -1,4 +1,5 @@
-﻿#include "LogFragmentItemActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "LogFragmentItemActor.h"
 #include "Component/Shape/BoxComponent.h"
 
 IMPLEMENT_CLASS(ALogFragmentItemActor, AItemActorBase)

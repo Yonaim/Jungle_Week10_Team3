@@ -1,4 +1,5 @@
-﻿#include "Common/File/EditorFileUtils.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Common/File/EditorFileUtils.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX

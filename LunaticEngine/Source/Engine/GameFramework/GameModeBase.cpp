@@ -1,4 +1,5 @@
-﻿#include "GameModeBase.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "GameModeBase.h"
 
 #include "Engine/Camera/PlayerCameraManager.h"
 #include "GameFramework/PawnActor.h"

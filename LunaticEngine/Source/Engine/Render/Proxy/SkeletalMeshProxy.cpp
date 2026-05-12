@@ -1,4 +1,5 @@
-﻿#include "SkeletalMeshProxy.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "SkeletalMeshProxy.h"
 #include "Component/SkinnedMeshComponent.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/StaticMeshCommon.h"

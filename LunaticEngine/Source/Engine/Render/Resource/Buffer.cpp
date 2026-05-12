@@ -1,4 +1,5 @@
-﻿#include "Buffer.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Buffer.h"
 #include "Engine/Profiling/MemoryStats.h"
 
 void FMeshBuffer::Release()

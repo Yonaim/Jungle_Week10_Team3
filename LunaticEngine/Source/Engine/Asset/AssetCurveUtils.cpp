@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Engine/Asset/AssetCurveUtils.h"
 
 #include "Engine/Math/CurveFloat.h"

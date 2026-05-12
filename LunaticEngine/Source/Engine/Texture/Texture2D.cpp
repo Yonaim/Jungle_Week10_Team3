@@ -1,4 +1,5 @@
-﻿#include "Texture/Texture2D.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Texture/Texture2D.h"
 #include "Object/ObjectFactory.h"
 #include "Core/AsciiUtils.h"
 #include "Core/Log.h"

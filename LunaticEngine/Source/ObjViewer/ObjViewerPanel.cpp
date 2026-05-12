@@ -1,4 +1,5 @@
-﻿#include "ObjViewer/ObjViewerPanel.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ObjViewer/ObjViewerPanel.h"
 
 #include "ObjViewer/ObjViewerEngine.h"
 #include "ObjViewer/ObjViewerViewportClient.h"

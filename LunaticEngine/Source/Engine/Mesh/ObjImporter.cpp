@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Mesh/ObjImporter.h"
 #include "Mesh/StaticMeshCommon.h"
 #include "Materials/Material.h"

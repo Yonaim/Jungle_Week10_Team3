@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "CameraModifier.h"
 #include "Object/ObjectFactory.h"
 

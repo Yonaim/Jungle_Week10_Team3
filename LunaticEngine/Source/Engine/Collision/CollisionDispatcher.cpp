@@ -1,4 +1,5 @@
-﻿#include "CollisionDispatcher.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "CollisionDispatcher.h"
 #include "Component/Shape/BoxComponent.h"
 #include "Component/Shape/SphereComponent.h"
 #include "Component/Shape/CapsuleComponent.h"

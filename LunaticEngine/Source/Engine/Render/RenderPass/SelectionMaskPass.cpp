@@ -1,4 +1,5 @@
-﻿#include "SelectionMaskPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "SelectionMaskPass.h"
 #include "RenderPassRegistry.h"
 
 REGISTER_RENDER_PASS(FSelectionMaskPass)

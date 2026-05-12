@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/Tabs/AssetEditorTab.h"
 
 #include "AssetEditor/IAssetEditor.h"

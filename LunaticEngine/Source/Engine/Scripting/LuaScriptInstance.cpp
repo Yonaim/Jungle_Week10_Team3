@@ -1,4 +1,5 @@
-﻿#include "Scripting/LuaScriptInstance.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "Scripting/LuaScriptInstance.h"
 
 #include "Component/ScriptComponent.h"
 #include "Audio/AudioManager.h"

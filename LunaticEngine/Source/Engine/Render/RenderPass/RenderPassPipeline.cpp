@@ -1,4 +1,5 @@
-﻿#include "RenderPassPipeline.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "RenderPassPipeline.h"
 
 #include "Render/RenderPass/RenderPassRegistry.h"
 #include "Render/Types/RenderTypes.h"

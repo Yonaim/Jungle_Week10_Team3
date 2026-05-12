@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/UI/Panels/LevelControlPanel.h"
 #include "Common/UI/Panels/Panel.h"
 #include "EditorEngine.h"

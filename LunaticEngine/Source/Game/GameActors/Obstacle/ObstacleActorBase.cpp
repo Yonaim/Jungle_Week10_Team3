@@ -1,4 +1,5 @@
-﻿#include "ObstacleActorBase.h"  
+﻿#include "PCH/LunaticPCH.h"
+#include "ObstacleActorBase.h"  
 #include "Component/Shape/BoxComponent.h"  
 #include "Component/Shape/SphereComponent.h"  
 #include "Component/Shape/CapsuleComponent.h"

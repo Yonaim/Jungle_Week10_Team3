@@ -1,4 +1,5 @@
-﻿#include "LuaCameraModifier.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "LuaCameraModifier.h"
 
 #include "Core/Log.h"
 #include "Object/ObjectFactory.h"

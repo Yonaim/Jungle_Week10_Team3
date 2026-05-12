@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "EditorRenderPipeline.h"
 #include "Component/CameraComponent.h"
 #include "Component/Light/LightComponentBase.h"

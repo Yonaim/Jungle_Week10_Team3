@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "Component/SoundComponent.h"
 
 #include "Audio/AudioManager.h"

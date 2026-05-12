@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "GizmoVisualComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"

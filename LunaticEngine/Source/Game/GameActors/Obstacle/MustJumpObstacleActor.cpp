@@ -1,4 +1,5 @@
-﻿#include "MustJumpObstacleActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "MustJumpObstacleActor.h"
 #include "Resource/ResourceManager.h"
 #include "Engine/Runtime/Engine.h"
 

@@ -1,4 +1,5 @@
-﻿#include "CrashDumpItemActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "CrashDumpItemActor.h"
 #include "Component/Shape/BoxComponent.h"
 
 IMPLEMENT_CLASS(ACrashDumpItemActor, AItemActorBase)

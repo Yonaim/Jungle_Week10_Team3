@@ -1,4 +1,5 @@
-﻿#include "EngineTypes.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "EngineTypes.h"
 
 void FBoundingBox::Expand(const FVector& Point)
 {

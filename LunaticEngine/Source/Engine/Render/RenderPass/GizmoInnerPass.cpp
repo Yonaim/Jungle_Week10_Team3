@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "GizmoInnerPass.h"
 #include "RenderPassRegistry.h"
 

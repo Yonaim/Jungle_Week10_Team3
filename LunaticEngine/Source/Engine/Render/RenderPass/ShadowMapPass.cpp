@@ -1,4 +1,5 @@
-﻿#include "ShadowMapPass.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "ShadowMapPass.h"
 #include "RenderPassRegistry.h"
 
 #include "Render/Device/D3DDevice.h"

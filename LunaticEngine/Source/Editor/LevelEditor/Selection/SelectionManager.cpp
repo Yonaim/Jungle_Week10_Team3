@@ -1,3 +1,4 @@
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/Selection/SelectionManager.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/SceneComponent.h"

@@ -1,4 +1,5 @@
-﻿#include "RotatingMovementComponent.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "RotatingMovementComponent.h"
 
 #include "Object/ObjectFactory.h"
 #include "Component/SceneComponent.h"

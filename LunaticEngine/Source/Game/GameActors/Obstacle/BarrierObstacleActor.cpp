@@ -1,4 +1,5 @@
-﻿#include "BarrierObstacleActor.h"
+﻿#include "PCH/LunaticPCH.h"
+#include "BarrierObstacleActor.h"
 #include "Resource/ResourceManager.h"
 #include "Engine/Runtime/Engine.h"
 
