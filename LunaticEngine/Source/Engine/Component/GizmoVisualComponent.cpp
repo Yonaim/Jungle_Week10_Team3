@@ -1,4 +1,4 @@
-﻿#include "GizmoVisualComponent.h"
+#include "GizmoVisualComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -49,8 +49,12 @@ void UGizmoVisualComponent::DestroyRenderState()
 		if (SceneProxy) { Scene->RemovePrimitive(SceneProxy); SceneProxy = nullptr; }
 	}
 
-	// 같은 proxy를 죽은/교체된 FScene에서 다시 제거하지 않도록 명시적으로 끊어 둔다.
-	RegisteredScene = nullptr;
+	// RegisteredScene은 여기서 끊지 않는다.
+	// MarkRenderStateDirty()가 DestroyRenderState() 직후 CreateRenderState()를 호출하는데,
+	// 여기서 RegisteredScene을 nullptr로 만들면 Actor 없이 독립 생성된 GizmoVisualComponent는
+	// 다시 어떤 FScene에 등록되어야 하는지 알 수 없어 proxy가 재생성되지 않는다.
+	// Scene 소유권을 실제로 끊어야 하는 경우에는 FGizmoManager::UnregisterVisualFromScene()이
+	// DestroyRenderState() 이후 SetScene(nullptr)를 호출한다.
 }
 
 #include <cmath>
@@ -100,8 +104,21 @@ bool UGizmoVisualComponent::IntersectRayAxis(const FRay& Ray, FVector AxisEnd, f
 		AxisS = (RayDirDotRayDir * AxisDotDiff - RayDirDotAxis * RayDirDotDiff) / Denominator;
 	}
 
-	if (RayT < 0.0f) RayT = 0.0f;
+	// Do not clamp the ray/axis parameters before the hit decision.
+	// Clamping made the infinite axis extension behave like a real handle, so
+	// clicking around the world origin could still select a gizmo whose visible
+	// handle was elsewhere. The transform gizmo should only pick the finite
+	// visible handle segment in front of the camera.
+	if (RayT < 0.0f)
+	{
+		return false;
+	}
 
+	constexpr float AxisSegmentTolerance = 0.06f;
+	if (AxisS < -AxisSegmentTolerance || AxisS > 1.0f + AxisSegmentTolerance)
+	{
+		return false;
+	}
 	if (AxisS < 0.0f) AxisS = 0.0f;
 	else if (AxisS > 1.0f) AxisS = 1.0f;
 
@@ -248,6 +265,7 @@ bool UGizmoVisualComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& O
 	{
 		OutHitResult.bHit = true;
 		OutHitResult.Distance = BestRayT;
+		OutHitResult.WorldHitLocation = Ray.Origin + Ray.Direction * BestRayT;
 		OutHitResult.HitComponent = this;
 		if (!IsHolding())
 		{
@@ -306,6 +324,14 @@ void UGizmoVisualComponent::UpdateHoveredAxis(int Index)
 
 void UGizmoVisualComponent::UpdateGizmoMode(EGizmoMode NewMode)
 {
+	if (CurMode != NewMode)
+	{
+		// Mode changes swap the underlying handle mesh, so any cached hover/press
+		// axis from the previous mode is no longer valid. The manager is the normal
+		// entry point, but keep the visual component safe against legacy direct calls.
+		ResetVisualInteractionState();
+	}
+
 	CurMode = NewMode;
 	UpdateVisualTransform();
 }

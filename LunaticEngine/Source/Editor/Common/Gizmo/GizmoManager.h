@@ -6,14 +6,34 @@
 #include "Core/CollisionTypes.h"
 #include "Math/Transform.h"
 
+#include "ImGui/imgui.h"
+
 #include <memory>
 
 class UGizmoVisualComponent;
+class FScene;
 
 enum class EGizmoInteractionPolicy : uint8
 {
     Interactive,
     VisualOnly
+};
+
+
+struct FUIScreenGizmoInteractionState
+{
+    int32 HoveredAxis = 0;
+    int32 ActiveAxis = 0;
+    bool bDragging = false;
+    ImVec2 LastMousePos = ImVec2(0.0f, 0.0f);
+
+    void Reset()
+    {
+        HoveredAxis = 0;
+        ActiveAxis = 0;
+        bDragging = false;
+        LastMousePos = ImVec2(0.0f, 0.0f);
+    }
 };
 
 struct FGizmoTargetKey
@@ -46,8 +66,18 @@ public:
     bool HasValidTarget() const;
     std::shared_ptr<ITransformGizmoTarget> GetTarget() const { return Target; }
 
-    void SetVisualComponent(UGizmoVisualComponent* InComponent);
-    UGizmoVisualComponent* GetVisualComponent() const { return VisualComponent; }
+    // Visual component is owned by FGizmoManager. External code must not mutate it directly.
+    // Viewport clients create/register/release the visual only through these manager APIs.
+    void EnsureVisualComponent();
+    void ReleaseVisualComponent();
+    bool HasVisualComponent() const { return VisualComponent != nullptr; }
+    void SetVisualWorldLocation(const FVector& InLocation);
+    void SetVisualScene(FScene* InScene);
+    void ClearVisualScene();
+    void CreateVisualRenderState();
+    void DestroyVisualRenderState();
+    void RegisterVisualToScene(FScene* InScene);
+    void UnregisterVisualFromScene();
 
     void SetInteractionPolicy(EGizmoInteractionPolicy InPolicy);
     EGizmoInteractionPolicy GetInteractionPolicy() const { return InteractionPolicy; }
@@ -79,6 +109,9 @@ public:
 
     void SetTargetWorldLocation(const FVector& NewLocation);
 
+    FUIScreenGizmoInteractionState& GetUIScreenInteractionState() { return UIScreenInteraction; }
+    const FUIScreenGizmoInteractionState& GetUIScreenInteractionState() const { return UIScreenInteraction; }
+
 private:
     FVector GetAxisVector(int32 Axis) const;
     bool ComputeLinearIntersection(const FRay& Ray, FVector& OutPoint);
@@ -94,6 +127,8 @@ private:
     FGizmoTargetKey TargetKey{};
     bool bHasTargetKey = false;
     UGizmoVisualComponent* VisualComponent = nullptr;
+    FScene* RegisteredVisualScene = nullptr;
+    FUIScreenGizmoInteractionState UIScreenInteraction;
 
     EGizmoInteractionPolicy InteractionPolicy = EGizmoInteractionPolicy::Interactive;
     EGizmoMode  Mode = EGizmoMode::Translate;

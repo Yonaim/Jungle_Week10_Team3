@@ -584,6 +584,9 @@
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.cpp">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp">
       <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClCompile>
@@ -1463,6 +1466,9 @@
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.h">
+      <Filter>Source\Editor\Common\Gizmo</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h">
       <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClInclude>
@@ -1518,6 +1524,9 @@
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h">
+      <Filter>Source\Editor\Common\Viewport</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportInputController.h">
       <Filter>Source\Editor\Common\Viewport</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h">

@@ -2208,7 +2208,7 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
     {
         if (ActiveViewportClient)
         {
-            ActiveViewportClient->GetGizmoManager().SetMode(EGizmoMode::Translate);
+            Editor->SetEditorGizmoMode(EGizmoMode::Translate);
         }
     }
     ShowItemTooltip("Translate");
@@ -2217,7 +2217,7 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
     {
         if (ActiveViewportClient)
         {
-            ActiveViewportClient->GetGizmoManager().SetMode(EGizmoMode::Rotate);
+            Editor->SetEditorGizmoMode(EGizmoMode::Rotate);
         }
     }
     ShowItemTooltip("Rotate");
@@ -2226,7 +2226,7 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
     {
         if (ActiveViewportClient)
         {
-            ActiveViewportClient->GetGizmoManager().SetMode(EGizmoMode::Scale);
+            Editor->SetEditorGizmoMode(EGizmoMode::Scale);
         }
     }
     ShowItemTooltip("Scale");
@@ -2326,8 +2326,9 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         Desc.ToolbarWidth = PaneRect.Width;
         Desc.Renderer = RendererPtr;
         Desc.bEnabled = Editor != nullptr && VC != nullptr;
-        const EGizmoMode CurrentGizmoMode = ActiveViewportClient ? ActiveViewportClient->GetGizmoManager().GetMode()
-                                                                 : EGizmoMode::Translate;
+        // 각 pane toolbar는 자기 ViewportClient의 gizmo state를 표시한다.
+        // ActiveViewportClient를 읽으면 다른 pane의 toolbar 렌더 순서에 따라 선택 표시가 꼬일 수 있다.
+        const EGizmoMode CurrentGizmoMode = VC ? VC->GetGizmoManager().GetMode() : EGizmoMode::Translate;
         Desc.ToolMode = CurrentGizmoMode == EGizmoMode::Rotate
                             ? FEditorViewportToolbar::EToolMode::Rotate
                             : (CurrentGizmoMode == EGizmoMode::Scale
@@ -2341,12 +2342,17 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         Desc.ViewModeIcon = FEditorViewportToolbar::GetViewModeIconByIndex(static_cast<int32>(Opts.ViewMode));
         Desc.ViewModeLabel = FEditorViewportToolbar::GetViewModeLabelByIndex(static_cast<int32>(Opts.ViewMode));
 
-        Desc.OnToolModeChanged = [this](FEditorViewportToolbar::EToolMode Mode)
+        Desc.OnToolModeChanged = [this, VC, &Settings](FEditorViewportToolbar::EToolMode Mode)
         {
-            if (!ActiveViewportClient)
+            if (!VC)
             {
                 return;
             }
+
+            // 툴바를 누른 pane을 먼저 active viewport로 만든 뒤, 그 viewport의 manager만 갱신한다.
+            // 이전 코드처럼 ActiveViewportClient를 직접 쓰면 비활성 pane toolbar 클릭 시 다른 viewport의
+            // manager가 바뀌거나, 다음 프레임에 mode 표시가 되돌아가는 문제가 생긴다.
+            SetActiveViewport(VC);
 
             EGizmoMode NewMode = EGizmoMode::Translate;
             switch (Mode)
@@ -2363,11 +2369,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                 break;
             }
 
-            ActiveViewportClient->GetGizmoManager().SetMode(NewMode);
-            if (Editor)
-            {
-                Editor->ApplyTransformSettingsToGizmo();
-            }
+            Editor->SetEditorGizmoMode(NewMode);
         };
 
         Desc.OnCoordSpaceToggled = [&]()
@@ -2501,7 +2503,10 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         };
 
         FEditorViewportToolbar::RenderViewportToolbar(Desc);
-        Editor->ApplyTransformSettingsToGizmo();
+        if (Editor && VC == ActiveViewportClient)
+        {
+            Editor->ApplyTransformSettingsToGizmo();
+        }
     }
 
     ImGui::PopID();

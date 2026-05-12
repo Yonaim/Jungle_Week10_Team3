@@ -339,6 +339,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp" />
     <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp" />
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp" />
+    <ClCompile Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.cpp" />
     <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp" />
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp" />
@@ -634,6 +635,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h" />
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
+    <ClInclude Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\TransformGizmoTargets.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
@@ -653,6 +655,7 @@
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportCamera.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportClient.h" />
+    <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportInputController.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportPanel.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\PreviewScene.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\ViewportCameraController.h" />

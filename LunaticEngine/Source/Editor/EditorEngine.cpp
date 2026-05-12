@@ -4,7 +4,6 @@
 #include "Audio/AudioManager.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Component/CameraComponent.h"
-#include "Component/GizmoVisualComponent.h"
 #include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
 #include "Engine/Input/InputManager.h"
@@ -290,54 +289,80 @@ void UEditorEngine::ToggleCoordSystem()
     ApplyTransformSettingsToGizmo();
 }
 
-UGizmoVisualComponent *UEditorEngine::GetGizmo() const
+void UEditorEngine::SetEditorGizmoMode(EGizmoMode NewMode)
 {
-    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
-    {
-        return ActiveClient->GetGizmoManager().GetVisualComponent();
-    }
-    if (FLevelEditorViewportClient *LevelClient = GetActiveViewport())
-    {
-        return LevelClient->GetGizmo();
-    }
-    return nullptr;
+    EditorGizmoSharedState.Mode = NewMode;
+    ApplyTransformSettingsToGizmo();
 }
 
 void UEditorEngine::ApplyTransformSettingsToGizmo()
 {
     const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient();
-    UGizmoVisualComponent *Gizmo = GetGizmo();
-    if (!ActiveClient && !Gizmo)
-    {
-        return;
-    }
 
-    const EGizmoMode CurrentMode = ActiveClient ? ActiveClient->GetGizmoManager().GetMode() : Gizmo->GetMode();
-    const bool bForceLocalForScale = CurrentMode == EGizmoMode::Scale;
-    const EGizmoSpace DesiredSpace =
+    const bool bForceLocalForScale = EditorGizmoSharedState.Mode == EGizmoMode::Scale;
+    EditorGizmoSharedState.Space =
         bForceLocalForScale || Settings.CoordSystem != EEditorCoordSystem::World
             ? EGizmoSpace::Local
             : EGizmoSpace::World;
 
-    if (ActiveClient)
+    EditorGizmoSharedState.bTranslationSnapEnabled = Settings.bEnableTranslationSnap;
+    EditorGizmoSharedState.TranslationSnapSize = Settings.TranslationSnapSize;
+    EditorGizmoSharedState.bRotationSnapEnabled = Settings.bEnableRotationSnap;
+    EditorGizmoSharedState.RotationSnapSizeDegrees = Settings.RotationSnapSize;
+    EditorGizmoSharedState.bScaleSnapEnabled = Settings.bEnableScaleSnap;
+    EditorGizmoSharedState.ScaleSnapSize = Settings.ScaleSnapSize;
+
+    // The tool state is editor-context-wide. Each viewport still owns its own
+    // FGizmoManager / visual / drag state, but mode/space/snap must be identical
+    // across all visible Level viewport managers.
+    if (IsLevelEditorContextActive())
     {
-        FGizmoManager &Manager = ActiveClient->GetGizmoManager();
-        Manager.SetSpace(DesiredSpace);
-        Manager.SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize,
-                                Settings.bEnableRotationSnap, Settings.RotationSnapSize,
-                                Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
+        for (FLevelEditorViewportClient* Client : GetLevelViewportClients())
+        {
+            if (Client)
+            {
+                EditorGizmoSharedState.ApplyTo(Client->GetGizmoManager());
+            }
+        }
         return;
     }
 
-    Gizmo->SetGizmoSpace(DesiredSpace);
+    // Asset editor viewport clients use their own editor state where available.
+    // For generic asset viewports, apply the current shared editor tool state to
+    // every collected asset viewport instead of only the active one.
+    TArray<FEditorViewportClient*> AssetClients;
+    CollectAssetViewportClients(AssetClients);
+    for (FEditorViewportClient* Client : AssetClients)
+    {
+        if (Client)
+        {
+            EditorGizmoSharedState.ApplyTo(Client->GetGizmoManager());
+        }
+    }
 }
 
 void UEditorEngine::SyncActiveGizmoVisualFromTarget()
 {
-    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    if (IsLevelEditorContextActive())
     {
-        ActiveClient->GetGizmoManager().SyncVisualFromTarget();
+        for (FLevelEditorViewportClient* Client : GetLevelViewportClients())
+        {
+            if (Client)
+            {
+                Client->GetGizmoManager().SyncVisualFromTarget();
+            }
+        }
+        return;
+    }
+
+    TArray<FEditorViewportClient*> AssetClients;
+    CollectAssetViewportClients(AssetClients);
+    for (FEditorViewportClient* Client : AssetClients)
+    {
+        if (Client)
+        {
+            Client->GetGizmoManager().SyncVisualFromTarget();
+        }
     }
 }
 

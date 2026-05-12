@@ -8,7 +8,6 @@
 
 class USkeletalMesh;
 class USkeletalMeshComponent;
-class UGizmoVisualComponent;
 class FPrimitiveSceneProxy;
 class FSkeletalMeshSelectionManager;
 
@@ -82,7 +81,6 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     FPreviewScene PreviewScene;
     USkeletalMeshComponent *PreviewComponent = nullptr;
     FPrimitiveSceneProxy *PreviewProxy = nullptr;
-    UGizmoVisualComponent *PreviewGizmoVisual = nullptr;
 
     FViewportRenderOptions RenderOptions;
     int32 GizmoTargetBoneIndex = -1;

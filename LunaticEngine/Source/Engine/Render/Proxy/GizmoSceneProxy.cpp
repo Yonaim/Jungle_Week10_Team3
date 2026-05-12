@@ -1,4 +1,4 @@
-﻿#include "Render/Proxy/GizmoSceneProxy.h"
+#include "Render/Proxy/GizmoSceneProxy.h"
 #include "Component/GizmoVisualComponent.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Types/FrameContext.h"
@@ -21,7 +21,7 @@ FGizmoSceneProxy::FGizmoSceneProxy(UGizmoVisualComponent* InComponent, bool bInn
 		bInner ? ERenderPass::GizmoInner : ERenderPass::GizmoOuter,
 		bInner ? EBlendState::AlphaBlend : EBlendState::Opaque,
 		bInner ? EDepthStencilState::GizmoInside : EDepthStencilState::GizmoOutside,
-		ERasterizerState::SolidBackCull,
+		ERasterizerState::SolidNoCull,
 		FShaderManager::Get().GetOrCreate(EShaderPath::Gizmo));
 }
 

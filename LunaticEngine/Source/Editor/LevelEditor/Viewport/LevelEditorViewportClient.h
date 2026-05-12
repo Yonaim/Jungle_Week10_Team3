@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
+#include "Common/Viewport/EditorViewportInputController.h"
 #include "Common/Viewport/EditorViewportCamera.h"
 #include "Core/CollisionTypes.h"
 #include "Core/CoreTypes.h"
@@ -15,7 +16,6 @@
 #include "imgui.h"
 
 class UWorld;
-class UGizmoVisualComponent;
 class ULightComponentBase;
 class AActor;
 class FLevelEditorSettings;
@@ -45,8 +45,6 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void             SetOverlayStatSystem(FOverlayStatSystem *InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
     void             SetSettings(const FLevelEditorSettings *InSettings) { Settings = InSettings; }
     void             SetSelectionManager(FSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
-    UGizmoVisualComponent *GetGizmoVisual() { return GizmoVisual; }
-    UGizmoVisualComponent *GetGizmo() { return GizmoVisual; }
 
     FViewportRenderOptions       &GetRenderOptions() { return RenderOptions; }
     const FViewportRenderOptions &GetRenderOptions() const { return RenderOptions; }
@@ -111,7 +109,6 @@ class FLevelEditorViewportClient : public FEditorViewportClient
 
   private:
     FOverlayStatSystem    *OverlayStatSystem = nullptr;
-    UGizmoVisualComponent       *GizmoVisual = nullptr;
     FScene                *RegisteredGizmoScene = nullptr;
     const FLevelEditorSettings *Settings = nullptr;
     FSelectionManager     *SelectionManager = nullptr;
@@ -130,21 +127,12 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     FEnhancedInputManager EnhancedInputManager;
     FInputMappingContext *EditorMappingContext = nullptr;
 
-    FInputAction *ActionEditorMove = nullptr;
-    FInputAction *ActionEditorRotate = nullptr;
-    FInputAction *ActionEditorPan = nullptr;
-    FInputAction *ActionEditorZoom = nullptr;
-    FInputAction *ActionEditorOrbit = nullptr;
+    FEditorViewportInputController CommonInput;
 
-    FInputAction *ActionEditorFocus = nullptr;
+    // Level Editor only shortcuts. Common camera/gizmo/snap actions live in CommonInput.
     FInputAction *ActionEditorDelete = nullptr;
     FInputAction *ActionEditorDuplicate = nullptr;
-    FInputAction *ActionEditorToggleGizmoMode = nullptr;
-    FInputAction *ActionEditorToggleCoordSystem = nullptr;
-    FInputAction *ActionEditorEscape = nullptr;
     FInputAction *ActionEditorTogglePIE = nullptr;
-    FInputAction *ActionEditorDecreaseSnap = nullptr;
-    FInputAction *ActionEditorIncreaseSnap = nullptr;
     FInputAction *ActionEditorVertexSnap = nullptr;
     FInputAction *ActionEditorSnapToFloor = nullptr;
     FInputAction *ActionEditorSetBookmark = nullptr;
@@ -153,16 +141,5 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     FInputAction *ActionEditorSetViewportTop = nullptr;
     FInputAction *ActionEditorSetViewportFront = nullptr;
     FInputAction *ActionEditorSetViewportRight = nullptr;
-    FInputAction *ActionEditorToggleGridSnap = nullptr;
-    FInputAction *ActionEditorToggleRotationSnap = nullptr;
-    FInputAction *ActionEditorToggleScaleSnap = nullptr;
 
-    FVector EditorMoveAccumulator = FVector::ZeroVector;
-    FVector EditorRotateAccumulator = FVector::ZeroVector;
-    FVector EditorPanAccumulator = FVector::ZeroVector;
-    float   EditorZoomAccumulator = 0.0f;
-    int32   HoveredUIScreenGizmoAxis = 0;
-    int32   ActiveUIScreenGizmoAxis = 0;
-    bool    bDraggingUIScreenGizmo = false;
-    ImVec2  LastUIScreenGizmoMousePos = ImVec2(0.0f, 0.0f);
 };

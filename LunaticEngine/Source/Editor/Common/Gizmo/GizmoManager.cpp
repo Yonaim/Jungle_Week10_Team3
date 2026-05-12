@@ -1,6 +1,7 @@
 #include "Common/Gizmo/GizmoManager.h"
 
 #include "Component/GizmoVisualComponent.h"
+#include "Object/Object.h"
 #include "Collision/RayUtils.h"
 #include "Math/MathUtils.h"
 
@@ -57,21 +58,109 @@ bool FGizmoManager::HasValidTarget() const
     return Target && Target->IsValid();
 }
 
-void FGizmoManager::SetVisualComponent(UGizmoVisualComponent* InComponent)
+void FGizmoManager::EnsureVisualComponent()
 {
-    if (VisualComponent == InComponent)
+    if (VisualComponent)
     {
         SyncVisualFromTarget();
         return;
     }
 
-    if (VisualComponent)
+    VisualComponent = UObjectManager::Get().CreateObject<UGizmoVisualComponent>();
+    SyncVisualFromTarget();
+}
+
+void FGizmoManager::ReleaseVisualComponent()
+{
+    if (!VisualComponent)
     {
-        VisualComponent->ResetVisualInteractionState();
+        RegisteredVisualScene = nullptr;
+        return;
     }
 
-    VisualComponent = InComponent;
+    UnregisterVisualFromScene();
+    VisualComponent->ResetVisualInteractionState();
+    UObjectManager::Get().DestroyObject(VisualComponent);
+    VisualComponent = nullptr;
+}
+
+void FGizmoManager::SetVisualWorldLocation(const FVector& InLocation)
+{
+    EnsureVisualComponent();
+    if (VisualComponent)
+    {
+        VisualComponent->SetWorldLocation(InLocation);
+    }
+}
+
+void FGizmoManager::SetVisualScene(FScene* InScene)
+{
+    EnsureVisualComponent();
+    if (VisualComponent)
+    {
+        VisualComponent->SetScene(InScene);
+    }
+}
+
+void FGizmoManager::ClearVisualScene()
+{
+    if (VisualComponent)
+    {
+        VisualComponent->SetScene(nullptr);
+    }
+}
+
+void FGizmoManager::CreateVisualRenderState()
+{
+    EnsureVisualComponent();
+    if (VisualComponent)
+    {
+        VisualComponent->CreateRenderState();
+    }
+}
+
+void FGizmoManager::DestroyVisualRenderState()
+{
+    if (VisualComponent)
+    {
+        VisualComponent->DestroyRenderState();
+    }
+}
+
+void FGizmoManager::RegisterVisualToScene(FScene* InScene)
+{
+    if (!InScene)
+    {
+        UnregisterVisualFromScene();
+        return;
+    }
+
+    EnsureVisualComponent();
+
+    // Mode 전환 시 UGizmoVisualComponent::MarkRenderStateDirty()가 호출되면
+    // DestroyRenderState() -> CreateRenderState() 순서로 proxy가 재생성된다.
+    // 이때 Actor 없이 독립 생성된 gizmo는 Scene 포인터가 반드시 다시 보장되어야 한다.
+    // 따라서 같은 Scene이어도 SetVisualScene/CreateVisualRenderState를 idempotent하게 호출해
+    // stale registration 상태를 회복할 수 있게 한다.
+    if (RegisteredVisualScene != InScene)
+    {
+        UnregisterVisualFromScene();
+        RegisteredVisualScene = InScene;
+    }
+
+    SetVisualScene(InScene);
+    CreateVisualRenderState();
     SyncVisualFromTarget();
+}
+
+void FGizmoManager::UnregisterVisualFromScene()
+{
+    if (RegisteredVisualScene)
+    {
+        DestroyVisualRenderState();
+    }
+    ClearVisualScene();
+    RegisteredVisualScene = nullptr;
 }
 
 void FGizmoManager::SetInteractionPolicy(EGizmoInteractionPolicy InPolicy)
@@ -96,6 +185,18 @@ bool FGizmoManager::CanInteract() const
 
 void FGizmoManager::SetMode(EGizmoMode InMode)
 {
+    if (Mode == InMode)
+    {
+        SyncVisualFromTarget();
+        return;
+    }
+
+    // Mode change invalidates the currently selected handle and drag plane.
+    // Keep this transition manager-owned so toolbar/shortcut paths cannot leave
+    // UGizmoVisualComponent in a stale pressed/holding state.
+    CancelDrag();
+    ResetVisualInteractionState();
+
     Mode = InMode;
     if (VisualComponent)
     {
@@ -181,11 +282,60 @@ void FGizmoManager::ResetVisualInteractionState()
 
 bool FGizmoManager::HitTest(const FRay& Ray, FRayHitResult& OutHitResult)
 {
-    if (!CanInteract())
+    OutHitResult = {};
+
+    if (!CanInteract() || Mode == EGizmoMode::Select)
     {
         return false;
     }
-    return FRayUtils::RaycastComponent(VisualComponent, Ray, OutHitResult);
+
+    // Always refresh the visual from the current target immediately before picking.
+    // Selection/tabs/viewports can update the target in a different phase than input;
+    // without this guard the visual may remain at an old location, commonly world origin,
+    // while the manager still has a valid target.
+    SyncVisualFromTarget();
+
+    if (!VisualComponent || !VisualComponent->IsVisible() || !VisualComponent->HasVisualTarget())
+    {
+        return false;
+    }
+
+    if (Target && Target->IsValid())
+    {
+        const FVector TargetLocation = Target->GetWorldTransform().GetLocation();
+        const FVector VisualLocation = VisualComponent->GetWorldLocation();
+        const float AllowedErrorSq = 0.01f;
+        if (FVector::DistSquared(TargetLocation, VisualLocation) > AllowedErrorSq)
+        {
+            // A stale visual should never be pickable. Keep rendering/picking tied to
+            // the same target transform instead of allowing an invisible old handle to
+            // eat clicks at the origin.
+            VisualComponent->ClearGizmoWorldTransform();
+            return false;
+        }
+    }
+
+    // Picking is part of the gizmo interaction state, so do not route it through
+    // the generic primitive raycast path. The generic path performs a world AABB
+    // broad phase first, but the editor gizmo is an independently owned,
+    // screen-scaled visual component whose proxy can be recreated on mode changes.
+    // If the cached bounds and the current visual handle state ever diverge,
+    // broad phase rejects the ray even though the gizmo is visible.
+    //
+    // The gizmo component already has analytical hit tests for translate / rotate /
+    // scale handles, so call it directly and let the manager own all interaction
+    // state.
+    if (!bDragging && VisualComponent->IsHolding())
+    {
+        // A missed mouse-up or focus handoff can leave the visual in Holding=true
+        // while the manager is no longer dragging. In that stale state
+        // UGizmoVisualComponent::LineTraceComponent intentionally refuses to update
+        // SelectedAxis, which makes the next BeginDrag fail. Recover before every
+        // idle pick.
+        VisualComponent->ResetVisualInteractionState();
+    }
+
+    return VisualComponent->LineTraceComponent(Ray, OutHitResult);
 }
 
 bool FGizmoManager::BeginDrag(const FRay& Ray)

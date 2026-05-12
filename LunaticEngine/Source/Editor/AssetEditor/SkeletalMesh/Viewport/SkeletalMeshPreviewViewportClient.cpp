@@ -1,4 +1,4 @@
-﻿#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
+#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
@@ -164,16 +164,10 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
     }
 
     PreviewComponent = UObjectManager::Get().CreateObject<USkeletalMeshComponent>();
-    PreviewGizmoVisual = UObjectManager::Get().CreateObject<UGizmoVisualComponent>();
-    if (PreviewGizmoVisual)
-    {
-        PreviewGizmoVisual->SetScene(&PreviewScene.GetScene());
-        PreviewGizmoVisual->CreateRenderState();
-        PreviewGizmoVisual->ClearGizmoWorldTransform();
-        GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::VisualOnly);
-        GizmoManager.SetSpace(EGizmoSpace::Local);
-        GizmoManager.SetVisualComponent(PreviewGizmoVisual);
-    }
+    GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::VisualOnly);
+    GizmoManager.EnsureVisualComponent();
+    GizmoManager.RegisterVisualToScene(&PreviewScene.GetScene());
+    GizmoManager.SetSpace(EGizmoSpace::Local);
 
     RenderOptions.ViewMode = EViewMode::Lit_Phong;
     RenderOptions.ShowFlags.bGrid = true;
@@ -199,14 +193,7 @@ void FSkeletalMeshPreviewViewportClient::ReleasePreviewObjects()
     }
 
     GizmoManager.ClearTarget();
-    GizmoManager.SetVisualComponent(nullptr);
-
-    if (PreviewGizmoVisual)
-    {
-        PreviewGizmoVisual->DestroyRenderState();
-        UObjectManager::Get().DestroyObject(PreviewGizmoVisual);
-        PreviewGizmoVisual = nullptr;
-    }
+    GizmoManager.ReleaseVisualComponent();
 
     if (PreviewComponent)
     {
@@ -265,10 +252,15 @@ void FSkeletalMeshPreviewViewportClient::ApplyEditorStateToViewport()
 
     if (State)
     {
-        GizmoManager.SetSnapSettings(
-            State->bEnableTranslationSnap, State->TranslationSnapSize,
-            State->bEnableRotationSnap, State->RotationSnapSize,
-            State->bEnableScaleSnap, State->ScaleSnapSize);
+        State->GizmoSharedState.Mode = State->GizmoMode;
+        State->GizmoSharedState.Space = State->GizmoSpace;
+        State->GizmoSharedState.bTranslationSnapEnabled = State->bEnableTranslationSnap;
+        State->GizmoSharedState.TranslationSnapSize = State->TranslationSnapSize;
+        State->GizmoSharedState.bRotationSnapEnabled = State->bEnableRotationSnap;
+        State->GizmoSharedState.RotationSnapSizeDegrees = State->RotationSnapSize;
+        State->GizmoSharedState.bScaleSnapEnabled = State->bEnableScaleSnap;
+        State->GizmoSharedState.ScaleSnapSize = State->ScaleSnapSize;
+        State->GizmoSharedState.ApplyTo(GizmoManager);
     }
 }
 
@@ -367,7 +359,7 @@ void FSkeletalMeshPreviewViewportClient::ResetPreviewCamera()
 
     // SkeletalMesh Editor viewport도 Level Editor와 같은 자유비행 카메라로 사용한다.
     // 초기 위치만 preview mesh를 보기 좋은 위치로 잡고, 이후 입력은 camera 자체를 이동/회전한다.
-    GetCameraController().ResetLookAt(FVector(-OrbitDistance, 0.0f, OrbitDistance * 0.35f), OrbitTarget);
+    GetCameraController().ResetLookAt(FVector(OrbitDistance, 0.0f, OrbitDistance * 0.35f), OrbitTarget);
 }
 
 void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
@@ -430,6 +422,9 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
         ViewCamera.GetWorldLocation(),
         ViewCamera.IsOrthogonal(),
         ViewCamera.GetOrthoWidth());
+    GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(
+        RenderOptions.ViewportType,
+        GizmoManager.GetMode()));
 }
 
 const char *FSkeletalMeshPreviewViewportClient::GetViewportTooltipBarText() const
@@ -459,7 +454,8 @@ void FSkeletalMeshPreviewViewportClient::CycleGizmoModeFromShortcut()
         break;
     }
 
-    GizmoManager.SetMode(State->GizmoMode);
+    State->GizmoSharedState.Mode = State->GizmoMode;
+    State->GizmoSharedState.ApplyTo(GizmoManager);
 }
 
 void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
@@ -575,6 +571,12 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
 
+    // Asset Preview의 gizmo visual도 FGizmoManager가 독립 소유한다.
+    // Mode 변경/mesh 교체로 render proxy가 재생성된 뒤에도 preview scene에
+    // 다시 붙을 수 있도록, Level viewport와 동일하게 매 render request에서
+    // idempotent registration을 보장한다.
+    GizmoManager.RegisterVisualToScene(&PreviewScene.GetScene());
+
     // 프리뷰 카메라가 프리뷰 씬 렌더 타깃과 동일한 렌더 범위를 사용하도록 맞춘다.
     // Asset Preview 뷰포트 크기의 기준값은 ImGui 패널 사각형이다.
     if (ViewportScreenRect.Width > 0.0f && ViewportScreenRect.Height > 0.0f)
@@ -591,6 +593,13 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     OutRequest.bRenderGrid = RenderOptions.ShowFlags.bGrid;
     OutRequest.bEnableGPUOcclusion = false;
     OutRequest.bAllowLevelDebugVisuals = false;
+    GizmoManager.ApplyScreenSpaceScaling(
+        ViewCamera.GetWorldLocation(),
+        ViewCamera.IsOrthogonal(),
+        ViewCamera.GetOrthoWidth());
+    GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(
+        RenderOptions.ViewportType,
+        GizmoManager.GetMode()));
     return true;
 }
 
@@ -757,12 +766,15 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
         return;
     }
 
-    GizmoManager.SetMode(State->GizmoMode);
-    GizmoManager.SetSpace(State->GizmoSpace);
-    GizmoManager.SetSnapSettings(
-        State->bEnableTranslationSnap, State->TranslationSnapSize,
-        State->bEnableRotationSnap, State->RotationSnapSize,
-        State->bEnableScaleSnap, State->ScaleSnapSize);
+    State->GizmoSharedState.Mode = State->GizmoMode;
+    State->GizmoSharedState.Space = State->GizmoSpace;
+    State->GizmoSharedState.bTranslationSnapEnabled = State->bEnableTranslationSnap;
+    State->GizmoSharedState.TranslationSnapSize = State->TranslationSnapSize;
+    State->GizmoSharedState.bRotationSnapEnabled = State->bEnableRotationSnap;
+    State->GizmoSharedState.RotationSnapSizeDegrees = State->RotationSnapSize;
+    State->GizmoSharedState.bScaleSnapEnabled = State->bEnableScaleSnap;
+    State->GizmoSharedState.ScaleSnapSize = State->ScaleSnapSize;
+    State->GizmoSharedState.ApplyTo(GizmoManager);
 
     GizmoTargetBoneIndex = SelectedBoneIndex;
 
