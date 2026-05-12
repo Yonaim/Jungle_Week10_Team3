@@ -88,8 +88,14 @@ public:
 	const TArray<FDebugAABB>& GetDebugAABBs() const { return DebugAABBs; }
 
 	// --- Debug lines ---
-	struct FDebugLine { FVector Start; FVector End; FColor Color; };
-	void AddDebugLine(const FVector& Start, const FVector& End, const FColor& Color);
+	struct FDebugLine
+	{
+		FVector Start;
+		FVector End;
+		FColor Color;
+		bool bDepthTest = true;
+	};
+	void AddDebugLine(const FVector& Start, const FVector& End, const FColor& Color, bool bDepthTest = true);
 	const TArray<FDebugLine>& GetDebugLines() const { return DebugLines; }
 
 	// --- Grid ---

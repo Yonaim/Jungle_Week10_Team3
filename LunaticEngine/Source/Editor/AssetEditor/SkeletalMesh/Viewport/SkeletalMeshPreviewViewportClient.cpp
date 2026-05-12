@@ -5,6 +5,7 @@
 
 #include "Component/GizmoComponent.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "Debug/DrawDebugHelpers.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Object/Object.h"
 #include "Render/Proxy/PrimitiveSceneProxy.h"
@@ -35,6 +36,115 @@ const char *PreviewModeToText(ESkeletalMeshPreviewMode Mode)
 float ClampFloat(float Value, float MinValue, float MaxValue)
 {
     return (std::max)(MinValue, (std::min)(Value, MaxValue));
+}
+
+bool IsFiniteVector(const FVector& Value)
+{
+    return std::isfinite(Value.X) && std::isfinite(Value.Y) && std::isfinite(Value.Z);
+}
+
+int32 ResolveSelectedBoneIndex(const FSkeletalMeshEditorState* State, const FSkeletalMeshSelectionManager* SelectionManager)
+{
+    if (SelectionManager)
+    {
+        return SelectionManager->GetPrimaryBoneIndex();
+    }
+
+    return State ? State->SelectedBoneIndex : -1;
+}
+
+float ComputeAverageBoneLength(const TArray<FBoneInfo>& Bones, const FSkeletonPose& Pose)
+{
+    float TotalLength = 0.0f;
+    int32 ConnectedBoneCount = 0;
+
+    for (int32 BoneIndex = 0; BoneIndex < static_cast<int32>(Bones.size()); ++BoneIndex)
+    {
+        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+        if (ParentIndex < 0 || ParentIndex >= static_cast<int32>(Bones.size()))
+        {
+            continue;
+        }
+
+        const FVector BonePosition = Pose.ComponentTransforms[BoneIndex].GetLocation();
+        const FVector ParentPosition = Pose.ComponentTransforms[ParentIndex].GetLocation();
+        const float BoneLength = FVector::Distance(BonePosition, ParentPosition);
+        if (!std::isfinite(BoneLength) || BoneLength <= 1.0e-4f)
+        {
+            continue;
+        }
+
+        TotalLength += BoneLength;
+        ++ConnectedBoneCount;
+    }
+
+    return ConnectedBoneCount > 0 ? (TotalLength / static_cast<float>(ConnectedBoneCount)) : 0.0f;
+}
+
+float ComputePoseBoundsRadius(const FSkeletonPose& Pose)
+{
+    if (Pose.ComponentTransforms.empty())
+    {
+        return 0.0f;
+    }
+
+    bool bHasFinitePosition = false;
+    FVector Min = FVector::ZeroVector;
+    FVector Max = FVector::ZeroVector;
+
+    for (const FMatrix& BoneTransform : Pose.ComponentTransforms)
+    {
+        const FVector Position = BoneTransform.GetLocation();
+        if (!IsFiniteVector(Position))
+        {
+            continue;
+        }
+
+        if (!bHasFinitePosition)
+        {
+            Min = Position;
+            Max = Position;
+            bHasFinitePosition = true;
+            continue;
+        }
+
+        Min.X = (std::min)(Min.X, Position.X);
+        Min.Y = (std::min)(Min.Y, Position.Y);
+        Min.Z = (std::min)(Min.Z, Position.Z);
+        Max.X = (std::max)(Max.X, Position.X);
+        Max.Y = (std::max)(Max.Y, Position.Y);
+        Max.Z = (std::max)(Max.Z, Position.Z);
+    }
+
+    if (!bHasFinitePosition)
+    {
+        return 0.0f;
+    }
+
+    const FVector Extent = (Max - Min) * 0.5f;
+    return std::sqrt(Extent.X * Extent.X + Extent.Y * Extent.Y + Extent.Z * Extent.Z);
+}
+
+float ComputeBoneSphereRadius(const TArray<FBoneInfo>& Bones, const FSkeletonPose& Pose)
+{
+    const float BoundsRadius = ComputePoseBoundsRadius(Pose);
+    const float BoundsDrivenRadius = ClampFloat(BoundsRadius * 0.015f, 0.02f, 0.18f);
+
+    const float AverageBoneLength = ComputeAverageBoneLength(Bones, Pose);
+    if (AverageBoneLength <= 1.0e-4f)
+    {
+        return BoundsDrivenRadius;
+    }
+
+    const float LengthDrivenRadius = ClampFloat(AverageBoneLength * 0.18f, 0.02f, 0.18f);
+    return ClampFloat((BoundsDrivenRadius + LengthDrivenRadius) * 0.5f, 0.02f, 0.18f);
+}
+
+float ComputeBoneConnectionBaseRadius(float BoneLength, float ReferenceSphereRadius)
+{
+    const float MinBaseRadius = ReferenceSphereRadius * 0.85f;
+    const float MaxBaseRadius = (std::max)(MinBaseRadius, ReferenceSphereRadius * 2.0f);
+    return ClampFloat(BoneLength * 0.08f, MinBaseRadius, MaxBaseRadius);
 }
 
 bool IsLegacyImGuiKeyDown(int Key)
@@ -191,6 +301,8 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
 
 void FSkeletalMeshPreviewViewportClient::ReleasePreviewObjects()
 {
+    PreviewScene.GetScene().GetDebugDrawQueue().Clear();
+
     if (PreviewProxy)
     {
         PreviewScene.RemovePrimitive(PreviewProxy);
@@ -227,6 +339,7 @@ void FSkeletalMeshPreviewViewportClient::SetPreviewMesh(USkeletalMesh *InMesh)
     }
 
     PreviewMesh = InMesh;
+    PreviewScene.GetScene().GetDebugDrawQueue().Clear();
     GizmoManager.ClearTarget();
     GizmoTargetBoneIndex = -1;
     if (PreviewComponent)
@@ -408,6 +521,7 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
 void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 {
     EnsurePreviewObjects();
+    PreviewScene.GetScene().GetDebugDrawQueue().Tick(DeltaTime);
     ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
     GetCameraController().SyncTargetToCamera();
@@ -580,6 +694,7 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
 
     ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
+    SubmitSkeletonDebugDraw();
 
     // 프리뷰 카메라가 프리뷰 씬 렌더 타깃과 동일한 렌더 범위를 사용하도록 맞춘다.
     // Asset Preview 뷰포트 크기의 기준값은 ImGui 패널 사각형이다.
@@ -606,8 +721,6 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
     if (Viewport && Viewport->GetSRV())
     {
         FEditorViewportClient::RenderViewportImage(bIsActiveViewport);
-
-        RenderSkeletonDebugOverlay();
         RenderFallbackOverlay();
         return;
     }
@@ -631,7 +744,6 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
     DrawList->AddLine(Center, ImVec2(Center.x, Center.y - AxisLength), IM_COL32(80, 220, 80, 255), 2.0f);
     DrawList->AddLine(Center, ImVec2(Center.x - AxisLength * 0.55f, Center.y + AxisLength * 0.55f), IM_COL32(80, 120, 240, 255), 2.0f);
 
-    RenderSkeletonDebugOverlay();
     RenderFallbackOverlay();
 }
 
@@ -668,81 +780,115 @@ void FSkeletalMeshPreviewViewportClient::RenderFallbackOverlay()
     ImGui::EndGroup();
 }
 
-void FSkeletalMeshPreviewViewportClient::RenderSkeletonDebugOverlay()
+void FSkeletalMeshPreviewViewportClient::SubmitSkeletonDebugDraw()
 {
-	if (!State || !State->bShowBones)
-	{
-		return;
-	}
+    if (!State || !State->bShowBones || !PreviewMesh || !PreviewComponent)
+    {
+        return;
+    }
 
-	if (!PreviewMesh || !PreviewComponent)
-	{
-		return;
-	}
+    const FSkeletalMesh* MeshAsset = PreviewMesh->GetSkeletalMeshAsset();
+    if (!MeshAsset)
+    {
+        return;
+    }
 
-	const FSkeletalMesh* MeshAsset = PreviewMesh->GetSkeletalMeshAsset();
-	if (!MeshAsset)
-	{
-		return;
-	}
+    const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
+    const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
+    const int32 BoneCount = static_cast<int32>(Bones.size());
+    if (BoneCount <= 0 || static_cast<int32>(Pose.ComponentTransforms.size()) != BoneCount)
+    {
+        return;
+    }
 
-	const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
-	const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
+    FScene& Scene = PreviewScene.GetScene();
+    const int32 SelectedBoneIndex = ResolveSelectedBoneIndex(State, SelectionManager);
+    const float DefaultSphereRadius = ComputeBoneSphereRadius(Bones, Pose);
+    TArray<float> BoneSphereRadii;
+    BoneSphereRadii.resize(BoneCount, DefaultSphereRadius * 1.35f);
+    TArray<float> ConnectionBaseRadii;
+    ConnectionBaseRadii.resize(BoneCount, 0.0f);
+    constexpr int32 SphereSegments = 12;
+    const FColor NormalSphereColor(0, 255, 0, 255);
+    const FColor HighlightSphereColor(255, 220, 40, 255);
+    const FColor NormalConnectionColor(80, 220, 255, 220);
+    const FColor HighlightConnectionColor(255, 220, 40, 255);
 
-	const int32 BoneCount = static_cast<int32>(Bones.size());
-	if (BoneCount <= 0)
-	{
-		return;
-	}
+    for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+    {
+        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+        if (ParentIndex < 0 || ParentIndex >= BoneCount)
+        {
+            continue;
+        }
 
-	if (static_cast<int32>(Pose.ComponentTransforms.size()) != BoneCount)
-	{
-		return;
-	}
+        const FVector BonePosition = Pose.ComponentTransforms[BoneIndex].GetLocation();
+        const FVector ParentPosition = Pose.ComponentTransforms[ParentIndex].GetLocation();
+        if (!IsFiniteVector(BonePosition) || !IsFiniteVector(ParentPosition))
+        {
+            continue;
+        }
 
-	ImDrawList* DrawList = ImGui::GetForegroundDrawList();
+        const float BoneLength = FVector::Distance(ParentPosition, BonePosition);
+        const float ConnectionBaseRadius = ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius);
+        ConnectionBaseRadii[BoneIndex] = ConnectionBaseRadius;
+        const float DesiredSphereRadius = ConnectionBaseRadius * 1.35f;
+        BoneSphereRadii[BoneIndex] = (std::max)(BoneSphereRadii[BoneIndex], DesiredSphereRadius);
+        BoneSphereRadii[ParentIndex] = (std::max)(BoneSphereRadii[ParentIndex], DesiredSphereRadius);
+    }
 
-	for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
-	{
-		const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
-		if (ParentIndex < 0 || ParentIndex >= BoneCount)
-		{
-			continue;
-		}
+    for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
+    {
+        const FVector BonePosition = Pose.ComponentTransforms[BoneIndex].GetLocation();
+        if (!IsFiniteVector(BonePosition))
+        {
+            continue;
+        }
 
-		ImVec2 BoneScreen;
-		ImVec2 ParentScreen;
+        const int32 ParentIndex = Bones[BoneIndex].ParentIndex;
+        const bool bSphereHighlighted =
+            BoneIndex == SelectedBoneIndex ||
+            ParentIndex == SelectedBoneIndex;
 
-		const FVector BonePos = Pose.ComponentTransforms[BoneIndex].GetLocation();
-		const FVector ParentPos = Pose.ComponentTransforms[ParentIndex].GetLocation();
+        DrawDebugSphere(
+            &Scene,
+            BonePosition,
+            BoneSphereRadii[BoneIndex],
+            SphereSegments,
+            bSphereHighlighted ? HighlightSphereColor : NormalSphereColor,
+            0.0f,
+            false);
 
-		if (!ProjectWorldToViewport(BonePos, BoneScreen))
-		{
-			continue;
-		}
+        if (ParentIndex < 0 || ParentIndex >= BoneCount)
+        {
+            continue;
+        }
 
-		if (!ProjectWorldToViewport(ParentPos, ParentScreen))
-		{
-			continue;
-		}
+        const FVector ParentPosition = Pose.ComponentTransforms[ParentIndex].GetLocation();
+        if (!IsFiniteVector(ParentPosition))
+        {
+            continue;
+        }
 
-		const bool bSelected =
-			BoneIndex == State->SelectedBoneIndex ||
-			ParentIndex == State->SelectedBoneIndex;
+        const float ConnectionBaseRadius = ConnectionBaseRadii[BoneIndex];
+        if (ConnectionBaseRadius <= 0.0f)
+        {
+            continue;
+        }
 
-		DrawList->AddLine(
-			ParentScreen,
-			BoneScreen,
-			bSelected ? IM_COL32(255, 220, 40, 255) : IM_COL32(80, 220, 255, 220),
-			bSelected ? 3.0f : 1.5f
-		);
+        const bool bConnectionHighlighted =
+            BoneIndex == SelectedBoneIndex ||
+            ParentIndex == SelectedBoneIndex;
 
-		DrawList->AddCircleFilled(
-			BoneScreen,
-			bSelected ? 4.0f : 2.5f,
-			bSelected ? IM_COL32(255, 220, 40, 255) : IM_COL32(0, 255, 0, 255)
-		);
-	}
+        DrawDebugBoneConnection(
+            &Scene,
+            ParentPosition,
+            BonePosition,
+            ConnectionBaseRadius,
+            bConnectionHighlighted ? HighlightConnectionColor : NormalConnectionColor,
+            0.0f,
+            false);
+    }
 }
 
 
@@ -785,32 +931,4 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
     // 이 target은 현재 "선택 bone 위치에 기즈모를 렌더하기 위한 transform source"로만 사용한다.
     // 실제 SetWorldTransform 기반 pose edit / drag 적용은 Bone Gizmo 담당 파트에서 연결한다.
     GizmoManager.SetTarget(std::make_shared<FBoneTransformGizmoTarget>(PreviewComponent, SelectedBoneIndex));
-}
-
-bool FSkeletalMeshPreviewViewportClient::ProjectWorldToViewport(
-	const FVector& WorldPos,
-	ImVec2& OutScreen) const
-{
-		const FRect& R = ViewportScreenRect;
-	if (R.Width <= 0.0f || R.Height <= 0.0f)
-	{
-		return false;
-	}
-
-	const FMatrix ViewProjection = ViewCamera.GetViewProjectionMatrix();
-	const FVector Ndc = ViewProjection.TransformPositionWithW(WorldPos);
-
-	if (!std::isfinite(Ndc.X) || !std::isfinite(Ndc.Y) || !std::isfinite(Ndc.Z))
-	{
-		return false;
-	}
-
-	float ScreenX = R.X + (Ndc.X * 0.5f + 0.5f) * R.Width;
-	float ScreenY = R.Y + (-Ndc.Y * 0.5f + 0.5f) * R.Height;
-
-	ScreenX = ClampFloat(ScreenX, R.X, R.X + R.Width);
-	ScreenY = ClampFloat(ScreenY, R.Y, R.Y + R.Height);
-
-	OutScreen = ImVec2(ScreenX, ScreenY);
-	return true;
 }

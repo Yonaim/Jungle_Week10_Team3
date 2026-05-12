@@ -6,6 +6,7 @@
 #include "Math/Matrix.h"
 
 class UWorld;
+class FScene;
 
 // ============================================================
 // UE 스타일 글로벌 디버그 드로우 함수
@@ -26,7 +27,14 @@ class UWorld;
 void DrawDebugLine(UWorld* World,
 	const FVector& Start, const FVector& End,
 	const FColor& Color = FColor::White(),
-	float Duration = 0.0f);
+	float Duration = 0.0f,
+	bool bDepthTest = true);
+
+void DrawDebugLine(FScene* Scene,
+	const FVector& Start, const FVector& End,
+	const FColor& Color = FColor::White(),
+	float Duration = 0.0f,
+	bool bDepthTest = true);
 
 void DrawDebugBox(UWorld* World,
 	const FVector& Center, const FVector& Extent,
@@ -56,12 +64,27 @@ void DrawDebugSphere(UWorld* World,
 	const FVector& Center, float Radius,
 	int32 Segments = 16,
 	const FColor& Color = FColor::White(),
-	float Duration = 0.0f);
+	float Duration = 0.0f,
+	bool bDepthTest = true);
+
+void DrawDebugSphere(FScene* Scene,
+	const FVector& Center, float Radius,
+	int32 Segments = 16,
+	const FColor& Color = FColor::White(),
+	float Duration = 0.0f,
+	bool bDepthTest = true);
 
 void DrawDebugPoint(UWorld* World,
 	const FVector& Position, float Size = 0.1f,
 	const FColor& Color = FColor::White(),
-	float Duration = 0.0f);
+	float Duration = 0.0f,
+	bool bDepthTest = true);
+
+void DrawDebugPoint(FScene* Scene,
+	const FVector& Position, float Size = 0.1f,
+	const FColor& Color = FColor::White(),
+	float Duration = 0.0f,
+	bool bDepthTest = true);
 
 // ViewProj 행렬로 frustum 와이어프레임 그리기 (NDC 8꼭짓점 → 12에지)
 void DrawDebugFrustum(UWorld* World,
@@ -69,14 +92,35 @@ void DrawDebugFrustum(UWorld* World,
 	const FColor& Color = FColor::White(),
 	float Duration = 0.0f);
 
+void DrawDebugBoneConnection(UWorld* World,
+	const FVector& ParentPosition,
+	const FVector& ChildPosition,
+	float BaseRadius = 0.0f,
+	const FColor& Color = FColor::White(),
+	float Duration = 0.0f,
+	bool bDepthTest = true);
+
+void DrawDebugBoneConnection(FScene* Scene,
+	const FVector& ParentPosition,
+	const FVector& ChildPosition,
+	float BaseRadius = 0.0f,
+	const FColor& Color = FColor::White(),
+	float Duration = 0.0f,
+	bool bDepthTest = true);
+
 #else
 
-inline void DrawDebugLine(UWorld*, const FVector&, const FVector&, const FColor & = FColor::White(), float = 0.0f) {}
+inline void DrawDebugLine(UWorld*, const FVector&, const FVector&, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
+inline void DrawDebugLine(FScene*, const FVector&, const FVector&, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
 inline void DrawDebugBox(UWorld*, const FVector&, const FVector&, const FColor & = FColor::White(), float = 0.0f) {}
 inline void DrawDebugBox(UWorld*, const FVector&, const FVector&, const FVector&, const FVector&, const FColor & = FColor::White(), float = 0.0f) {}
 inline void DrawDebugBox(UWorld*, const FVector&, const FVector&, const FVector&, const FVector&, const FVector&, const FVector&, const FVector&, const FVector&, const FColor & = FColor::White(), float = 0.0f) {}
-inline void DrawDebugSphere(UWorld*, const FVector&, float, int32 = 16, const FColor & = FColor::White(), float = 0.0f) {}
-inline void DrawDebugPoint(UWorld*, const FVector&, float = 0.1f, const FColor & = FColor::White(), float = 0.0f) {}
+inline void DrawDebugSphere(UWorld*, const FVector&, float, int32 = 16, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
+inline void DrawDebugSphere(FScene*, const FVector&, float, int32 = 16, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
+inline void DrawDebugPoint(UWorld*, const FVector&, float = 0.1f, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
+inline void DrawDebugPoint(FScene*, const FVector&, float = 0.1f, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
 inline void DrawDebugFrustum(UWorld*, const FMatrix&, const FColor & = FColor::White(), float = 0.0f) {}
+inline void DrawDebugBoneConnection(UWorld*, const FVector&, const FVector&, float = 0.0f, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
+inline void DrawDebugBoneConnection(FScene*, const FVector&, const FVector&, float = 0.0f, const FColor & = FColor::White(), float = 0.0f, bool = true) {}
 
 #endif

@@ -61,6 +61,7 @@ void FDrawCommandBuilder::Create(ID3D11Device* InDevice, ID3D11DeviceContext* In
 	PassRenderStateTable = InPassRenderStateTable;
 
 	EditorLines.Create(InDevice);
+	EditorLinesNoDepth.Create(InDevice);
 	GridLines.Create(InDevice);
 	FontGeometry.Create(InDevice);
 	ScreenQuads.Create(InDevice);
@@ -78,6 +79,7 @@ void FDrawCommandBuilder::Create(ID3D11Device* InDevice, ID3D11DeviceContext* In
 void FDrawCommandBuilder::Release()
 {
 	EditorLines.Release();
+	EditorLinesNoDepth.Release();
 	GridLines.Release();
 	FontGeometry.Release();
 	ScreenQuads.Release();
@@ -114,6 +116,7 @@ void FDrawCommandBuilder::BeginCollect(const FFrameContext& Frame, uint32 MaxPro
 
 	// 동적 지오메트리 초기화
 	EditorLines.Clear();
+	EditorLinesNoDepth.Clear();
 	GridLines.Clear();
 	FontGeometry.Clear();
 	FontGeometry.ClearScreen();
@@ -415,7 +418,8 @@ void FDrawCommandBuilder::PrepareDynamicGeometry(const FFrameContext& Frame, con
 	}
 	for (const auto& Line : Scene->GetDebugLines())
 	{
-		EditorLines.AddBillboardLine(Line.Start, Line.End, Line.Color.ToVector4(), Frame, Frame.RenderOptions.DebugLineThickness);
+		FLineGeometry& TargetLines = Line.bDepthTest ? EditorLines : EditorLinesNoDepth;
+		TargetLines.AddBillboardLine(Line.Start, Line.End, Line.Color.ToVector4(), Frame, Frame.RenderOptions.DebugLineThickness);
 	}
 
 	// 픽셀 셰이더 기반 그리드는 BuildEditorGridCommand에서 생성합니다.
@@ -498,8 +502,11 @@ void FDrawCommandBuilder::BuildEditorLineCommands(EViewMode ViewMode)
 {
 	FShader* EditorShader = FShaderManager::Get().GetOrCreate(EShaderPath::Editor);
 	const FDrawCommandRenderState EditorLinesRS = PassRenderStateTable->ToDrawCommandState(ERenderPass::EditorLines, ViewMode);
+	FDrawCommandRenderState NoDepthLinesRS = EditorLinesRS;
+	NoDepthLinesRS.DepthStencil = EDepthStencilState::NoDepth;
 
 	EmitLineCommand(EditorLines, EditorShader, EditorLinesRS);
+	EmitLineCommand(EditorLinesNoDepth, EditorShader, NoDepthLinesRS);
 	EmitLineCommand(GridLines, EditorShader, EditorLinesRS);
 }
 

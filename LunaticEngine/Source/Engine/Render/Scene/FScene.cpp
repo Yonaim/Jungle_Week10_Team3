@@ -322,9 +322,9 @@ void FScene::AddDebugAABB(const FVector& Min, const FVector& Max, const FColor& 
 	DebugAABBs.push_back({ Min, Max, Color });
 }
 
-void FScene::AddDebugLine(const FVector& Start, const FVector& End, const FColor& Color)
+void FScene::AddDebugLine(const FVector& Start, const FVector& End, const FColor& Color, bool bDepthTest)
 {
-	DebugLines.push_back({ Start, End, Color });
+	DebugLines.push_back({ Start, End, Color, bDepthTest });
 }
 
 void FScene::SetGrid(float Spacing, int32 HalfLineCount)

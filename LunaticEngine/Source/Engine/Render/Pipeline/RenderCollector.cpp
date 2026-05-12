@@ -152,7 +152,7 @@ void FRenderCollector::CollectDebugDraw(const FFrameContext &Frame, FScene &Scen
 
     for (const FDebugDrawItem &Item : Scene.GetDebugDrawQueue().GetItems())
     {
-        Scene.AddDebugLine(Item.Start, Item.End, Item.Color);
+        Scene.AddDebugLine(Item.Start, Item.End, Item.Color, Item.bDepthTest);
     }
 }
 

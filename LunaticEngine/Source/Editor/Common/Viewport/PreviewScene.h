@@ -93,6 +93,7 @@ public:
         }
         Components.clear();
         Proxies.clear();
+        Scene.GetDebugDrawQueue().Clear();
         Scene.ClearFrameData();
     }
 

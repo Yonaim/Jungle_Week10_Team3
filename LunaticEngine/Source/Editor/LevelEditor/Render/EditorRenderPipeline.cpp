@@ -405,5 +405,7 @@ void FEditorRenderPipeline::CollectSceneCommands(const FEditorViewportRenderRequ
         Collector.CollectGrid(Frame.RenderOptions.GridSpacing, Frame.RenderOptions.GridHalfLineCount, Scene);
     }
 
+    Collector.CollectDebugDraw(Frame, Scene);
+
     Builder.BuildCommands(Frame, &Scene, Output);
 }

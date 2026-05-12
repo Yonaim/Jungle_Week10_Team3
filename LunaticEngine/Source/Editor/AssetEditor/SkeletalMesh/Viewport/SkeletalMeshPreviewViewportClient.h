@@ -12,8 +12,6 @@ class UGizmoComponent;
 class FPrimitiveSceneProxy;
 class FSkeletalMeshSelectionManager;
 
-struct ImVec2;
-
 /**
  * SkeletalMesh Editor 전용 Preview Viewport Client.
  *
@@ -65,13 +63,11 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void TickViewportInput(float DeltaTime);
     void CycleGizmoModeFromShortcut();
     void RenderFallbackOverlay();
+    void SubmitSkeletonDebugDraw();
     void ApplyEditorStateToViewport();
     void SyncRenderOptionsFromState();
     void ApplyViewportTypeToCamera();
-
-	void RenderSkeletonDebugOverlay();
     void SyncGizmoTargetFromSelection();
-	bool ProjectWorldToViewport(const FVector& WorldPos, ImVec2& OutScreen) const;
 
   private:
     USkeletalMesh *PreviewMesh = nullptr;
