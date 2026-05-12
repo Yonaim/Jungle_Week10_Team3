@@ -431,8 +431,8 @@ void FLevelEditorWindow::RenderDocumentTabBar()
             FEditorDocumentTabBar::FTabDesc Desc;
             Desc.Label = Tab.Title.empty() ? "Untitled" : Tab.Title;
             Desc.Tooltip = Tab.ScenePath.empty() ? std::string("Unsaved Scene") : FPaths::ToUtf8(Tab.ScenePath.wstring());
-            Desc.IconKey = "Editor.Icon.ContentBrowser.Scene";
-            Desc.IconTint = ImVec4(0.78f, 0.82f, 1.0f, 1.0f);
+            Desc.IconKey = "Editor.Icon.LevelDocument.Scene";
+            Desc.IconTint = ImVec4(1.0f, 0.53f, 0.16f, 1.0f);
             Desc.bDirty = Tab.bDirty;
             TabDescs.push_back(std::move(Desc));
         }
