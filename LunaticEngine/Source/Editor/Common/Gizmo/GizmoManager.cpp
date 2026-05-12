@@ -348,6 +348,18 @@ bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
 
     Target->BeginTransform();
     DragStartTransform = Target->GetWorldTransform();
+    DragAxisVector = GetAxisVectorFromTransform(DragStartTransform, ActiveAxis).Normalized();
+    if (ActiveAxis >= 0 && ActiveAxis <= 2 && DragAxisVector.IsNearlyZero())
+    {
+        Target->EndTransform();
+        ActiveAxis = -1;
+        if (VisualComponent)
+        {
+            VisualComponent->SetPressedOnHandle(false);
+            VisualComponent->SetHolding(false);
+        }
+        return false;
+    }
     LastIntersectionLocation = FVector::ZeroVector;
     bFirstDragUpdate = true;
     bDragging = true;
@@ -424,13 +436,46 @@ void FGizmoManager::SetTargetWorldLocation(const FVector& NewLocation)
     SyncVisualFromTarget();
 }
 
+FVector FGizmoManager::GetAxisVectorFromTransform(const FTransform& Transform, int32 Axis) const
+{
+    // 실제 조작 축은 visual component의 현재 matrix가 아니라 mode/space와 대상 transform에서 계산한다.
+    // 이렇게 해야 Render/HitProxy/Drag가 동일한 축 정책을 쓰고, Euler/scale 라운드트립으로
+    // 한 축만 뒤집히는 문제가 드래그 계산에 전파되지 않는다.
+    const bool bUseLocalAxes = (Mode == EGizmoMode::Scale || Space == EGizmoSpace::Local);
+    if (!bUseLocalAxes)
+    {
+        switch (Axis)
+        {
+        case 0: return FVector(1.0f, 0.0f, 0.0f);
+        case 1: return FVector(0.0f, 1.0f, 0.0f);
+        case 2: return FVector(0.0f, 0.0f, 1.0f);
+        default: return FVector::ZeroVector;
+        }
+    }
+
+    const FQuat Rotation = Transform.Rotation.GetNormalized();
+    switch (Axis)
+    {
+    case 0: return Rotation.GetForwardVector().Normalized();
+    case 1: return Rotation.GetRightVector().Normalized();
+    case 2: return Rotation.GetUpVector().Normalized();
+    default: return FVector::ZeroVector;
+    }
+}
+
 FVector FGizmoManager::GetAxisVector(int32 Axis) const
 {
-    if (!VisualComponent)
+    if (bDragging && Axis == ActiveAxis && Axis >= 0 && Axis <= 2)
     {
-        return FVector::ZeroVector;
+        return DragAxisVector.Normalized();
     }
-    return VisualComponent->GetVectorForAxis(Axis).Normalized();
+
+    if (Target && Target->IsValid())
+    {
+        return GetAxisVectorFromTransform(Target->GetWorldTransform(), Axis).Normalized();
+    }
+
+    return FVector::ZeroVector;
 }
 
 bool FGizmoManager::ComputeLinearIntersection(const FRay& Ray, FVector& OutPoint)

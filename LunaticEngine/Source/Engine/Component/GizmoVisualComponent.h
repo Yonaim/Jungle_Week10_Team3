@@ -3,6 +3,7 @@
 #include "PrimitiveComponent.h"
 #include "Core/CoreTypes.h"
 #include "Math/Rotator.h"
+#include "Math/Quat.h"
 #include "Math/Transform.h"
 #include "Render/Types/ViewTypes.h"
 #include "Component/Gizmo/GizmoTypes.h"
@@ -56,6 +57,8 @@ public:
     void SetWorldSpace(bool bWorldSpace);
     void SetGizmoSpace(EGizmoSpace InSpace) { SetWorldSpace(InSpace == EGizmoSpace::World); }
     bool IsWorldSpace() const { return bIsWorldSpace; }
+    FQuat GetVisualRotationQuat() const;
+    FMatrix GetVisualRotationMatrix() const;
 
     void ResetVisualInteractionState();
 

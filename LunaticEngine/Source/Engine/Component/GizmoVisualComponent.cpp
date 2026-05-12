@@ -176,7 +176,7 @@ bool UGizmoVisualComponent::HitProxyTest(const FGizmoHitProxyContext& Context, F
 
     const FMatrix WorldMatrix =
         FMatrix::MakeScaleMatrix(FVector(HitProxyScale, HitProxyScale, HitProxyScale)) *
-        FMatrix::MakeRotationEuler(GetRelativeRotation().ToVector()) *
+        GetVisualRotationMatrix() *
         FMatrix::MakeTranslationMatrix(GetWorldLocation());
     const FMatrix WorldViewProjection = WorldMatrix * Context.ViewProjection;
 
@@ -395,7 +395,9 @@ void UGizmoVisualComponent::ApplyGizmoWorldTransform(const FTransform& InWorldTr
 	FRotator DesiredRotation = FRotator();
 	if (CurMode == EGizmoMode::Scale || !bIsWorldSpace)
 	{
-		DesiredRotation = InWorldTransform.ToMatrix().ToRotator();
+		// 회전 표시에는 scale이 섞인 Transform matrix를 쓰지 않는다.
+		// Non-uniform/negative scale이 있는 대상에서 한 축이 뒤집히는 원인이 된다.
+		DesiredRotation = InWorldTransform.Rotation.ToRotator();
 	}
 
 	const FMeshData* DesiredMeshData = nullptr;
@@ -484,6 +486,28 @@ uint32 UGizmoVisualComponent::ComputeAxisMask(ELevelViewportType ViewportType, E
 		return ViewAxis;            // Rotate: 시선 축만
 
 	return AllAxes & ~ViewAxis;     // Translate/Scale: 시선 축 제외
+}
+
+
+FQuat UGizmoVisualComponent::GetVisualRotationQuat() const
+{
+    if (!bHasVisualTarget)
+    {
+        return FQuat::Identity;
+    }
+
+    // Translate/Rotate의 World space는 월드 축 정렬, Local space와 Scale은 대상 로컬 축 정렬.
+    if (CurMode == EGizmoMode::Scale || !bIsWorldSpace)
+    {
+        return VisualWorldTransform.Rotation.GetNormalized();
+    }
+
+    return FQuat::Identity;
+}
+
+FMatrix UGizmoVisualComponent::GetVisualRotationMatrix() const
+{
+    return GetVisualRotationQuat().ToMatrix();
 }
 
 void UGizmoVisualComponent::Deactivate()
