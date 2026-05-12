@@ -168,6 +168,5 @@ void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 void USkeletalMeshComponent::FinalizeRenderState()
 {
 	// 본/스키닝 결과 변경을 렌더러와 바운드 갱신 경로에 알린다.
-	MarkRenderStateDirty();
 	MarkWorldBoundsDirty();
 }
