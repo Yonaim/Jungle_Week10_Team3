@@ -1772,6 +1772,9 @@
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h">
       <Filter>Source\Engine\Component</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoHitProxyTypes.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h">
       <Filter>Source\Engine\Component\Gizmo</Filter>
     </ClInclude>
@@ -2263,6 +2266,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Shadow\ShadowAtlasQuadTree.h">
       <Filter>Source\Engine\Render\Shadow</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Types\EditorViewportScale.h">
+      <Filter>Source\Engine\Render\Types</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Types\FogParams.h">
       <Filter>Source\Engine\Render\Types</Filter>

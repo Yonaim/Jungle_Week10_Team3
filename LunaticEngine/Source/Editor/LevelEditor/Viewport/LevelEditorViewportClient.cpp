@@ -1,4 +1,4 @@
-#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+﻿#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 
 #include "Core/ProjectSettings.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
@@ -19,6 +19,7 @@
 
 
 #include "Collision/RayUtils.h"
+#include "Component/BillboardComponent.h"
 #include "Component/GizmoVisualComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/MeshComponent.h"
@@ -440,6 +441,14 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
                 continue;
             }
 
+            // 이 함수는 raycast가 실패한 뒤 screen-space helper를 보조 선택하기 위한 fallback이다.
+            // StaticMesh까지 여기서 AABB screen rect로 잡으면 빈 공간 클릭도 hit로 오인되어 선택 해제가 막힌다.
+            const UBillboardComponent *Billboard = Cast<UBillboardComponent>(Primitive);
+            if (!Billboard || !Billboard->IsEditorOnlyComponent())
+            {
+                continue;
+            }
+
             const FBoundingBox Bounds = Primitive->GetWorldBoundingBox();
             if (!Bounds.IsValid())
             {
@@ -517,6 +526,21 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
                 continue;
             }
 
+            bool bHasEditorBillboard = false;
+            for (UActorComponent *Component : Actor->GetComponents())
+            {
+                const UBillboardComponent *Billboard = Cast<UBillboardComponent>(Component);
+                if (Billboard && Billboard->IsEditorOnlyComponent() && IsLevelEditorPickablePrimitive(Billboard))
+                {
+                    bHasEditorBillboard = true;
+                    break;
+                }
+            }
+            if (!bHasEditorBillboard)
+            {
+                continue;
+            }
+
             float ScreenX = 0.0f;
             float ScreenY = 0.0f;
             float Depth = 0.0f;
@@ -538,10 +562,10 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
             BestDepth = Depth;
             for (UActorComponent *Component : Actor->GetComponents())
             {
-                UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
-                if (IsLevelEditorPickablePrimitive(Primitive))
+                UBillboardComponent *Billboard = Cast<UBillboardComponent>(Component);
+                if (Billboard && Billboard->IsEditorOnlyComponent() && IsLevelEditorPickablePrimitive(Billboard))
                 {
-                    BestPrimitive = Primitive;
+                    BestPrimitive = Billboard;
                     break;
                 }
             }
@@ -1481,7 +1505,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     if (!GetCamera() || !GetWorld())
         return;
     EnsureEditorGizmo();
-    GizmoManager.ApplyScreenSpaceScaling(GetCamera()->GetWorldLocation(), GetCamera()->IsOrthogonal(), GetCamera()->GetOrthoWidth());
+    GizmoManager.ApplyScreenSpaceScaling(GetCamera()->GetWorldLocation(), GetCamera()->IsOrthogonal(), GetCamera()->GetOrthoWidth(), Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f);
     GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(RenderOptions.ViewportType, GizmoManager.GetMode()));
 
     uint32 CursorViewportX = 0;

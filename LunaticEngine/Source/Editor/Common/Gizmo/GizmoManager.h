@@ -98,7 +98,7 @@ public:
     bool IsDragging() const { return bDragging; }
 
     void SyncVisualFromTarget();
-    void ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth);
+    void ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth, float ViewportHeight = 0.0f);
     void SetAxisMask(uint32 InAxisMask);
     void ResetVisualInteractionState();
 

@@ -737,6 +737,7 @@
     <ClInclude Include="Source\Engine\Component\UIImageComponent.h" />
     <ClInclude Include="Source\Engine\Component\UIScreenTextComponent.h" />
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoHitProxyTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\TransformGizmoTarget.h" />
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h" />
@@ -901,6 +902,7 @@
     <ClInclude Include="Source\Engine\Render\Shadow\AtlasQuadTreeBase.h" />
     <ClInclude Include="Source\Engine\Render\Shadow\AtlasQuadTreePoint.h" />
     <ClInclude Include="Source\Engine\Render\Shadow\ShadowAtlasQuadTree.h" />
+    <ClInclude Include="Source\Engine\Render\Types\EditorViewportScale.h" />
     <ClInclude Include="Source\Engine\Render\Types\FogParams.h" />
     <ClInclude Include="Source\Engine\Render\Types\ForwardLightData.h" />
     <ClInclude Include="Source\Engine\Render\Types\FrameContext.h" />

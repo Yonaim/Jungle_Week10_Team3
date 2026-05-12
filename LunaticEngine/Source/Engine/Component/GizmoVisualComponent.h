@@ -50,8 +50,8 @@ public:
     bool HasVisualTarget() const { return bHasVisualTarget; }
 
     void ApplyGizmoWorldTransform(const FTransform& InWorldTransform);
-    float ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f) const;
-    void ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f);
+    float ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f, float ViewportHeight = 0.0f) const;
+    void ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f, float ViewportHeight = 0.0f);
 
     void SetWorldSpace(bool bWorldSpace);
     void SetGizmoSpace(EGizmoSpace InSpace) { SetWorldSpace(InSpace == EGizmoSpace::World); }
@@ -86,7 +86,6 @@ private:
     EGizmoMode CurMode = EGizmoMode::Translate;
     const float AxisLength = 1.0f;
     float Radius = 0.1f;
-    static constexpr float GizmoScreenScale = 0.15f;
 
     int32 SelectedAxis = -1;
     bool bIsHolding = false;

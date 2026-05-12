@@ -12,6 +12,7 @@
 #include "Render/Proxy/StaticMeshSceneProxy.h"
 #include "Render/Proxy/PrimitiveSceneProxy.h"
 #include "Serialization/Archive.h"
+#include "GameFramework/AActor.h"
 
 IMPLEMENT_CLASS(UStaticMeshComponent, UMeshComponent)
 
@@ -109,6 +110,10 @@ void UStaticMeshComponent::SetStaticMesh(UStaticMesh* InMesh)
 	CacheLocalBounds();
 	MarkRenderStateDirty();
 	MarkWorldBoundsDirty();
+	if (AActor* OwnerActor = GetOwner())
+	{
+		OwnerActor->SyncEditorBillboardVisibility();
+	}
 }
 
 void UStaticMeshComponent::CacheLocalBounds()
@@ -362,7 +367,7 @@ void UStaticMeshComponent::PostEditProperty(const char* PropertyName)
 	{
 		if (StaticMeshPath.empty() || StaticMeshPath == "None")
 		{
-			StaticMesh = nullptr;
+			SetStaticMesh(nullptr);
 		}
 		else
 		{

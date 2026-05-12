@@ -8,6 +8,7 @@
 #include "Render/Resource/MeshBufferManager.h"
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Proxy/GizmoSceneProxy.h"
+#include "Render/Types/EditorViewportScale.h"
 #include "Render/Scene/FScene.h"
 #include <algorithm>
 #include <array>
@@ -422,24 +423,20 @@ void UGizmoVisualComponent::ApplyGizmoWorldTransform(const FTransform& InWorldTr
 	}
 }
 
-float UGizmoVisualComponent::ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth) const
+float UGizmoVisualComponent::ComputeScreenSpaceScale(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth, float ViewportHeight) const
 {
-	float NewScale;
-	if (bIsOrtho)
-	{
-		NewScale = OrthoWidth * GizmoScreenScale;
-	}
-	else
-	{
-		float Distance = FVector::Distance(CameraLocation, GetWorldLocation());
-		NewScale = Distance * GizmoScreenScale;
-	}
-	return (NewScale < 0.01f) ? 0.01f : NewScale;
+	return FEditorViewportScale::ComputeWorldScale(
+		CameraLocation,
+		GetWorldLocation(),
+		bIsOrtho,
+		OrthoWidth,
+		ViewportHeight,
+		FEditorViewportScaleRules::Gizmo);
 }
 
-void UGizmoVisualComponent::ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth)
+void UGizmoVisualComponent::ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth, float ViewportHeight)
 {
-	float NewScale = ComputeScreenSpaceScale(CameraLocation, bIsOrtho, OrthoWidth);
+	float NewScale = ComputeScreenSpaceScale(CameraLocation, bIsOrtho, OrthoWidth, ViewportHeight);
 	SetRelativeScale(FVector(NewScale, NewScale, NewScale));
 }
 

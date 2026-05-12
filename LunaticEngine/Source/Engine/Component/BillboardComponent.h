@@ -41,7 +41,9 @@ public:
 	// 주어진 카메라 방향으로 빌보드 월드 행렬을 계산 (per-view 렌더링용)
 	FMatrix ComputeBillboardMatrix(const FVector& CameraForward) const;
 	float ComputeRenderedScreenScale(const FVector& CameraLocation, bool bIsOrtho = false, float OrthoWidth = 10.0f,
-		float BillboardScale = 1.0f) const;
+		float BillboardScale = 1.0f, float ViewportHeight = 0.0f) const;
+	void SetLastRenderedEditorScreenScale(float InScale) { LastRenderedEditorScreenScale = InScale; }
+	float GetLastRenderedEditorScreenScale() const { return LastRenderedEditorScreenScale; }
 
 	FMeshBuffer* GetMeshBuffer() const override { return &FMeshBufferManager::Get().GetMeshBuffer(EMeshShape::Quad); }
 	FMeshDataView GetMeshDataView() const override { return FMeshDataView::FromMeshData(FMeshBufferManager::Get().GetMeshData(EMeshShape::Quad)); }
@@ -59,5 +61,6 @@ protected:
 
 	float Width  = 1.0f;
 	float Height = 1.0f;
+	float LastRenderedEditorScreenScale = 1.0f;
 };
 

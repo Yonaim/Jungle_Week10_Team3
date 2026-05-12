@@ -1,4 +1,4 @@
-#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
+﻿#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
@@ -421,7 +421,8 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
     GizmoManager.ApplyScreenSpaceScaling(
         ViewCamera.GetWorldLocation(),
         ViewCamera.IsOrthogonal(),
-        ViewCamera.GetOrthoWidth());
+        ViewCamera.GetOrthoWidth(),
+        Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f);
     GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(
         RenderOptions.ViewportType,
         GizmoManager.GetMode()));
@@ -596,7 +597,8 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     GizmoManager.ApplyScreenSpaceScaling(
         ViewCamera.GetWorldLocation(),
         ViewCamera.IsOrthogonal(),
-        ViewCamera.GetOrthoWidth());
+        ViewCamera.GetOrthoWidth(),
+        Viewport ? static_cast<float>(Viewport->GetHeight()) : 0.0f);
     GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(
         RenderOptions.ViewportType,
         GizmoManager.GetMode()));

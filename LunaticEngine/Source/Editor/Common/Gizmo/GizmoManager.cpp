@@ -255,11 +255,11 @@ void FGizmoManager::SyncVisualFromTarget()
     VisualComponent->SetGizmoWorldTransform(Target->GetWorldTransform());
 }
 
-void FGizmoManager::ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth)
+void FGizmoManager::ApplyScreenSpaceScaling(const FVector& CameraLocation, bool bIsOrtho, float OrthoWidth, float ViewportHeight)
 {
     if (VisualComponent && HasValidTarget())
     {
-        VisualComponent->ApplyScreenSpaceScaling(CameraLocation, bIsOrtho, OrthoWidth);
+        VisualComponent->ApplyScreenSpaceScaling(CameraLocation, bIsOrtho, OrthoWidth, ViewportHeight);
     }
 }
 

@@ -39,10 +39,10 @@ enum class ERenderPass : uint32
 	Opaque,			// 불투명 지오메트리 (StaticMesh 등)
 	Decal,			// 데칼 (DepthReadOnly)
 	AdditiveDecal,	// Additive 빌보드 등
-	AlphaBlend,		// 반투명 지오메트리 (Font, SubUV, Billboard, Translucent)
 	SelectionMask,	// 선택 스텐실 마스크
 	EditorGrid,		// 픽셀 셰이더 기반 에디터 그리드
 	EditorLines,	// 디버그 라인 (LINELIST)
+	AlphaBlend,		// 반투명 지오메트리 (Font, SubUV, Billboard, Translucent)
 	PostProcess,	// 아웃라인 풀스크린, Fog, SceneDepth
 	FXAA,			// FXAA 안티앨리어싱 (SceneColor 복사 후 실행)
 	GammaCorrection,// Linear scene color를 sRGB 출력 감마로 변환
@@ -63,10 +63,10 @@ inline const char* GetRenderPassName(ERenderPass Pass)
 		"RenderPass::Opaque",
 		"RenderPass::Decal",
 		"RenderPass::AdditiveDecal",
-		"RenderPass::AlphaBlend",
 		"RenderPass::SelectionMask",
 		"RenderPass::EditorGrid",
 		"RenderPass::EditorLines",
+		"RenderPass::AlphaBlend",
 		"RenderPass::PostProcess",
 		"RenderPass::FXAA",
 		"RenderPass::GammaCorrection",
@@ -90,10 +90,10 @@ namespace RenderStateStrings
 		{ "Opaque",        (int)ERenderPass::Opaque },
 		{ "Decal",         (int)ERenderPass::Decal },
 		{ "AdditiveDecal", (int)ERenderPass::AdditiveDecal },
-		{ "AlphaBlend",    (int)ERenderPass::AlphaBlend },
 		{ "SelectionMask", (int)ERenderPass::SelectionMask },
 		{ "EditorGrid",    (int)ERenderPass::EditorGrid },
 		{ "EditorLines",   (int)ERenderPass::EditorLines },
+		{ "AlphaBlend",    (int)ERenderPass::AlphaBlend },
 		{ "PostProcess",   (int)ERenderPass::PostProcess },
 		{ "FXAA",          (int)ERenderPass::FXAA },
 		{ "GammaCorrection",(int)ERenderPass::GammaCorrection },
