@@ -100,8 +100,13 @@ class FLevelEditorWindow : public IEditorMenuProvider
     void ApplyPendingDefaultDockLayout();
     bool HasBlockingOverlayOpen() const;
     void HandleGlobalShortcuts();
+    void OpenLevelDocumentTabFromCurrentScene();
+    void SyncCurrentLevelDocumentTab();
+    bool SetActiveLevelDocumentTab(int32 NewIndex);
+    void CloseLevelDocumentTab(int32 TabIndex);
     void PackageGameBuild(const char *BatFileName);
     void CookCurrentScene();
+    void RenderDocumentTabBar();
     void RenderCommonOverlays();
     void RenderProjectSettingsWindow();
     void RenderShortcutOverlay();
