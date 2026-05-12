@@ -73,6 +73,10 @@ const char* GetDefaultBillboardFallbackIconKey(const AActor* Actor)
 	{
 		return "Editor.Icon.Pawn";
 	}
+	if (ClassName.find("Camera") != FString::npos)
+	{
+		return "Editor.Icon.Camera";
+	}
 	if (ClassName.find("SpotLight") != FString::npos)
 	{
 		return "Editor.Icon.SpotLight";

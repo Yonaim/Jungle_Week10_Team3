@@ -11,6 +11,7 @@
 #include "Component/ActorComponent.h"
 #include "Component/BillboardComponent.h"
 #include "Component/CanvasRootComponent.h"
+#include "Component/CameraComponent.h"
 #include "Component/DecalComponent.h"
 #include "Component/GizmoVisualComponent.h"
 #include "Component/HeightFogComponent.h"
@@ -2090,6 +2091,10 @@ void FLevelDetailsPanel::RenderAddComponentButton(AActor *Actor)
                 if (Comp->IsA<ULightComponentBase>())
                 {
                     Cast<ULightComponentBase>(Comp)->EnsureEditorBillboard();
+                }
+                else if (Comp->IsA<UCameraComponent>())
+                {
+                    Cast<UCameraComponent>(Comp)->EnsureEditorBillboard();
                 }
                 else if (Comp->IsA<UDecalComponent>())
                 {

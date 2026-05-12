@@ -1,4 +1,4 @@
-﻿#include "GizmoVisualComponent.h"
+#include "GizmoVisualComponent.h"
 #include "Object/ObjectFactory.h"
 #include "GameFramework/AActor.h"
 #include "GameFramework/World.h"
@@ -64,6 +64,14 @@ UGizmoVisualComponent::UGizmoVisualComponent()
 {
 	MeshData = &FMeshBufferManager::Get().GetMeshData(EMeshShape::TransGizmo);
 	LocalExtents = FVector(1.5f, 1.5f, 1.5f);
+
+    // This component is not an actor-owned selectable primitive. It is owned by
+    // FGizmoManager and rendered as an editor tool overlay, so keep it out of
+    // component trees, details editing, collision, and normal world picking.
+    SetEditorOnlyComponent(true);
+    SetHiddenInComponentTree(true);
+    SetCanDeleteFromDetails(false);
+    SetCollisionEnabled(false);
 }
 
 void UGizmoVisualComponent::SetHolding(bool bHold)

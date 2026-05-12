@@ -2,8 +2,64 @@
 
 #include <cmath>
 
+#include "Component/BillboardComponent.h"
+#include "Engine/Runtime/Engine.h"
+#include "GameFramework/AActor.h"
+#include "GameFramework/World.h"
+#include "Resource/ResourceManager.h"
+#include "Texture/Texture2D.h"
+
 IMPLEMENT_CLASS(UCameraComponent, USceneComponent)
 HIDE_FROM_COMPONENT_LIST(UCameraComponent)
+
+UBillboardComponent* UCameraComponent::EnsureEditorBillboard()
+{
+	if (!Owner || !GIsEditor)
+	{
+		return nullptr;
+	}
+
+	if (UWorld* World = Owner->GetWorld())
+	{
+		if (World->GetWorldType() != EWorldType::Editor)
+		{
+			return nullptr;
+		}
+	}
+
+	for (USceneComponent* Child : GetChildren())
+	{
+		UBillboardComponent* Billboard = Cast<UBillboardComponent>(Child);
+		if (Billboard && Billboard->IsEditorOnlyComponent())
+		{
+			Billboard->SetAbsoluteScale(true);
+			Billboard->SetHiddenInComponentTree(true);
+			return Billboard;
+		}
+	}
+
+	UBillboardComponent* Billboard = Owner->AddComponent<UBillboardComponent>();
+	if (!Billboard)
+	{
+		return nullptr;
+	}
+
+	Billboard->AttachToComponent(this);
+	Billboard->SetAbsoluteScale(true);
+	Billboard->SetEditorOnlyComponent(true);
+	Billboard->SetHiddenInComponentTree(true);
+	Billboard->SetCanDeleteFromDetails(false);
+	Billboard->SetSpriteSize(1.0f, 1.0f);
+
+	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+	const FString IconTexturePath = FResourceManager::Get().ResolvePath(FName("Editor.Billboard.Camera"));
+	if (UTexture2D* Texture = UTexture2D::LoadFromFile(IconTexturePath, Device))
+	{
+		Billboard->SetTexture(Texture);
+	}
+
+	return Billboard;
+}
 
 FMatrix UCameraComponent::GetViewMatrix() const
 {
@@ -134,6 +190,7 @@ void UCameraComponent::BeginPlay()
 {
 	USceneComponent::BeginPlay();
 	SetComponentTickEnabled(true);
+	EnsureEditorBillboard();
 }
 
 void UCameraComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)

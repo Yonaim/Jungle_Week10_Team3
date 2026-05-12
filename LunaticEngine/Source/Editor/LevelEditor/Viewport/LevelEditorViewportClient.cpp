@@ -89,6 +89,40 @@ bool IsUIComponentSelectable(const UActorComponent *Component)
            Component->SupportsUIScreenPicking();
 }
 
+bool IsLevelEditorPickablePrimitive(const UPrimitiveComponent *Primitive)
+{
+    if (!Primitive || !Primitive->IsVisible())
+    {
+        return false;
+    }
+
+    if (!Primitive->ParticipatesInPickingSpatialStructure())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool HasLevelEditorPickablePrimitive(const AActor *Actor)
+{
+    if (!Actor || !Actor->IsVisible())
+    {
+        return false;
+    }
+
+    for (UActorComponent *Component : Actor->GetComponents())
+    {
+        const UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
+        if (IsLevelEditorPickablePrimitive(Primitive))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 USceneComponent *FindTopmostUIComponentAt(UWorld *World, float X, float Y)
 {
     if (!World)
@@ -318,7 +352,7 @@ bool EditorRaycastAllVisiblePrimitives(UWorld *World, const FRay &Ray, FRayHitRe
         for (UActorComponent *Component : Actor->GetComponents())
         {
             UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
-            if (!Primitive || !Primitive->IsVisible())
+            if (!IsLevelEditorPickablePrimitive(Primitive))
             {
                 continue;
             }
@@ -401,7 +435,7 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
         for (UActorComponent *Component : Actor->GetComponents())
         {
             UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
-            if (!Primitive || !Primitive->IsVisible())
+            if (!IsLevelEditorPickablePrimitive(Primitive))
             {
                 continue;
             }
@@ -478,7 +512,7 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
     {
         for (AActor *Actor : World->GetActors())
         {
-            if (!Actor || !Actor->IsVisible())
+            if (!HasLevelEditorPickablePrimitive(Actor))
             {
                 continue;
             }
@@ -505,7 +539,7 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
             for (UActorComponent *Component : Actor->GetComponents())
             {
                 UPrimitiveComponent *Primitive = Cast<UPrimitiveComponent>(Component);
-                if (Primitive && Primitive->IsVisible())
+                if (IsLevelEditorPickablePrimitive(Primitive))
                 {
                     BestPrimitive = Primitive;
                     break;

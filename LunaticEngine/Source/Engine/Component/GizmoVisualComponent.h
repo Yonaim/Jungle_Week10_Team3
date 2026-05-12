@@ -59,7 +59,13 @@ public:
 
     void ResetVisualInteractionState();
 
+    // Editor gizmo visuals are render-only tool components. They must never enter
+    // the normal actor/component picking path; gizmo picking is handled only by
+    // FGizmoManager::HitTestHitProxy().
+    bool SupportsWorldGizmo() const override { return false; }
+    bool SupportsOutline() const override { return false; }
     bool ParticipatesInRenderSpatialStructure() const override { return false; }
+    bool ParticipatesInPickingSpatialStructure() const override { return false; }
     FMeshBuffer* GetMeshBuffer() const override;
     FMeshDataView GetMeshDataView() const override { return MeshData ? FMeshDataView::FromMeshData(*MeshData) : FMeshDataView{}; }
     FPrimitiveSceneProxy* CreateSceneProxy() override;
