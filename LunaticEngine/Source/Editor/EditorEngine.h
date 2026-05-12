@@ -16,7 +16,7 @@
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #endif
 
-class UGizmoComponent;
+class UGizmoVisualComponent;
 class FLevelEditorViewportClient;
 class FEditorViewportClient;
 class FOverlayStatSystem;
@@ -54,7 +54,7 @@ class UEditorEngine : public UEngine
     bool IsScoreSavePopupOpen() const override;
 
     // 에디터 전용 API
-    UGizmoComponent  *GetGizmo() const;
+    UGizmoVisualComponent  *GetGizmo() const;
     FEditorViewportCamera *GetCamera() const;
     bool              FocusActorInViewport(AActor *Actor);
 
@@ -91,6 +91,7 @@ class UEditorEngine : public UEngine
     bool           IsWorldCoordSystem() const { return FLevelEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
     void           ToggleCoordSystem();
     void           ApplyTransformSettingsToGizmo();
+    void           SyncActiveGizmoVisualFromTarget();
     void           BeginTrackedSceneChange();
     void           CommitTrackedSceneChange();
     void           CancelTrackedSceneChange();

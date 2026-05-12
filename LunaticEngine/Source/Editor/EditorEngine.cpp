@@ -4,7 +4,7 @@
 #include "Audio/AudioManager.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Component/CameraComponent.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Core/Notification.h"
 #include "Core/ProjectSettings.h"
 #include "Engine/Input/InputManager.h"
@@ -290,7 +290,7 @@ void UEditorEngine::ToggleCoordSystem()
     ApplyTransformSettingsToGizmo();
 }
 
-UGizmoComponent *UEditorEngine::GetGizmo() const
+UGizmoVisualComponent *UEditorEngine::GetGizmo() const
 {
     if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
     {
@@ -305,31 +305,40 @@ UGizmoComponent *UEditorEngine::GetGizmo() const
 
 void UEditorEngine::ApplyTransformSettingsToGizmo()
 {
-    UGizmoComponent *Gizmo = GetGizmo();
-    if (!Gizmo)
+    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
+    FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient();
+    UGizmoVisualComponent *Gizmo = GetGizmo();
+    if (!ActiveClient && !Gizmo)
     {
         return;
     }
 
-    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    const bool bForceLocalForScale = Gizmo->GetMode() == EGizmoMode::Scale;
+    const EGizmoMode CurrentMode = ActiveClient ? ActiveClient->GetGizmoManager().GetMode() : Gizmo->GetMode();
+    const bool bForceLocalForScale = CurrentMode == EGizmoMode::Scale;
     const EGizmoSpace DesiredSpace =
         bForceLocalForScale || Settings.CoordSystem != EEditorCoordSystem::World
             ? EGizmoSpace::Local
             : EGizmoSpace::World;
 
-    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    if (ActiveClient)
     {
-        ActiveClient->GetGizmoManager().SetSpace(DesiredSpace);
-    }
-    else
-    {
-        Gizmo->SetGizmoSpace(DesiredSpace);
+        FGizmoManager &Manager = ActiveClient->GetGizmoManager();
+        Manager.SetSpace(DesiredSpace);
+        Manager.SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize,
+                                Settings.bEnableRotationSnap, Settings.RotationSnapSize,
+                                Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
+        return;
     }
 
-    // 에디터 설정의 좌표계/스냅 값을 매 프레임 Gizmo 상태와 동기화한다.
-    Gizmo->SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize, Settings.bEnableRotationSnap,
-                           Settings.RotationSnapSize, Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
+    Gizmo->SetGizmoSpace(DesiredSpace);
+}
+
+void UEditorEngine::SyncActiveGizmoVisualFromTarget()
+{
+    if (FEditorViewportClient *ActiveClient = GetActiveEditorViewportClient())
+    {
+        ActiveClient->GetGizmoManager().SyncVisualFromTarget();
+    }
 }
 
 void UEditorEngine::RequestPlaySession(const FRequestPlaySessionParams &InParams)

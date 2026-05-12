@@ -15,7 +15,7 @@
 #include "imgui.h"
 
 class UWorld;
-class UGizmoComponent;
+class UGizmoVisualComponent;
 class ULightComponentBase;
 class AActor;
 class FLevelEditorSettings;
@@ -45,7 +45,8 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void             SetOverlayStatSystem(FOverlayStatSystem *InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }
     void             SetSettings(const FLevelEditorSettings *InSettings) { Settings = InSettings; }
     void             SetSelectionManager(FSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
-    UGizmoComponent *GetGizmo() { return Gizmo; }
+    UGizmoVisualComponent *GetGizmoVisual() { return GizmoVisual; }
+    UGizmoVisualComponent *GetGizmo() { return GizmoVisual; }
 
     FViewportRenderOptions       &GetRenderOptions() { return RenderOptions; }
     const FViewportRenderOptions &GetRenderOptions() const { return RenderOptions; }
@@ -110,7 +111,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
 
   private:
     FOverlayStatSystem    *OverlayStatSystem = nullptr;
-    UGizmoComponent       *Gizmo = nullptr;
+    UGizmoVisualComponent       *GizmoVisual = nullptr;
     FScene                *RegisteredGizmoScene = nullptr;
     const FLevelEditorSettings *Settings = nullptr;
     FSelectionManager     *SelectionManager = nullptr;

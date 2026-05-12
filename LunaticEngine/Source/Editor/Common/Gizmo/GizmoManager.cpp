@@ -1,6 +1,6 @@
 #include "Common/Gizmo/GizmoManager.h"
 
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Collision/RayUtils.h"
 #include "Math/MathUtils.h"
 
@@ -16,7 +16,28 @@ void FGizmoManager::SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget)
     }
 
     Target = InTarget;
+    bHasTargetKey = false;
     SyncVisualFromTarget();
+}
+
+bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey, std::shared_ptr<ITransformGizmoTarget> InTarget)
+{
+    if (bHasTargetKey && TargetKey == InKey && HasValidTarget())
+    {
+        SyncVisualFromTarget();
+        return false;
+    }
+
+    if (bDragging)
+    {
+        EndDrag();
+    }
+
+    TargetKey = InKey;
+    bHasTargetKey = true;
+    Target = InTarget;
+    SyncVisualFromTarget();
+    return true;
 }
 
 void FGizmoManager::ClearTarget()
@@ -27,6 +48,7 @@ void FGizmoManager::ClearTarget()
     }
 
     Target.reset();
+    bHasTargetKey = false;
     SyncVisualFromTarget();
 }
 
@@ -35,10 +57,41 @@ bool FGizmoManager::HasValidTarget() const
     return Target && Target->IsValid();
 }
 
-void FGizmoManager::SetVisualComponent(UGizmoComponent* InComponent)
+void FGizmoManager::SetVisualComponent(UGizmoVisualComponent* InComponent)
 {
+    if (VisualComponent == InComponent)
+    {
+        SyncVisualFromTarget();
+        return;
+    }
+
+    if (VisualComponent)
+    {
+        VisualComponent->ResetVisualInteractionState();
+    }
+
     VisualComponent = InComponent;
     SyncVisualFromTarget();
+}
+
+void FGizmoManager::SetInteractionPolicy(EGizmoInteractionPolicy InPolicy)
+{
+    if (InteractionPolicy == InPolicy)
+    {
+        return;
+    }
+
+    InteractionPolicy = InPolicy;
+    if (InteractionPolicy == EGizmoInteractionPolicy::VisualOnly)
+    {
+        CancelDrag();
+        ResetVisualInteractionState();
+    }
+}
+
+bool FGizmoManager::CanInteract() const
+{
+    return InteractionPolicy == EGizmoInteractionPolicy::Interactive && VisualComponent && HasValidTarget();
 }
 
 void FGizmoManager::SetMode(EGizmoMode InMode)
@@ -69,6 +122,18 @@ void FGizmoManager::SetSpace(EGizmoSpace InSpace)
         VisualComponent->SetGizmoSpace(Space);
     }
     SyncVisualFromTarget();
+}
+
+void FGizmoManager::SetSnapSettings(bool bTranslationEnabled, float InTranslationSnapSize,
+                                    bool bRotationEnabled, float InRotationSnapSizeDegrees,
+                                    bool bScaleEnabled, float InScaleSnapSize)
+{
+    bTranslationSnapEnabled = bTranslationEnabled;
+    TranslationSnapSize = (InTranslationSnapSize > FMath::Epsilon) ? InTranslationSnapSize : 10.0f;
+    bRotationSnapEnabled = bRotationEnabled;
+    RotationSnapSizeRadians = ((InRotationSnapSizeDegrees > FMath::Epsilon) ? InRotationSnapSizeDegrees : 15.0f) * DEG_TO_RAD;
+    bScaleSnapEnabled = bScaleEnabled;
+    ScaleSnapSize = (InScaleSnapSize > FMath::Epsilon) ? InScaleSnapSize : 0.1f;
 }
 
 void FGizmoManager::SyncVisualFromTarget()
@@ -106,9 +171,17 @@ void FGizmoManager::SetAxisMask(uint32 InAxisMask)
     }
 }
 
+void FGizmoManager::ResetVisualInteractionState()
+{
+    if (VisualComponent)
+    {
+        VisualComponent->ResetVisualInteractionState();
+    }
+}
+
 bool FGizmoManager::HitTest(const FRay& Ray, FRayHitResult& OutHitResult)
 {
-    if (!VisualComponent || !HasValidTarget())
+    if (!CanInteract())
     {
         return false;
     }
@@ -117,7 +190,7 @@ bool FGizmoManager::HitTest(const FRay& Ray, FRayHitResult& OutHitResult)
 
 bool FGizmoManager::BeginDrag(const FRay& Ray)
 {
-    if (!VisualComponent || !HasValidTarget())
+    if (!CanInteract())
     {
         return false;
     }
@@ -141,6 +214,7 @@ bool FGizmoManager::BeginDrag(const FRay& Ray)
     LastIntersectionLocation = FVector::ZeroVector;
     bFirstDragUpdate = true;
     bDragging = true;
+    ResetSnapAccumulation();
 
     VisualComponent->SetPressedOnHandle(true);
     VisualComponent->SetHolding(true);
@@ -149,7 +223,7 @@ bool FGizmoManager::BeginDrag(const FRay& Ray)
 
 void FGizmoManager::UpdateDrag(const FRay& Ray)
 {
-    if (!bDragging || !VisualComponent || !HasValidTarget())
+    if (!bDragging || !CanInteract())
     {
         return;
     }
@@ -176,11 +250,9 @@ void FGizmoManager::EndDrag()
     bDragging = false;
     bFirstDragUpdate = true;
     ActiveAxis = -1;
+    ResetSnapAccumulation();
 
-    if (VisualComponent)
-    {
-        VisualComponent->DragEnd();
-    }
+    ResetVisualInteractionState();
     SyncVisualFromTarget();
 }
 
@@ -191,7 +263,13 @@ void FGizmoManager::CancelDrag()
         Target->SetWorldTransform(DragStartTransform);
         Target->EndTransform();
     }
-    EndDrag();
+
+    bDragging = false;
+    bFirstDragUpdate = true;
+    ActiveAxis = -1;
+    ResetSnapAccumulation();
+    ResetVisualInteractionState();
+    SyncVisualFromTarget();
 }
 
 void FGizmoManager::SetTargetWorldLocation(const FVector& NewLocation)
@@ -278,6 +356,48 @@ bool FGizmoManager::ComputeAngularIntersection(const FRay& Ray, FVector& OutPoin
     return true;
 }
 
+
+float FGizmoManager::ApplySnapToDragAmount(float DragAmount)
+{
+    bool bSnapEnabled = false;
+    float SnapSize = 0.0f;
+
+    switch (Mode)
+    {
+    case EGizmoMode::Translate:
+        bSnapEnabled = bTranslationSnapEnabled;
+        SnapSize = TranslationSnapSize;
+        break;
+    case EGizmoMode::Rotate:
+        bSnapEnabled = bRotationSnapEnabled;
+        SnapSize = RotationSnapSizeRadians;
+        break;
+    case EGizmoMode::Scale:
+        bSnapEnabled = bScaleSnapEnabled;
+        SnapSize = ScaleSnapSize;
+        break;
+    default:
+        break;
+    }
+
+    if (!bSnapEnabled || SnapSize <= FMath::Epsilon)
+    {
+        return DragAmount;
+    }
+
+    AccumulatedRawDragAmount += DragAmount;
+    const float SnappedTotal = std::floor((AccumulatedRawDragAmount / SnapSize) + 0.5f) * SnapSize;
+    const float DeltaToApply = SnappedTotal - LastAppliedSnappedDragAmount;
+    LastAppliedSnappedDragAmount = SnappedTotal;
+    return DeltaToApply;
+}
+
+void FGizmoManager::ResetSnapAccumulation()
+{
+    AccumulatedRawDragAmount = 0.0f;
+    LastAppliedSnappedDragAmount = 0.0f;
+}
+
 void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
 {
     FVector CurrentIntersection;
@@ -310,7 +430,13 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
     else
     {
         const FVector AxisVector = GetAxisVector(ActiveAxis);
-        const float DragAmount = FullDelta.Dot(AxisVector);
+        float DragAmount = FullDelta.Dot(AxisVector);
+        DragAmount = ApplySnapToDragAmount(DragAmount);
+        if (std::abs(DragAmount) <= FMath::Epsilon)
+        {
+            LastIntersectionLocation = CurrentIntersection;
+            return;
+        }
         if (Mode == EGizmoMode::Scale)
         {
             FVector NewScale = NewTransform.Scale;
@@ -356,7 +482,14 @@ void FGizmoManager::ApplyAngularDrag(const FRay& Ray)
     const float Sign = (CrossProduct.Dot(AxisVector) >= 0.0f) ? 1.0f : -1.0f;
 
     FTransform NewTransform = Target->GetWorldTransform();
-    const FQuat DeltaQuat = FQuat::FromAxisAngle(AxisVector, Sign * AngleRadians);
+    const float DeltaAngle = ApplySnapToDragAmount(Sign * AngleRadians);
+    if (std::abs(DeltaAngle) <= FMath::Epsilon)
+    {
+        LastIntersectionLocation = CurrentIntersection;
+        return;
+    }
+
+    const FQuat DeltaQuat = FQuat::FromAxisAngle(AxisVector, DeltaAngle);
     NewTransform.Rotation = (DeltaQuat * NewTransform.Rotation).GetNormalized();
     Target->SetWorldTransform(NewTransform);
 

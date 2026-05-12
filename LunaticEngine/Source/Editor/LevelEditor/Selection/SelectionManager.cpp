@@ -434,6 +434,6 @@ void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)
 
 void FSelectionManager::SyncGizmo()
 {
-    // 의도된 no-op이다. SelectionManager는 더 이상 UGizmoComponent를 소유하지 않는다.
+    // 의도된 no-op이다. SelectionManager는 더 이상 UGizmoVisualComponent를 소유하지 않는다.
     // FLevelEditorViewportClient가 MakeTransformGizmoTarget()을 읽어 FGizmoManager를 갱신한다.
 }

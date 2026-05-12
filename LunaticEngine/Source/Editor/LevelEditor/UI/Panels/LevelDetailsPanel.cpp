@@ -12,7 +12,7 @@
 #include "Component/BillboardComponent.h"
 #include "Component/CanvasRootComponent.h"
 #include "Component/DecalComponent.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Component/HeightFogComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/MeshComponent.h"
@@ -2230,7 +2230,7 @@ void FLevelDetailsPanel::RenderActorProperties(AActor *PrimaryActor, const TArra
                             if (Actor)
                                 Actor->AddActorWorldOffset(Delta);
                         }
-                        EditorEngine->GetGizmo()->UpdateGizmoTransform();
+                        EditorEngine->SyncActiveGizmoVisualFromTarget();
                         EditorEngine->CommitTrackedSceneChange();
                     }
                     {
@@ -2261,7 +2261,7 @@ void FLevelDetailsPanel::RenderActorProperties(AActor *PrimaryActor, const TArra
                                 }
                             }
                             RootComp->ApplyCachedEditRotator();
-                            EditorEngine->GetGizmo()->UpdateGizmoTransform();
+                            EditorEngine->SyncActiveGizmoVisualFromTarget();
                             EditorEngine->CommitTrackedSceneChange();
                         }
                     }
@@ -2498,9 +2498,9 @@ void FLevelDetailsPanel::RenderSceneComponentNode(USceneComponent *Comp)
                 if (!bIsChildOfDragged)
                 {
                     DraggedComp->SetParent(Comp);
-                    if (EditorEngine && EditorEngine->GetGizmo())
+                    if (EditorEngine)
                     {
-                        EditorEngine->GetGizmo()->UpdateGizmoTransform();
+                        EditorEngine->SyncActiveGizmoVisualFromTarget();
                     }
                 }
             }
@@ -2593,10 +2593,7 @@ void FLevelDetailsPanel::DuplicateSelectedComponent(AActor *Actor)
         SelectedComponent = DuplicatedComponent;
         bActorSelected = false;
         SyncDetailsComponentSelection(EditorEngine, DuplicatedComponent);
-        if (EditorEngine->GetGizmo())
-        {
-            EditorEngine->GetGizmo()->UpdateGizmoTransform();
-        }
+        EditorEngine->SyncActiveGizmoVisualFromTarget();
     }
     EditorEngine->CommitTrackedSceneChange();
 }

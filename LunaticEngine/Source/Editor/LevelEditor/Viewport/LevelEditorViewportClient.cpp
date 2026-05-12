@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
+#include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 
 #include "Core/ProjectSettings.h"
 #include "LevelEditor/Subsystem/OverlayStatSystem.h"
@@ -19,7 +19,7 @@
 
 
 #include "Collision/RayUtils.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Component/Light/LightComponentBase.h"
 #include "Component/MeshComponent.h"
 #include "Component/PrimitiveComponent.h"
@@ -587,21 +587,22 @@ void FLevelEditorViewportClient::Shutdown()
 
 void FLevelEditorViewportClient::EnsureEditorGizmo()
 {
-    if (Gizmo)
+    if (GizmoVisual)
     {
-        GizmoManager.SetVisualComponent(Gizmo);
+        GizmoManager.SetVisualComponent(GizmoVisual);
         return;
     }
 
-    Gizmo = UObjectManager::Get().CreateObject<UGizmoComponent>();
-    Gizmo->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
-    Gizmo->Deactivate();
-    GizmoManager.SetVisualComponent(Gizmo);
+    GizmoVisual = UObjectManager::Get().CreateObject<UGizmoVisualComponent>();
+    GizmoVisual->SetWorldLocation(FVector(0.0f, 0.0f, 0.0f));
+    GizmoVisual->Deactivate();
+    GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::Interactive);
+    GizmoManager.SetVisualComponent(GizmoVisual);
 }
 
 void FLevelEditorViewportClient::ReleaseEditorGizmo()
 {
-    if (!Gizmo)
+    if (!GizmoVisual)
     {
         GizmoManager.SetVisualComponent(nullptr);
         RegisteredGizmoScene = nullptr;
@@ -610,14 +611,14 @@ void FLevelEditorViewportClient::ReleaseEditorGizmo()
 
     UnregisterGizmoFromScene();
     GizmoManager.SetVisualComponent(nullptr);
-    UObjectManager::Get().DestroyObject(Gizmo);
-    Gizmo = nullptr;
+    UObjectManager::Get().DestroyObject(GizmoVisual);
+    GizmoVisual = nullptr;
 }
 
 void FLevelEditorViewportClient::DetachSceneResourcesForWorldChange()
 {
     // NEW SCENE / LOAD SCENE처럼 World가 교체될 때는 UWorld 내부의 FScene이 먼저 파괴될 수 있다.
-    // Transform Gizmo는 editor-only proxy를 FScene에 직접 등록하므로, World 파괴 전에 반드시 제거해야 한다.
+    // Transform GizmoVisual는 editor-only proxy를 FScene에 직접 등록하므로, World 파괴 전에 반드시 제거해야 한다.
     UnregisterGizmoFromScene();
 
     CurrentGizmoTargetComponent = nullptr;
@@ -626,7 +627,7 @@ void FLevelEditorViewportClient::DetachSceneResourcesForWorldChange()
 
 void FLevelEditorViewportClient::UnregisterGizmoFromScene()
 {
-    if (!Gizmo)
+    if (!GizmoVisual)
     {
         RegisteredGizmoScene = nullptr;
         GizmoManager.SetVisualComponent(nullptr);
@@ -638,9 +639,9 @@ void FLevelEditorViewportClient::UnregisterGizmoFromScene()
     // explicit scene pointer so a later PIE shutdown cannot remove from a dead FScene.
     if (RegisteredGizmoScene)
     {
-        Gizmo->DestroyRenderState();
+        GizmoVisual->DestroyRenderState();
     }
-    Gizmo->SetScene(nullptr);
+    GizmoVisual->SetScene(nullptr);
     RegisteredGizmoScene = nullptr;
     GizmoManager.SetVisualComponent(nullptr);
 }
@@ -659,16 +660,16 @@ void FLevelEditorViewportClient::RegisterGizmoToScene(FScene* Scene)
     }
 
     EnsureEditorGizmo();
-    if (!Gizmo || !Scene || RegisteredGizmoScene == Scene)
+    if (!GizmoVisual || !Scene || RegisteredGizmoScene == Scene)
     {
         return;
     }
 
     UnregisterGizmoFromScene();
-    Gizmo->SetScene(Scene);
-    Gizmo->CreateRenderState();
+    GizmoVisual->SetScene(Scene);
+    GizmoVisual->CreateRenderState();
     RegisteredGizmoScene = Scene;
-    GizmoManager.SetVisualComponent(Gizmo);
+    GizmoManager.SetVisualComponent(GizmoVisual);
 }
 
 void FLevelEditorViewportClient::SetupInput()
@@ -785,7 +786,7 @@ void FLevelEditorViewportClient::SetupInput()
             .Modifiers.push_back(new FModifierScale(FVector(static_cast<float>(i), 0, 0)));
     }
 
-    // UE Style Gizmo Shortcuts (QWER)
+    // UE Style GizmoVisual Shortcuts (QWER)
     EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'Q'); // Select
     EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'W'); // Translate
     EditorMappingContext->AddMapping(ActionEditorToggleGizmoMode, 'E'); // Rotate
@@ -864,8 +865,7 @@ void FLevelEditorViewportClient::SetupInput()
                         Actor->SetActorLocation(DownRay.Origin + DownRay.Direction * Hit.Distance);
                     }
                 }
-                if (Gizmo)
-                    Gizmo->UpdateGizmoTransform();
+                GizmoManager.SyncVisualFromTarget();
             }
         });
 
@@ -1084,8 +1084,7 @@ void FLevelEditorViewportClient::OnEditorDuplicate(const FInputActionValue &Valu
             SelectionManager->ClearSelection();
             for (AActor *Actor : NewSelection)
                 SelectionManager->ToggleSelect(Actor);
-            if (GEngine && Cast<UEditorEngine>(GEngine)->GetGizmo())
-                Cast<UEditorEngine>(GEngine)->GetGizmo()->UpdateGizmoTransform();
+            GizmoManager.SyncVisualFromTarget();
         }
     }
 }
@@ -1094,30 +1093,38 @@ void FLevelEditorViewportClient::OnEditorToggleGizmoMode(const FInputActionValue
 {
     FInputManager &Input = FInputManager::Get();
     if (Input.IsMouseButtonDown(VK_RBUTTON))
-        return;
-
-    if (Gizmo)
     {
-        const bool bHasGizmoTarget = SelectionManager && SelectionManager->GetSelectedComponent() && GizmoManager.HasValidTarget();
-        if (!bHasGizmoTarget)
-        {
-            Gizmo->Deactivate();
-            return;
-        }
+        return;
+    }
 
-        if (Input.IsKeyPressed('W'))
-            GizmoManager.SetMode(EGizmoMode::Translate);
-        else if (Input.IsKeyPressed('E'))
-            GizmoManager.SetMode(EGizmoMode::Rotate);
-        else if (Input.IsKeyPressed('R'))
-            GizmoManager.SetMode(EGizmoMode::Scale);
-        else if (Input.IsKeyPressed('Q'))
-            GizmoManager.SetMode(EGizmoMode::Select);
-        else
-            GizmoManager.CycleMode();
+    // GizmoVisual mode is editor state, not selection state.
+    // Do not deactivate the visual component when there is no current target; doing so leaves the
+    // editor-only gizmo component hidden after the next selection. FGizmoManager already hides the
+    // visual by clearing its transform when the target is invalid.
+    if (Input.IsKeyPressed('W'))
+    {
+        GizmoManager.SetMode(EGizmoMode::Translate);
+    }
+    else if (Input.IsKeyPressed('E'))
+    {
+        GizmoManager.SetMode(EGizmoMode::Rotate);
+    }
+    else if (Input.IsKeyPressed('R'))
+    {
+        GizmoManager.SetMode(EGizmoMode::Scale);
+    }
+    else if (Input.IsKeyPressed('Q'))
+    {
+        GizmoManager.SetMode(EGizmoMode::Select);
+    }
+    else
+    {
+        GizmoManager.CycleMode();
+    }
 
-        if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
-            EditorEngine->ApplyTransformSettingsToGizmo();
+    if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
+    {
+        EditorEngine->ApplyTransformSettingsToGizmo();
     }
 }
 
@@ -1391,10 +1398,7 @@ void FLevelEditorViewportClient::TickEditorShortcuts()
             {
                 SelectionManager->ToggleSelect(Actor);
             }
-            if (EditorEngine->GetGizmo())
-            {
-                EditorEngine->GetGizmo()->UpdateGizmoTransform();
-            }
+            GizmoManager.SyncVisualFromTarget();
             EditorEngine->CommitTrackedSceneChange();
         }
     }
@@ -1468,7 +1472,7 @@ static FVector FindClosestVertex(UWorld *World, const FRay &Ray, float MaxDistan
     bool bFound = false;
     for (AActor *Actor : World->GetActors())
     {
-        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoComponent>())
+        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoVisualComponent>())
             continue;
         for (UActorComponent *Comp : Actor->GetComponents())
         {
@@ -1502,15 +1506,11 @@ static FVector FindClosestVertex(UWorld *World, const FRay &Ray, float MaxDistan
 void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
 {
     (void)DeltaTime;
-    if (!GetCamera() || !Gizmo || !GetWorld())
+    if (!GetCamera() || !GetWorld())
         return;
-    if (Gizmo->GetMode() != GizmoManager.GetMode())
-    {
-        GizmoManager.SetMode(Gizmo->GetMode());
-    }
-    GizmoManager.SetSpace(Gizmo->IsWorldSpace() ? EGizmoSpace::World : EGizmoSpace::Local);
+    EnsureEditorGizmo();
     GizmoManager.ApplyScreenSpaceScaling(GetCamera()->GetWorldLocation(), GetCamera()->IsOrthogonal(), GetCamera()->GetOrthoWidth());
-    GizmoManager.SetAxisMask(UGizmoComponent::ComputeAxisMask(RenderOptions.ViewportType, GizmoManager.GetMode()));
+    GizmoManager.SetAxisMask(UGizmoVisualComponent::ComputeAxisMask(RenderOptions.ViewportType, GizmoManager.GetMode()));
 
     uint32 CursorViewportX = 0;
     uint32 CursorViewportY = 0;
@@ -1626,7 +1626,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
                     FMatrix VP = GetCamera()->GetViewProjectionMatrix();
                     for (AActor *Actor : World->GetActors())
                     {
-                        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoComponent>())
+                        if (!Actor || !Actor->IsVisible() || Actor->IsA<UGizmoVisualComponent>())
                             continue;
                         FVector WorldPos = Actor->GetActorLocation();
                         FVector ClipSpace = VP.TransformPositionWithW(WorldPos);
@@ -1653,7 +1653,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
         {
             EndUIScreenTranslateDrag(true);
         }
-        if (Gizmo) Gizmo->SetPressedOnHandle(false);
+        GizmoManager.ResetVisualInteractionState();
         if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
         {
             EditorEngine->CommitTrackedTransformChange();
@@ -1683,7 +1683,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
             {
                 if (Actor && Actor->IsActorMovementLocked())
                 {
-                    if (Gizmo) Gizmo->SetPressedOnHandle(false);
+                    GizmoManager.ResetVisualInteractionState();
                     return;
                 }
             }
@@ -1790,7 +1790,7 @@ void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray)
 
 bool FLevelEditorViewportClient::HasUIScreenTranslateGizmo() const
 {
-    if (!SelectionManager || !Gizmo || Gizmo->GetMode() != EGizmoMode::Translate)
+    if (!SelectionManager || GizmoManager.GetMode() != EGizmoMode::Translate)
     {
         return false;
     }

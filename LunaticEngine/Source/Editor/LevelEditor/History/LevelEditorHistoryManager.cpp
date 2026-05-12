@@ -1,7 +1,7 @@
 #include "LevelEditor/History/LevelEditorHistoryManager.h"
 
 #include "Component/CameraComponent.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "EditorEngine.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 #include "GameFramework/AActor.h"
@@ -351,10 +351,7 @@ void FLevelEditorHistoryManager::RestoreTrackedSelection(const TArray<uint32>& S
         EditorEngine->GetSelectionManager().ClearSelection();
     }
 
-    if (UGizmoComponent* Gizmo = EditorEngine->GetGizmo())
-    {
-        Gizmo->UpdateGizmoTransform();
-    }
+    EditorEngine->SyncActiveGizmoVisualFromTarget();
 }
 
 void FLevelEditorHistoryManager::InvalidateTrackedSceneSnapshotCache()

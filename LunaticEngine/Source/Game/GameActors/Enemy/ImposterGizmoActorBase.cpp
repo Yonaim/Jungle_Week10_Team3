@@ -15,6 +15,13 @@ namespace {
 		static std::mt19937 Engine(std::random_device{}());
 		return Engine;
 	}
+
+	FTransform MakeActorTransform(const AActor* Actor)
+	{
+		return Actor
+			? FTransform(Actor->GetActorLocation(), Actor->GetActorRotation(), Actor->GetActorScale())
+			: FTransform();
+	}
 }
 
 void AImposterGizmoActorBase::Tick(float DeltaTime) {
@@ -30,7 +37,7 @@ void AImposterGizmoActorBase::Tick(float DeltaTime) {
 	if (ElapsedDelay >= ActivationDelay) Transform(DeltaTime);
 	if (PreviewGizmo && HasAliveTarget())
 	{
-		PreviewGizmo->UpdateGizmoTransform();
+		PreviewGizmo->SetGizmoWorldTransform(MakeActorTransform(Target));
 	}
 }
 
@@ -49,7 +56,11 @@ void AImposterGizmoActorBase::Capture(AActor* InActor) {
 
 	if (!PreviewGizmo)
 	{
-		PreviewGizmo = AddComponent<UGizmoComponent>();
+		PreviewGizmo = AddComponent<UGizmoVisualComponent>();
+	}
+	if (PreviewGizmo)
+	{
+		PreviewGizmo->SetGizmoWorldTransform(MakeActorTransform(Target));
 	}
 }
 

@@ -7,7 +7,7 @@
 #include "Common/UI/Viewport/ViewportToolbar.h"
 #include "Common/UI/Viewport/EditorViewportToolbar.h"
 #include "Component/CameraComponent.h"
-#include "Component/GizmoComponent.h"
+#include "Component/GizmoVisualComponent.h"
 #include "Core/ProjectSettings.h"
 #include "EditorEngine.h"
 #include "Engine/Input/InputManager.h"
@@ -2139,13 +2139,7 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
         return;
     }
 
-    UGizmoComponent *Gizmo = Editor->GetGizmo();
-    if (!Gizmo)
-    {
-        return;
-    }
-
-    EnsureToolbarIconsLoaded(RendererPtr);
+        EnsureToolbarIconsLoaded(RendererPtr);
 
     constexpr float ToolbarHeight = 40.0f;
     constexpr float IconSize = 18.0f;
@@ -2168,7 +2162,8 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
 
     auto DrawGizmoIcon = [&](const char *Id, EToolbarIcon Icon, EGizmoMode TargetMode, const char *FallbackLabel) -> bool
     {
-        const bool bSelected = (Gizmo->GetMode() == TargetMode);
+        const EGizmoMode CurrentMode = ActiveViewportClient ? ActiveViewportClient->GetGizmoManager().GetMode() : EGizmoMode::Translate;
+        const bool bSelected = (CurrentMode == TargetMode);
         if (bSelected)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, UIAccentColor::Value);
@@ -2211,19 +2206,28 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
     ImGui::SameLine(0.0f, GroupSpacing);
     if (DrawGizmoIcon("##SharedTranslateToolIcon", EToolbarIcon::Translate, EGizmoMode::Translate, "Translate"))
     {
-        Gizmo->SetTranslateMode();
+        if (ActiveViewportClient)
+        {
+            ActiveViewportClient->GetGizmoManager().SetMode(EGizmoMode::Translate);
+        }
     }
     ShowItemTooltip("Translate");
     ImGui::SameLine(0.0f, ButtonSpacing);
     if (DrawGizmoIcon("##SharedRotateToolIcon", EToolbarIcon::Rotate, EGizmoMode::Rotate, "Rotate"))
     {
-        Gizmo->SetRotateMode();
+        if (ActiveViewportClient)
+        {
+            ActiveViewportClient->GetGizmoManager().SetMode(EGizmoMode::Rotate);
+        }
     }
     ShowItemTooltip("Rotate");
     ImGui::SameLine(0.0f, ButtonSpacing);
     if (DrawGizmoIcon("##SharedScaleToolIcon", EToolbarIcon::Scale, EGizmoMode::Scale, "Scale"))
     {
-        Gizmo->SetScaleMode();
+        if (ActiveViewportClient)
+        {
+            ActiveViewportClient->GetGizmoManager().SetMode(EGizmoMode::Scale);
+        }
     }
     ShowItemTooltip("Scale");
 
@@ -2315,7 +2319,6 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
         FViewportRenderOptions &Opts = VC->GetRenderOptions();
         FEditorViewportCamera *Camera = VC->GetCamera();
-        UGizmoComponent *Gizmo = Editor ? Editor->GetGizmo() : nullptr;
         FLevelEditorSettings &Settings = Editor->GetSettings();
 
         FEditorViewportToolbar::FDesc Desc;
@@ -2323,9 +2326,11 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         Desc.ToolbarWidth = PaneRect.Width;
         Desc.Renderer = RendererPtr;
         Desc.bEnabled = Editor != nullptr && VC != nullptr;
-        Desc.ToolMode = Gizmo && Gizmo->GetMode() == EGizmoMode::Rotate
+        const EGizmoMode CurrentGizmoMode = ActiveViewportClient ? ActiveViewportClient->GetGizmoManager().GetMode()
+                                                                 : EGizmoMode::Translate;
+        Desc.ToolMode = CurrentGizmoMode == EGizmoMode::Rotate
                             ? FEditorViewportToolbar::EToolMode::Rotate
-                            : (Gizmo && Gizmo->GetMode() == EGizmoMode::Scale
+                            : (CurrentGizmoMode == EGizmoMode::Scale
                                    ? FEditorViewportToolbar::EToolMode::Scale
                                    : FEditorViewportToolbar::EToolMode::Translate);
         Desc.CoordSpace = Settings.CoordSystem == EEditorCoordSystem::World ? FEditorViewportToolbar::ECoordSpace::World
@@ -2336,26 +2341,29 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         Desc.ViewModeIcon = FEditorViewportToolbar::GetViewModeIconByIndex(static_cast<int32>(Opts.ViewMode));
         Desc.ViewModeLabel = FEditorViewportToolbar::GetViewModeLabelByIndex(static_cast<int32>(Opts.ViewMode));
 
-        Desc.OnToolModeChanged = [this, Gizmo](FEditorViewportToolbar::EToolMode Mode)
+        Desc.OnToolModeChanged = [this](FEditorViewportToolbar::EToolMode Mode)
         {
-            if (!Gizmo)
+            if (!ActiveViewportClient)
             {
                 return;
             }
 
+            EGizmoMode NewMode = EGizmoMode::Translate;
             switch (Mode)
             {
             case FEditorViewportToolbar::EToolMode::Rotate:
-                Gizmo->SetRotateMode();
+                NewMode = EGizmoMode::Rotate;
                 break;
             case FEditorViewportToolbar::EToolMode::Scale:
-                Gizmo->SetScaleMode();
+                NewMode = EGizmoMode::Scale;
                 break;
             case FEditorViewportToolbar::EToolMode::Translate:
             default:
-                Gizmo->SetTranslateMode();
+                NewMode = EGizmoMode::Translate;
                 break;
             }
+
+            ActiveViewportClient->GetGizmoManager().SetMode(NewMode);
             if (Editor)
             {
                 Editor->ApplyTransformSettingsToGizmo();
