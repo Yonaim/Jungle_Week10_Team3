@@ -13,15 +13,29 @@ namespace
 {
 	UMaterial* ResolveSkeletalSectionMaterial(
 		const TArray<FStaticMaterial>& Slots,
+		const TArray<UMaterial*>& Overrides,
 		int32 MaterialIndex,
 		UMaterial*& InOutFallbackMaterial)
 	{
 		if (MaterialIndex >= 0 && MaterialIndex < static_cast<int32>(Slots.size()))
 		{
+			if (MaterialIndex < static_cast<int32>(Overrides.size()) && Overrides[MaterialIndex])
+			{
+				return Overrides[MaterialIndex];
+			}
 			if (Slots[MaterialIndex].MaterialInterface)
 			{
 				return Slots[MaterialIndex].MaterialInterface;
 			}
+		}
+
+		if (!Overrides.empty() && Overrides[0])
+		{
+			return Overrides[0];
+		}
+		if (!Slots.empty() && Slots[0].MaterialInterface)
+		{
+			return Slots[0].MaterialInterface;
 		}
 
 		if (!InOutFallbackMaterial)
@@ -142,29 +156,43 @@ void FSkeletalMeshProxy::RebuildSectionDraws()
 	if (!Asset || Asset->Sections.empty())
 	{
 		// 섹션 정보가 없는 임시/예외 경로는 단일 fallback draw를 사용한다.
-		if (!DefaultMaterial)
+		UMaterial* Material = nullptr;
+		if (SkelMesh)
 		{
-			DefaultMaterial = UMaterial::CreateTransient(
-				ERenderPass::Opaque,
-				EBlendState::Opaque,
-				EDepthStencilState::Default,
-				ERasterizerState::SolidBackCull,
-				FShaderManager::Get().GetOrCreate(EShaderPath::UberLit));
+			const TArray<FStaticMaterial>& Slots = SkelMesh->GetStaticMaterials();
+			const TArray<UMaterial*>& Overrides = Comp->GetOverrideMaterials();
+			UMaterial* FallbackMaterial = nullptr;
+			Material = ResolveSkeletalSectionMaterial(Slots, Overrides, 0, FallbackMaterial);
 		}
-		if (!DefaultMaterial) return;
+
+		if (!Material)
+		{
+			if (!DefaultMaterial)
+			{
+				DefaultMaterial = UMaterial::CreateTransient(
+					ERenderPass::Opaque,
+					EBlendState::Opaque,
+					EDepthStencilState::Default,
+					ERasterizerState::SolidBackCull,
+					FShaderManager::Get().GetOrCreate(EShaderPath::UberLit));
+			}
+			Material = DefaultMaterial;
+		}
+		if (!Material) return;
 
 		const FSkeletalLODDrawData& LOD = LODData[CurrentLOD];
 		uint32 DrawCount = LOD.IndexCount > 0 ? LOD.IndexCount : LOD.VertexCount;
-		SectionDraws.push_back({ DefaultMaterial, 0, DrawCount });
+		SectionDraws.push_back({ Material, 0, DrawCount });
 		return;
 	}
 
 	const TArray<FStaticMaterial>& Slots = SkelMesh->GetStaticMaterials();
+	const TArray<UMaterial*>& Overrides = Comp->GetOverrideMaterials();
 	UMaterial* FallbackMaterial = nullptr;
 
 	for (const FSkeletalMeshSection& Section : Asset->Sections)
 	{
-		UMaterial* Mat = ResolveSkeletalSectionMaterial(Slots, Section.MaterialIndex, FallbackMaterial);
+		UMaterial* Mat = ResolveSkeletalSectionMaterial(Slots, Overrides, Section.MaterialIndex, FallbackMaterial);
 
 		// Section.IndexStart/IndexCount는 임포트 시 확정된 제출 단위다.
 		SectionDraws.push_back({ Mat, Section.IndexStart, Section.IndexCount });

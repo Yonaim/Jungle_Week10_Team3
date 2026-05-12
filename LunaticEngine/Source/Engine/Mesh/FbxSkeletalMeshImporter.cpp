@@ -1,7 +1,6 @@
 ﻿#include "Mesh/FbxImporter.h"
 #include "Mesh/FbxCommon.h"
 
-#include "Core/Log.h"
 #include "Mesh/SkeletalMeshCommon.h"
 #include "Mesh/StaticMeshCommon.h"
 
@@ -18,6 +17,15 @@ namespace
 	// 4) 머티리얼 섹션 재구성
 	using FControlPointVertexMap = std::unordered_map<FbxMesh*, std::unordered_map<int32, TArray<uint32>>>;
 	using FMeshNodeVertexMap = std::unordered_map<FbxNode*, TArray<uint32>>;
+
+	// Import 과정에서만 사용되는 임시 데이터 구조체
+	struct FSkeletalImportScratch
+	{
+		TArray<FbxNode*> MeshNodes;						// FBX Scene에서 Mesh가 있는 노드
+		FControlPointVertexMap ControlPointToVertices;	// FBX Mesh의 Control Point가 영향을 미치는 메시 정점 인덱스 매핑
+		FMeshNodeVertexMap MeshNodeVertices;			// FBX Node가 영향을 미치는 메시 정점 인덱스 매핑
+		TArray<FMatrix> BindGlobalMatrices;				// Bone Bind Pose Global Matrix 
+	};
 
 	bool IsSkeletonNode(FbxNode* Node)
 	{
@@ -58,15 +66,6 @@ namespace
 			AxisY.X, AxisY.Y, AxisY.Z, 0.0f,
 			AxisZ.X, AxisZ.Y, AxisZ.Z, 0.0f,
 			Origin.X, Origin.Y, Origin.Z, 1.0f);
-	}
-
-	FTransform ConvertFbxAMatrixToFTransform(const FbxAMatrix& Matrix)
-	{
-		const FMatrix EngineMatrix = ConvertFbxAMatrixToFMatrix(Matrix);
-		return FTransform(
-			EngineMatrix.GetLocation(),
-			FQuat::FromMatrix(EngineMatrix),
-			EngineMatrix.GetScale());
 	}
 
 	FMatrix GetBoneBindGlobalMatrix(FbxNode* BoneNode, FbxCluster* Cluster)
@@ -165,42 +164,6 @@ namespace
 
 		for (int32 BoneIndex = 0; BoneIndex < static_cast<int32>(OutMesh.Bones.size()); ++BoneIndex)
 		{
-			if (BoneIndex < static_cast<int32>(BindGlobalMatrices.size()))
-			{
-				const FMatrix& OriginalBindGlobal = BindGlobalMatrices[BoneIndex];
-				const FMatrix& RebuiltBindGlobal = RebuiltGlobalMatrices[BoneIndex];
-				const FVector OriginalLocation = OriginalBindGlobal.GetLocation();
-				const FVector RebuiltLocation = RebuiltBindGlobal.GetLocation();
-				const FVector Delta = RebuiltLocation - OriginalLocation;
-				const float DeltaLength = std::sqrt(Delta.X * Delta.X + Delta.Y * Delta.Y + Delta.Z * Delta.Z);
-				const float OriginalDet = OriginalBindGlobal.GetBasisDeterminant3x3();
-				const float RebuiltDet = RebuiltBindGlobal.GetBasisDeterminant3x3();
-				const bool bHandednessChanged = (OriginalDet < 0.0f && RebuiltDet >= 0.0f)
-					|| (OriginalDet >= 0.0f && RebuiltDet < 0.0f);
-
-				// TEMP SkeletalDebug: remove after FBX bind-pose reconstruction is verified.
-				if (DeltaLength > 0.01f || bHandednessChanged)
-				{
-					const FBoneInfo& Bone = OutMesh.Bones[BoneIndex];
-					UE_LOG_CATEGORY(ObjImporter, Warning,
-						"[TEMP SkeletalDebug] Bind rebuild mismatch Bone=%s Index=%d Parent=%d "
-						"OriginalLoc=(%.4f, %.4f, %.4f) RebuiltLoc=(%.4f, %.4f, %.4f) "
-						"Delta=%.4f OriginalDet=%.4f RebuiltDet=%.4f",
-						Bone.Name.c_str(),
-						BoneIndex,
-						Bone.ParentIndex,
-						OriginalLocation.X,
-						OriginalLocation.Y,
-						OriginalLocation.Z,
-						RebuiltLocation.X,
-						RebuiltLocation.Y,
-						RebuiltLocation.Z,
-						DeltaLength,
-						OriginalDet,
-						RebuiltDet);
-				}
-			}
-
 			// Current bind pose is reconstructed from FTransform. Make the inverse
 			// bind pose match that exact runtime representation so bind-pose
 			// skinning is identity and does not tilt skinned-only sections.
@@ -264,9 +227,7 @@ namespace
 		FbxNode* Node,
 		FFbxInfo& Context,
 		FSkeletalMesh& OutMesh,
-		TArray<FbxNode*>& OutMeshNodes,
-		FControlPointVertexMap& ControlPointToVertices,
-		FMeshNodeVertexMap& MeshNodeVertices)
+		FSkeletalImportScratch& Scratch)
 	{
 		FbxMesh* Mesh = Node ? Node->GetMesh() : nullptr;
 		if (!Mesh)
@@ -274,7 +235,7 @@ namespace
 			return;
 		}
 
-		OutMeshNodes.push_back(Node);
+		Scratch.MeshNodes.push_back(Node);
 
 		const char* UVSetName = nullptr;
 		FbxStringList UVSetNames;
@@ -288,32 +249,9 @@ namespace
 		FbxAMatrix MeshBindGlobalTransform;
 		if (TryGetMeshBindGlobalMatrix(Mesh, MeshBindGlobalTransform))
 		{
-			const FMatrix EvaluatedGlobalMatrix = ConvertFbxAMatrixToFMatrix(GlobalTransform);
-			const FMatrix MeshBindGlobalMatrix = ConvertFbxAMatrixToFMatrix(MeshBindGlobalTransform);
-			const FVector EvaluatedLocation = EvaluatedGlobalMatrix.GetLocation();
-			const FVector MeshBindLocation = MeshBindGlobalMatrix.GetLocation();
-			const FVector Delta = MeshBindLocation - EvaluatedLocation;
-			const float DeltaLength = std::sqrt(Delta.X * Delta.X + Delta.Y * Delta.Y + Delta.Z * Delta.Z);
-
 			// Skinned vertices must be baked into the same bind-time global space
 			// used by cluster link matrices, otherwise debug bones and mesh drift apart.
 			GlobalTransform = MeshBindGlobalTransform;
-
-			// TEMP SkeletalDebug: remove after FBX bind-space import is verified.
-			if (DeltaLength > 0.01f)
-			{
-				UE_LOG_CATEGORY(ObjImporter, Warning,
-					"[TEMP SkeletalDebug] Mesh bind transform differs from evaluated node transform Node=%s "
-					"EvaluatedLoc=(%.4f, %.4f, %.4f) MeshBindLoc=(%.4f, %.4f, %.4f) Delta=%.4f",
-					Node->GetName(),
-					EvaluatedLocation.X,
-					EvaluatedLocation.Y,
-					EvaluatedLocation.Z,
-					MeshBindLocation.X,
-					MeshBindLocation.Y,
-					MeshBindLocation.Z,
-					DeltaLength);
-			}
 		}
 		std::unordered_map<FFbxVertexKey, uint32, FFbxVertexKeyHash> VertexMap;
 		const int32 PolygonCount = Mesh->GetPolygonCount();
@@ -347,8 +285,8 @@ namespace
 				if (It != VertexMap.end())
 				{
 					TriangleIndices[CornerIndex] = It->second;
-					AddControlPointVertex(ControlPointToVertices, Mesh, ControlPointIndex, It->second);
-					AddMeshNodeVertex(MeshNodeVertices, Node, It->second);
+					AddControlPointVertex(Scratch.ControlPointToVertices, Mesh, ControlPointIndex, It->second);
+					AddMeshNodeVertex(Scratch.MeshNodeVertices, Node, It->second);
 					continue;
 				}
 
@@ -370,8 +308,8 @@ namespace
 				OutMesh.Vertices.push_back(Vertex);
 				VertexMap.emplace(Key, NewVertexIndex);
 				TriangleIndices[CornerIndex] = NewVertexIndex;
-				AddControlPointVertex(ControlPointToVertices, Mesh, ControlPointIndex, NewVertexIndex);
-				AddMeshNodeVertex(MeshNodeVertices, Node, NewVertexIndex);
+				AddControlPointVertex(Scratch.ControlPointToVertices, Mesh, ControlPointIndex, NewVertexIndex);
+				AddMeshNodeVertex(Scratch.MeshNodeVertices, Node, NewVertexIndex);
 			}
 
 			const uint32 FaceStart = static_cast<uint32>(OutMesh.Indices.size());
@@ -387,21 +325,19 @@ namespace
 		FbxNode* Node,
 		FFbxInfo& Context,
 		FSkeletalMesh& OutMesh,
-		TArray<FbxNode*>& OutMeshNodes,
-		FControlPointVertexMap& ControlPointToVertices,
-		FMeshNodeVertexMap& MeshNodeVertices)
+		FSkeletalImportScratch& Scratch)
 	{
 		if (!Node)
 		{
 			return;
 		}
 
-		ConvertMeshNode(FbxFilePath, Node, Context, OutMesh, OutMeshNodes, ControlPointToVertices, MeshNodeVertices);
+		ConvertMeshNode(FbxFilePath, Node, Context, OutMesh, Scratch);
 
 		const int32 ChildCount = Node->GetChildCount();
 		for (int32 ChildIndex = 0; ChildIndex < ChildCount; ++ChildIndex)
 		{
-			TraverseNodes(FbxFilePath, Node->GetChild(ChildIndex), Context, OutMesh, OutMeshNodes, ControlPointToVertices, MeshNodeVertices);
+			TraverseNodes(FbxFilePath, Node->GetChild(ChildIndex), Context, OutMesh, Scratch);
 		}
 	}
 
@@ -555,13 +491,9 @@ namespace
 		SkinWeight.BoneWeights[0] = 1.0f;
 	}
 
-	void BindRigidMeshesToParentBones(
-		const TArray<FbxNode*>& MeshNodes,
-		const FMeshNodeVertexMap& MeshNodeVertices,
-		FSkeletalMesh& OutMesh,
-		TArray<FMatrix>& BindGlobalMatrices)
+	void BindRigidMeshesToParentBones(FSkeletalImportScratch& Scratch, FSkeletalMesh& OutMesh)
 	{
-		for (FbxNode* Node : MeshNodes)
+		for (FbxNode* Node : Scratch.MeshNodes)
 		{
 			FbxMesh* Mesh = Node ? Node->GetMesh() : nullptr;
 			if (!Mesh || HasSkinDeformer(Mesh))
@@ -575,14 +507,14 @@ namespace
 				continue;
 			}
 
-			const int32 BoneIndex = FindOrAddBone(OutMesh, ParentBoneNode, nullptr, BindGlobalMatrices);
+			const int32 BoneIndex = FindOrAddBone(OutMesh, ParentBoneNode, nullptr, Scratch.BindGlobalMatrices);
 			if (BoneIndex == InvalidBoneIndex)
 			{
 				continue;
 			}
 
-			auto VertexListIt = MeshNodeVertices.find(Node);
-			if (VertexListIt == MeshNodeVertices.end())
+			auto VertexListIt = Scratch.MeshNodeVertices.find(Node);
+			if (VertexListIt == Scratch.MeshNodeVertices.end())
 			{
 				continue;
 			}
@@ -597,16 +529,15 @@ namespace
 		}
 	}
 
-	void FillSkinWeights(FFbxInfo& Context, TArray<FbxNode*>& MeshNodes, const FControlPointVertexMap& ControlPointToVertices, const FMeshNodeVertexMap& MeshNodeVertices, FSkeletalMesh& OutMesh)
+	void FillSkinWeights(FFbxInfo& Context, FSkeletalImportScratch& Scratch, FSkeletalMesh& OutMesh)
 	{
 		OutMesh.SkinWeights.resize(OutMesh.Vertices.size());
-		TArray<FMatrix> BindGlobalMatrices;
 
 		// Cluster에 weight가 없는 leaf/end bone은 Cluster->GetLink()로 등장하지 않는다.
 		// Skin weight 처리 전에 scene skeleton hierarchy 전체를 등록해 head_end 같은 말단 본도 보존한다.
-		RegisterSkeletonHierarchyBones(Context.Scene ? Context.Scene->GetRootNode() : nullptr, OutMesh, BindGlobalMatrices);
+		RegisterSkeletonHierarchyBones(Context.Scene ? Context.Scene->GetRootNode() : nullptr, OutMesh, Scratch.BindGlobalMatrices);
 
-		for (FbxNode* Node : MeshNodes)
+		for (FbxNode* Node : Scratch.MeshNodes)
 		{
 			FbxMesh* Mesh = Node->GetMesh();
 			if (!Mesh)
@@ -614,8 +545,8 @@ namespace
 				continue;
 			}
 
-			auto MeshMapIt = ControlPointToVertices.find(Mesh);
-			if (MeshMapIt == ControlPointToVertices.end())
+			auto MeshMapIt = Scratch.ControlPointToVertices.find(Mesh);
+			if (MeshMapIt == Scratch.ControlPointToVertices.end())
 			{
 				continue;
 			}
@@ -624,19 +555,32 @@ namespace
 
 			for (int DeformerIndex = 0; DeformerIndex < DeformerCount; ++DeformerIndex)
 			{
-				FbxSkin* Skin = (FbxSkin*)Mesh->GetDeformer(DeformerIndex, FbxDeformer::eSkin);
+				FbxSkin* Skin = static_cast<FbxSkin*>(Mesh->GetDeformer(DeformerIndex, FbxDeformer::eSkin));
+				if (!Skin)
+				{
+					continue;
+				}
+
 				int ClusterCount = Skin->GetClusterCount();
 
 				for (int ClusterIndex = 0; ClusterIndex < ClusterCount; ++ClusterIndex)
 				{
 					FbxCluster* Cluster = Skin->GetCluster(ClusterIndex);
+					if (!Cluster)
+					{
+						continue;
+					}
+
 					FbxNode* BoneNode = Cluster->GetLink();
-					if (!BoneNode) continue;
+					if (!BoneNode)
+					{
+						continue;
+					}
 
 					// FBoneInfo 정보 저장(임시값: 아래 Rebuild 함수에서 Hierarchy 반영해서 재계산)
 					// Cluster는 "해당 본이 어떤 Control Point에 얼마만큼 영향 주는지"를 제공한다.
 					// 본 이름 기반으로 엔진 Bone 배열 인덱스를 정규화한다.
-					int32 BoneIndex = FindOrAddBone(OutMesh, BoneNode, Cluster, BindGlobalMatrices);
+					int32 BoneIndex = FindOrAddBone(OutMesh, BoneNode, Cluster, Scratch.BindGlobalMatrices);
 
 					// FSkinWeight 정보 저장
 					// Control Point 영향치를 코너 기반 엔진 정점으로 전파한다.
@@ -644,6 +588,10 @@ namespace
 					int CPCount = Cluster->GetControlPointIndicesCount();
 					int* CPIndices = Cluster->GetControlPointIndices();
 					double* CPWeights = Cluster->GetControlPointWeights();
+					if (!CPIndices || !CPWeights)
+					{
+						continue;
+					}
 
 					for (int i = 0; i < CPCount; ++i)
 					{
@@ -672,9 +620,9 @@ namespace
 		}
 
 		// Skin이 없는 Rigid Mesh는 부모 본에 100% 영향되도록 처리한다.
-		BindRigidMeshesToParentBones(MeshNodes, MeshNodeVertices, OutMesh, BindGlobalMatrices);
+		BindRigidMeshesToParentBones(Scratch, OutMesh);
 		// BindGlobalMatrices를 이용해 LocalBindTransform과 InverseBindPose 재구성
-		RebuildLocalBindTransforms(OutMesh, BindGlobalMatrices);
+		RebuildLocalBindTransforms(OutMesh, Scratch.BindGlobalMatrices);
 		// Weight 합이 1이 되도록 정규화
 		NormalizeSkinWeights(OutMesh);
 	}
@@ -771,13 +719,11 @@ namespace
 		OutMaterials.clear();
 
 		// 1. Vertex, Index Data
-		TArray<FbxNode*> FoundMeshNodes;	// Mesh Node 미리 캐싱
-		FControlPointVertexMap ControlPointToVertices;
-		FMeshNodeVertexMap MeshNodeVertices;
-		TraverseNodes(FbxFilePath, Context.Scene ? Context.Scene->GetRootNode() : nullptr, Context, OutMesh, FoundMeshNodes, ControlPointToVertices, MeshNodeVertices);
+		FSkeletalImportScratch Scratch;
+		TraverseNodes(FbxFilePath, Context.Scene ? Context.Scene->GetRootNode() : nullptr, Context, OutMesh, Scratch);
 
 		// 2. Skin Weights, Bone Data
-		FillSkinWeights(Context, FoundMeshNodes, ControlPointToVertices, MeshNodeVertices, OutMesh);
+		FillSkinWeights(Context, Scratch, OutMesh);
 		// BoneChildren / RootBoneIndices 캐시 구성
 		OutMesh.BuildBoneHierarchyCache();
 
