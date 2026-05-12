@@ -1923,7 +1923,10 @@ bool FLevelEditorViewportClient::BeginUIScreenTranslateDrag(const ImVec2 &MouseP
     }
     else
     {
-        GizmoManager.GetUIScreenInteractionState().LastMousePos = MousePos;
+        // Drag 좌표계는 항상 viewport-local로 유지한다.
+        // screen/global 좌표를 섞으면 커서가 뷰포트 밖으로 나간 순간 큰 delta가 발생한다.
+        GizmoManager.GetUIScreenInteractionState().LastMousePos =
+            ImVec2(MousePos.x - ViewportScreenRect.X, MousePos.y - ViewportScreenRect.Y);
     }
     GizmoManager.GetUIScreenInteractionState().bDragging = true;
     return true;
@@ -1950,7 +1953,7 @@ void FLevelEditorViewportClient::UpdateUIScreenTranslateDrag(const ImVec2 &Mouse
 
     float ViewportMouseX = 0.0f;
     float ViewportMouseY = 0.0f;
-    ImVec2 CurrentMouseInViewport = MousePos;
+    ImVec2 CurrentMouseInViewport(MousePos.x - ViewportScreenRect.X, MousePos.y - ViewportScreenRect.Y);
     if (TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight,
                                        ViewportMouseX, ViewportMouseY))
     {
