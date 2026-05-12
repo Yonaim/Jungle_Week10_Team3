@@ -4,7 +4,6 @@
 #include "Common/UI/Style/EditorUIStyle.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Common/UI/Panels/Panel.h"
-#include "Common/UI/Details/EditorMaterialSlotUI.h"
 #include "EditorEngine.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 
@@ -3556,22 +3555,104 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
     }
     case EPropertyType::MaterialSlot: {
         FMaterialSlot *Slot = static_cast<FMaterialSlot *>(Prop.ValuePtr);
-        const int32 ElemIdx = (strncmp(Prop.Name.c_str(), "Element ", 8) == 0) ? atoi(&Prop.Name[8]) : -1;
+        int32 ElemIdx = (strncmp(Prop.Name.c_str(), "Element ", 8) == 0) ? atoi(&Prop.Name[8]) : -1;
 
         FString SlotName = "None";
         if (ElemIdx != -1 && SelectedComponent && SelectedComponent->IsA<UStaticMeshComponent>())
         {
             UStaticMeshComponent *SMC = static_cast<UStaticMeshComponent *>(SelectedComponent);
             if (SMC->GetStaticMesh() && ElemIdx < (int32)SMC->GetStaticMesh()->GetStaticMaterials().size())
-            {
                 SlotName = SMC->GetStaticMesh()->GetStaticMaterials()[ElemIdx].MaterialSlotName;
+        }
+
+        // 좌측: Element 인덱스 + 슬롯 이름
+        ImGui::BeginGroup();
+        ImGui::Text("Element %d", ElemIdx);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        ImGui::TextUnformatted(SlotName.c_str());
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", SlotName.c_str());
+        ImGui::EndGroup();
+
+        ImGui::SameLine(120);
+
+        // 우측: Material 콤보
+        ImGui::BeginGroup();
+        ImGui::PushID(Prop.Name.c_str());
+        constexpr float PreviewImageSize = 26.0f;
+        constexpr float PreviewSpacing = 6.0f;
+        UMaterial *CurrentMaterial = (Slot->Path.empty() || Slot->Path == "None")
+                                         ? nullptr
+                                         : FMaterialManager::Get().GetOrCreateMaterial(Slot->Path);
+        UTexture2D *CurrentPreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(CurrentMaterial);
+        const float ReservedPreviewWidth =
+            (CurrentPreviewTexture && CurrentPreviewTexture->GetSRV()) ? (PreviewImageSize + PreviewSpacing) : 0.0f;
+        float ComboWidth = ImGui::GetContentRegionAvail().x - ReservedPreviewWidth;
+        if (ComboWidth < 120.0f)
+        {
+            ComboWidth = 120.0f;
+        }
+        ImGui::SetNextItemWidth(ComboWidth);
+
+        FString Preview = MakeAssetPreviewLabel(Slot->Path);
+        if (ImGui::BeginCombo("##MatCombo", Preview.c_str()))
+        {
+            // "None" 선택지 기본 제공
+            bool bSelectedNone = (Slot->Path == "None" || Slot->Path.empty());
+            if (ImGui::Selectable("None", bSelectedNone))
+            {
+                Slot->Path = "None";
+                bChanged = true;
+            }
+            if (bSelectedNone)
+                ImGui::SetItemDefaultFocus();
+
+            // TObjectIterator 대신 FMaterialManager 파일 목록 스캔 데이터 사용
+            const TArray<FMaterialAssetListItem> &MatFiles = FMaterialManager::Get().GetAvailableMaterialFiles();
+            for (const FMaterialAssetListItem &Item : MatFiles)
+            {
+                bool bSelected = (Slot->Path == Item.FullPath);
+                UTexture2D *PreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(Item.FullPath);
+                if (PreviewTexture && PreviewTexture->GetSRV())
+                {
+                    ImGui::Image(PreviewTexture->GetSRV(), ImVec2(24.0f, 24.0f));
+                    ImGui::SameLine();
+                }
+                if (ImGui::Selectable(Item.DisplayName.c_str(), bSelected))
+                {
+                    Slot->Path = Item.FullPath; // 데이터는 전체 경로로 저장
+                    bChanged = true;
+                }
+                if (bSelected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        if (CurrentPreviewTexture && CurrentPreviewTexture->GetSRV())
+        {
+            ImGui::SameLine(0.0f, PreviewSpacing);
+            ImGui::Image(CurrentPreviewTexture->GetSRV(), ImVec2(PreviewImageSize, PreviewImageSize));
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("%s", Preview.c_str());
             }
         }
 
-        if (Slot)
+        if (ImGui::BeginDragDropTarget())
         {
-            bChanged |= FEditorMaterialSlotUI::DrawMaterialSlotRow(*Slot, ElemIdx, SlotName);
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("MaterialContentItem"))
+            {
+                FContentItem ContentItem = *reinterpret_cast<const FContentItem *>(payload->Data);
+                Slot->Path = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+                bChanged = true;
+            }
+            ImGui::EndDragDropTarget();
         }
+
+        ImGui::PopID();
+        ImGui::EndGroup();
         break;
     }
     case EPropertyType::TextureSlot: {

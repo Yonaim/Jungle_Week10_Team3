@@ -64,8 +64,8 @@ void FEditorMenuBar::Render(const FEditorMenuBarContext &Context)
     float MenuEndX = 54.0f;
     if (ImGui::BeginMenuBar())
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20.0f, 7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(16.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
         if (Context.TitleBarFont)

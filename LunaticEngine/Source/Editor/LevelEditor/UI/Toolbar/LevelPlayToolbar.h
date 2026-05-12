@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreTypes.h"
 
@@ -6,8 +6,8 @@ struct ID3D11Device;
 struct ID3D11ShaderResourceView;
 class UEditorEngine;
 
-// 뷰포트 상단 Play/Stop 툴바. FLevelViewportLayout이 소유하며,
-// 뷰포트 윈도우 상단 고정 높이만큼의 영역을 차지해 렌더된다.
+// Level Editor frame 전용 Play/Stop/Undo/Redo 툴바.
+// document tab bar 바로 아래에 렌더되며, Asset Editor에는 표시하지 않는다.
 class FLevelPlayToolbar
 {
 public:

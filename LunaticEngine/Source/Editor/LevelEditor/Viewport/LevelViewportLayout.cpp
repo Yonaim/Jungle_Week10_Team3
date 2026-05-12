@@ -1,4 +1,4 @@
-﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/Style/AccentColor.h"
 #include "Common/UI/Style/EditorUIStyle.h"
@@ -126,6 +126,7 @@ namespace
         ImGui::PushStyleColor(ImGuiCol_Header, PopupMenuItemColor);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, PopupMenuItemHoverColor);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, PopupMenuItemActiveColor);
+        ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, PopupMenuItemHoverColor);
     }
 
     bool DrawCameraPopupScalarRow(const char *Id, const char *Label, float &Value, float Speed, float Min, float Max, const char *Format)
@@ -1222,6 +1223,16 @@ void FLevelViewportLayout::Release()
     PlayToolbar.Release();
 }
 
+float FLevelViewportLayout::GetFrameToolbarHeight() const
+{
+    return PlayToolbar.GetDesiredHeight();
+}
+
+void FLevelViewportLayout::RenderFrameToolbar(float Width)
+{
+    PlayToolbar.Render(Width);
+}
+
 // ─── 활성 뷰포트 ────────────────────────────────────────────
 
 void FLevelViewportLayout::SetActiveViewport(FLevelEditorViewportClient *InClient)
@@ -1947,7 +1958,8 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 
     if (ContentSize.x > 0 && ContentSize.y > 0)
     {
-        // 상단에 Play/Stop 툴바 영역 확보 후 나머지를 뷰포트에 할당
+        // Play/Stop/Undo/Redo frame toolbar는 document tab bar 아래의 Level Editor frame 영역으로 이동했다.
+        // 이 viewport panel은 이제 순수 viewport layout과 pane toolbar만 담당한다.
         for (FLevelEditorViewportClient *VC : LevelViewportClients)
         {
             if (VC)
@@ -1956,11 +1968,7 @@ void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
             }
         }
 
-        const float MainToolbarHeight = PlayToolbar.GetDesiredHeight();
-        ImGui::SetCursorScreenPos(ContentPos);
-        PlayToolbar.Render(ContentSize.x);
-
-        FRect ContentRect = {ContentPos.x, ContentPos.y + MainToolbarHeight, ContentSize.x, ContentSize.y - MainToolbarHeight};
+        FRect ContentRect = {ContentPos.x, ContentPos.y, ContentSize.x, ContentSize.y};
         auto  IsSlotVisibleEnough = [&](int32 SlotIndex) -> bool
         {
             if (SlotIndex < 0 || SlotIndex >= MaxViewportSlots || !ViewportWindows[SlotIndex])
@@ -2328,7 +2336,7 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
         Desc.ViewModeIcon = FEditorViewportToolbar::GetViewModeIconByIndex(static_cast<int32>(Opts.ViewMode));
         Desc.ViewModeLabel = FEditorViewportToolbar::GetViewModeLabelByIndex(static_cast<int32>(Opts.ViewMode));
 
-        Desc.OnToolModeChanged = [Gizmo](FEditorViewportToolbar::EToolMode Mode)
+        Desc.OnToolModeChanged = [this, Gizmo](FEditorViewportToolbar::EToolMode Mode)
         {
             if (!Gizmo)
             {
@@ -2347,6 +2355,10 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             default:
                 Gizmo->SetTranslateMode();
                 break;
+            }
+            if (Editor)
+            {
+                Editor->ApplyTransformSettingsToGizmo();
             }
         };
 

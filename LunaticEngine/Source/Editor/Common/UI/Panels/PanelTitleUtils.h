@@ -221,7 +221,7 @@ inline ID3D11ShaderResourceView *GetIcon(const char *Key)
 
 inline std::string MakeClosablePanelTitle(const char *Title, const char *IconKey = nullptr)
 {
-    const char *Prefix = GetIcon(IconKey) ? "     " : "";
+    const char *Prefix = GetIcon(IconKey) ? "      " : "";
     return std::string(Prefix) + Title + "          ###" + Title;
 }
 
@@ -507,7 +507,7 @@ inline void FlushPanelDecorations()
 
         if (ID3D11ShaderResourceView *Icon = GetIcon(Decoration.IconKey))
         {
-            const float IconSize = 14.0f;
+            const float IconSize = 16.0f;
             const float IconX = TitleRect.Min.x + 8.0f;
             const float IconY = TitleRect.Min.y + (TitleRect.GetHeight() - IconSize) * 0.5f;
             DrawList->AddImage(reinterpret_cast<ImTextureID>(Icon), ImVec2(IconX, IconY),
@@ -521,6 +521,10 @@ inline void FlushPanelDecorations()
         DrawList->PopClipRect();
     }
 
+    // Document tabs and docked panel tabs now share the same quiet rounded-tab style.
+    // The previous focused blue overline made panel labels visually differ from the
+    // document tab bar, so keep focus indication to ImGui's active tab state only.
+    GetFocusedPanelOverlays().clear();
     for (const FFocusedPanelOverlay &Overlay : GetFocusedPanelOverlays())
     {
         if (!Overlay.DrawList || Overlay.TitleRect.GetWidth() <= 0.0f || Overlay.TitleRect.GetHeight() <= 0.0f)

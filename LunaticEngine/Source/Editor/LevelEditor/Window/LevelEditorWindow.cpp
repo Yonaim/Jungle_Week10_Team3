@@ -121,7 +121,7 @@ namespace
     void ApplyEditorTabStyle()
     {
         ImGuiStyle &Style = ImGui::GetStyle();
-        Style.TabRounding = (std::max)(Style.TabRounding, 9.0f);
+        Style.TabRounding = (std::max)(Style.TabRounding, 7.0f);
         Style.TabBorderSize = (std::max)(Style.TabBorderSize, 1.0f);
         Style.TabBarBorderSize = 0.0f;
         Style.TabBarOverlineSize = 0.0f;
@@ -453,6 +453,55 @@ void FLevelEditorWindow::RenderDocumentTabBar()
     ImGui::PopStyleVar(4);
 }
 
+void FLevelEditorWindow::RenderLevelFrameToolbar()
+{
+    if (!EditorEngine || EditorEngine->IsAssetEditorContextActive())
+    {
+        return;
+    }
+
+    const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
+    if (!MainViewport)
+    {
+        return;
+    }
+
+    const float OuterPadding = GetWindowOuterPadding();
+    const float TitleBarHeight = GetCustomTitleBarHeight();
+    const float DocumentTabBarHeight = GetDocumentTabBarHeight();
+    const float ToolbarHeight = EditorEngine->GetViewportLayout().GetFrameToolbarHeight();
+
+    const ImVec2 ToolbarPos(MainViewport->Pos.x + OuterPadding,
+                            MainViewport->Pos.y + OuterPadding + TitleBarHeight + DocumentTabBarHeight);
+    const ImVec2 ToolbarSize((std::max)(0.0f, MainViewport->Size.x - OuterPadding * 2.0f), ToolbarHeight);
+    if (ToolbarSize.x <= 1.0f || ToolbarSize.y <= 1.0f)
+    {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(ToolbarPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ToolbarSize, ImGuiCond_Always);
+    ImGui::SetNextWindowViewport(MainViewport->ID);
+
+    const ImGuiWindowFlags Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
+                                  ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.050f, 0.050f, 0.055f, 1.0f));
+    if (ImGui::Begin("##LevelEditorFrameToolbar", nullptr, Flags))
+    {
+        EditorEngine->GetViewportLayout().RenderFrameToolbar(ToolbarSize.x);
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar(4);
+}
+
 void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
 {
     if (!bPendingDefaultDockLayout || MainDockspaceId == 0)
@@ -622,12 +671,18 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.OnOpenCredits = [this]() { bShowCreditsOverlay = !bShowCreditsOverlay; };
     MenuBar.Render(MenuContext);
     RenderDocumentTabBar();
+    RenderLevelFrameToolbar();
 
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
     const float          TitleBarHeight = GetCustomTitleBarHeight();
     const float          TopFrameInset = GetWindowTopContentInset(Window);
     const float          OuterPadding = GetWindowOuterPadding();
     const float          DocumentTabBarHeight = GetDocumentTabBarHeight();
+    const bool           bLevelFrameToolbarVisible = !(EditorEngine && EditorEngine->IsAssetEditorContextActive());
+    const float          LevelFrameToolbarHeight = (bLevelFrameToolbarVisible && EditorEngine)
+                                                     ? EditorEngine->GetViewportLayout().GetFrameToolbarHeight()
+                                                     : 0.0f;
+    const float          TopEditorStripHeight = DocumentTabBarHeight + LevelFrameToolbarHeight;
     const float          CornerRadius = GetWindowCornerRadius();
     const ImVec2         ViewportMin = MainViewport->Pos;
     const ImVec2         ViewportMax(MainViewport->Pos.x + MainViewport->Size.x, MainViewport->Pos.y + MainViewport->Size.y);
@@ -644,11 +699,11 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     // 패널 닫기는 각 panel window의 p_open / Window 메뉴에서만 처리한다.
     DockspaceWindowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton;
     ImGui::SetNextWindowPos(ImVec2(MainViewport->Pos.x + OuterPadding,
-                                    MainViewport->Pos.y + TopFrameInset + TitleBarHeight + OuterPadding + DocumentTabBarHeight),
+                                    MainViewport->Pos.y + TopFrameInset + TitleBarHeight + OuterPadding + TopEditorStripHeight),
                             ImGuiCond_Always);
     ImGui::SetNextWindowSize(
         ImVec2(MainViewport->Size.x - OuterPadding * 2.0f,
-               (std::max)(1.0f, MainViewport->Size.y - TopFrameInset - TitleBarHeight - DocumentTabBarHeight - OuterPadding * 2.0f)),
+               (std::max)(1.0f, MainViewport->Size.y - TopFrameInset - TitleBarHeight - TopEditorStripHeight - OuterPadding * 2.0f)),
         ImGuiCond_Always);
     ImGui::SetNextWindowViewport(MainViewport->ID);
     ImGuiWindowFlags DockspaceWindowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |

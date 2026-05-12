@@ -7,7 +7,6 @@
 
 class FSkeletalMeshSelectionManager;
 class USkeletalMesh;
-class USkeletalMeshComponent;
 
 // 에셋 에디터 전용 Details 패널.
 // 레벨 에디터 Details와 같은 공통 스타일/행 형식을 사용해 에셋 타입별 정보를 표시한다.
@@ -15,7 +14,7 @@ class USkeletalMeshComponent;
 class FAssetDetailsPanel
 {
   public:
-    void RenderSkeletalMesh(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent, const std::filesystem::path &AssetPath,
+    void RenderSkeletalMesh(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
                             FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager,
                             const FPanelDesc &PanelDesc);
 
@@ -23,7 +22,6 @@ class FAssetDetailsPanel
     void RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State,
                         FSkeletalMeshSelectionManager &SelectionManager);
     void RenderLODSectionMaterialInfo(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State);
-    void RenderOverrideMaterials(USkeletalMeshComponent *PreviewComponent);
     void RenderViewerActions(FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);
     void RenderRuntimePlaceholder();
     void RenderBoneEditingPlaceholder(FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);

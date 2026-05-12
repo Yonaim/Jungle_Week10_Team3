@@ -290,15 +290,10 @@ FEditorViewportClient *FAssetEditorTabManager::GetActiveViewportClient() const
 
 void FAssetEditorTabManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
 {
-    // 탭 전환은 UI 프레임에서 먼저 일어나지만 viewport render collection은 보통 그 이전 프레임 상태를 기준으로 돈다.
-    // Active 탭만 수집하면 새로 활성화된 preview viewport가 1프레임 동안 아직 렌더되지 않은 텍스처를 보여
-    // 흰 화면처럼 보일 수 있다. 입력/포커스는 GetActiveViewportClient()로 active 탭만 사용하되,
-    // 렌더 준비용 viewport client는 열린 document tab 전체를 수집해서 전환 직후에도 마지막 렌더 결과가 존재하게 한다.
-    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    // 비활성 document tab의 preview viewport는 화면에 보이지 않으므로 렌더/입력 대상에서 제외한다.
+    IAssetEditor *Editor = GetActiveEditor();
+    if (Editor)
     {
-        if (Tab && Tab->GetEditor())
-        {
-            Tab->GetEditor()->CollectViewportClients(OutClients);
-        }
+        Editor->CollectViewportClients(OutClients);
     }
 }

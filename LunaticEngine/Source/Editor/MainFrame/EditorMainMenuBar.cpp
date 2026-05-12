@@ -64,8 +64,8 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
     float MenuEndX = 54.0f;
     if (ImGui::BeginMenuBar())
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 7.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20.0f, 7.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(16.0f, 0.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
         if (Context.TitleBarFont)
@@ -97,7 +97,7 @@ void FEditorMainMenuBar::Render(const FEditorMainMenuBarContext &Context)
         ImGui::SetCursorPos(ImVec2(MenuStartX, ContentStartY));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(18.0f, 6.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
         ImGui::PushStyleColor(ImGuiCol_PopupBg, UnrealPanelSurface);
         ImGui::PushStyleColor(ImGuiCol_Header, UnrealPanelSurface);

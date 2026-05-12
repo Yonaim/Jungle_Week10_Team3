@@ -111,6 +111,7 @@ class FLevelEditorWindow : public IEditorMenuProvider
     void PackageGameBuild(const char *BatFileName);
     void CookCurrentScene();
     void RenderDocumentTabBar();
+    void RenderLevelFrameToolbar();
     void RenderCommonOverlays();
     void RenderProjectSettingsWindow();
     void RenderShortcutOverlay();

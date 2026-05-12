@@ -64,7 +64,7 @@ class FPanel
     {
         const char *StableId = (Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName;
         const bool bHasIcon = Desc.IconKey && PanelTitleUtils::GetIcon(Desc.IconKey) != nullptr;
-        const char *Prefix = bHasIcon ? "     " : "";
+        const char *Prefix = bHasIcon ? "      " : "";
         return std::string(Prefix) + (Desc.DisplayName ? Desc.DisplayName : "") + "###" + StableId;
     }
 

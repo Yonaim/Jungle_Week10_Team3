@@ -191,16 +191,16 @@ void FEditorImGuiSystem::ApplyEditorColorTheme()
 void FEditorImGuiSystem::ApplyEditorTabStyle()
 {
     ImGuiStyle &Style = ImGui::GetStyle();
-    Style.TabRounding = (std::max)(Style.TabRounding, 9.0f);
+    Style.TabRounding = (std::max)(Style.TabRounding, 7.0f);
     Style.TabBorderSize = (std::max)(Style.TabBorderSize, 1.0f);
     Style.TabBarBorderSize = 0.0f;
     Style.TabBarOverlineSize = 0.0f;
     Style.DockingSeparatorSize = 2.0f;
 
-    Style.Colors[ImGuiCol_Tab] = UnrealPanelSurface;
-    Style.Colors[ImGuiCol_TabHovered] = UnrealPanelSurface;
+    Style.Colors[ImGuiCol_Tab] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    Style.Colors[ImGuiCol_TabHovered] = UnrealPanelSurfaceHover;
     Style.Colors[ImGuiCol_TabSelected] = UnrealPanelSurface;
-    Style.Colors[ImGuiCol_TabDimmed] = UnrealPanelSurface;
+    Style.Colors[ImGuiCol_TabDimmed] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
     Style.Colors[ImGuiCol_TabDimmedSelected] = UnrealPanelSurface;
     Style.Colors[ImGuiCol_TabSelectedOverline] = UnrealDockEmpty;
     Style.Colors[ImGuiCol_TabDimmedSelectedOverline] = UnrealDockEmpty;
