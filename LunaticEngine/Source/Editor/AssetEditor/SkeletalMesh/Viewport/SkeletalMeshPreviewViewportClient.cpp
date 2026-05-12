@@ -332,22 +332,26 @@ void FSkeletalMeshPreviewViewportClient::ApplyViewportTypeToCamera()
 
     if (State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho)
     {
-        // Free Ortho는 현재 orbit 회전은 유지하고 projection만 ortho로 바꾼다.
+        // Free Ortho는 현재 자유비행 카메라 회전을 유지하고 projection만 ortho로 바꾼다.
         return;
     }
 
+    if (!bViewportTypeChanged)
+    {
+        return;
+    }
+
+    // 고정 ortho 방향은 전환 시점에만 적용한다.
+    // 매 tick마다 위치/회전을 덮어쓰면 Preview Viewport의 자유비행 입력이 즉시 무효화된다.
     const FRotator Rotation = GetFixedViewportRotation(State->PreviewViewportType);
     ViewCamera.SetWorldRotation(Rotation);
     const FVector Forward = ViewCamera.GetForwardVector();
     const float Distance = (std::max)(1.0f, OrbitDistance);
     ViewCamera.SetWorldLocation(OrbitTarget - Forward * Distance);
+    GetCameraController().SyncTargetToCamera();
 
-    if (bViewportTypeChanged)
-    {
-        // 고정 ortho 전환 시 기존 orbit 각도와 상관없이 대상 중심을 유지한다.
-        State->CameraOrthoWidth = (std::max)(State->CameraOrthoWidth, OrbitDistance * 2.0f);
-        ViewCamera.SetOrthoWidth(State->CameraOrthoWidth);
-    }
+    State->CameraOrthoWidth = (std::max)(State->CameraOrthoWidth, OrbitDistance * 2.0f);
+    ViewCamera.SetOrthoWidth(State->CameraOrthoWidth);
 }
 
 void FSkeletalMeshPreviewViewportClient::ResetPreviewCamera()
@@ -357,9 +361,12 @@ void FSkeletalMeshPreviewViewportClient::ResetPreviewCamera()
     OrbitYaw = 180.0f;
     OrbitPitch = -10.0f;
 
-    GetCameraController().SetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
     ViewCamera.SetFOV(60.0f * 3.14159265358979323846f / 180.0f);
     ViewCamera.SetOrthographic(false);
+
+    // SkeletalMesh Editor viewport도 Level Editor와 같은 자유비행 카메라로 사용한다.
+    // 초기 위치만 preview mesh를 보기 좋은 위치로 잡고, 이후 입력은 camera 자체를 이동/회전한다.
+    GetCameraController().ResetLookAt(FVector(-OrbitDistance, 0.0f, OrbitDistance * 0.35f), OrbitTarget);
 }
 
 void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
@@ -394,7 +401,8 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
     const float Radius = (std::max)(0.5f, std::sqrt(Extent.X * Extent.X + Extent.Y * Extent.Y + Extent.Z * Extent.Z));
     OrbitDistance = Radius * 2.8f;
 
-    GetCameraController().SetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+    const FVector Forward = ViewCamera.GetForwardVector();
+    GetCameraController().StartFocus(OrbitTarget, Forward, OrbitDistance, 0.18f);
 }
 
 void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
@@ -402,6 +410,8 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
     EnsurePreviewObjects();
     ApplyEditorStateToViewport();
     SyncGizmoTargetFromSelection();
+    GetCameraController().SyncTargetToCamera();
+    GetCameraController().TickFocus(DeltaTime);
     TickViewportInput(DeltaTime);
 
     if (State && State->bFramePreviewRequested)
@@ -466,11 +476,11 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         return;
     }
 
-    // 기존 Level Editor 뷰포트처럼 Preview Viewport도 최소한의 카메라 입력을 처리한다.
-    // - RMB 드래그: 오비트 회전
-    // - MMB 드래그: 팬 이동
-    // - 휠: 줌
-    // - RMB + WASD/QE: 오비트 타깃 이동
+    // 기존 Level Editor 뷰포트처럼 Preview Viewport도 자유비행 카메라 입력을 처리한다.
+    // - RMB 드래그: Look 회전
+    // - MMB 드래그: 카메라 pan
+    // - 휠: 카메라 dolly
+    // - RMB + WASD/QE: 카메라 자유비행 이동
     // - F: 메시 프레이밍
     // - Space: 기즈모 모드 순환
     if (IsLegacyImGuiKeyPressed('F'))
@@ -493,72 +503,69 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         GizmoManager.CancelDrag();
     }
 
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && (!State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho))
+    const bool bCanFreeLook = !State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho;
+    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && bCanFreeLook)
     {
         const ImVec2 Delta = IO.MouseDelta;
-        GetCameraController().Orbit(Delta.x * 0.25f, -Delta.y * 0.25f, -85.0f, 85.0f);
-        GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+        GetCameraController().Rotate(Delta.x * 0.25f, -Delta.y * 0.25f);
     }
+
+    const float CameraSpeed = State ? State->CameraSpeed : 5.0f;
+    const float SpeedScale = (std::max)(0.1f, CameraSpeed);
+    const float DistanceScale = (std::max)(0.5f, OrbitDistance);
 
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
     {
         const ImVec2 Delta = IO.MouseDelta;
-        const float PanScale = OrbitDistance * 0.0015f;
-        GetCameraController().PanOrbitTarget(Delta.x, Delta.y, PanScale);
-        GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+        const float PanScale = DistanceScale * 0.0015f * SpeedScale;
+        GetCameraController().MoveLocalImmediate(FVector(0.0f, -Delta.x * PanScale, Delta.y * PanScale));
     }
 
     if (IO.MouseWheel != 0.0f && IsHovered())
     {
-        GetCameraController().DollyOrbit(IO.MouseWheel, 0.08f, 0.15f);
-        GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+        const float DollyAmount = IO.MouseWheel * DistanceScale * 0.08f * SpeedScale;
+        GetCameraController().MoveLocalImmediate(FVector(DollyAmount, 0.0f, 0.0f));
     }
 
     if (bRightMouseDown)
     {
-        FVector Move = FVector::ZeroVector;
+        FVector LocalMove = FVector::ZeroVector;
         if (IsLegacyImGuiKeyDown('W'))
         {
-            Move += ViewCamera.GetForwardVector();
+            LocalMove.X += 1.0f;
         }
         if (IsLegacyImGuiKeyDown('S'))
         {
-            Move -= ViewCamera.GetForwardVector();
+            LocalMove.X -= 1.0f;
         }
         if (IsLegacyImGuiKeyDown('D'))
         {
-            Move += ViewCamera.GetRightVector();
+            LocalMove.Y += 1.0f;
         }
         if (IsLegacyImGuiKeyDown('A'))
         {
-            Move -= ViewCamera.GetRightVector();
+            LocalMove.Y -= 1.0f;
         }
         if (IsLegacyImGuiKeyDown('E'))
         {
-            Move += ViewCamera.GetUpVector();
+            LocalMove.Z += 1.0f;
         }
         if (IsLegacyImGuiKeyDown('Q'))
         {
-            Move -= ViewCamera.GetUpVector();
+            LocalMove.Z -= 1.0f;
         }
 
-        if (!Move.IsNearlyZero())
+        if (!LocalMove.IsNearlyZero())
         {
-            const float MoveLength = std::sqrt(Move.X * Move.X + Move.Y * Move.Y + Move.Z * Move.Z);
+            const float MoveLength = std::sqrt(LocalMove.X * LocalMove.X + LocalMove.Y * LocalMove.Y + LocalMove.Z * LocalMove.Z);
             if (MoveLength > 0.0001f)
             {
-                const float CameraSpeed = State ? State->CameraSpeed : 5.0f;
-                const float MoveSpeed = (std::max)(0.5f, OrbitDistance) * (std::max)(0.1f, CameraSpeed);
-                GetCameraController().MoveOrbitTargetLocal(Move, MoveSpeed * DeltaTime);
-                GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
+                const float MoveAmount = DistanceScale * SpeedScale * DeltaTime;
+                GetCameraController().MoveLocalImmediate(LocalMove * (MoveAmount / MoveLength));
             }
         }
     }
 
-    if (!State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho)
-    {
-        GetCameraController().SetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-    }
     ApplyViewportTypeToCamera();
 }
 

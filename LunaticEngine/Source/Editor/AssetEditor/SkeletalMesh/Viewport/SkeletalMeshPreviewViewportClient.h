@@ -25,7 +25,7 @@ struct ImVec2;
  * 김연하 담당 범위:
  * - Preview Viewport 패널과 렌더 요청 연결
  * - Preview 전용 Scene / SkeletalMeshComponent 관리
- * - 카메라 입력은 공통 FViewportCameraController를 사용하고, Asset Preview는 orbit target만 소유
+ * - 카메라 입력은 공통 FViewportCameraController를 사용하고, Level Editor와 같은 자유비행 방식을 따른다.
  *
  * 남윤지 담당 영역 연결:
  * - USkeletalMeshComponent가 CPU Skinning 결과를 만들고,
@@ -81,7 +81,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     // Asset Preview 전용 렌더 Scene. LevelEditor World / Selection / PIE와 분리한다.
     FPreviewScene PreviewScene;
     USkeletalMeshComponent *PreviewComponent = nullptr;
-        FPrimitiveSceneProxy *PreviewProxy = nullptr;
+    FPrimitiveSceneProxy *PreviewProxy = nullptr;
     UGizmoComponent *PreviewGizmoComponent = nullptr;
 
     FViewportRenderOptions RenderOptions;
@@ -90,6 +90,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     ESkeletalMeshPreviewViewportType LastAppliedViewportType = ESkeletalMeshPreviewViewportType::Perspective;
     bool bHasAppliedViewportType = false;
 
+    // Focus/ortho 전환용 preview 기준점이다. 입력 이동은 orbit target이 아니라 ViewCamera 자체에 적용한다.
     FVector OrbitTarget = FVector::ZeroVector;
     float OrbitDistance = 6.0f;
     float OrbitYaw = 180.0f;
