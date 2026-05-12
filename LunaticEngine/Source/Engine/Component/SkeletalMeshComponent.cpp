@@ -3,6 +3,9 @@
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/SkeletalMeshCommon.h"
 
+// 시연용
+#include "Math/Quat.h"
+
 IMPLEMENT_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 
 bool USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
@@ -53,6 +56,9 @@ void USkeletalMeshComponent::InitializeSkeleton()
 void USkeletalMeshComponent::BeginPlay()
 {
 	InitializeSkeleton();
+
+	TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
+	LastTestBoneName.clear();
 }
 
 void USkeletalMeshComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
@@ -90,6 +96,65 @@ void USkeletalMeshComponent::EvaluatePose(float DeltaTime)
 {
 	(void)DeltaTime;
 	// 현재는 Bind Pose를 유지
+
+
+	// 시연용
+	if (!bEnableBoneRotationTest || TestBoneName.empty())
+		return;
+
+	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
+		return;
+
+	// 본 이름이 바뀌면 누적 회전 초기화
+	if (TestBoneName != LastTestBoneName)
+	{
+		TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
+		LastTestBoneName = TestBoneName;
+
+		// 바인드 포즈로 리셋
+		InitBoneTransform();
+	}
+
+	const TArray<FBoneInfo>& Bones = SkeletalMesh->GetSkeletalMeshAsset()->Bones;
+
+	int32 TargetBoneIndex = InvalidBoneIndex;
+	for (int32 i = 0; i < (int32)Bones.size(); ++i)
+	{
+		if (Bones[i].Name == TestBoneName)
+		{
+			TargetBoneIndex = i;
+			break;
+		}
+	}
+
+	if (TargetBoneIndex == InvalidBoneIndex)
+		return;
+
+	// 각속도 * DeltaTime 만큼 누적 (도 단위)
+	TestBoneAccumulatedRotation.Pitch += TestBoneRotationSpeed.Pitch * DeltaTime;
+	TestBoneAccumulatedRotation.Yaw += TestBoneRotationSpeed.Yaw * DeltaTime;
+	TestBoneAccumulatedRotation.Roll += TestBoneRotationSpeed.Roll * DeltaTime;
+
+	// [-180, 180] 정규화해서 float 오버플로 방지
+	auto WrapAngle = [](float Angle) -> float
+		{
+			Angle = fmodf(Angle, 360.f);
+			if (Angle > 180.f)  Angle -= 360.f;
+			if (Angle < -180.f) Angle += 360.f;
+			return Angle;
+		};
+	TestBoneAccumulatedRotation.Pitch = WrapAngle(TestBoneAccumulatedRotation.Pitch);
+	TestBoneAccumulatedRotation.Yaw = WrapAngle(TestBoneAccumulatedRotation.Yaw);
+	TestBoneAccumulatedRotation.Roll = WrapAngle(TestBoneAccumulatedRotation.Roll);
+
+	// 바인드 포즈 로컬 트랜스폼에 누적 회전을 합성
+	FTransform BindLocal = Bones[TargetBoneIndex].LocalBindTransform;
+	FQuat DeltaQuat = TestBoneAccumulatedRotation.ToQuaternion();
+	FQuat NewRotation = (BindLocal.Rotation * DeltaQuat).GetNormalized();
+
+	FTransform NewTransform = BindLocal;
+	NewTransform.Rotation = NewRotation;
+	SetBoneLocalTransform(TargetBoneIndex, NewTransform);
 }
 
 void USkeletalMeshComponent::UpdatePoseLocal(float DeltaTime)
@@ -169,4 +234,55 @@ void USkeletalMeshComponent::FinalizeRenderState()
 {
 	// 본/스키닝 결과 변경을 렌더러와 바운드 갱신 경로에 알린다.
 	MarkWorldBoundsDirty();
+}
+
+
+
+// 시연용
+void USkeletalMeshComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
+{
+	USkinnedMeshComponent::GetEditableProperties(OutProps);
+
+	OutProps.push_back({ "Enable Bone Rotation Test", EPropertyType::Bool,    &bEnableBoneRotationTest });
+	OutProps.push_back({ "Test Bone Name",            EPropertyType::String,  &TestBoneName });
+	OutProps.push_back({ "Test Bone Rotation Speed",  EPropertyType::Rotator, &TestBoneRotationSpeed });
+}
+
+void USkeletalMeshComponent::PostEditProperty(const char* PropertyName)
+{
+	USkinnedMeshComponent::PostEditProperty(PropertyName);
+
+	if (strcmp(PropertyName, "Test Bone Name") == 0)
+	{
+		// 본 이름이 바뀌면 누적 회전 초기화
+		TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
+		LastTestBoneName.clear();
+		InitBoneTransform();
+		RebuildComponentSpace();
+		PerformCPUSkinning(CurrentPose);
+		FinalizeRenderState();
+	}
+	else if (strcmp(PropertyName, "Enable Bone Rotation Test") == 0)
+	{
+		if (!bEnableBoneRotationTest)
+		{
+			// 비활성화 시 바인드 포즈로 복원
+			TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
+			LastTestBoneName.clear();
+			InitBoneTransform();
+			RebuildComponentSpace();
+			PerformCPUSkinning(CurrentPose);
+			FinalizeRenderState();
+		}
+	}
+}
+
+void USkeletalMeshComponent::Serialize(FArchive& Ar)
+{
+	USkinnedMeshComponent::Serialize(Ar);
+	Ar << bEnableBoneRotationTest;
+	Ar << TestBoneName;
+	Ar << TestBoneRotationSpeed.Pitch;
+	Ar << TestBoneRotationSpeed.Yaw;
+	Ar << TestBoneRotationSpeed.Roll;
 }
