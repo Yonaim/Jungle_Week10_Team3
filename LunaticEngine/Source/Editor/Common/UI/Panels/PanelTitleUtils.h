@@ -110,6 +110,13 @@ inline ImU32 GetDockTabBarGapColor()
     return IM_COL32(5, 5, 5, 255);
 }
 
+inline ImU32 GetDockPanelSideGapColor()
+{
+    // Dock splitters/host background can leak through next to a rounded tab.
+    // Keep the side gutters the same black as the editor frame instead of ImGui's grey dock background.
+    return GetDockTabBarGapColor();
+}
+
 inline ImVec4 GetPanelSurfaceColor()
 {
     return ImVec4(36.0f / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
@@ -486,10 +493,10 @@ inline void FlushPanelDecorations()
             DrawList->AddRectFilled(ImVec2(ExpandedWindowRect.Min.x, BodyTopY),
                                     ImVec2((std::min)(WindowRect.Min.x + FrameGapThickness, ExpandedWindowRect.Max.x),
                                            ExpandedWindowRect.Max.y),
-                                    GetDockTabBarGapColor());
+                                    GetDockPanelSideGapColor());
             DrawList->AddRectFilled(
                 ImVec2((std::max)(WindowRect.Max.x - FrameGapThickness, ExpandedWindowRect.Min.x), BodyTopY),
-                ExpandedWindowRect.Max, GetDockTabBarGapColor());
+                ExpandedWindowRect.Max, GetDockPanelSideGapColor());
         }
         DrawList->PopClipRect();
 
@@ -521,10 +528,8 @@ inline void FlushPanelDecorations()
         DrawList->PopClipRect();
     }
 
-    // Document tabs and docked panel tabs now share the same quiet rounded-tab style.
-    // The previous focused blue overline made panel labels visually differ from the
-    // document tab bar, so keep focus indication to ImGui's active tab state only.
-    GetFocusedPanelOverlays().clear();
+    // Focused/selected docked panel: draw the accent line inside the tab, not above the tab.
+    // This avoids changing dock node height while still matching the document-tab selected indicator.
     for (const FFocusedPanelOverlay &Overlay : GetFocusedPanelOverlays())
     {
         if (!Overlay.DrawList || Overlay.TitleRect.GetWidth() <= 0.0f || Overlay.TitleRect.GetHeight() <= 0.0f)

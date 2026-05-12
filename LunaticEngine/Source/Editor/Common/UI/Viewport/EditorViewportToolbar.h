@@ -334,7 +334,8 @@ class FEditorViewportToolbar
         ImDrawList *DrawList = ImGui::GetWindowDrawList();
         if (bHovered || bSelected)
         {
-            DrawList->AddRectFilled(Min, Max, ImGui::GetColorU32(UIAccentColor::Value));
+            const ImRect RowRect = FEditorUIStyle::GetFullPopupRowRect(Min, Max);
+            DrawList->AddRectFilled(RowRect.Min, RowRect.Max, ImGui::GetColorU32(UIAccentColor::Value));
         }
         const ImU32 RowTextColor = ImGui::GetColorU32((bHovered || bSelected) ? ImVec4(0.02f, 0.02f, 0.025f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
         if (ID3D11ShaderResourceView *IconSRV = GetIconTable()[static_cast<int32>(Icon)])

@@ -5,6 +5,7 @@
 #include "Object/FName.h"
 #include "Resource/ResourceManager.h"
 #include "ImGui/imgui.h"
+#include "ImGui/imgui_internal.h"
 
 #include <algorithm>
 #include <string>
@@ -122,6 +123,50 @@ inline void DrawPopupSeparator(float SpacingBefore = 4.0f, float SpacingAfter = 
     }
 
     ImGui::Dummy(ImVec2(0.0f, PopupSectionLineThickness + SpacingAfter));
+}
+
+
+inline ImRect GetFullPopupRowRect(const ImVec2 &ItemMin, const ImVec2 &ItemMax)
+{
+    ImGuiWindow *Window = ImGui::GetCurrentWindow();
+    if (!Window)
+    {
+        return ImRect(ItemMin, ItemMax);
+    }
+
+    // Selectable() only paints the content region, so WindowPadding.x remains dark on hover.
+    // For editor popups we intentionally extend the hover/selected fill to the popup edge.
+    return ImRect(ImVec2(Window->Pos.x, ItemMin.y), ImVec2(Window->Pos.x + Window->Size.x, ItemMax.y));
+}
+
+inline bool DrawPopupSelectableFullRow(const char *Label, bool bSelected = false, const ImVec2 &Size = ImVec2(0.0f, 24.0f))
+{
+    ImGui::PushID(Label ? Label : "##PopupSelectableFullRow");
+    const float RowWidth = Size.x > 0.0f ? Size.x : ImGui::GetContentRegionAvail().x;
+    const float RowHeight = Size.y > 0.0f ? Size.y : 24.0f;
+
+    // Use an ID-only Selectable and draw the label ourselves. That lets the hover background
+    // cover the popup's full width without being painted on top of ImGui's default text.
+    const bool bClicked = ImGui::Selectable("##Option", bSelected, ImGuiSelectableFlags_None, ImVec2(RowWidth, RowHeight));
+    const bool bHovered = ImGui::IsItemHovered();
+    const ImVec2 ItemMin = ImGui::GetItemRectMin();
+    const ImVec2 ItemMax = ImGui::GetItemRectMax();
+
+    ImDrawList *DrawList = ImGui::GetWindowDrawList();
+    if (bHovered || bSelected)
+    {
+        const ImRect RowRect = GetFullPopupRowRect(ItemMin, ItemMax);
+        DrawList->AddRectFilled(RowRect.Min, RowRect.Max, ImGui::GetColorU32(UIAccentColor::Value));
+    }
+
+    const ImU32 TextColor = ImGui::GetColorU32((bHovered || bSelected) ? PopupMenuItemHoverTextColor : ImGui::GetStyleColorVec4(ImGuiCol_Text));
+    const char *VisibleEnd = ImGui::FindRenderedTextEnd(Label);
+    DrawList->AddText(ImVec2(ItemMin.x + ImGui::GetStyle().FramePadding.x,
+                             ItemMin.y + (RowHeight - ImGui::GetTextLineHeight()) * 0.5f),
+                      TextColor, Label ? Label : "", VisibleEnd);
+
+    ImGui::PopID();
+    return bClicked;
 }
 
 inline void PushPopupWindowStyle()

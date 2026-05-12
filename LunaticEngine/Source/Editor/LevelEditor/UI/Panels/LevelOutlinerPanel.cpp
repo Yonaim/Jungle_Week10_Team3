@@ -179,6 +179,39 @@ bool DrawIconLabelButton(const char *Id, const char *IconKey, const char *Label,
     return bClicked;
 }
 
+bool DrawTextButtonCentered(const char *Label, const ImVec2 &Size)
+{
+    const float Width = Size.x > 0.0f ? Size.x : ImGui::CalcTextSize(Label).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    const float Height = Size.y > 0.0f ? Size.y : ImGui::GetFrameHeight();
+
+    ImGui::InvisibleButton(Label, ImVec2(Width, Height));
+    const bool bClicked = ImGui::IsItemClicked();
+    const bool bHeld = ImGui::IsItemActive();
+    const bool bHovered = ImGui::IsItemHovered();
+
+    const ImVec2 Min = ImGui::GetItemRectMin();
+    const ImVec2 Max = ImGui::GetItemRectMax();
+    ImU32 BackgroundColor = ImGui::GetColorU32(ImGuiCol_Button);
+    if (bHeld)
+    {
+        BackgroundColor = ImGui::GetColorU32(ImGuiCol_ButtonActive);
+    }
+    else if (bHovered)
+    {
+        BackgroundColor = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+    }
+
+    ImDrawList *DrawList = ImGui::GetWindowDrawList();
+    DrawList->AddRectFilled(Min, Max, BackgroundColor, ImGui::GetStyle().FrameRounding);
+    DrawList->AddRect(Min, Max, ImGui::GetColorU32(ImGuiCol_Border), ImGui::GetStyle().FrameRounding);
+
+    const ImVec2 TextSize = ImGui::CalcTextSize(Label);
+    DrawList->AddText(ImVec2(Min.x + (Width - TextSize.x) * 0.5f, Min.y + (Height - TextSize.y) * 0.5f),
+                      ImGui::GetColorU32(ImGuiCol_Text), Label);
+
+    return bClicked;
+}
+
 bool DrawLockToggle(const char *Id, bool bLocked)
 {
     const ImVec2 Size(20.0f, 16.0f);
@@ -309,11 +342,12 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
             ImVec2(Min.x + (Size.x - IconSize) * 0.5f, Min.y + (Size.y - IconSize) * 0.5f),
             ImVec2(Min.x + (Size.x + IconSize) * 0.5f, Min.y + (Size.y + IconSize) * 0.5f));
     }
+    FEditorUIStyle::PushPopupWindowStyle();
     if (ImGui::BeginPopup("##OutlinerTypeFilterPopup"))
     {
         const bool bAllSelected = (TypeFilter == "All Types");
         DrawPopupSectionHeader("ALL TYPES");
-        if (ImGui::Selectable("ALL TYPES", bAllSelected))
+        if (FEditorUIStyle::DrawPopupSelectableFullRow("ALL TYPES", bAllSelected))
         {
             TypeFilter = "All Types";
         }
@@ -347,7 +381,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
                 }
 
                 const bool bSelected = (TypeFilter == TypeName);
-                if (ImGui::Selectable(TypeName.c_str(), bSelected))
+                if (FEditorUIStyle::DrawPopupSelectableFullRow(TypeName.c_str(), bSelected))
                 {
                     TypeFilter = TypeName;
                 }
@@ -364,6 +398,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
         DrawActorTypeSection("OTHER", EActorTypeSection::Other);
         ImGui::EndPopup();
     }
+    FEditorUIStyle::PopPopupWindowStyle();
 
     ImGui::SameLine();
     const float AddButtonWidth = 34.0f;
@@ -377,6 +412,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
         ImGui::OpenPopup("##NewOutlinerFolder");
     }
     DrawCenteredButtonIcon("Editor.Icon.CreateFolder", 16.0f);
+    FEditorUIStyle::PushPopupWindowStyle();
     if (ImGui::BeginPopup("##NewOutlinerFolder"))
     {
         ImGui::InputText("Folder Name", NewFolderBuffer, sizeof(NewFolderBuffer));
@@ -404,6 +440,7 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
         }
         ImGui::EndPopup();
     }
+    FEditorUIStyle::PopPopupWindowStyle();
     PopOutlinerButtonStyle();
     ImGui::Separator();
     const float FooterHeight = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().WindowPadding.y + 8.0f;
@@ -436,12 +473,10 @@ void FLevelOutlinerPanel::Render(float DeltaTime)
         ImGui::BeginDisabled();
     }
     PushOutlinerButtonStyle();
-    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.52f));
-    if (ImGui::Button("Select All", ImVec2(SelectAllWidth, OutlinerFooterButtonHeight)))
+    if (DrawTextButtonCentered("Select All", ImVec2(SelectAllWidth, OutlinerFooterButtonHeight)))
     {
         SelectAllVisibleActors();
     }
-    ImGui::PopStyleVar();
     PopOutlinerButtonStyle();
     if (!bCanSelectAll)
     {
@@ -826,6 +861,7 @@ void FLevelOutlinerPanel::RenderActorOutliner()
         }
         ImGui::PopStyleColor(3);
         ImGui::PopStyleColor();
+        FEditorUIStyle::PushPopupWindowStyle();
         if (ImGui::BeginPopupContextItem((Label + "##OutlinerContext" + std::to_string(StableIndex)).c_str()))
         {
             if (!Selection.IsSelected(Actor))
@@ -856,6 +892,7 @@ void FLevelOutlinerPanel::RenderActorOutliner()
             }
             ImGui::EndPopup();
         }
+        FEditorUIStyle::PopPopupWindowStyle();
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
         {
             FOutlinerDragPayload Payload;
@@ -1029,6 +1066,7 @@ void FLevelOutlinerPanel::RenderActorOutliner()
                                                      ImVec2(1.0f, 1.0f), OutlinerFolderIconTint);
             }
 
+            FEditorUIStyle::PushPopupWindowStyle();
             if (ImGui::BeginPopupContextItem((FolderName + "##FolderContext").c_str()))
             {
                 if (DrawIconLabelButton("##RenameFolderContext", "Editor.Icon.Actor", "Rename", ImVec2(120.0f, 0.0f)))
@@ -1038,6 +1076,7 @@ void FLevelOutlinerPanel::RenderActorOutliner()
                 }
                 ImGui::EndPopup();
             }
+            FEditorUIStyle::PopPopupWindowStyle();
 
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
             {
