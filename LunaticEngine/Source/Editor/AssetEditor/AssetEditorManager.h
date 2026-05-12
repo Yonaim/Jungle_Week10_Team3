@@ -44,14 +44,11 @@ class FAssetEditorManager
 
     /**
      * FBX를 SkeletalMeshEditor에서 미리보기 위한 진입점.
-     * 현재는 Dummy USkeletalMesh를 만들어 Viewer UI를 테스트한다.
-     * 성원희 담당 FBX Importer가 준비되면 여기에서 실제 USkeletalMesh 생성 경로로 교체한다.
      */
     bool OpenFbxForPreview(const std::filesystem::path &FbxPath);
 
     /**
      * 빈 Asset Editor 패널을 표시한다.
-     * 이 함수는 더 이상 Camera Modifier Stack을 자동 생성하지 않는다.
      */
     bool ShowAssetEditorWindow();
     bool CreateCameraModifierStackAsset();

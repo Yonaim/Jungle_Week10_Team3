@@ -120,18 +120,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     FVector MarqueeStartPos;
     FVector MarqueeCurrentPos;
 
-    bool        bIsFocusAnimating = false;
-    FVector     FocusStartLoc;
-    FRotator    FocusStartRot;
-    FVector     FocusEndLoc;
-    FRotator    FocusEndRot;
-    float       FocusAnimTimer = 0.0f;
     const float FocusAnimDuration = 0.5f;
-
-    FVector     TargetLocation;
-    bool        bTargetLocationInitialized = false;
-    FVector     LastAppliedCameraLocation;
-    bool        bLastAppliedCameraLocationInitialized = false;
     const float SmoothLocationSpeed = 10.0f;
 
     FEnhancedInputManager EnhancedInputManager;

@@ -1,4 +1,4 @@
-#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
+﻿#include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
@@ -357,9 +357,7 @@ void FSkeletalMeshPreviewViewportClient::ResetPreviewCamera()
     OrbitYaw = 180.0f;
     OrbitPitch = -10.0f;
 
-    const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-    ViewCamera.SetWorldLocation(CameraLocation);
-    ViewCamera.LookAt(OrbitTarget);
+    GetCameraController().SetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
     ViewCamera.SetFOV(60.0f * 3.14159265358979323846f / 180.0f);
     ViewCamera.SetOrthographic(false);
 }
@@ -396,9 +394,7 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
     const float Radius = (std::max)(0.5f, std::sqrt(Extent.X * Extent.X + Extent.Y * Extent.Y + Extent.Z * Extent.Z));
     OrbitDistance = Radius * 2.8f;
 
-    const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-    ViewCamera.SetWorldLocation(CameraLocation);
-    ViewCamera.LookAt(OrbitTarget);
+    GetCameraController().SetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
 }
 
 void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
@@ -500,22 +496,22 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && (!State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho))
     {
         const ImVec2 Delta = IO.MouseDelta;
-        OrbitYaw += Delta.x * 0.25f;
-        OrbitPitch = ClampFloat(OrbitPitch - Delta.y * 0.25f, -85.0f, 85.0f);
+        GetCameraController().Orbit(Delta.x * 0.25f, -Delta.y * 0.25f, -85.0f, 85.0f);
+        GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
     }
 
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
     {
         const ImVec2 Delta = IO.MouseDelta;
-        const FVector Right = ViewCamera.GetRightVector();
-        const FVector Up = ViewCamera.GetUpVector();
         const float PanScale = OrbitDistance * 0.0015f;
-        OrbitTarget = OrbitTarget - Right * (Delta.x * PanScale) + Up * (Delta.y * PanScale);
+        GetCameraController().PanOrbitTarget(Delta.x, Delta.y, PanScale);
+        GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
     }
 
     if (IO.MouseWheel != 0.0f && IsHovered())
     {
-        OrbitDistance = (std::max)(0.15f, OrbitDistance * (1.0f - IO.MouseWheel * 0.08f));
+        GetCameraController().DollyOrbit(IO.MouseWheel, 0.08f, 0.15f);
+        GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
     }
 
     if (bRightMouseDown)
@@ -553,16 +549,15 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
             {
                 const float CameraSpeed = State ? State->CameraSpeed : 5.0f;
                 const float MoveSpeed = (std::max)(0.5f, OrbitDistance) * (std::max)(0.1f, CameraSpeed);
-                OrbitTarget += Move * ((MoveSpeed * DeltaTime) / MoveLength);
+                GetCameraController().MoveOrbitTargetLocal(Move, MoveSpeed * DeltaTime);
+                GetCameraController().GetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
             }
         }
     }
 
     if (!State || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::Perspective || State->PreviewViewportType == ESkeletalMeshPreviewViewportType::FreeOrtho)
     {
-        const FVector CameraLocation = MakeOrbitCameraLocation(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
-        ViewCamera.SetWorldLocation(CameraLocation);
-        ViewCamera.LookAt(OrbitTarget);
+        GetCameraController().SetOrbit(OrbitTarget, OrbitDistance, OrbitYaw, OrbitPitch);
     }
     ApplyViewportTypeToCamera();
 }
@@ -607,7 +602,6 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
 
         RenderSkeletonDebugOverlay();
         RenderFallbackOverlay();
-		RenderPoseEditDebugControls();
         return;
     }
 
@@ -632,148 +626,39 @@ void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewp
 
     RenderSkeletonDebugOverlay();
     RenderFallbackOverlay();
-	RenderPoseEditDebugControls();
 }
 
 void FSkeletalMeshPreviewViewportClient::RenderFallbackOverlay()
 {
-	const FRect& R = ViewportScreenRect;
-	if (R.Width <= 0.0f || R.Height <= 0.0f)
-	{
-		return;
-	}
+    const FRect& R = ViewportScreenRect;
+    if (R.Width <= 0.0f || R.Height <= 0.0f)
+    {
+        return;
+    }
 
-	ImGui::SetCursorScreenPos(ImVec2(R.X + 16.0f, R.Y + 16.0f));
-	ImGui::BeginGroup();
+    ImGui::SetCursorScreenPos(ImVec2(R.X + 16.0f, R.Y + 16.0f));
+    ImGui::BeginGroup();
 
-	ImGui::TextUnformatted("Skeletal Mesh Preview Viewport");
+    if (!PreviewMesh)
+    {
+        ImGui::TextDisabled("No SkeletalMesh loaded.");
+    }
+    else if (!State || State->bShowMeshStatsOverlay)
+    {
+        ImGui::Text("Bones: %d", PreviewMesh->GetBoneCount());
+        ImGui::Text("Vertices: %d", PreviewMesh->GetVertexCount());
+        ImGui::Text("Indices: %d", PreviewMesh->GetIndexCount());
+        if (State)
+        {
+            ImGui::Text("Selected Bone: %d", State->SelectedBoneIndex);
+            ImGui::Text("LOD: %d", State->CurrentLODIndex);
+            ImGui::Text("Show Bones: %s", State->bShowBones ? "true" : "false");
+            ImGui::Text("Pose Edit Mode: %s", State->bEnablePoseEditMode ? "true" : "false");
+        }
+    }
 
-	if (!PreviewMesh)
-	{
-		ImGui::TextDisabled("No SkeletalMesh loaded.");
-	}
-	else if (!State || State->bShowMeshStatsOverlay)
-	{
-		ImGui::Text("Bones: %d", PreviewMesh->GetBoneCount());
-		ImGui::Text("Vertices: %d", PreviewMesh->GetVertexCount());
-		ImGui::Text("Indices: %d", PreviewMesh->GetIndexCount());
-
-		if (State)
-		{
-			ImGui::Text("Selected Bone: %d", State->SelectedBoneIndex);
-			ImGui::Text("LOD: %d", State->CurrentLODIndex);
-			ImGui::Text("Show Bones: %s", State->bShowBones ? "true" : "false");
-			ImGui::Text("Pose Edit Mode: %s", State->bEnablePoseEditMode ? "true" : "false");
-		}
-
-		if (PreviewComponent)
-		{
-			const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
-			ImGui::Text("Pose Transforms: %d", static_cast<int32>(Pose.ComponentTransforms.size()));
-
-			int32 ProjectOK = 0;
-			int32 ProjectFail = 0;
-
-			const FSkeletalMesh* MeshAsset = PreviewMesh->GetSkeletalMeshAsset();
-			if (MeshAsset)
-			{
-				const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
-				const int32 BoneCount = static_cast<int32>(Bones.size());
-
-				for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
-				{
-					const FVector BonePos = Pose.ComponentTransforms[BoneIndex].GetLocation();
-					ImVec2 Screen;
-					if (ProjectWorldToViewport(BonePos, Screen))
-					{
-						++ProjectOK;
-					}
-					else
-					{
-						++ProjectFail;
-					}
-				}
-			}
-
-			ImGui::Text("Project OK: %d", ProjectOK);
-			ImGui::Text("Project Fail: %d", ProjectFail);
-		}
-	}
-
-	ImGui::TextDisabled("RMB Drag: Orbit / MMB Drag: Pan / Wheel: Zoom / F: Frame");
-	ImGui::EndGroup();
-}
-
-// 임시 Bone 회전 테스트용 함수
-void FSkeletalMeshPreviewViewportClient::RenderPoseEditDebugControls()
-{
-	if (!State || !State->bEnablePoseEditMode)
-	{
-		return;
-	}
-
-	const FRect& R = ViewportScreenRect;
-	if (R.Width <= 0.0f || R.Height <= 0.0f)
-	{
-		return;
-	}
-
-	ImGui::SetNextWindowPos(ImVec2(R.X + 12.0f, R.Y + 12.0f), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(320.0f, 0.0f), ImGuiCond_Always);
-
-	const ImGuiWindowFlags Flags =
-		ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_AlwaysAutoResize;
-
-	if (!ImGui::Begin("##SkeletalMeshPoseEditDebugControls", nullptr, Flags))
-	{
-		ImGui::End();
-		return;
-	}
-
-	ImGui::TextUnformatted("Pose Edit Debug");
-
-	if (!PreviewComponent || State->SelectedBoneIndex < 0)
-	{
-		ImGui::TextDisabled("Select a bone.");
-		ImGui::End();
-		return;
-	}
-
-	ImGui::Text("Selected Bone: %d", State->SelectedBoneIndex);
-
-	if (ImGui::Button("Rotate Selected Bone Local Z +10 deg"))
-	{
-		const FSkeletonPose& Pose = PreviewComponent->GetCurrentPose();
-		const int32 BoneIndex = State->SelectedBoneIndex;
-
-		if (BoneIndex >= 0 && BoneIndex < static_cast<int32>(Pose.LocalTransforms.size()))
-		{
-			FTransform Local = Pose.LocalTransforms[BoneIndex];
-
-			constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
-			const FQuat AddRot = FQuat::FromAxisAngle(
-				FVector(0.0f, 0.0f, 1.0f),
-				10.0f * DegToRad
-			);
-
-			Local.Rotation = Local.Rotation * AddRot;
-			Local.Rotation.Normalize();
-
-			PreviewComponent->SetBoneLocalTransform(BoneIndex, Local);
-			PreviewComponent->RefreshSkinningForEditor(0.0f);
-		}
-	}
-
-	if (ImGui::Button("Reset Preview Pose"))
-	{
-		PreviewComponent->SetSkeletalMesh(PreviewMesh);
-		PreviewComponent->RefreshSkinningForEditor(0.0f);
-	}
-
-	ImGui::End();
+    ImGui::TextDisabled("RMB Drag: Orbit / MMB Drag: Pan / Wheel: Zoom / F: Frame");
+    ImGui::EndGroup();
 }
 
 void FSkeletalMeshPreviewViewportClient::RenderSkeletonDebugOverlay()

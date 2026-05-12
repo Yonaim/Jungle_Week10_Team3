@@ -224,10 +224,7 @@ void FEditorRenderPipeline::BuildFrame(FLevelEditorViewportClient *VC, const FMi
 {
     Frame.ClearViewportResources();
     const FMinimalViewInfo *ActivePOV = nullptr;
-    const bool bUseSpectatorCamera =
-        Editor && Editor->IsPIEPossessedMode() && Editor->GetGameViewportClient() &&
-        Editor->GetGameViewportClient()->IsSpectatorCameraMovementEnabled();
-    if (World && !bUseSpectatorCamera)
+    if (World)
     {
         if (AGameModeBase *GameMode = World->GetAuthGameMode())
         {

@@ -230,9 +230,6 @@ bool FAssetEditorManager::OpenFbxForPreview(const std::filesystem::path &FbxPath
         return false;
     }
 
-    // 성원희 담당 영역 Placeholder:
-    // FBX SDK 기반 importer가 완성되면 아래 dummy 생성 경로를 실제 importer로 교체한다.
-    // 예) ImportedMesh = FFbxSkeletalMeshImporter::ImportSkeletalMeshForPreview(NormalizedPath);
     USkeletalMesh *ImportedMesh = CreateSkeletalMeshForEditorPreview(NormalizedPath);
     if (!ImportedMesh)
     {

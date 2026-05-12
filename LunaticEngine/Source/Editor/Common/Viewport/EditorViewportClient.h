@@ -1,10 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include "Viewport/ViewportClient.h"
 #include "UI/SWindow.h"
 #include "Render/Types/ViewTypes.h"
 #include "Camera/MinimalViewInfo.h"
 #include "Common/Viewport/EditorViewportCamera.h"
+#include "Common/Viewport/ViewportCameraController.h"
 #include "Common/Gizmo/GizmoManager.h"
 
 class FWindowsWindow;
@@ -90,6 +91,8 @@ class FEditorViewportClient : public FViewportClient
 
     FEditorViewportCamera *GetCamera() { return &ViewCamera; }
     const FEditorViewportCamera *GetCamera() const { return &ViewCamera; }
+    FViewportCameraController &GetCameraController() { return CameraController; }
+    const FViewportCameraController &GetCameraController() const { return CameraController; }
     FGizmoManager &GetGizmoManager() { return GizmoManager; }
     const FGizmoManager &GetGizmoManager() const { return GizmoManager; }
 
@@ -110,7 +113,8 @@ class FEditorViewportClient : public FViewportClient
 
     FRect ViewportScreenRect;
 
-    // Level/Asset Preview 뷰포트가 공유하는 에디터 전용 카메라/기즈모 상태.
+    // Level/Asset Preview 뷰포트가 공유하는 에디터 전용 카메라/카메라 컨트롤러/기즈모 상태.
     FEditorViewportCamera ViewCamera;
+    FViewportCameraController CameraController;
     FGizmoManager GizmoManager;
 };
