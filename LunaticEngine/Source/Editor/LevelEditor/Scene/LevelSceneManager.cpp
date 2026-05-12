@@ -248,6 +248,10 @@ void FLevelSceneManager::DestroyCurrentSceneWorlds(bool bClearHistory, bool bRes
         EditorEngine->ClearTrackedTransformHistory();
     }
 
+    // World/FScene이 파괴되기 전에 viewport가 이전 Scene에 등록해 둔 editor-only proxy를 먼저 제거한다.
+    // 특히 Transform Gizmo가 이전 FScene*을 들고 있으면 다음 렌더 프레임에서 dangling FScene::RemovePrimitive()로 크래시가 난다.
+    EditorEngine->GetViewportLayout().DetachSceneResourcesForWorldChange();
+
     EditorEngine->GetSelectionManager().ClearSelection();
     EditorEngine->GetSelectionManager().SetWorld(nullptr);
 

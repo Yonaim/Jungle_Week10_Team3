@@ -1,4 +1,4 @@
-#include "LevelEditor/Viewport/LevelViewportLayout.h"
+﻿#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 #include "Common/UI/Style/AccentColor.h"
 #include "Common/UI/Style/EditorUIStyle.h"
@@ -1266,6 +1266,17 @@ void FLevelViewportLayout::DestroyAllCameras()
     for (FLevelEditorViewportClient *VC : LevelViewportClients)
     {
         VC->ReleaseCameraState();
+    }
+}
+
+void FLevelViewportLayout::DetachSceneResourcesForWorldChange()
+{
+    for (FLevelEditorViewportClient *VC : LevelViewportClients)
+    {
+        if (VC)
+        {
+            VC->DetachSceneResourcesForWorldChange();
+        }
     }
 }
 

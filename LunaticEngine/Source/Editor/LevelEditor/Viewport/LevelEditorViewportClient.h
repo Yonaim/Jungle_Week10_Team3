@@ -37,6 +37,9 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     void Shutdown() override;
     void Tick(float DeltaTime) override;
 
+    // World/FScene 교체 전에 viewport가 들고 있는 editor-only scene resource를 먼저 해제한다.
+    void DetachSceneResourcesForWorldChange();
+
     UWorld *GetWorld() const;
 
     void             SetOverlayStatSystem(FOverlayStatSystem *InOverlayStatSystem) { OverlayStatSystem = InOverlayStatSystem; }

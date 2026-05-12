@@ -614,6 +614,16 @@ void FLevelEditorViewportClient::ReleaseEditorGizmo()
     Gizmo = nullptr;
 }
 
+void FLevelEditorViewportClient::DetachSceneResourcesForWorldChange()
+{
+    // NEW SCENE / LOAD SCENE처럼 World가 교체될 때는 UWorld 내부의 FScene이 먼저 파괴될 수 있다.
+    // Transform Gizmo는 editor-only proxy를 FScene에 직접 등록하므로, World 파괴 전에 반드시 제거해야 한다.
+    UnregisterGizmoFromScene();
+
+    CurrentGizmoTargetComponent = nullptr;
+    GizmoManager.ClearTarget();
+}
+
 void FLevelEditorViewportClient::UnregisterGizmoFromScene()
 {
     if (!Gizmo)
