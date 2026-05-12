@@ -401,18 +401,23 @@ FVector USceneComponent::GetWorldLocation() const
 
 void USceneComponent::SetWorldRotation(const FRotator& NewWorldRotation)
 {
+	SetWorldRotation(NewWorldRotation.ToQuaternion());
+}
+
+void USceneComponent::SetWorldRotation(const FQuat& NewWorldRotation)
+{
+	FQuat NewWorldQuat = NewWorldRotation.GetNormalized();
 	if (ParentComponent != nullptr)
 	{
-		// Relative = World * ParentInverse
-		FQuat ParentWorldQuat = ParentComponent->GetWorldMatrix().ToQuat();
-		FQuat NewWorldQuat = NewWorldRotation.ToQuaternion();
-		FQuat NewRelativeQuat = NewWorldQuat * ParentWorldQuat.Inverse();
-
+		// Row-major 엔진 컨벤션: World = Local * ParentWorld 이므로
+		// Local = World * ParentWorld^-1.
+		FQuat ParentWorldQuat = ParentComponent->GetWorldMatrix().ToQuat().GetNormalized();
+		FQuat NewRelativeQuat = (NewWorldQuat * ParentWorldQuat.Inverse()).GetNormalized();
 		SetRelativeRotation(NewRelativeQuat);
 	}
 	else
 	{
-		SetRelativeRotation(NewWorldRotation);
+		SetRelativeRotation(NewWorldQuat);
 	}
 }
 

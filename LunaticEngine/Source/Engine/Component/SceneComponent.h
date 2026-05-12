@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Math/Transform.h"
 #include "Math/Rotator.h"
@@ -53,6 +53,7 @@ public:
 	const FMatrix& GetWorldInverseMatrix() const;
 	void SetWorldLocation(FVector NewWorldLocation);
 	void SetWorldRotation(const FRotator& NewWorldRotation);
+	void SetWorldRotation(const FQuat& NewWorldRotation);
 	FVector GetWorldLocation() const;
 	FVector GetWorldRotation() const;
 	FRotator GetComponentRotation() const;

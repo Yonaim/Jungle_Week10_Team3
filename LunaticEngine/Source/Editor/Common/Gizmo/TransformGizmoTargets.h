@@ -31,7 +31,9 @@ public:
             return;
         }
         Component->SetWorldLocation(NewWorldTransform.GetLocation());
-        Component->SetWorldRotation(NewWorldTransform.GetRotator());
+        // 기즈모 회전은 매 프레임 delta quat으로 누적된다. 여기서 Rotator로
+        // 라운드트립하면 짐벌락/축 뒤집힘이 다시 생기므로 quat 그대로 적용한다.
+        Component->SetWorldRotation(NewWorldTransform.Rotation);
         Component->SetRelativeScale(NewWorldTransform.Scale);
     }
 

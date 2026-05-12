@@ -658,16 +658,24 @@ void FGizmoManager::ApplyAngularDrag(const FRay& Ray)
 
     const FVector AxisVector = GetAxisVector(ActiveAxis);
     const FVector Center = VisualComponent->GetWorldLocation();
-    const FVector CenterToLast = (LastIntersectionLocation - Center).Normalized();
-    const FVector CenterToCurrent = (CurrentIntersection - Center).Normalized();
+    FVector CenterToLast = LastIntersectionLocation - Center;
+    FVector CenterToCurrent = CurrentIntersection - Center;
+    if (CenterToLast.Dot(CenterToLast) <= 1.0e-8f || CenterToCurrent.Dot(CenterToCurrent) <= 1.0e-8f)
+    {
+        LastIntersectionLocation = CurrentIntersection;
+        return;
+    }
+    CenterToLast = CenterToLast.Normalized();
+    CenterToCurrent = CenterToCurrent.Normalized();
 
-    const float DotProduct = Clamp(CenterToLast.Dot(CenterToCurrent), -1.0f, 1.0f);
-    const float AngleRadians = std::acos(DotProduct);
-    const FVector CrossProduct = CenterToLast.Cross(CenterToCurrent);
-    const float Sign = (CrossProduct.Dot(AxisVector) >= 0.0f) ? 1.0f : -1.0f;
+    // acos(dot)+sign 방식은 0/180도 근처에서 부호가 튀기 쉽다.
+    // atan2(signedSin, cos)를 쓰면 작은 각도, 큰 각도 모두 연속적으로 계산된다.
+    const float SignedSin = AxisVector.Dot(CenterToLast.Cross(CenterToCurrent));
+    const float CosAngle = Clamp(CenterToLast.Dot(CenterToCurrent), -1.0f, 1.0f);
+    const float AngleRadians = std::atan2(SignedSin, CosAngle);
 
     FTransform NewTransform = Target->GetWorldTransform();
-    const float DeltaAngle = ApplySnapToDragAmount(Sign * AngleRadians);
+    const float DeltaAngle = ApplySnapToDragAmount(AngleRadians);
     if (std::abs(DeltaAngle) <= FMath::Epsilon)
     {
         LastIntersectionLocation = CurrentIntersection;
