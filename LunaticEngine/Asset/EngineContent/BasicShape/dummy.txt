@@ -1,1 +1,0 @@
-placeholder: keep this EngineContent directory in source control. Replace with real .uasset files when ready.
