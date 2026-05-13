@@ -35,6 +35,7 @@
 #include "Core/AsciiUtils.h"
 #include "Core/ClassTypes.h"
 #include "Core/PropertyTypes.h"
+#include "Core/Notification.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Asset/AssetFileSerializer.h"
@@ -1621,7 +1622,7 @@ FString FLevelDetailsPanel::OpenStaticMeshFileDialog()
     Ofn.lpstrFilter = L"Static Mesh Files (*.obj;*.fbx)\0*.obj;*.fbx\0OBJ Files (*.obj)\0*.obj\0FBX Files (*.fbx)\0*.fbx\0All Files (*.*)\0*.*\0";
     Ofn.lpstrFile = FilePath;
     Ofn.nMaxFile = MAX_PATH;
-    Ofn.lpstrTitle = L"Import Static Mesh";
+    Ofn.lpstrTitle = L"Import Static Mesh Source";
     Ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 
     if (GetOpenFileNameW(&Ofn))
@@ -1651,7 +1652,7 @@ FString FLevelDetailsPanel::OpenFbxFileDialog()
     Ofn.lpstrFilter = L"FBX Files (*.fbx)\0*.fbx\0All Files (*.*)\0*.*\0";
     Ofn.lpstrFile = FilePath;
     Ofn.nMaxFile = MAX_PATH;
-    Ofn.lpstrTitle = L"Import FBX Skeletal Mesh";
+    Ofn.lpstrTitle = L"Import Skeletal Mesh Source";
     Ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 
     if (GetOpenFileNameW(&Ofn))
@@ -3392,7 +3393,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
         ImGui::Text("%s", Label);
         ImGui::SameLine(120);
 
-        float ButtonWidth = ImGui::CalcTextSize("Import").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+        float ButtonWidth = ImGui::CalcTextSize("Import and Assign").x + ImGui::GetStyle().FramePadding.x * 2.0f;
         float Spacing = ImGui::GetStyle().ItemSpacing.x;
         ImGui::SetNextItemWidth(-(ButtonWidth + Spacing));
 
@@ -3430,7 +3431,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
         ImGui::SameLine();
 
         ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x - ButtonWidth);
-        if (ImGui::Button("Import"))
+        if (ImGui::Button("Import and Assign"))
         {
             FString MeshPath = OpenStaticMeshFileDialog();
             if (!MeshPath.empty() && EditorEngine)
@@ -3444,6 +3445,14 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
                     {
                         *Val = ImportedAssetPath;
                         bChanged = true;
+                        FMeshAssetManager::ScanMeshAssets();
+                    }
+                    else
+                    {
+                        FNotificationManager::Get().AddNotification(
+                            "StaticMeshComponent accepts only UStaticMesh .uasset. The imported source was not assigned.",
+                            ENotificationType::Info,
+                            4.0f);
                     }
                 }
             }
@@ -3458,7 +3467,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
         ImGui::Text("%s", Label);
         ImGui::SameLine(120);
 
-        float ButtonWidth = ImGui::CalcTextSize("Import FBX").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+        float ButtonWidth = ImGui::CalcTextSize("Import and Assign").x + ImGui::GetStyle().FramePadding.x * 2.0f;
         float Spacing = ImGui::GetStyle().ItemSpacing.x;
         ImGui::SetNextItemWidth(-(ButtonWidth + Spacing));
 
@@ -3494,7 +3503,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x - ButtonWidth);
-        if (ImGui::Button("Import FBX"))
+        if (ImGui::Button("Import and Assign"))
         {
             FString FbxPath = OpenFbxFileDialog();
             if (!FbxPath.empty() && EditorEngine)
@@ -3507,59 +3516,18 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
 
                 FAssetFileHeader Header;
                 FAssetFileSerializer::ReadAssetHeader((std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(ImportedAssetPath)), Header);
-                ID3D11Device *Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
                 if (Header.ClassId == EAssetClassId::SkeletalMesh)
                 {
-                    USkeletalMesh *Loaded = FMeshAssetManager::LoadSkeletalMesh(ImportedAssetPath, Device);
-                    if (Loaded)
-                    {
-                        *Val = ImportedAssetPath;
-                        bChanged = true;
-                        FMeshAssetManager::ScanMeshAssets();
-                    }
+                    *Val = ImportedAssetPath;
+                    bChanged = true;
+                    FMeshAssetManager::ScanMeshAssets();
                 }
-                else if (Header.ClassId == EAssetClassId::StaticMesh)
+                else
                 {
-                    UStaticMesh *Loaded = FMeshAssetManager::LoadStaticMesh(ImportedAssetPath, Device);
-                    USkinnedMeshComponent *OldSkinnedComponent = Cast<USkinnedMeshComponent>(SelectedComponent);
-                    AActor *OwnerActor = OldSkinnedComponent ? OldSkinnedComponent->GetOwner() : nullptr;
-                    if (Loaded && OwnerActor)
-                    {
-                        UStaticMeshComponent *NewStaticComponent = OwnerActor->AddComponent<UStaticMeshComponent>();
-                        NewStaticComponent->SetCanDeleteFromDetails(false);
-                        NewStaticComponent->SetStaticMesh(Loaded);
-
-                        if (USceneComponent *OldSceneComponent = Cast<USceneComponent>(OldSkinnedComponent))
-                        {
-                            NewStaticComponent->SetRelativeLocation(OldSceneComponent->GetRelativeLocation());
-                            NewStaticComponent->SetRelativeRotation(OldSceneComponent->GetRelativeRotation());
-                            NewStaticComponent->SetRelativeScale(OldSceneComponent->GetRelativeScale());
-
-                            TArray<USceneComponent *> Children = OldSceneComponent->GetChildren();
-                            for (USceneComponent *Child : Children)
-                            {
-                                if (Child)
-                                {
-                                    Child->AttachToComponent(NewStaticComponent);
-                                }
-                            }
-
-                            if (OwnerActor->GetRootComponent() == OldSceneComponent)
-                            {
-                                OwnerActor->SetRootComponent(NewStaticComponent);
-                            }
-                            else if (USceneComponent *Parent = OldSceneComponent->GetParent())
-                            {
-                                NewStaticComponent->AttachToComponent(Parent);
-                            }
-                        }
-
-                        SelectedComponent = NewStaticComponent;
-                        EditorEngine->GetSelectionManager().SelectComponent(NewStaticComponent);
-                        OwnerActor->RemoveComponent(OldSkinnedComponent);
-                        bActorSelected = false;
-                        FMeshAssetManager::ScanMeshAssets();
-                    }
+                    FNotificationManager::Get().AddNotification(
+                        "SkeletalMeshComponent accepts only USkeletalMesh .uasset. Static meshes should be assigned on a StaticMeshComponent.",
+                        ENotificationType::Info,
+                        4.0f);
                 }
             }
         }

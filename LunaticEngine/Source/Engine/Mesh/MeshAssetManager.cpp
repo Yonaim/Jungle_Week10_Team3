@@ -256,6 +256,12 @@ UStaticMesh* FMeshAssetManager::LoadStaticMeshAssetFile(const FString& AssetPath
         return nullptr;
     }
 
+    if (FStaticMesh *MeshAsset = StaticMesh->GetStaticMeshAsset())
+    {
+        // Component references should serialize the imported .uasset path, not the original source file path.
+        MeshAsset->PathFileName = CacheKey;
+    }
+
     StaticMesh->InitResources(InDevice);
     if (Purpose == EMeshAssetLoadPurpose::RuntimeShared)
     {
@@ -292,6 +298,8 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMeshAssetFile(const FString& Asset
 
     if (FSkeletalMesh* MeshAsset = SkeletalMesh->GetSkeletalMeshAsset())
     {
+        // Component references should serialize the imported .uasset path, not the original source file path.
+        MeshAsset->PathFileName = CacheKey;
         MeshAsset->BuildBoneHierarchyCache();
     }
 
@@ -334,7 +342,7 @@ UStaticMesh* FMeshAssetManager::LoadStaticMesh(const FString& PathFileName, cons
         return nullptr;
     }
 
-    NewMeshAsset->PathFileName = PathFileName;
+    NewMeshAsset->PathFileName = AssetPath;
     StaticMesh->SetFName(FName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(AssetPath)).stem().wstring())));
     StaticMesh->SetStaticMaterials(std::move(ParsedMaterials));
     StaticMesh->SetStaticMeshAsset(NewMeshAsset);
@@ -412,6 +420,7 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMesh(const FString& PathFileName, 
         return nullptr;
     }
 
+    NewMeshAsset->PathFileName = AssetPath;
     SkeletalMesh->SetFName(FName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(AssetPath)).stem().wstring())));
     SkeletalMesh->SetStaticMaterials(std::move(ParsedMaterials));
     SkeletalMesh->SetSkeletalMeshAsset(NewMeshAsset);

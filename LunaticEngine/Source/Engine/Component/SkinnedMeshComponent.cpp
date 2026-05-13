@@ -5,6 +5,7 @@
 #include "Engine/Runtime/Engine.h"
 #include "Serialization/Archive.h"
 #include <algorithm>
+#include <cctype>
 
 IMPLEMENT_CLASS(USkinnedMeshComponent, UMeshComponent)
 
@@ -30,6 +31,24 @@ namespace
 		}
 
 		return 0;
+	}
+
+
+	bool IsUAssetReferencePath(const FString& Path)
+	{
+		if (Path.empty() || Path == "None")
+		{
+			return true;
+		}
+
+		FString LowerPath = Path;
+		std::transform(LowerPath.begin(), LowerPath.end(), LowerPath.begin(), [](unsigned char Ch)
+		{
+			return static_cast<char>(std::tolower(Ch));
+		});
+		const FString Extension = ".uasset";
+		return LowerPath.size() >= Extension.size() &&
+			LowerPath.compare(LowerPath.size() - Extension.size(), Extension.size(), Extension) == 0;
 	}
 
 	void EnsureMaterialSlotStorage(USkeletalMesh* SkeletalMesh, TArray<UMaterial*>& OverrideMaterials, TArray<FMaterialSlot>& MaterialSlots)
@@ -285,12 +304,20 @@ void USkinnedMeshComponent::PostEditProperty(const char* PropertyName)
 		else
 		{
 			const FString RequestedMeshPath = SkeletalMeshPath;
-			ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-			USkeletalMesh* Loaded = FMeshAssetManager::LoadSkeletalMesh(SkeletalMeshPath, Device);
-			SetSkeletalMesh(Loaded);
-			if (Loaded)
+			if (!IsUAssetReferencePath(RequestedMeshPath))
 			{
-				SkeletalMeshPath = RequestedMeshPath;
+				SetSkeletalMesh(nullptr);
+				SkeletalMeshPath = "None";
+			}
+			else
+			{
+				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+				USkeletalMesh* Loaded = FMeshAssetManager::LoadSkeletalMeshAssetFile(RequestedMeshPath, Device);
+				SetSkeletalMesh(Loaded);
+				if (Loaded)
+				{
+					SkeletalMeshPath = RequestedMeshPath;
+				}
 			}
 		}
 		MarkWorldBoundsDirty();

@@ -254,6 +254,7 @@ bool FAssetImportManager::ImportMeshSource(const FString& SourcePath, FString* O
             return false;
         }
 
+        MeshData->PathFileName = MakeProjectRelativePath(DestinationPath);
         Mesh->SetFName(FName(FPaths::ToUtf8(DestinationPath.stem().wstring())));
         Mesh->SetStaticMaterials(std::move(Materials));
         Mesh->SetSkeletalMeshAsset(MeshData);
@@ -277,7 +278,7 @@ bool FAssetImportManager::ImportMeshSource(const FString& SourcePath, FString* O
         return false;
     }
 
-    MeshData->PathFileName = SourceDiskPathString;
+    MeshData->PathFileName = MakeProjectRelativePath(DestinationPath);
     Mesh->SetFName(FName(FPaths::ToUtf8(DestinationPath.stem().wstring())));
     Mesh->SetStaticMaterials(std::move(Materials));
     Mesh->SetStaticMeshAsset(MeshData);

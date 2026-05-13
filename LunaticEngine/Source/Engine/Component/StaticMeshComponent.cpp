@@ -2,6 +2,7 @@
 #include "Component/StaticMeshComponent.h"
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include "Object/ObjectFactory.h"
 #include "Core/PropertyTypes.h"
 #include "Collision/RayUtils.h"
@@ -39,6 +40,24 @@ namespace
 		}
 
 		return 0;
+	}
+
+
+	bool IsUAssetReferencePath(const FString& Path)
+	{
+		if (Path.empty() || Path == "None")
+		{
+			return true;
+		}
+
+		FString LowerPath = Path;
+		std::transform(LowerPath.begin(), LowerPath.end(), LowerPath.begin(), [](unsigned char Ch)
+		{
+			return static_cast<char>(std::tolower(Ch));
+		});
+		const FString Extension = ".uasset";
+		return LowerPath.size() >= Extension.size() &&
+			LowerPath.compare(LowerPath.size() - Extension.size(), Extension.size(), Extension) == 0;
 	}
 
 	void EnsureMaterialSlotStorage(UStaticMesh* StaticMesh, TArray<UMaterial*>& OverrideMaterials, TArray<FMaterialSlot>& MaterialSlots)
@@ -372,9 +391,22 @@ void UStaticMeshComponent::PostEditProperty(const char* PropertyName)
 		}
 		else
 		{
-			ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-			UStaticMesh* Loaded = FMeshAssetManager::LoadStaticMesh(StaticMeshPath, Device);
-			SetStaticMesh(Loaded);
+			const FString RequestedMeshPath = StaticMeshPath;
+			if (!IsUAssetReferencePath(RequestedMeshPath))
+			{
+				SetStaticMesh(nullptr);
+				StaticMeshPath = "None";
+			}
+			else
+			{
+				ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+				UStaticMesh* Loaded = FMeshAssetManager::LoadStaticMeshAssetFile(RequestedMeshPath, Device);
+				SetStaticMesh(Loaded);
+				if (Loaded)
+				{
+					StaticMeshPath = RequestedMeshPath;
+				}
+			}
 		}
 		CacheLocalBounds();
 		MarkWorldBoundsDirty();
