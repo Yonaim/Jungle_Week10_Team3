@@ -3,6 +3,7 @@
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
+#include "AssetEditor/Window/AssetEditorWindow.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/AActor.h"
@@ -799,11 +800,17 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     const float          TopFrameInset = GetWindowTopContentInset(Window);
     const float          OuterPadding = GetWindowOuterPadding();
     const float          DocumentTabBarHeight = GetDocumentTabBarHeight();
-    const bool           bLevelFrameToolbarVisible = !(EditorEngine && EditorEngine->IsAssetEditorContextActive());
+    const bool           bAssetEditorContextActive = EditorEngine && EditorEngine->IsAssetEditorContextActive();
+    const bool           bLevelFrameToolbarVisible = !bAssetEditorContextActive;
     const float          LevelFrameToolbarHeight = (bLevelFrameToolbarVisible && EditorEngine)
                                                      ? EditorEngine->GetViewportLayout().GetFrameToolbarHeight()
                                                      : 0.0f;
-    const float          TopEditorStripHeight = DocumentTabBarHeight + LevelFrameToolbarHeight;
+    const bool           bAssetFrameToolbarVisible = bAssetEditorContextActive &&
+                                                     EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().IsOpen();
+    const float          AssetFrameToolbarHeight = bAssetFrameToolbarVisible
+                                                     ? FAssetEditorWindow::GetFrameToolbarHeight()
+                                                     : 0.0f;
+    const float          TopEditorStripHeight = DocumentTabBarHeight + LevelFrameToolbarHeight + AssetFrameToolbarHeight;
     const float          CornerRadius = GetWindowCornerRadius();
     const ImVec2         ViewportMin = MainViewport->Pos;
     const ImVec2         ViewportMax(MainViewport->Pos.x + MainViewport->Size.x, MainViewport->Pos.y + MainViewport->Size.y);

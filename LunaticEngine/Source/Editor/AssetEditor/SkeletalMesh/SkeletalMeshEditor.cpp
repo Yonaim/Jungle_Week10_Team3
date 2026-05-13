@@ -3,9 +3,11 @@
 
 #include "Common/UI/Docking/DockLayoutUtils.h"
 #include "Core/Notification.h"
+#include "Component/SkeletalMeshComponent.h"
 #include "EditorEngine.h"
 #include "Engine/Asset/AssetFileSerializer.h"
 #include "Engine/Mesh/SkeletalMesh.h"
+#include "Materials/MaterialManager.h"
 #include "Mesh/MeshAssetManager.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
@@ -14,6 +16,7 @@
 #include "ImGui/imgui_internal.h"
 
 #include <string>
+#include <utility>
 
 namespace
 {
@@ -46,8 +49,19 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
 
     EditingAsset = SkeletalMesh;
     EditingAssetPath = AssetPath.lexically_normal();
+    if (FSkeletalMesh *MeshData = EditingAsset->GetSkeletalMeshAsset())
+    {
+        if (MeshData->PathFileName.empty())
+        {
+            MeshData->PathFileName = FPaths::ToUtf8(EditingAssetPath.generic_wstring());
+        }
+        MeshData->BuildBoneHierarchyCache();
+    }
+
     State = FSkeletalMeshEditorState{};
     SelectionManager.Reset();
+    UndoStack.clear();
+    RedoStack.clear();
     BuiltDockspaceId = 0;
 
     bPreviewPanelOpen = true;
@@ -74,6 +88,8 @@ void FSkeletalMeshEditor::Close()
     EditingAssetPath.clear();
     State = FSkeletalMeshEditorState{};
     SelectionManager.Reset();
+    UndoStack.clear();
+    RedoStack.clear();
     BuiltDockspaceId = 0;
 
     bPreviewPanelOpen = true;
@@ -219,6 +235,130 @@ void FSkeletalMeshEditor::BuildCustomMenus()
     }
 }
 
+bool FSkeletalMeshEditor::CanUndo() const
+{
+    return !UndoStack.empty();
+}
+
+bool FSkeletalMeshEditor::CanRedo() const
+{
+    return !RedoStack.empty();
+}
+
+void FSkeletalMeshEditor::Undo()
+{
+    if (!CanUndo())
+    {
+        return;
+    }
+
+    FHistoryState CurrentState = CaptureHistoryState();
+    FHistoryState PreviousState = UndoStack.back();
+    UndoStack.pop_back();
+
+    RedoStack.push_back(std::move(CurrentState));
+    ApplyHistoryState(PreviousState);
+    bDirty = true;
+}
+
+void FSkeletalMeshEditor::Redo()
+{
+    if (!CanRedo())
+    {
+        return;
+    }
+
+    FHistoryState CurrentState = CaptureHistoryState();
+    FHistoryState NextState = RedoStack.back();
+    RedoStack.pop_back();
+
+    UndoStack.push_back(std::move(CurrentState));
+    ApplyHistoryState(NextState);
+    bDirty = true;
+}
+
+FSkeletalMeshEditor::FHistoryState FSkeletalMeshEditor::CaptureHistoryState() const
+{
+    FHistoryState StateSnapshot;
+    if (!EditingAsset)
+    {
+        return StateSnapshot;
+    }
+
+    const TArray<FStaticMaterial> &Materials = EditingAsset->GetStaticMaterials();
+    StateSnapshot.MaterialPaths.reserve(Materials.size());
+    for (const FStaticMaterial &Material : Materials)
+    {
+        StateSnapshot.MaterialPaths.push_back(Material.MaterialInterface
+            ? Material.MaterialInterface->GetAssetPathFileName()
+            : FString("None"));
+    }
+    return StateSnapshot;
+}
+
+void FSkeletalMeshEditor::ApplyHistoryState(const FHistoryState &HistoryState)
+{
+    if (!EditingAsset)
+    {
+        return;
+    }
+
+    TArray<FStaticMaterial> &Materials = EditingAsset->GetStaticMaterialsMutable();
+    const int32 ApplyCount = (std::min)(static_cast<int32>(Materials.size()), static_cast<int32>(HistoryState.MaterialPaths.size()));
+    USkeletalMeshComponent *PreviewComponent = GetPreviewComponent();
+
+    for (int32 MaterialIndex = 0; MaterialIndex < ApplyCount; ++MaterialIndex)
+    {
+        const FString &MaterialPath = HistoryState.MaterialPaths[MaterialIndex];
+        UMaterial *Material = nullptr;
+        if (!MaterialPath.empty() && MaterialPath != "None")
+        {
+            Material = FMaterialManager::Get().GetOrCreateMaterial(MaterialPath);
+        }
+
+        Materials[MaterialIndex].MaterialInterface = Material;
+        if (PreviewComponent)
+        {
+            PreviewComponent->SetMaterial(MaterialIndex, Material);
+        }
+    }
+}
+
+bool FSkeletalMeshEditor::AreHistoryStatesEqual(const FHistoryState &A, const FHistoryState &B) const
+{
+    if (A.MaterialPaths.size() != B.MaterialPaths.size())
+    {
+        return false;
+    }
+
+    for (size_t Index = 0; Index < A.MaterialPaths.size(); ++Index)
+    {
+        if (A.MaterialPaths[Index] != B.MaterialPaths[Index])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void FSkeletalMeshEditor::PushUndoStateIfChanged(const FHistoryState &BeforeState, const FHistoryState &AfterState)
+{
+    if (AreHistoryStatesEqual(BeforeState, AfterState))
+    {
+        return;
+    }
+
+    UndoStack.push_back(BeforeState);
+    RedoStack.clear();
+    bDirty = true;
+}
+
+USkeletalMeshComponent *FSkeletalMeshEditor::GetPreviewComponent() const
+{
+    FSkeletalMeshPreviewViewportClient *PreviewClient = const_cast<FSkeletalMeshPreviewViewport &>(PreviewViewport).GetViewportClient();
+    return PreviewClient ? PreviewClient->GetPreviewComponent() : nullptr;
+}
+
 std::string FSkeletalMeshEditor::MakePanelStableId(const char *PanelName) const
 {
     return std::string("SkeletalMeshEditor_") + std::to_string(EditorInstanceId) + "_" + PanelName;
@@ -315,25 +455,18 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     }
     if (bDetailsPanelOpen)
     {
-        USkeletalMeshComponent *PreviewComponent = nullptr;
-        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
-        {
-            PreviewComponent = PreviewClient->GetPreviewComponent();
-        }
+        USkeletalMeshComponent *PreviewComponent = GetPreviewComponent();
+        const FHistoryState BeforeState = CaptureHistoryState();
 
-        if (AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, PreviewComponent, EditingAssetPath, State,
-                                                 SelectionManager, DetailsDesc))
-        {
-            bDirty = true;
-        }
+        AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, PreviewComponent, EditingAssetPath, State,
+                                             SelectionManager, DetailsDesc);
+
+        const FHistoryState AfterState = CaptureHistoryState();
+        PushUndoStateIfChanged(BeforeState, AfterState);
     }
     if (bBoneDetailsPanelOpen)
     {
-        USkeletalMeshComponent *PreviewComponent = nullptr;
-        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
-        {
-            PreviewComponent = PreviewClient->GetPreviewComponent();
-        }
+        USkeletalMeshComponent *PreviewComponent = GetPreviewComponent();
         DetailsPanel.Render(EditingAsset, PreviewComponent, State, SelectionManager, BoneDetailsDesc);
     }
 }

@@ -167,7 +167,7 @@ bool FAssetEditorManager::OpenAssetWithDialog(void *OwnerWindowHandle)
 {
     const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
         .Filter = L"Asset Files (*.uasset)\0*.uasset\0All Files (*.*)\0*.*\0",
-        .Title = L"Open Asset",
+        .Title = L"Open UAsset",
         .InitialDirectory = FPaths::AssetDir().c_str(),
         .OwnerWindowHandle = OwnerWindowHandle,
         .bFileMustExist = true,
