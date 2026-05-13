@@ -314,7 +314,7 @@ bool FAssetImportManager::ImportTextureSource(const FString& SourcePath, FString
     const std::filesystem::path SourceDiskPath = ResolveSourcePathOnDisk(SourcePath);
     const FString SourceDiskPathString = ToUtf8GenericPath(SourceDiskPath);
     const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(SourceDiskPath.stem().wstring()));
-    const std::filesystem::path TextureAssetDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Textures" / FPaths::ToWide(SourceStem);
+    const std::filesystem::path TextureAssetDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Textures";
 
     UTexture2D* Texture = UObjectManager::Get().CreateObject<UTexture2D>();
     Texture->SetFName(FName(FString("T_") + SourceStem));
@@ -415,7 +415,7 @@ std::filesystem::path FAssetImportManager::MakeDestinationAssetPath(const FStrin
     const std::filesystem::path Source(FPaths::ToWide(SourcePath));
     const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(Source.stem().wstring()));
 
-    std::filesystem::path DestinationDirectory = std::filesystem::path(FPaths::ContentDir()) / CategoryDir / FPaths::ToWide(SourceStem);
+    std::filesystem::path DestinationDirectory = std::filesystem::path(FPaths::ContentDir()) / CategoryDir;
     return DestinationDirectory / (std::wstring(Prefix) + FPaths::ToWide(SourceStem) + L".uasset");
 }
 

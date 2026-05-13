@@ -135,7 +135,7 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 	const FString SourceAssetName = SanitizeName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(FbxFilePath)).stem().wstring()));
 	const FString SlotAssetName = SanitizeName(MaterialInfo.MaterialSlotName.empty() ? FString("None") : MaterialInfo.MaterialSlotName);
 
-	std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials" / FPaths::ToWide(SourceAssetName);
+	std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials";
 	std::filesystem::path MaterialAssetPathW = MaterialDirectory / (L"M_" + FPaths::ToWide(SlotAssetName) + L".uasset");
 	const FString MaterialAssetPath = MakeProjectRelativePath(MaterialAssetPathW);
 

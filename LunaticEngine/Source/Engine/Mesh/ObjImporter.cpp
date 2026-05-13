@@ -61,7 +61,7 @@ namespace
 			SlotName[0] == 'M' &&
 			SlotName[1] == '_';
 
-		std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials" / FPaths::ToWide(SourceStem);
+		std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials";
 		const std::wstring FileName = bHasMaterialPrefix
 			? FPaths::ToWide(SlotName) + L".uasset"
 			: L"M_" + FPaths::ToWide(SlotName) + L".uasset";
