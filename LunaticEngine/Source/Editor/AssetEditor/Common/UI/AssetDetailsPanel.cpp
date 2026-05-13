@@ -1,4 +1,4 @@
-#include "PCH/LunaticPCH.h"
+﻿#include "PCH/LunaticPCH.h"
 #include "AssetEditor/Common/UI/AssetDetailsPanel.h"
 
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
@@ -139,7 +139,7 @@ bool FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, USkeletalMeshC
         {
             UMaterial *NewMaterial =
                 (Slot.Path.empty() || Slot.Path == "None") ? nullptr : FMaterialManager::Get().GetOrCreateMaterial(Slot.Path);
-            StaticSlot.MaterialInterface = NewMaterial;
+            Mesh->SetStaticMaterialInterface(Index, NewMaterial);
             if (PreviewComponent)
             {
                 PreviewComponent->SetMaterial(Index, NewMaterial);
