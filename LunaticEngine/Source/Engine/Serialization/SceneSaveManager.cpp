@@ -544,6 +544,7 @@ json::JSON FSceneSaveManager::SerializePropertyValue(const FPropertyDescriptor& 
 	case EPropertyType::String:
 	case EPropertyType::SceneComponentRef:
 	case EPropertyType::StaticMeshRef:
+	case EPropertyType::SkeletalMeshRef:
 		return JSON(*static_cast<FString*>(Prop.ValuePtr));
 
 	case EPropertyType::MaterialSlot: {
@@ -1205,6 +1206,7 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON&
 {
 	TArray<FPropertyDescriptor> Descriptors;
 	Comp->GetEditableProperties(Descriptors);
+	std::unordered_set<FString> ProcessedProperties;
 
 	for (auto& Prop : Descriptors) {
 		const char* PropertyKey = Prop.Name.c_str();
@@ -1221,6 +1223,7 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON&
 		}
 		json::JSON& Value = PropsJSON[PropertyKey];
 		DeserializePropertyValue(Prop, Value);
+		ProcessedProperties.insert(Prop.Name);
 		Comp->PostEditProperty(Prop.Name.c_str());
 	}
 
@@ -1229,8 +1232,8 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent* Comp, json::JSON&
 	TArray<FPropertyDescriptor> Descriptors2;
 	Comp->GetEditableProperties(Descriptors2);
 
-	for (size_t i = Descriptors.size(); i < Descriptors2.size(); ++i) {
-		auto& Prop = Descriptors2[i];
+	for (auto& Prop : Descriptors2) {
+		if (ProcessedProperties.find(Prop.Name) != ProcessedProperties.end()) continue;
 		if (!PropsJSON.hasKey(Prop.Name.c_str())) continue;
 		json::JSON& Value = PropsJSON[Prop.Name.c_str()];
 		DeserializePropertyValue(Prop, Value);
@@ -1316,6 +1319,7 @@ void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor& Prop, json
 	case EPropertyType::String:
 	case EPropertyType::SceneComponentRef:
 	case EPropertyType::StaticMeshRef:
+	case EPropertyType::SkeletalMeshRef:
 		*static_cast<FString*>(Prop.ValuePtr) = Value.ToString();
 		break;
 
