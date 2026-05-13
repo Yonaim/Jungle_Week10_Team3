@@ -11,7 +11,7 @@ ALogFragmentItemActor::ALogFragmentItemActor()
 	SetItemScript("Scripts/Game/Items/LogItem.lua");
 
 	// 생성자에서는 texture 경로만 지정한다.
-	SetItemTexturePath("Asset/Engine/Source/Sample/Texture/checker.png");
+	SetItemTexturePath("Asset/Source/Sample/Texture/checker.png");
 
 	InteractionConfig.ScoreValue = 10;
 	InteractionConfig.RequiredInteractorTag = "Player";

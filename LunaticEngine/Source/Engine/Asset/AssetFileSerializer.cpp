@@ -25,9 +25,59 @@ namespace
         }
     }
 
+    std::filesystem::path CanonicalizeAssetLayoutPath(std::filesystem::path Path)
+    {
+        FString Generic = FPaths::ToUtf8(Path.generic_wstring());
+
+        auto ReplacePrefix = [&Generic](const FString& OldPrefix, const FString& NewPrefix)
+        {
+            if (Generic.rfind(OldPrefix, 0) == 0)
+            {
+                Generic = NewPrefix + Generic.substr(OldPrefix.size());
+                return;
+            }
+
+            const FString Segment = "/" + OldPrefix;
+            const size_t SegmentPos = Generic.find(Segment);
+            if (SegmentPos != FString::npos)
+            {
+                Generic.replace(SegmentPos + 1, OldPrefix.size(), NewPrefix);
+            }
+        };
+
+        ReplacePrefix("Asset/Engine/Content", "Asset/Content");
+        ReplacePrefix("Asset/Game/Content", "Asset/Content");
+        ReplacePrefix("Asset/Engine/Source", "Asset/Source");
+        ReplacePrefix("Asset/Game/Source", "Asset/Source");
+
+        return std::filesystem::path(FPaths::ToWide(Generic)).lexically_normal();
+    }
+
+    std::filesystem::path ResolveAssetFilePathForIO(const std::filesystem::path& FilePath)
+    {
+        std::filesystem::path ResolvedPath = CanonicalizeAssetLayoutPath(FilePath.lexically_normal());
+        if (!ResolvedPath.is_absolute())
+        {
+            ResolvedPath = (std::filesystem::path(FPaths::RootDir()) / ResolvedPath).lexically_normal();
+        }
+        return ResolvedPath;
+    }
+
     FString ToAssetPathString(const std::filesystem::path& FilePath)
     {
         return FPaths::ToUtf8(FilePath.lexically_normal().generic_wstring());
+    }
+
+    FString ToProjectRelativeAssetPathString(const std::filesystem::path& FilePath)
+    {
+        const std::filesystem::path NormalizedPath = FilePath.lexically_normal();
+        const std::filesystem::path ProjectRoot = std::filesystem::path(FPaths::RootDir()).lexically_normal();
+        const std::filesystem::path RelativePath = NormalizedPath.lexically_relative(ProjectRoot);
+        if (!RelativePath.empty() && RelativePath.native().find(L"..") != 0)
+        {
+            return FPaths::ToUtf8(RelativePath.generic_wstring());
+        }
+        return ToAssetPathString(NormalizedPath);
     }
 
     FString MakeAssetGuidString()
@@ -88,7 +138,8 @@ namespace FAssetFileSerializer
 
     bool ReadAssetHeader(const std::filesystem::path& FilePath, FAssetFileHeader& OutHeader, FString* OutError)
     {
-        FWindowsBinReader Reader(ToAssetPathString(FilePath));
+        const std::filesystem::path ResolvedPath = ResolveAssetFilePathForIO(FilePath);
+        FWindowsBinReader Reader(ToAssetPathString(ResolvedPath));
         if (!Reader.IsValid())
         {
             WriteError(OutError, "ReadAssetHeader failed: Could not open file.");
@@ -113,7 +164,7 @@ namespace FAssetFileSerializer
         {
             Reader << OutHeader.ClassName;
             OutHeader.ClassId = GetAssetClassIdFromClassName(OutHeader.ClassName);
-            OutHeader.AssetName = FPaths::ToUtf8(FilePath.stem().wstring());
+            OutHeader.AssetName = FPaths::ToUtf8(ResolvedPath.stem().wstring());
             OutHeader.AssetGuid.clear();
             OutHeader.DependencyCount = 0;
             OutHeader.BodyOffset = 0;
@@ -131,20 +182,26 @@ namespace FAssetFileSerializer
 
     bool SaveObjectToAssetFile(const std::filesystem::path& FilePath, UObject* RootObject, FString* OutError)
     {
-        const FString AssetPath = ToAssetPathString(FilePath);
+        const std::filesystem::path ResolvedPath = ResolveAssetFilePathForIO(FilePath);
+        const FString AssetPath = ToAssetPathString(ResolvedPath);
+        const FString DisplayAssetPath = ToProjectRelativeAssetPathString(ResolvedPath);
         if (!RootObject)
         {
             WriteError(OutError, "Save failed: RootObject is null.");
-            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetSave] Failed: path=%s error=RootObject is null", AssetPath.c_str());
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetSave] Failed: path=%s error=RootObject is null", DisplayAssetPath.c_str());
             return false;
         }
 
-        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetSave] Begin: path=%s class=%s", AssetPath.c_str(), RootObject->GetClass()->GetName());
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetSave] Begin: path=%s class=%s", DisplayAssetPath.c_str(), RootObject->GetClass()->GetName());
+        if (ResolvedPath.has_parent_path())
+        {
+            std::filesystem::create_directories(ResolvedPath.parent_path());
+        }
         FWindowsBinWriter Writer(AssetPath);
         if (!Writer.IsValid())
         {
             WriteError(OutError, "Save failed: Could not open file for writing.");
-            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetSave] Failed: path=%s error=Could not open file for writing", AssetPath.c_str());
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetSave] Failed: path=%s error=Could not open file for writing", DisplayAssetPath.c_str());
             return false;
         }
 
@@ -153,7 +210,7 @@ namespace FAssetFileSerializer
         Header.FileVersion = AssetVersion;
         Header.ClassName = RootObject->GetClass()->GetName();
         Header.ClassId = GetAssetClassIdFromClassName(Header.ClassName);
-        Header.AssetName = MakeAssetName(FilePath, RootObject);
+        Header.AssetName = MakeAssetName(ResolvedPath, RootObject);
         Header.AssetGuid = MakeAssetGuidString();
         Header.DependencyCount = 0;
         Header.BodyOffset = 0; // 현재 Archive는 seek/tell이 없으므로 header 직후 body 규약으로 사용한다.
@@ -162,19 +219,21 @@ namespace FAssetFileSerializer
         GCurrentAssetSerializationVersion = Header.FileVersion;
         RootObject->Serialize(Writer);
         GCurrentAssetSerializationVersion = AssetVersion;
-        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetSave] Complete: path=%s class=%s", AssetPath.c_str(), Header.ClassName.c_str());
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetSave] Complete: path=%s class=%s", DisplayAssetPath.c_str(), Header.ClassName.c_str());
         return true;
     }
 
     UObject* LoadObjectFromAssetFile(const std::filesystem::path& FilePath, FString* OutError)
     {
-        const FString AssetPath = ToAssetPathString(FilePath);
-        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetLoad] Begin: path=%s", AssetPath.c_str());
+        const std::filesystem::path ResolvedPath = ResolveAssetFilePathForIO(FilePath);
+        const FString AssetPath = ToAssetPathString(ResolvedPath);
+        const FString DisplayAssetPath = ToProjectRelativeAssetPathString(ResolvedPath);
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetLoad] Begin: path=%s", DisplayAssetPath.c_str());
         FWindowsBinReader Reader(AssetPath);
         if (!Reader.IsValid())
         {
             WriteError(OutError, "Load failed: Could not open file.");
-            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Could not open file", AssetPath.c_str());
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Could not open file", DisplayAssetPath.c_str());
             return nullptr;
         }
 
@@ -185,13 +244,13 @@ namespace FAssetFileSerializer
         if (Header.Magic != AssetMagic)
         {
             WriteError(OutError, "Load failed: Unknown .uasset binary format.");
-            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unknown .uasset binary format", AssetPath.c_str());
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unknown .uasset binary format", DisplayAssetPath.c_str());
             return nullptr;
         }
         if (Header.FileVersion == 0 || Header.FileVersion > AssetVersion)
         {
             WriteError(OutError, "Load failed: Unsupported .uasset version.");
-            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unsupported .uasset version=%u", AssetPath.c_str(), Header.FileVersion);
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unsupported .uasset version=%u", DisplayAssetPath.c_str(), Header.FileVersion);
             return nullptr;
         }
 
@@ -199,7 +258,7 @@ namespace FAssetFileSerializer
         {
             Reader << Header.ClassName;
             Header.ClassId = GetAssetClassIdFromClassName(Header.ClassName);
-            Header.AssetName = FPaths::ToUtf8(FilePath.stem().wstring());
+            Header.AssetName = FPaths::ToUtf8(ResolvedPath.stem().wstring());
         }
         else
         {
@@ -216,7 +275,7 @@ namespace FAssetFileSerializer
         if (!Object)
         {
             WriteError(OutError, "Load failed: Unknown asset class: " + ClassName);
-            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unknown asset class=%s", AssetPath.c_str(), ClassName.c_str());
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unknown asset class=%s", DisplayAssetPath.c_str(), ClassName.c_str());
             return nullptr;
         }
 
@@ -228,7 +287,7 @@ namespace FAssetFileSerializer
         GCurrentAssetSerializationVersion = Header.FileVersion;
         Object->Serialize(Reader);
         GCurrentAssetSerializationVersion = AssetVersion;
-        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetLoad] Complete: path=%s class=%s name=%s", AssetPath.c_str(), ClassName.c_str(), Header.AssetName.c_str());
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetLoad] Complete: path=%s class=%s name=%s", DisplayAssetPath.c_str(), ClassName.c_str(), Header.AssetName.c_str());
         return Object;
     }
 

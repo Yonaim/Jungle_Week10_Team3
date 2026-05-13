@@ -182,11 +182,7 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 	std::filesystem::path MaterialAssetPathW = MaterialDirectory / (L"M_" + FPaths::ToWide(SlotAssetName) + L".uasset");
 	const FString MaterialAssetPath = MakeProjectRelativePath(MaterialAssetPathW);
 
-	if (std::filesystem::exists(MaterialAssetPathW))
-	{
-		return MaterialAssetPath;
-	}
-
+	// Source import material은 source texture reference를 반영해야 하므로 reimport/startup sync 시 덮어쓴다.
 	std::filesystem::create_directories(MaterialDirectory);
 
 	json::JSON JsonData;

@@ -1047,7 +1047,7 @@ namespace
     FString GetRegisteredMeshPath(const char *MeshKey)
     {
         // Component assignment policy: scene components should reference cooked .uasset files.
-        // Built-in shapes now live under Asset/Engine/Content/BasicShape. Until real .uasset
+        // Built-in shapes now live under Asset/Content/BasicShape. Until real .uasset
         // files are added there, keep the raw BasicShape OBJ fallback alive for editor spawning.
         if (const FMeshResource *MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
         {

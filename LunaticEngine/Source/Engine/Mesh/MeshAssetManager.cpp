@@ -38,7 +38,7 @@ namespace
 
     FString ToProjectRelativePath(const std::filesystem::path& Path)
     {
-        const std::filesystem::path ProjectRoot(FPaths::RootDir());
+        const std::filesystem::path ProjectRoot = std::filesystem::path(FPaths::RootDir()).lexically_normal();
         std::filesystem::path Normalized = Path.lexically_normal();
         std::filesystem::path Relative = Normalized.lexically_relative(ProjectRoot);
         if (!Relative.empty() && Relative.native().find(L"..") != 0)
@@ -58,9 +58,36 @@ namespace
         return PrefixString + Stem;
     }
 
+    FString CanonicalizeAssetLayoutPathString(FString Path)
+    {
+        std::replace(Path.begin(), Path.end(), '\\', '/');
+
+        auto ReplacePrefix = [&Path](const FString& OldPrefix, const FString& NewPrefix)
+        {
+            if (Path.rfind(OldPrefix, 0) == 0)
+            {
+                Path = NewPrefix + Path.substr(OldPrefix.size());
+                return;
+            }
+
+            const FString Segment = "/" + OldPrefix;
+            const size_t SegmentPos = Path.find(Segment);
+            if (SegmentPos != FString::npos)
+            {
+                Path.replace(SegmentPos + 1, OldPrefix.size(), NewPrefix);
+            }
+        };
+
+        ReplacePrefix("Asset/Engine/Content", "Asset/Content");
+        ReplacePrefix("Asset/Game/Content", "Asset/Content");
+        ReplacePrefix("Asset/Engine/Source", "Asset/Source");
+        ReplacePrefix("Asset/Game/Source", "Asset/Source");
+        return Path;
+    }
+
     std::filesystem::path ResolvePathAgainstProjectRoot(const FString& Path)
     {
-        std::filesystem::path FsPath(FPaths::ToWide(Path));
+        std::filesystem::path FsPath(FPaths::ToWide(CanonicalizeAssetLayoutPathString(Path)));
         if (!FsPath.is_absolute())
         {
             FsPath = std::filesystem::path(FPaths::RootDir()) / FsPath;
@@ -119,8 +146,8 @@ namespace
 
     bool IsSourceNewerThanAsset(const FString& SourcePath, const FString& AssetPath)
     {
-        const std::filesystem::path SourcePathW(FPaths::ToWide(SourcePath));
-        const std::filesystem::path AssetPathW(FPaths::ToWide(AssetPath));
+        const std::filesystem::path SourcePathW = ResolvePathAgainstProjectRoot(SourcePath);
+        const std::filesystem::path AssetPathW = ResolvePathAgainstProjectRoot(AssetPath);
         if (!std::filesystem::exists(AssetPathW))
         {
             return true;
@@ -140,10 +167,9 @@ namespace
             return {};
         }
 
-        std::filesystem::path FsPath(FPaths::ToWide(Path));
-        FsPath = FsPath.lexically_normal();
+        std::filesystem::path FsPath = ResolvePathAgainstProjectRoot(Path);
 
-        const std::filesystem::path ProjectRoot(FPaths::RootDir());
+        const std::filesystem::path ProjectRoot = std::filesystem::path(FPaths::RootDir()).lexically_normal();
         std::filesystem::path Relative = FsPath.lexically_relative(ProjectRoot);
         if (!Relative.empty() && Relative.native().find(L"..") != 0)
         {
@@ -155,7 +181,7 @@ namespace
 
     void EnsureParentDirectoryExists(const FString& Path)
     {
-        const std::filesystem::path Parent = std::filesystem::path(FPaths::ToWide(Path)).parent_path();
+        const std::filesystem::path Parent = ResolvePathAgainstProjectRoot(Path).parent_path();
         if (!Parent.empty())
         {
             FPaths::CreateDir(Parent.wstring());
@@ -219,8 +245,7 @@ void FMeshAssetManager::ScanMeshAssets()
 
     const std::filesystem::path ProjectRoot(FPaths::RootDir());
     const std::filesystem::path ScanRoots[] = {
-        std::filesystem::path(FPaths::ContentDir()),
-        std::filesystem::path(FPaths::EngineContentDir())
+        std::filesystem::path(FPaths::ContentDir())
     };
 
     for (const std::filesystem::path& ContentRoot : ScanRoots)

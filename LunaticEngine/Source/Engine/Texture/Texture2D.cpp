@@ -27,6 +27,25 @@ bool UTexture2D::bTextureAssetWatcherInitialized = false;
 
 namespace
 {
+	FString CanonicalizeAssetLayoutPathString(FString PathString)
+	{
+		std::replace(PathString.begin(), PathString.end(), '\\', '/');
+
+		auto ReplacePrefix = [&PathString](const FString& OldPrefix, const FString& NewPrefix)
+		{
+			if (PathString.rfind(OldPrefix, 0) == 0)
+			{
+				PathString = NewPrefix + PathString.substr(OldPrefix.size());
+			}
+		};
+
+		ReplacePrefix("Asset/Engine/Content", "Asset/Content");
+		ReplacePrefix("Asset/Game/Content", "Asset/Content");
+		ReplacePrefix("Asset/Engine/Source", "Asset/Source");
+		ReplacePrefix("Asset/Game/Source", "Asset/Source");
+		return PathString;
+	}
+
 	FString NormalizeTexturePath(const FString& FilePath)
 	{
 		if (FilePath.empty())
@@ -34,7 +53,7 @@ namespace
 			return FilePath;
 		}
 
-		std::filesystem::path Path(FPaths::ToWide(FilePath));
+		std::filesystem::path Path(FPaths::ToWide(CanonicalizeAssetLayoutPathString(FilePath)));
 		const std::filesystem::path Root(FPaths::RootDir());
 
 		if (Path.is_absolute())
@@ -53,13 +72,13 @@ namespace
 	{
 		if (FilePath.empty()) return {};
 
-		std::filesystem::path Path(FPaths::ToWide(FilePath));
+		std::filesystem::path Path(FPaths::ToWide(CanonicalizeAssetLayoutPathString(FilePath)));
 		if (Path.is_absolute())
 		{
 			return Path.lexically_normal().wstring();
 		}
 
-		// 1. Root relative (Asset/Game/Content/...)
+		// 1. Root relative (Asset/Content/...)
 		std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / Path;
 		if (std::filesystem::exists(FullPath))
 		{
@@ -251,11 +270,17 @@ UTexture2D::~UTexture2D()
 		SRV = nullptr;
 	}
 
-	// 캐시에서 제거
-	auto It = TextureCache.find(SourceFilePath);
-	if (It != TextureCache.end() && It->second == this)
+	// 캐시에서 제거: source path와 asset path 양쪽 key로 들어갈 수 있으므로 value 기준으로 전부 제거한다.
+	for (auto It = TextureCache.begin(); It != TextureCache.end();)
 	{
-		TextureCache.erase(It);
+		if (It->second == this)
+		{
+			It = TextureCache.erase(It);
+		}
+		else
+		{
+			++It;
+		}
 	}
 }
 
@@ -429,7 +454,7 @@ UTexture2D* UTexture2D::LoadFromAssetFile(const FString& AssetPath, ID3D11Device
 	}
 
 	FString Error;
-	UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(std::filesystem::path(FPaths::ToWide(AssetPath)), &Error);
+	UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(std::filesystem::path(FPaths::ToWide(NormalizedAssetPath)), &Error);
 	UTexture2D* LoadedTextureAsset = Cast<UTexture2D>(LoadedObject);
 	if (!LoadedTextureAsset)
 	{
@@ -440,6 +465,7 @@ UTexture2D* UTexture2D::LoadFromAssetFile(const FString& AssetPath, ID3D11Device
 		return nullptr;
 	}
 
+	LoadedTextureAsset->SetAssetPathForRuntime(NormalizedAssetPath);
 	const FString SourcePath = LoadedTextureAsset->GetSourcePath();
 	if (SourcePath.empty() || !LoadedTextureAsset->LoadInternal(SourcePath, Device))
 	{
@@ -448,6 +474,7 @@ UTexture2D* UTexture2D::LoadFromAssetFile(const FString& AssetPath, ID3D11Device
 	}
 
 	TextureCache[NormalizedAssetPath] = LoadedTextureAsset;
+	TextureCache[NormalizeTexturePath(SourcePath)] = LoadedTextureAsset;
 	return LoadedTextureAsset;
 }
 
@@ -456,6 +483,11 @@ UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Devi
 	if (FilePath.empty() || !Device) return nullptr;
 
 	const FString NormalizedPath = NormalizeTexturePath(FilePath);
+	const std::filesystem::path NormalizedFsPath(FPaths::ToWide(NormalizedPath));
+	if (NormalizedFsPath.extension() == L".uasset")
+	{
+		return LoadFromAssetFile(NormalizedPath, Device);
+	}
 
 	// 캐시 히트
 	auto It = TextureCache.find(NormalizedPath);
@@ -565,7 +597,7 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 	}
 
 	std::vector<uint8> NewCPUTextureRGBA;
-	LoadCPUTextureRGBA(NormalizedPath, NewWidth, NewHeight, NewCPUTextureRGBA);
+	LoadCPUTextureRGBA(FPaths::ToUtf8(std::filesystem::path(WidePath).generic_wstring()), NewWidth, NewHeight, NewCPUTextureRGBA);
 
 	std::filesystem::file_time_type NewWriteTime{};
 	const bool bHasNewWriteTime = TryGetTextureWriteTime(NormalizedPath, NewWriteTime);

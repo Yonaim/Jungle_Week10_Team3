@@ -224,6 +224,58 @@ bool FAssetImportManager::ImportMaterialWithDialog()
     return ImportAssetWithDialog();
 }
 
+
+void FAssetImportManager::ImportAssetSourceDirectory()
+{
+    namespace fs = std::filesystem;
+
+    const fs::path SourceRoot = fs::path(FPaths::EngineSourceDir()).lexically_normal();
+    std::error_code ErrorCode;
+    if (!fs::exists(SourceRoot, ErrorCode) || !fs::is_directory(SourceRoot, ErrorCode))
+    {
+        return;
+    }
+
+    size_t ImportedMaterialCount = 0;
+    fs::recursive_directory_iterator It(SourceRoot, fs::directory_options::skip_permission_denied, ErrorCode);
+    const fs::recursive_directory_iterator End;
+    for (; It != End; It.increment(ErrorCode))
+    {
+        if (ErrorCode)
+        {
+            ErrorCode.clear();
+            continue;
+        }
+
+        const fs::directory_entry& Entry = *It;
+        if (!Entry.is_regular_file(ErrorCode))
+        {
+            ErrorCode.clear();
+            continue;
+        }
+
+        std::wstring Ext = Entry.path().extension().wstring();
+        std::transform(Ext.begin(), Ext.end(), Ext.begin(), ::towlower);
+        if (Ext != L".mtl")
+        {
+            continue;
+        }
+
+        FString ImportedPath;
+        if (ImportMtlSource(ToUtf8GenericPath(Entry.path()), &ImportedPath))
+        {
+            ++ImportedMaterialCount;
+        }
+    }
+
+    if (ImportedMaterialCount > 0)
+    {
+        FMaterialManager::Get().ScanMaterialAssets();
+        UTexture2D::ScanTextureAssets();
+        UE_LOG_CATEGORY(AssetImport, Info, "[Import] Asset/Source material sync complete: imported_mtl=%zu", ImportedMaterialCount);
+    }
+}
+
 bool FAssetImportManager::ImportTextureWithDialog()
 {
     return ImportAssetWithDialog();

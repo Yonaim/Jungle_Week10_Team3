@@ -13,9 +13,10 @@ public:
     void Shutdown();
 
     // Unreal식 단일 Import 진입점.
-    // 외부 원본 파일(.fbx/.obj/.mtl/texture/.uasset)을 받아 Asset/Game/Content 아래 정식 .uasset으로 만든다.
+    // 외부 원본 파일(.fbx/.obj/.mtl/texture/.uasset)을 받아 Asset/Content 아래 정식 .uasset으로 만든다.
     bool ImportAssetWithDialog();
     bool ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath = nullptr);
+    void ImportAssetSourceDirectory();
 
     // 기존 호출부 호환용 wrapper. 내부적으로는 ImportAssetWithDialog()만 사용한다.
     bool ImportMaterialWithDialog();

@@ -13,13 +13,161 @@
 
 #include <algorithm>
 
+namespace
+{
+	FString CanonicalizeAssetLayoutPathString(FString Path)
+	{
+		std::replace(Path.begin(), Path.end(), '\\', '/');
+
+		auto ReplacePrefix = [&Path](const FString& OldPrefix, const FString& NewPrefix)
+		{
+			if (Path.rfind(OldPrefix, 0) == 0)
+			{
+				Path = NewPrefix + Path.substr(OldPrefix.size());
+			}
+		};
+
+		ReplacePrefix("Asset/Engine/Content", "Asset/Content");
+		ReplacePrefix("Asset/Game/Content", "Asset/Content");
+		ReplacePrefix("Asset/Engine/Source", "Asset/Source");
+		ReplacePrefix("Asset/Game/Source", "Asset/Source");
+		return Path;
+	}
+
+	FString NormalizeMaterialCacheKey(const FString& MaterialPath)
+	{
+		if (MaterialPath.empty() || MaterialPath == "None")
+		{
+			return "None";
+		}
+
+		std::filesystem::path Path(FPaths::ToWide(CanonicalizeAssetLayoutPathString(MaterialPath)));
+		if (!Path.is_absolute())
+		{
+			Path = std::filesystem::path(FPaths::RootDir()) / Path;
+		}
+		Path = Path.lexically_normal();
+
+		const std::filesystem::path ProjectRoot = std::filesystem::path(FPaths::RootDir()).lexically_normal();
+		const std::filesystem::path Relative = Path.lexically_relative(ProjectRoot);
+		if (!Relative.empty() && Relative.native().find(L"..") != 0)
+		{
+			return FPaths::ToUtf8(Relative.generic_wstring());
+		}
+		return FPaths::ToUtf8(Path.generic_wstring());
+	}
+
+	FString MakeProjectRelativePath(const std::filesystem::path& Path)
+	{
+		const std::filesystem::path ProjectRoot = std::filesystem::path(FPaths::RootDir()).lexically_normal();
+		const std::filesystem::path Normalized = Path.lexically_normal();
+		const std::filesystem::path Relative = Normalized.lexically_relative(ProjectRoot);
+		if (!Relative.empty() && Relative.native().find(L"..") != 0)
+		{
+			return FPaths::ToUtf8(Relative.generic_wstring());
+		}
+		return FPaths::ToUtf8(Normalized.generic_wstring());
+	}
+
+	FString SanitizeAssetName(FString Name)
+	{
+		if (Name.empty())
+		{
+			return "Texture";
+		}
+
+		for (char& Character : Name)
+		{
+			const bool bAlphaNum = (Character >= 'a' && Character <= 'z')
+				|| (Character >= 'A' && Character <= 'Z')
+				|| (Character >= '0' && Character <= '9');
+			if (!bAlphaNum && Character != '_' && Character != '-')
+			{
+				Character = '_';
+			}
+		}
+		return Name;
+	}
+
+	std::filesystem::path ResolvePathOnDisk(const FString& InPath)
+	{
+		std::filesystem::path Path(FPaths::ToWide(CanonicalizeAssetLayoutPathString(InPath)));
+		if (Path.is_absolute())
+		{
+			return Path.lexically_normal();
+		}
+
+		const std::filesystem::path RootCandidate = (std::filesystem::path(FPaths::RootDir()) / Path).lexically_normal();
+		if (std::filesystem::exists(RootCandidate))
+		{
+			return RootCandidate;
+		}
+
+		const std::filesystem::path SourceCandidate = (std::filesystem::path(FPaths::EngineSourceDir()) / Path).lexically_normal();
+		if (std::filesystem::exists(SourceCandidate))
+		{
+			return SourceCandidate;
+		}
+
+		return RootCandidate;
+	}
+
+	FString EnsureTextureAssetReference(const FString& TexturePath, ID3D11Device* Device)
+	{
+		if (TexturePath.empty())
+		{
+			return FString();
+		}
+
+		const FString CanonicalPath = CanonicalizeAssetLayoutPathString(TexturePath);
+		const std::filesystem::path Path(FPaths::ToWide(CanonicalPath));
+		if (Path.extension() == L".uasset")
+		{
+			return NormalizeMaterialCacheKey(CanonicalPath);
+		}
+
+		if (!UTexture2D::IsSupportedTextureExtension(Path))
+		{
+			return CanonicalPath;
+		}
+
+		const std::filesystem::path SourceDiskPath = ResolvePathOnDisk(CanonicalPath);
+		if (!std::filesystem::exists(SourceDiskPath))
+		{
+			UE_LOG_CATEGORY(Texture, Warning, "[MaterialImport] Texture source does not exist: %s", CanonicalPath.c_str());
+			return CanonicalPath;
+		}
+
+		const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(SourceDiskPath.stem().wstring()));
+		const std::filesystem::path TextureAssetDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Textures";
+		const std::filesystem::path TextureAssetPath = TextureAssetDirectory / (L"T_" + FPaths::ToWide(SourceStem) + L".uasset");
+		const FString TextureAssetRelativePath = MakeProjectRelativePath(TextureAssetPath);
+
+		UTexture2D* TextureAsset = UObjectManager::Get().CreateObject<UTexture2D>();
+		TextureAsset->SetFName(FName(FString("T_") + SourceStem));
+		TextureAsset->SetSourcePathForAsset(MakeProjectRelativePath(SourceDiskPath));
+		TextureAsset->SetAssetPathForRuntime(TextureAssetRelativePath);
+
+		std::filesystem::create_directories(TextureAssetPath.parent_path());
+		FString Error;
+		if (!FAssetFileSerializer::SaveObjectToAssetFile(TextureAssetPath, TextureAsset, &Error))
+		{
+			UE_LOG_CATEGORY(Texture, Error, "[MaterialImport] Failed to save texture .uasset: target=%s error=%s", TextureAssetRelativePath.c_str(), Error.c_str());
+			UObjectManager::Get().DestroyObject(TextureAsset);
+			return CanonicalPath;
+		}
+
+		UObjectManager::Get().DestroyObject(TextureAsset);
+		return TextureAssetRelativePath;
+	}
+}
+
 void FMaterialManager::ScanMaterialAssets()
 {
 	AvailableMaterialFiles.clear();
 
 	const std::filesystem::path MaterialRoots[] = {
-		std::filesystem::path(FPaths::ContentDir()) / L"Materials",
-		std::filesystem::path(FPaths::EngineContentDir()) / L"Materials"
+		std::filesystem::path(FPaths::ContentDir()) / L"Materials"
 	};
 
 	const std::filesystem::path ProjectRoot(FPaths::RootDir());
@@ -125,13 +273,9 @@ UTexture2D* FMaterialManager::GetMaterialPreviewTexture(const FString& MaterialP
 
 UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 {
-	std::filesystem::path Path(FPaths::ToWide(MaterialPath));
-	FString GenericPath = FPaths::ToUtf8(Path.generic_wstring());
-
-	if (MaterialPath == "None" || MaterialPath.empty())
-	{
-		GenericPath = "None";
-	}
+	const FString CanonicalPath = CanonicalizeAssetLayoutPathString(MaterialPath);
+	std::filesystem::path Path(FPaths::ToWide(CanonicalPath));
+	FString GenericPath = NormalizeMaterialCacheKey(MaterialPath);
 
 	auto It = MaterialCache.find(GenericPath);
 	if (It != MaterialCache.end())
@@ -170,16 +314,21 @@ UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 
 UMaterial* FMaterialManager::CreateMaterialAssetFromJson(const FString& AssetPath, json::JSON& JsonData)
 {
-	std::filesystem::path Path(FPaths::ToWide(AssetPath));
-	FString GenericPath = FPaths::ToUtf8(Path.generic_wstring());
+	std::filesystem::path Path(FPaths::ToWide(CanonicalizeAssetLayoutPathString(AssetPath)));
+	if (!Path.is_absolute())
+	{
+		Path = (std::filesystem::path(FPaths::RootDir()) / Path).lexically_normal();
+	}
+	FString GenericPath = NormalizeMaterialCacheKey(AssetPath);
 
 	auto It = MaterialCache.find(GenericPath);
+	UMaterial* Material = nullptr;
 	if (It != MaterialCache.end())
 	{
-		return It->second;
+		Material = It->second;
 	}
 
-	FString PathFileName = JsonData[MatKeys::PathFileName].ToString().c_str();
+	FString PathFileName = CanonicalizeAssetLayoutPathString(JsonData[MatKeys::PathFileName].ToString().c_str());
 	FString ShaderPath = JsonData[MatKeys::ShaderPath].ToString().c_str();
 	if (ShaderPath.empty())
 	{
@@ -202,10 +351,13 @@ UMaterial* FMaterialManager::CreateMaterialAssetFromJson(const FString& AssetPat
 
 	auto InjectedBuffers = CreateConstantBuffers(Template);
 
-	UMaterial* Material = UObjectManager::Get().CreateObject<UMaterial>();
+	if (!Material)
+	{
+		Material = UObjectManager::Get().CreateObject<UMaterial>();
+		MaterialCache.emplace(GenericPath, Material);
+	}
 	Material->SetFName(FName(FPaths::ToUtf8(Path.stem().wstring())));
 	Material->Create(PathFileName.empty() ? GenericPath : PathFileName, Template, RenderPass, BlendState, DepthState, RasterState, std::move(InjectedBuffers), ShaderPath);
-	MaterialCache.emplace(GenericPath, Material);
 
 	InjectDefaultParameters(JsonData, Template, Material);
 	PurgeStaleParameters(JsonData, Template);
@@ -289,6 +441,7 @@ void FMaterialManager::ApplyTextures(UMaterial* Material, json::JSON& JsonData)
 	{
 		FString SlotName = Pair.first.c_str();
 		FString TexturePath = Pair.second.ToString().c_str();
+		TexturePath = EnsureTextureAssetReference(TexturePath, Device);
 
 		UTexture2D* Texture = UTexture2D::LoadFromFile(TexturePath, Device);
 		if (Texture)

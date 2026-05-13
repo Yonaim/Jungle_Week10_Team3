@@ -142,8 +142,8 @@ bool AStaticMeshActor::IsBasicShapeAssetPath(const FString& Path) {
 		}
 	}
 
-	if (NormalizedPath.find("Asset/Engine/Content/BasicShape/") != FString::npos ||
-		NormalizedPath.find("Asset/Engine/Source/BasicShape/") != FString::npos ||
+	if (NormalizedPath.find("Asset/Content/BasicShape/") != FString::npos ||
+		NormalizedPath.find("Asset/Source/BasicShape/") != FString::npos ||
 		NormalizedPath.find("/BasicShape/") != FString::npos)
 	{
 		return true;

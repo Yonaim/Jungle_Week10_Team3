@@ -105,6 +105,11 @@ void UMaterial::Create(const FString& InPathFileName, FMaterialTemplate* InTempl
 	const FString& InShaderPath)
 {
 	PathFileName = InPathFileName;
+	TextureParameters.clear();
+	for (int s = 0; s < (int)EMaterialTextureSlot::Max; ++s)
+	{
+		CachedSRVs[s] = nullptr;
+	}
 	Template = InTemplate;
 	ShaderPath = InShaderPath.empty() && InTemplate ? InTemplate->GetShaderPath() : InShaderPath;
 	RenderPass = InRenderPass;

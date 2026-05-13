@@ -95,6 +95,12 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
 
     AssetEditorManager.Initialize(this, &Renderer);
     AssetImportManager.Init(this);
+    {
+        SCOPE_STARTUP_STAT("AssetImportManager::ImportAssetSourceDirectory");
+        AssetImportManager.ImportAssetSourceDirectory();
+        FMaterialManager::Get().ScanMaterialAssets();
+        UTexture2D::ScanTextureAssets();
+    }
 
     // 기본 월드 생성 — 모든 서브시스템 초기화의 기반
     CreateWorldContext(EWorldType::Editor, FName("Default"));

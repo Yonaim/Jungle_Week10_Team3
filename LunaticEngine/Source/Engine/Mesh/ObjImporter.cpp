@@ -599,7 +599,7 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 }
 
 // MTL 정보에서 정식 Material .uasset 파일로 변환한다.
-// 생성 위치는 Asset/Game/Content/Materials/<SourceAssetName>/ 이다.
+// 생성 위치는 Asset/Content/Materials/<SourceAssetName>/ 이다.
 FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePath, const FObjMaterialInfo* MtlInfo)
 {
 	if (!MtlInfo)
@@ -611,12 +611,7 @@ FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePat
 
 	const std::filesystem::path MaterialAssetPathW = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(MaterialAssetPath);
 
-	// 이미 존재하면 덮어쓰지 않음. 사용자가 Material Editor에서 수정했을 수 있다.
-	if (std::filesystem::exists(MaterialAssetPathW))
-	{
-		return MaterialAssetPath;
-	}
-
+	// Source import material은 source texture reference를 반영해야 하므로 reimport/startup sync 시 덮어쓴다.
 	std::filesystem::create_directories(MaterialAssetPathW.parent_path());
 
 	json::JSON JsonData;

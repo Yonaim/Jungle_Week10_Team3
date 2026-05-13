@@ -23,7 +23,7 @@ namespace
 {
 constexpr const char* DreamBillboardComponentName = "DreamBillboard";
 constexpr const char* DreamBillboardTextureKey = "Game.Texture.Dream";
-constexpr const char* DreamBillboardTextureFallback = "Asset/Engine/Source/Sample/Texture/checker.png";
+constexpr const char* DreamBillboardTextureFallback = "Asset/Source/Sample/Texture/checker.png";
 constexpr float DreamBillboardInitialOffsetX = 1000.0f;
 constexpr float DreamBillboardSpriteSize = 100.0f;
 constexpr float DreamBillboardMirroredSpriteWidth = -DreamBillboardSpriteSize;
@@ -112,7 +112,7 @@ void ARunner::ApplyDefaultVisual()
 
 		FString MeshPath = FResourceManager::Get().ResolvePath(
 			FName("Game.Mesh.Player.Runner"),
-			"Asset/Game/Content/Meshes/Spaceship/SM_Spaceship.uasset"
+			"Asset/Content/Meshes/Spaceship/SM_Spaceship.uasset"
 		);
 
 		UStaticMesh* Mesh = FMeshAssetManager::LoadStaticMesh(MeshPath, Device);

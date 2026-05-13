@@ -1,4 +1,4 @@
-﻿#include "SceneSaveManager.h"
+#include "SceneSaveManager.h"
 #include "PCH/LunaticPCH.h"
 
 
@@ -18,6 +18,7 @@
 #include "Component/Light/LightComponentBase.h"
 #include "Component/SceneComponent.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/SkinnedMeshComponent.h"
 #include "Core/PropertyTypes.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 #include "Engine/Runtime/Engine.h" // GIsEditor 플래그
@@ -107,6 +108,22 @@ static FString ResolveTexturePath(const FString &TextureValue)
 
     const FString ResolvedPath = FResourceManager::Get().ResolvePath(FName(TextureValue));
     return ResolvedPath.empty() ? TextureValue : ResolvedPath;
+}
+
+static FString ResolveMeshPath(const FString &MeshValue)
+{
+    if (MeshValue.empty() || MeshValue == "None")
+    {
+        return MeshValue;
+    }
+
+    if (const FMeshResource *MeshResource = FResourceManager::Get().FindMesh(FName(MeshValue)))
+    {
+        return MeshResource->Path;
+    }
+
+    const FString ResolvedPath = FResourceManager::Get().ResolvePath(FName(MeshValue));
+    return ResolvedPath.empty() ? MeshValue : ResolvedPath;
 }
 
 static void ApplySingleMaterialOverride(UStaticMeshComponent *StaticMeshComponent, json::JSON &Value)
@@ -1381,6 +1398,18 @@ void FSceneSaveManager::DeserializeProperties(UActorComponent *Comp, json::JSON 
             ApplySingleMaterialOverride(StaticMeshComponent, PropsJSON["Material"]);
         }
     }
+
+    if (USkinnedMeshComponent *SkinnedMeshComponent = Cast<USkinnedMeshComponent>(Comp))
+    {
+        if (PropsJSON.hasKey("Material") && !PropsJSON.hasKey("Element 0") && SkinnedMeshComponent->GetOverrideMaterials().size() == 1)
+        {
+            const FString MaterialPath = ResolveMaterialPath(ReadAssetPathValue(PropsJSON["Material"]));
+            UMaterial *LoadedMat = (MaterialPath.empty() || MaterialPath == "None")
+                ? nullptr
+                : FMaterialManager::Get().GetOrCreateMaterial(MaterialPath);
+            SkinnedMeshComponent->SetMaterial(0, LoadedMat);
+        }
+    }
 }
 
 void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor &Prop, json::JSON &Value)
@@ -1433,9 +1462,12 @@ void FSceneSaveManager::DeserializePropertyValue(FPropertyDescriptor &Prop, json
 	}
 	case EPropertyType::String:
 	case EPropertyType::SceneComponentRef:
+		*static_cast<FString*>(Prop.ValuePtr) = Value.ToString();
+		break;
+
 	case EPropertyType::StaticMeshRef:
 	case EPropertyType::SkeletalMeshRef:
-		*static_cast<FString*>(Prop.ValuePtr) = Value.ToString();
+		*static_cast<FString*>(Prop.ValuePtr) = ResolveMeshPath(ReadAssetPathValue(Value));
 		break;
 
     case EPropertyType::MaterialSlot:

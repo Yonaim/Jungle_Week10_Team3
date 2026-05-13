@@ -71,10 +71,10 @@ std::wstring FPaths::RootDir()
 
 std::wstring FPaths::ShaderDir()   { return RootDir() + L"Shaders\\"; }
 std::wstring FPaths::AssetDir()            { return RootDir() + L"Asset\\"; }
-std::wstring FPaths::ContentDir()          { return RootDir() + L"Asset\\Game\\Content\\"; }
-std::wstring FPaths::EngineDir()           { return RootDir() + L"Asset\\Engine\\"; }
-std::wstring FPaths::EngineContentDir()    { return EngineDir() + L"Content\\"; }
-std::wstring FPaths::EngineSourceDir()     { return EngineDir() + L"Source\\"; }
+std::wstring FPaths::ContentDir()          { return RootDir() + L"Asset\\Content\\"; }
+std::wstring FPaths::EngineDir()           { return AssetDir(); }
+std::wstring FPaths::EngineContentDir()    { return ContentDir(); }
+std::wstring FPaths::EngineSourceDir()     { return AssetDir() + L"Source\\"; }
 std::wstring FPaths::ShaderCacheDir()      { return RootDir() + L"Shaders\\Cache\\"; }
 std::wstring FPaths::BasicShapeDir()       { return EngineContentDir() + L"BasicShape\\"; }
 std::wstring FPaths::EngineBasicShapeSourceDir() { return EngineSourceDir() + L"BasicShape\\"; }

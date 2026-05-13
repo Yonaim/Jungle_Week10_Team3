@@ -14,15 +14,15 @@ public:
 	// 주요 디렉터리
 	static std::wstring ShaderDir();      // Shaders/
 	static std::wstring AssetDir();             // Asset/
-	static std::wstring ContentDir();           // Asset/Game/Content/ (.uasset/.umap only, project-owned)
-	static std::wstring EngineDir();            // Asset/Engine/
-	static std::wstring EngineContentDir();     // Asset/Engine/Content/ (.uasset only, built-in/read-mostly)
-	static std::wstring EngineSourceDir();      // Asset/Engine/Source/ (built-in raw/editor resources)
+	static std::wstring ContentDir();           // Asset/Content/ (.uasset/.umap)
+	static std::wstring EngineDir();            // Legacy alias -> Asset/
+	static std::wstring EngineContentDir();     // Legacy alias -> Asset/Content/
+	static std::wstring EngineSourceDir();      // Legacy alias -> Asset/Source/
 	static std::wstring ShaderCacheDir();       // Shaders/Cache/
-	static std::wstring BasicShapeDir();        // Asset/Engine/Content/BasicShape/
-	static std::wstring EngineBasicShapeSourceDir(); // Asset/Engine/Source/BasicShape/
-	static std::wstring SceneDir();             // Asset/Game/Content/Scene/
-	static std::wstring DataDir();              // Asset/Game/Content/Data/
+	static std::wstring BasicShapeDir();        // Asset/Content/BasicShape/
+	static std::wstring EngineBasicShapeSourceDir(); // Asset/Source/BasicShape/
+	static std::wstring SceneDir();             // Asset/Content/Scene/
+	static std::wstring DataDir();              // Asset/Content/Data/
 	static std::wstring SaveDir();        // Saves/
 	static std::wstring DumpDir();        // Saves/Dump/
 	static std::wstring LogDir();         // Saves/Logs/
@@ -57,7 +57,7 @@ public:
 	static std::string ConvertRelativePathToFull(const std::string& RelativePath);
 	static std::string NormalizePath(const std::string& Path);
 
-	//  FPaths::Combine(L"Asset/Game/Content/Scene", L"Default.umap")
+	//  FPaths::Combine(L"Asset/Content/Scene", L"Default.umap")
 	static std::wstring Combine(const std::wstring& Base, const std::wstring& Child);
 
 
