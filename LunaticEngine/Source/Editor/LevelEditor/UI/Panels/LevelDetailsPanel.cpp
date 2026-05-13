@@ -150,7 +150,7 @@ bool IsNineSliceStyleProperty(const UActorComponent *Component, const FPropertyD
 TArray<FString> CollectNineSliceStyleJsonPaths()
 {
     TArray<FString> Result;
-    const std::filesystem::path ContentRoot = FPaths::ContentDir();
+    const std::filesystem::path ContentRoot = FPaths::SourceAssetsDir();
     std::error_code ErrorCode;
     if (!std::filesystem::exists(ContentRoot, ErrorCode))
     {
@@ -3254,7 +3254,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
                     if (StylePaths.empty())
                     {
                         ImGui::Separator();
-                        ImGui::TextDisabled("No nineslice.json found under Asset/Content");
+                        ImGui::TextDisabled("No nineslice.json found under Asset/SourceAssets");
                     }
 
                     ImGui::EndCombo();

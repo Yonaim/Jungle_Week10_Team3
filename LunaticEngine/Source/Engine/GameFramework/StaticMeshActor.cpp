@@ -7,8 +7,63 @@
 #include "Component/SubUVComponent.h"
 #include "Materials/MaterialManager.h"
 #include "Resource/ResourceManager.h"
+#include "Engine/Platform/Paths.h"
+
+#include <filesystem>
 
 IMPLEMENT_CLASS(AStaticMeshActor, AActor)
+
+namespace
+{
+	bool DoesProjectRelativePathExist(const FString& Path)
+	{
+		if (Path.empty())
+		{
+			return false;
+		}
+
+		std::filesystem::path Candidate(FPaths::ToWide(Path));
+		if (!Candidate.is_absolute())
+		{
+			Candidate = std::filesystem::path(FPaths::RootDir()) / Candidate;
+		}
+		return std::filesystem::exists(Candidate.lexically_normal());
+	}
+
+	FString GetBasicShapeFallbackObjPath(const FString& MeshPath)
+	{
+		struct FShapeFallback
+		{
+			const char* AssetStem;
+			const char* ObjName;
+		};
+
+		static constexpr FShapeFallback ShapeFallbacks[] = {
+			{ "SM_cone", "cone.obj" },
+			{ "SM_cube", "cube.obj" },
+			{ "SM_cylinder", "cylinder.obj" },
+			{ "SM_plane", "plane.obj" },
+			{ "SM_sphere_lowpoly", "sphere_lowpoly.obj" },
+			{ "SM_sphere", "sphere.obj" },
+		};
+
+		for (const FShapeFallback& Fallback : ShapeFallbacks)
+		{
+			if (MeshPath.find(Fallback.AssetStem) == FString::npos && MeshPath.find(Fallback.ObjName) == FString::npos)
+			{
+				continue;
+			}
+
+			const FString Candidate = FString("Asset/SourceAssets/Meshes/BasicShape/") + Fallback.ObjName;
+			if (DoesProjectRelativePathExist(Candidate))
+			{
+				return Candidate;
+			}
+		}
+
+		return MeshPath;
+	}
+}
 
 void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
 {
@@ -18,11 +73,15 @@ void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
 
 	if (!UStaticMeshFileName.empty() && UStaticMeshFileName != "None")
 	{
+		const FString ResolvedMeshPath = DoesProjectRelativePathExist(UStaticMeshFileName)
+			? UStaticMeshFileName
+			: GetBasicShapeFallbackObjPath(UStaticMeshFileName);
+
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-		UStaticMesh* Asset = FMeshAssetManager::LoadStaticMesh(UStaticMeshFileName, Device);
+		UStaticMesh* Asset = FMeshAssetManager::LoadStaticMesh(ResolvedMeshPath, Device);
 		StaticMeshComponent->SetStaticMesh(Asset);
 
-		if (Asset && IsBasicShapeAssetPath(UStaticMeshFileName))
+		if (Asset && IsBasicShapeAssetPath(ResolvedMeshPath))
 		{
 			const FString DefaultShapeMaterialPath = FResourceManager::Get().ResolvePath(FName("Default.Material.BasicShape"));
 			if (UMaterial* DefaultShapeMaterial = FMaterialManager::Get().GetOrCreateMaterial(DefaultShapeMaterialPath))
@@ -61,6 +120,22 @@ void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
 }
 
 bool AStaticMeshActor::IsBasicShapeAssetPath(const FString& Path) {
+	FString NormalizedPath = Path;
+	for (char& Character : NormalizedPath)
+	{
+		if (Character == '\\')
+		{
+			Character = '/';
+		}
+	}
+
+	if (NormalizedPath.find("Asset/EngineContent/BasicShape/") != FString::npos ||
+		NormalizedPath.find("Asset/SourceAssets/Meshes/BasicShape/") != FString::npos ||
+		NormalizedPath.find("/BasicShape/") != FString::npos)
+	{
+		return true;
+	}
+
 	const char* BasicShapeMeshKeys[] = {
 				"Default.Mesh.BasicShape.Cone",
 				"Default.Mesh.BasicShape.Cube",

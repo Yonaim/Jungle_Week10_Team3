@@ -408,7 +408,7 @@ void FEditorMainFrame::RenderCreditsOverlay()
         return;
     }
 
-    ID3D11ShaderResourceView *CreditsTexture = FResourceManager::Get().FindLoadedTexture("Asset/Editor/icons/App/lunatic_icon.png").Get();
+    ID3D11ShaderResourceView *CreditsTexture = FResourceManager::Get().FindLoadedTexture("Asset/SourceAssets/Editor/Icons/App/lunatic_icon.png").Get();
     if (!CreditsTexture)
     {
         CreditsTexture = FResourceManager::Get().FindLoadedTexture(FResourceManager::Get().ResolvePath(FName("Editor.Icon.AppLogo"))).Get();

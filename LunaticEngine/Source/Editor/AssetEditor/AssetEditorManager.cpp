@@ -33,6 +33,27 @@ std::wstring ToLowerExtension(const std::filesystem::path &Path)
     return Extension;
 }
 
+bool IsUnderDirectory(const std::filesystem::path &ChildPath, const std::filesystem::path &ParentPath)
+{
+    const std::filesystem::path Child = ChildPath.lexically_normal();
+    const std::filesystem::path Parent = ParentPath.lexically_normal();
+    std::filesystem::path Relative = Child.lexically_relative(Parent);
+    if (Relative.empty())
+    {
+        return Child == Parent;
+    }
+    const std::wstring Native = Relative.native();
+    return Native.rfind(L"..", 0) != 0 && !Relative.is_absolute();
+}
+
+std::filesystem::path MakeAbsoluteProjectPath(const std::filesystem::path &Path)
+{
+    if (Path.is_absolute())
+    {
+        return Path.lexically_normal();
+    }
+    return (std::filesystem::path(FPaths::RootDir()) / Path).lexically_normal();
+}
 
 } // namespace
 
@@ -68,7 +89,13 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
         return false;
     }
 
-    const std::filesystem::path NormalizedPath = AssetPath.lexically_normal();
+    const std::filesystem::path NormalizedPath = MakeAbsoluteProjectPath(AssetPath);
+    const std::filesystem::path ContentRoot = std::filesystem::path(FPaths::ContentDir()).lexically_normal();
+    if (!IsUnderDirectory(NormalizedPath, ContentRoot))
+    {
+        FNotificationManager::Get().AddNotification("Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+        return false;
+    }
 
     if (AssetEditorWindow.ActivateTabByAssetPath(NormalizedPath))
     {
@@ -126,7 +153,13 @@ bool FAssetEditorManager::OpenOwnedWorkingCopy(UObject *Asset, const std::filesy
         return false;
     }
 
-    const std::filesystem::path NormalizedPath = AssetPath.lexically_normal();
+    const std::filesystem::path NormalizedPath = MakeAbsoluteProjectPath(AssetPath);
+    const std::filesystem::path ContentRoot = std::filesystem::path(FPaths::ContentDir()).lexically_normal();
+    if (!IsUnderDirectory(NormalizedPath, ContentRoot))
+    {
+        FNotificationManager::Get().AddNotification("Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+        return false;
+    }
 
     if (AssetEditorWindow.ActivateTabByAssetPath(NormalizedPath))
     {
@@ -168,7 +201,7 @@ bool FAssetEditorManager::OpenAssetWithDialog(void *OwnerWindowHandle)
     const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
         .Filter = L"Asset Files (*.uasset)\0*.uasset\0All Files (*.*)\0*.*\0",
         .Title = L"Open UAsset",
-        .InitialDirectory = FPaths::AssetDir().c_str(),
+        .InitialDirectory = FPaths::ContentDir().c_str(),
         .OwnerWindowHandle = OwnerWindowHandle,
         .bFileMustExist = true,
         .bPathMustExist = true,

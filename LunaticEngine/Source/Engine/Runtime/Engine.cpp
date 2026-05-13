@@ -102,31 +102,31 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadDefaultResources");
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading default resources");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::DefaultContentResourceFilePath()), Device);
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::BuiltinAssetCatalogFilePath()), Device);
 	}
 
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadEditorResources");
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading editor resources");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::EditorResourceFilePath()), Device);
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::EditorAssetCatalogFilePath()), Device);
 	}
 
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadProjectResources");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading project resources");
-		FResourceManager::Get().LoadFromScanFile(FPaths::ToUtf8(FPaths::ProjectResourcePathsFilePath()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadImportSettings");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading import settings");
+		FResourceManager::Get().LoadFromScanFile(FPaths::ToUtf8(FPaths::ImportSettingsFilePath()), Device);
 	}
 
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadProjectResourceRegistry");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading project resource registry");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ProjectResourceRegistryFilePath()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadAssetCatalog");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading asset catalog");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::AssetCatalogFilePath()), Device);
 	}
 
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadFromDir");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning resource directory: %s", FPaths::ToUtf8(FPaths::RootDir()).c_str());
-		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::RootDir()), Device);
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning source asset directory: %s", FPaths::ToUtf8(FPaths::SourceAssetsDir()).c_str());
+		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::SourceAssetsDir()), Device);
 	}
 
 	{

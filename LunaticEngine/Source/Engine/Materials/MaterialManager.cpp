@@ -17,32 +17,38 @@ void FMaterialManager::ScanMaterialAssets()
 {
 	AvailableMaterialFiles.clear();
 
-	const std::filesystem::path MaterialRoot = std::filesystem::path(FPaths::RootDir()) / L"Asset" / L"Content" / L"Materials";
-
-	if (!std::filesystem::exists(MaterialRoot))
-	{
-		return;
-	}
+	const std::filesystem::path MaterialRoots[] = {
+		std::filesystem::path(FPaths::ContentDir()) / L"Materials",
+		std::filesystem::path(FPaths::EngineContentDir()) / L"Materials"
+	};
 
 	const std::filesystem::path ProjectRoot(FPaths::RootDir());
 
-	for (const auto& Entry : std::filesystem::recursive_directory_iterator(MaterialRoot))
+	for (const std::filesystem::path& MaterialRoot : MaterialRoots)
 	{
-		if (!Entry.is_regular_file()) continue;
+		if (!std::filesystem::exists(MaterialRoot))
+		{
+			continue;
+		}
 
-		const std::filesystem::path& Path = Entry.path();
+		for (const auto& Entry : std::filesystem::recursive_directory_iterator(MaterialRoot))
+		{
+			if (!Entry.is_regular_file()) continue;
 
-		if (Path.extension() != L".uasset") continue;
+			const std::filesystem::path& Path = Entry.path();
 
-		FAssetFileHeader Header;
-		if (!FAssetFileSerializer::ReadAssetHeader(Path, Header)) continue;
-		if (Header.ClassId != EAssetClassId::Material) continue;
-		if (Path.stem() == L"None") continue; // Fallback 머티리얼은 목록에서 제외
+			if (Path.extension() != L".uasset") continue;
 
-		FMaterialAssetListItem Item;
-		Item.DisplayName = FPaths::ToUtf8(Path.stem().wstring());
-		Item.FullPath = FPaths::ToUtf8(Path.lexically_relative(ProjectRoot).generic_wstring());
-		AvailableMaterialFiles.push_back(std::move(Item));
+			FAssetFileHeader Header;
+			if (!FAssetFileSerializer::ReadAssetHeader(Path, Header)) continue;
+			if (Header.ClassId != EAssetClassId::Material) continue;
+			if (Path.stem() == L"None") continue; // Fallback 머티리얼은 목록에서 제외
+
+			FMaterialAssetListItem Item;
+			Item.DisplayName = FPaths::ToUtf8(Path.stem().wstring());
+			Item.FullPath = FPaths::ToUtf8(Path.lexically_relative(ProjectRoot).generic_wstring());
+			AvailableMaterialFiles.push_back(std::move(Item));
+		}
 	}
 
 	std::sort(

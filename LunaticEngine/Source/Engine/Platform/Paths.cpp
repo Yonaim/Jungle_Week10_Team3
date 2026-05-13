@@ -70,10 +70,15 @@ std::wstring FPaths::RootDir()
 }
 
 std::wstring FPaths::ShaderDir()   { return RootDir() + L"Shaders\\"; }
-std::wstring FPaths::AssetDir()    { return RootDir() + L"Asset\\"; }
-std::wstring FPaths::ContentDir()  { return RootDir() + L"Asset\\Content\\"; }
-std::wstring FPaths::SceneDir()    { return RootDir() + L"Asset\\Content\\Scene\\"; }
-std::wstring FPaths::DataDir()     { return ContentDir(); }
+std::wstring FPaths::AssetDir()            { return RootDir() + L"Asset\\"; }
+std::wstring FPaths::ContentDir()          { return RootDir() + L"Asset\\Content\\"; }
+std::wstring FPaths::EngineContentDir()    { return RootDir() + L"Asset\\EngineContent\\"; }
+std::wstring FPaths::SourceAssetsDir()     { return RootDir() + L"Asset\\SourceAssets\\"; }
+std::wstring FPaths::DerivedDataCacheDir() { return RootDir() + L"Asset\\DerivedDataCache\\"; }
+std::wstring FPaths::ShaderCacheDir()      { return DerivedDataCacheDir() + L"Shaders\\"; }
+std::wstring FPaths::BasicShapeDir()       { return EngineContentDir() + L"BasicShape\\"; }
+std::wstring FPaths::SceneDir()            { return RootDir() + L"Asset\\Content\\Scene\\"; }
+std::wstring FPaths::DataDir()             { return SourceAssetsDir() + L"Data\\"; }
 std::wstring FPaths::SaveDir()     { return RootDir() + L"Saves\\"; }
 std::wstring FPaths::DumpDir()     { return RootDir() + L"Saves\\Dump\\"; }
 std::wstring FPaths::LogDir()      { return RootDir() + L"Saves\\Logs\\"; }
@@ -83,12 +88,19 @@ std::wstring FPaths::SettingsDir() { return RootDir() + L"Settings\\"; }
 std::wstring FPaths::ScriptsDir()  { return RootDir() + L"Scripts\\"; }
 
 std::wstring FPaths::SettingsFilePath() { return RootDir() + L"Settings\\Editor.ini"; }
-std::wstring FPaths::ResourceFilePath() { return DefaultContentResourceFilePath(); }
-std::wstring FPaths::ResourceSettingsDir() { return RootDir() + L"Settings\\Resource\\"; }
-std::wstring FPaths::EditorResourceFilePath() { return ResourceSettingsDir() + L"EditorResources.ini"; }
-std::wstring FPaths::DefaultContentResourceFilePath() { return ResourceSettingsDir() + L"DefaultContentResources.ini"; }
-std::wstring FPaths::ProjectResourcePathsFilePath() { return ResourceSettingsDir() + L"ProjectResourcePaths.ini"; }
-std::wstring FPaths::ProjectResourceRegistryFilePath() { return ResourceSettingsDir() + L"ProjectResourceRegistry.ini"; }
+std::wstring FPaths::ResourceFilePath() { return BuiltinAssetCatalogFilePath(); }
+std::wstring FPaths::ResourceSettingsDir() { return AssetSettingsDir(); }
+std::wstring FPaths::AssetSettingsDir() { return RootDir() + L"Settings\\Asset\\"; }
+std::wstring FPaths::ImportSettingsDir() { return RootDir() + L"Settings\\Import\\"; }
+std::wstring FPaths::AssetSettingsFilePath() { return AssetSettingsDir() + L"AssetSettings.ini"; }
+std::wstring FPaths::AssetCatalogFilePath() { return AssetSettingsDir() + L"AssetCatalog.ini"; }
+std::wstring FPaths::BuiltinAssetCatalogFilePath() { return AssetSettingsDir() + L"BuiltinAssetCatalog.ini"; }
+std::wstring FPaths::EditorAssetCatalogFilePath() { return AssetSettingsDir() + L"EditorAssetCatalog.ini"; }
+std::wstring FPaths::ImportSettingsFilePath() { return ImportSettingsDir() + L"ImportSettings.ini"; }
+std::wstring FPaths::EditorResourceFilePath() { return EditorAssetCatalogFilePath(); }
+std::wstring FPaths::DefaultContentResourceFilePath() { return BuiltinAssetCatalogFilePath(); }
+std::wstring FPaths::ProjectResourcePathsFilePath() { return ImportSettingsFilePath(); }
+std::wstring FPaths::ProjectResourceRegistryFilePath() { return AssetCatalogFilePath(); }
 std::wstring FPaths::ProjectSettingsFilePath() { return RootDir() + L"Settings\\ProjectSettings.ini"; }
 
 std::wstring FPaths::ProjectDir() { return RootDir(); }

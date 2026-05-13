@@ -72,6 +72,7 @@ bool FAssetEditorWindow::OpenEditorTab(std::unique_ptr<IAssetEditor> Editor)
     const bool bResult = TabManager.OpenTab(std::move(Editor));
     if (bResult)
     {
+        TabManager.InvalidateEditorLayouts();
         Show();
     }
     return bResult;
@@ -539,8 +540,16 @@ void FAssetEditorWindow::BuildEditMenu()
 
 void FAssetEditorWindow::BuildWindowMenu()
 {
+    FEditorUIStyle::DrawPopupSectionHeader("LAYOUT");
+    if (ImGui::MenuItem("Reset Asset Editor Layout"))
+    {
+        TabManager.InvalidateEditorLayouts();
+    }
+
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
     {
+        FEditorUIStyle::DrawPopupSeparator();
+        FEditorUIStyle::DrawPopupSectionHeader("ACTIVE ASSET EDITOR");
         ActiveEditor->BuildWindowMenu();
     }
 }

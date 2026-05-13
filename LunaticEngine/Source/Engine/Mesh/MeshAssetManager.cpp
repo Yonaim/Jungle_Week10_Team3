@@ -63,8 +63,9 @@ namespace
             return SourceOrAssetPath;
         }
 
-        std::filesystem::path SourcePath(FPaths::ToWide(SourceOrAssetPath));
-        std::filesystem::path AssetPath = SourcePath.parent_path() / AddPrefixIfNeeded(SourcePath.stem().wstring(), Prefix);
+        const std::filesystem::path SourcePath(FPaths::ToWide(SourceOrAssetPath));
+        const std::wstring Stem = SourcePath.stem().wstring();
+        std::filesystem::path AssetPath = std::filesystem::path(FPaths::ContentDir()) / L"Meshes" / Stem / AddPrefixIfNeeded(Stem, Prefix);
         AssetPath += L".uasset";
         return FPaths::ToUtf8(AssetPath.lexically_normal().generic_wstring());
     }
@@ -170,28 +171,35 @@ void FMeshAssetManager::ScanMeshAssets()
     AvailableMeshFiles.clear();
 
     const std::filesystem::path ProjectRoot(FPaths::RootDir());
-    const std::filesystem::path ContentRoot = FPaths::ContentDir();
-    if (!std::filesystem::exists(ContentRoot))
+    const std::filesystem::path ScanRoots[] = {
+        std::filesystem::path(FPaths::ContentDir()),
+        std::filesystem::path(FPaths::EngineContentDir())
+    };
+
+    for (const std::filesystem::path& ContentRoot : ScanRoots)
     {
-        return;
-    }
+        if (!std::filesystem::exists(ContentRoot))
+        {
+            continue;
+        }
 
-    for (const auto& Entry : std::filesystem::recursive_directory_iterator(ContentRoot))
-    {
-        if (!Entry.is_regular_file()) continue;
+        for (const auto& Entry : std::filesystem::recursive_directory_iterator(ContentRoot))
+        {
+            if (!Entry.is_regular_file()) continue;
 
-        const std::filesystem::path& Path = Entry.path();
-        if (Path.extension() != L".uasset") continue;
+            const std::filesystem::path& Path = Entry.path();
+            if (Path.extension() != L".uasset") continue;
 
-        FAssetFileHeader Header;
-        if (!FAssetFileSerializer::ReadAssetHeader(Path, Header)) continue;
-        if (Header.ClassId != EAssetClassId::StaticMesh && Header.ClassId != EAssetClassId::SkeletalMesh) continue;
+            FAssetFileHeader Header;
+            if (!FAssetFileSerializer::ReadAssetHeader(Path, Header)) continue;
+            if (Header.ClassId != EAssetClassId::StaticMesh && Header.ClassId != EAssetClassId::SkeletalMesh) continue;
 
-        FMeshAssetListItem Item;
-        Item.DisplayName = Header.AssetName.empty() ? FPaths::ToUtf8(Path.stem().wstring()) : Header.AssetName;
-        Item.FullPath = ToProjectRelativePath(Path);
-        Item.AssetClassId = Header.ClassId;
-        AvailableMeshFiles.push_back(std::move(Item));
+            FMeshAssetListItem Item;
+            Item.DisplayName = Header.AssetName.empty() ? FPaths::ToUtf8(Path.stem().wstring()) : Header.AssetName;
+            Item.FullPath = ToProjectRelativePath(Path);
+            Item.AssetClassId = Header.ClassId;
+            AvailableMeshFiles.push_back(std::move(Item));
+        }
     }
 }
 
@@ -199,7 +207,7 @@ void FMeshAssetManager::ScanMeshSourceFiles()
 {
     AvailableMeshSourceFiles.clear();
 
-    const std::filesystem::path DataRoot = FPaths::ContentDir();
+    const std::filesystem::path DataRoot = FPaths::SourceAssetsDir();
     if (!std::filesystem::exists(DataRoot))
     {
         return;

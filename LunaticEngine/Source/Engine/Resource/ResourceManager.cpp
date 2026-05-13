@@ -454,7 +454,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 		}
 	}
 
-	DiscoverBitmapFonts("Asset/Content/Font");
+	DiscoverBitmapFonts("Asset/SourceAssets/Font");
 
 	UE_LOG_CATEGORY(
 		ResourceManager,

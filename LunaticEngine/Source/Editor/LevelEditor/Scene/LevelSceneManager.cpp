@@ -1,19 +1,16 @@
-#include "PCH/LunaticPCH.h"
 #include "LevelEditor/Scene/LevelSceneManager.h"
+#include "PCH/LunaticPCH.h"
 
 #include "Common/File/EditorFileUtils.h"
-#include "EditorEngine.h"
 #include "Common/Viewport/EditorViewportCamera.h"
+#include "EditorEngine.h"
 #include "Engine/Platform/Paths.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Serialization/SceneSaveManager.h"
-#include "Object/Object.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
+#include "Object/Object.h"
 
-void FLevelSceneManager::Init(UEditorEngine* InEditorEngine)
-{
-    EditorEngine = InEditorEngine;
-}
+void FLevelSceneManager::Init(UEditorEngine *InEditorEngine) { EditorEngine = InEditorEngine; }
 
 void FLevelSceneManager::Shutdown()
 {
@@ -28,10 +25,7 @@ void FLevelSceneManager::Tick(float DeltaTime)
     ProcessDeferredActions();
 }
 
-void FLevelSceneManager::CloseScene()
-{
-    ClearScene();
-}
+void FLevelSceneManager::CloseScene() { ClearScene(); }
 
 void FLevelSceneManager::NewScene()
 {
@@ -43,7 +37,7 @@ void FLevelSceneManager::NewScene()
     EditorEngine->StopPlayInEditorImmediate();
     ClearScene();
 
-    FWorldContext& Ctx = EditorEngine->CreateWorldContext(EWorldType::Editor, FName("NewScene"), "New Scene");
+    FWorldContext &Ctx = EditorEngine->CreateWorldContext(EWorldType::Editor, FName("NewScene"), "New Scene");
     Ctx.World->InitWorld();
     EditorEngine->SetActiveWorld(Ctx.ContextHandle);
     EditorEngine->GetSelectionManager().SetWorld(EditorEngine->GetWorld());
@@ -59,7 +53,7 @@ void FLevelSceneManager::LoadStartLevel()
         return;
     }
 
-    const FString& StartLevel = FLevelEditorSettings::Get().EditorStartLevel;
+    const FString &StartLevel = FLevelEditorSettings::Get().EditorStartLevel;
     if (StartLevel.empty())
     {
         return;
@@ -86,7 +80,7 @@ void FLevelSceneManager::ClearScene()
     DestroyCurrentSceneWorlds(true, true);
 }
 
-bool FLevelSceneManager::LoadSceneFromPath(const FString& InScenePath)
+bool FLevelSceneManager::LoadSceneFromPath(const FString &InScenePath)
 {
     if (!EditorEngine || InScenePath.empty())
     {
@@ -96,7 +90,7 @@ bool FLevelSceneManager::LoadSceneFromPath(const FString& InScenePath)
     EditorEngine->StopPlayInEditorImmediate();
     ClearScene();
 
-    FWorldContext LoadContext;
+    FWorldContext          LoadContext;
     FPerspectiveCameraData CameraData;
 
     if (FSceneSaveManager::IsJsonFile(InScenePath))
@@ -105,15 +99,31 @@ bool FLevelSceneManager::LoadSceneFromPath(const FString& InScenePath)
     }
     else if (InScenePath.ends_with(".umap") || InScenePath.ends_with(".UMAP"))
     {
+        if (!std::filesystem::exists(FPaths::ToWide(InScenePath)))
+        {
+            return false;
+        }
+
         LoadContext.World = UObjectManager::Get().CreateObject<UWorld>();
-        FSceneSaveManager::LoadWorldFromBinary(InScenePath, LoadContext.World);
+
+        if (!FSceneSaveManager::LoadWorldFromBinary(InScenePath, LoadContext.World))
+        {
+            UObjectManager::Get().DestroyObject(LoadContext.World);
+            LoadContext.World = nullptr;
+            return false;
+        }
+
         LoadContext.WorldType = EWorldType::Editor;
         LoadContext.ContextName = "Loaded Binary Scene";
         LoadContext.ContextHandle = FName("Loaded Binary Scene");
     }
 
-    if (!LoadContext.World)
+    if (!LoadContext.World || !LoadContext.World->GetCurrentLevel())
     {
+        if (LoadContext.World)
+        {
+            UObjectManager::Get().DestroyObject(LoadContext.World);
+        }
         return false;
     }
 
@@ -136,15 +146,15 @@ bool FLevelSceneManager::LoadSceneWithDialog()
     }
 
     const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
-    const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
-        .Filter = L"Scene Files (*.Scene;*.umap)\0*.Scene;*.umap\0All Files (*.*)\0*.*\0",
-        .Title = L"Load Scene",
-        .InitialDirectory = InitialDir.c_str(),
-        .OwnerWindowHandle = EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr,
-        .bFileMustExist = true,
-        .bPathMustExist = true,
-        .bPromptOverwrite = false,
-        .bReturnRelativeToProjectRoot = false,
+    const FString      SelectedPath = FEditorFileUtils::OpenFileDialog({
+             .Filter = L"Map Files (*.umap)\0*.umap\0Legacy Scene JSON (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
+             .Title = L"Load Scene",
+             .InitialDirectory = InitialDir.c_str(),
+             .OwnerWindowHandle = EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr,
+             .bFileMustExist = true,
+             .bPathMustExist = true,
+             .bPromptOverwrite = false,
+             .bReturnRelativeToProjectRoot = false,
     });
     if (SelectedPath.empty())
     {
@@ -164,7 +174,7 @@ bool FLevelSceneManager::SaveScene()
     return SaveSceneAsWithDialog();
 }
 
-bool FLevelSceneManager::SaveSceneAs(const FString& InScenePath)
+bool FLevelSceneManager::SaveSceneAs(const FString &InScenePath)
 {
     if (!EditorEngine || InScenePath.empty())
     {
@@ -172,7 +182,7 @@ bool FLevelSceneManager::SaveSceneAs(const FString& InScenePath)
     }
 
     EditorEngine->StopPlayInEditorImmediate();
-    FWorldContext* Context = EditorEngine->GetWorldContextFromHandle(EditorEngine->GetActiveWorldHandle());
+    FWorldContext *Context = EditorEngine->GetWorldContextFromHandle(EditorEngine->GetActiveWorldHandle());
     if (!Context || !Context->World)
     {
         return false;
@@ -184,7 +194,7 @@ bool FLevelSceneManager::SaveSceneAs(const FString& InScenePath)
     }
     else
     {
-        FEditorViewportCamera* SaveCamera = EditorEngine->FindSceneViewportCamera();
+        FEditorViewportCamera *SaveCamera = EditorEngine->FindSceneViewportCamera();
         FSceneSaveManager::SaveSceneAsJSON(InScenePath, *Context, SaveCamera ? &SaveCamera->GetCameraState() : nullptr);
     }
 
@@ -192,10 +202,7 @@ bool FLevelSceneManager::SaveSceneAs(const FString& InScenePath)
     return true;
 }
 
-void FLevelSceneManager::RequestSaveSceneAsDialog()
-{
-    bRequestSaveSceneAsDialogQueued = true;
-}
+void FLevelSceneManager::RequestSaveSceneAsDialog() { bRequestSaveSceneAsDialogQueued = true; }
 
 bool FLevelSceneManager::SaveSceneAsWithDialog()
 {
@@ -205,18 +212,19 @@ bool FLevelSceneManager::SaveSceneAsWithDialog()
     }
 
     const std::wstring InitialDir = FSceneSaveManager::GetSceneDirectory();
-    const std::wstring DefaultFile =
-        HasCurrentLevelFilePath() ? std::filesystem::path(FPaths::ToWide(CurrentLevelFilePath)).filename().wstring() : std::wstring(L"Untitled");
-    const FString SelectedPath = FEditorFileUtils::SaveFileDialog({
-        .Filter = L"Binary Scene (*.umap)\0*.umap\0JSON Scene (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
-        .Title = L"Save Scene As",
-        .InitialDirectory = InitialDir.c_str(),
-        .DefaultFileName = DefaultFile.c_str(),
-        .OwnerWindowHandle = EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr,
-        .bFileMustExist = false,
-        .bPathMustExist = true,
-        .bPromptOverwrite = true,
-        .bReturnRelativeToProjectRoot = false,
+    const std::wstring DefaultFile = HasCurrentLevelFilePath()
+                                         ? std::filesystem::path(FPaths::ToWide(CurrentLevelFilePath)).filename().wstring()
+                                         : std::wstring(L"Untitled");
+    const FString      SelectedPath = FEditorFileUtils::SaveFileDialog({
+             .Filter = L"Map Files (*.umap)\0*.umap\0Legacy Scene JSON (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0",
+             .Title = L"Save Scene As",
+             .InitialDirectory = InitialDir.c_str(),
+             .DefaultFileName = DefaultFile.c_str(),
+             .OwnerWindowHandle = EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr,
+             .bFileMustExist = false,
+             .bPathMustExist = true,
+             .bPromptOverwrite = true,
+             .bReturnRelativeToProjectRoot = false,
     });
     if (SelectedPath.empty())
     {
@@ -261,7 +269,7 @@ void FLevelSceneManager::DestroyCurrentSceneWorlds(bool bClearHistory, bool bRes
 
     EditorEngine->InvalidateOcclusionResults();
 
-    for (FWorldContext& Ctx : EditorEngine->GetWorldList())
+    for (FWorldContext &Ctx : EditorEngine->GetWorldList())
     {
         Ctx.World->EndPlay();
         UObjectManager::Get().DestroyObject(Ctx.World);

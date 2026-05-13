@@ -954,13 +954,16 @@ namespace
 
         const std::filesystem::path RootPath(FPaths::RootDir());
         const std::filesystem::path ContentPath(FPaths::ContentDir());
+        const std::filesystem::path EngineContentPath(FPaths::EngineContentDir());
+        const std::filesystem::path SourceAssetsPath(FPaths::SourceAssetsDir());
         const std::filesystem::path AssetPath(FPaths::AssetDir());
         const std::wstring StemW = FPaths::ToWide(Stem);
         const std::wstring ObjFileName = StemW + L".obj";
 
         const std::filesystem::path Candidates[] = {
-            ContentPath / L"BasicShape" / ObjFileName,
-            ContentPath / L"Mesh" / L"BasicShape" / ObjFileName,
+            SourceAssetsPath / L"Meshes" / L"BasicShape" / ObjFileName,
+            SourceAssetsPath / L"Models" / L"BasicShape" / ObjFileName,
+            EngineContentPath / L"BasicShape" / L"Source" / ObjFileName,
             ContentPath / L"Meshes" / L"BasicShape" / ObjFileName,
             AssetPath / L"BasicShape" / ObjFileName,
             RootPath / L"BasicShape" / ObjFileName,
@@ -977,7 +980,7 @@ namespace
         // Last-resort scan. This keeps Place Actors working even when the resource scan
         // file only registered cooked .uasset files and the original BasicShape .obj files
         // live in a slightly different content subdirectory.
-        const std::filesystem::path ScanRoots[] = { ContentPath, AssetPath };
+        const std::filesystem::path ScanRoots[] = { SourceAssetsPath, EngineContentPath, ContentPath, AssetPath };
         for (const std::filesystem::path& ScanRoot : ScanRoots)
         {
             if (!std::filesystem::exists(ScanRoot) || !std::filesystem::is_directory(ScanRoot))
@@ -1015,11 +1018,34 @@ namespace
         return "";
     }
 
+    bool DoesProjectRelativePathExist(const FString& Path)
+    {
+        if (Path.empty())
+        {
+            return false;
+        }
+
+        std::filesystem::path Candidate(FPaths::ToWide(Path));
+        if (!Candidate.is_absolute())
+        {
+            Candidate = std::filesystem::path(FPaths::RootDir()) / Candidate;
+        }
+        return std::filesystem::exists(Candidate.lexically_normal());
+    }
+
     FString GetRegisteredMeshPath(const char *MeshKey)
     {
-        // BasicShape place actors should be sourced from the authoring .obj files when
-        // they exist. FMeshAssetManager can still import/rebuild the corresponding mesh .uasset, but
-        // passing the source path lets timestamp invalidation and material sidecar lookup work.
+        // Component assignment policy: scene components should reference cooked .uasset files.
+        // Built-in shapes now live under Asset/EngineContent/BasicShape. Until real .uasset
+        // files are added there, keep the raw BasicShape OBJ fallback alive for editor spawning.
+        if (const FMeshResource *MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
+        {
+            if (DoesProjectRelativePathExist(MeshResource->Path))
+            {
+                return MeshResource->Path;
+            }
+        }
+
         if (FString BasicShapeObjPath = FindBasicShapeObjPath(MeshKey); !BasicShapeObjPath.empty())
         {
             return BasicShapeObjPath;

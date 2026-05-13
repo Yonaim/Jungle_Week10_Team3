@@ -19,7 +19,7 @@
           "Mobility" : 2,
           "Rotation" : [0.000000, 0.000000, 0.000000],
           "Scale" : [10.000000, 10.000000, 0.100000],
-          "Static Mesh" : "Asset/Content/Model/BasicShape/cube.obj",
+          "Static Mesh" : "Asset/SourceAssets/Meshes/BasicShape/cube.obj",
           "Two Sided Shadow" : false,
           "Visible" : true,
           "bEditorOnly" : false,
@@ -74,7 +74,7 @@
           "Mobility" : 2,
           "Rotation" : [0.000000, 0.000000, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
-          "Static Mesh" : "Asset/Content/Model/BasicShape/cube.obj",
+          "Static Mesh" : "Asset/SourceAssets/Meshes/BasicShape/cube.obj",
           "Two Sided Shadow" : false,
           "Visible" : true,
           "bEditorOnly" : false,
@@ -103,7 +103,7 @@
           "Mobility" : 2,
           "Rotation" : [0.000000, 0.000000, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
-          "Static Mesh" : "Asset/Content/Model/BasicShape/cube.obj",
+          "Static Mesh" : "Asset/SourceAssets/Meshes/BasicShape/cube.obj",
           "Two Sided Shadow" : false,
           "Visible" : true,
           "bEditorOnly" : false,
@@ -132,7 +132,7 @@
           "Mobility" : 2,
           "Rotation" : [0.000000, 0.000000, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
-          "Static Mesh" : "Asset/Content/Model/BasicShape/sphere.obj",
+          "Static Mesh" : "Asset/SourceAssets/Meshes/BasicShape/sphere.obj",
           "Two Sided Shadow" : false,
           "Visible" : true,
           "bEditorOnly" : false,
@@ -161,7 +161,7 @@
           "Mobility" : 2,
           "Rotation" : [0.000000, 0.000000, 0.000000],
           "Scale" : [1.000000, 1.000000, 1.000000],
-          "Static Mesh" : "Asset/Content/Model/BasicShape/cylinder.obj",
+          "Static Mesh" : "Asset/SourceAssets/Meshes/BasicShape/cylinder.obj",
           "Two Sided Shadow" : false,
           "Visible" : true,
           "bEditorOnly" : false,
@@ -204,35 +204,35 @@
   "Primitives" : {
     "100" : {
       "Location" : [0.000000, 0.000000, -1.000000],
-      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/cube.obj",
+      "ObjStaticMeshAsset" : "Asset/SourceAssets/Meshes/BasicShape/cube.obj",
       "Rotation" : [0.000000, -0.000000, 0.000000],
       "Scale" : [10.000000, 10.000000, 0.100000],
       "Type" : "StaticMeshComp"
     },
     "101" : {
       "Location" : [0.000000, 0.000000, 0.000000],
-      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/cube.obj",
+      "ObjStaticMeshAsset" : "Asset/SourceAssets/Meshes/BasicShape/cube.obj",
       "Rotation" : [0.000000, -0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Type" : "StaticMeshComp"
     },
     "102" : {
       "Location" : [3.000000, 0.000000, 0.000000],
-      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/cube.obj",
+      "ObjStaticMeshAsset" : "Asset/SourceAssets/Meshes/BasicShape/cube.obj",
       "Rotation" : [0.000000, -0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Type" : "StaticMeshComp"
     },
     "103" : {
       "Location" : [-3.000000, 0.000000, 0.000000],
-      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/sphere.obj",
+      "ObjStaticMeshAsset" : "Asset/SourceAssets/Meshes/BasicShape/sphere.obj",
       "Rotation" : [0.000000, -0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Type" : "StaticMeshComp"
     },
     "104" : {
       "Location" : [0.000000, 3.000000, 0.000000],
-      "ObjStaticMeshAsset" : "Asset/Content/Model/BasicShape/cylinder.obj",
+      "ObjStaticMeshAsset" : "Asset/SourceAssets/Meshes/BasicShape/cylinder.obj",
       "Rotation" : [0.000000, -0.000000, 0.000000],
       "Scale" : [1.000000, 1.000000, 1.000000],
       "Type" : "StaticMeshComp"

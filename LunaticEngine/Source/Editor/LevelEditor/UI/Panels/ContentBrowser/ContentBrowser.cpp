@@ -77,6 +77,7 @@ FString MakeContentBrowserSettingsPath(const std::wstring &CurrentPath)
 
 std::filesystem::path GetContentBrowserVirtualRoot();
 std::filesystem::path GetPrimaryContentRoot();
+std::filesystem::path GetEngineContentRoot();
 std::filesystem::path GetScriptRoot();
 bool IsContentBrowserTopLevelPath(const std::filesystem::path &Path);
 
@@ -125,7 +126,12 @@ std::filesystem::path GetContentBrowserVirtualRoot()
 
 std::filesystem::path GetPrimaryContentRoot()
 {
-    return (std::filesystem::path(FPaths::RootDir()) / L"Asset" / L"Content").lexically_normal();
+    return std::filesystem::path(FPaths::ContentDir()).lexically_normal();
+}
+
+std::filesystem::path GetEngineContentRoot()
+{
+    return std::filesystem::path(FPaths::EngineContentDir()).lexically_normal();
 }
 
 std::filesystem::path GetScriptRoot()
@@ -674,7 +680,7 @@ TArray<FContentItem> FContentBrowser::ReadDirectory(std::wstring Path)
 
     if (IsContentBrowserTopLevelPath(CurrentPath))
     {
-        for (const std::filesystem::path &Root : {GetPrimaryContentRoot(), GetScriptRoot()})
+        for (const std::filesystem::path &Root : {GetPrimaryContentRoot(), GetEngineContentRoot(), GetScriptRoot()})
         {
             if (!std::filesystem::exists(Root) || !std::filesystem::is_directory(Root))
             {
@@ -732,7 +738,7 @@ FContentBrowser::FDirNode FContentBrowser::BuildDirectoryTree(
     if (IsContentBrowserTopLevelPath(DirPath))
     {
         Node.Self.Name = L"All";
-        for (const std::filesystem::path &Root : {GetPrimaryContentRoot(), GetScriptRoot()})
+        for (const std::filesystem::path &Root : {GetPrimaryContentRoot(), GetEngineContentRoot(), GetScriptRoot()})
         {
             if (std::filesystem::exists(Root) && std::filesystem::is_directory(Root))
             {

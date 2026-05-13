@@ -80,7 +80,12 @@ namespace
 
     std::filesystem::path GetProtectedContentRoot()
     {
-        return (std::filesystem::path(FPaths::RootDir()) / L"Asset" / L"Content").lexically_normal();
+        return std::filesystem::path(FPaths::ContentDir()).lexically_normal();
+    }
+
+    std::filesystem::path GetProtectedEngineContentRoot()
+    {
+        return std::filesystem::path(FPaths::EngineContentDir()).lexically_normal();
     }
 
     std::filesystem::path GetProtectedScriptsRoot()
@@ -91,7 +96,7 @@ namespace
     bool IsProtectedContentBrowserPath(const std::filesystem::path &InPath)
     {
         const std::filesystem::path NormalizedPath = InPath.lexically_normal();
-        return NormalizedPath == GetProtectedContentRoot() || NormalizedPath == GetProtectedScriptsRoot();
+        return NormalizedPath == GetProtectedContentRoot() || NormalizedPath == GetProtectedEngineContentRoot() || NormalizedPath == GetProtectedScriptsRoot();
     }
 } // namespace
 

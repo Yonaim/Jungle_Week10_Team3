@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "AMapChunk.h"
 #include "GameFramework/World.h"
 #include "Component/SceneComponent.h"
@@ -16,6 +16,9 @@
 #include "Materials/MaterialManager.h"
 #include "Mesh/MeshAssetManager.h"
 #include "Resource/ResourceManager.h"
+#include "Platform/Paths.h"
+
+#include <filesystem>
 
 IMPLEMENT_CLASS(AMapChunk, AActor)
 
@@ -30,6 +33,55 @@ namespace {
 			: NormalMaterialKey;
 
 		return FResourceManager::Get().ResolvePath(FName(MaterialKey));
+	}
+
+	static bool DoesProjectRelativePathExist(const FString& Path)
+	{
+		if (Path.empty())
+		{
+			return false;
+		}
+
+		std::filesystem::path Candidate(FPaths::ToWide(Path));
+		if (!Candidate.is_absolute())
+		{
+			Candidate = std::filesystem::path(FPaths::RootDir()) / Candidate;
+		}
+		return std::filesystem::exists(Candidate.lexically_normal());
+	}
+
+	static FString GetBasicShapeFallbackObjPath(const FString& MeshPath)
+	{
+		struct FShapeFallback
+		{
+			const char* AssetStem;
+			const char* ObjName;
+		};
+
+		static constexpr FShapeFallback ShapeFallbacks[] = {
+			{ "SM_cone", "cone.obj" },
+			{ "SM_cube", "cube.obj" },
+			{ "SM_cylinder", "cylinder.obj" },
+			{ "SM_plane", "plane.obj" },
+			{ "SM_sphere_lowpoly", "sphere_lowpoly.obj" },
+			{ "SM_sphere", "sphere.obj" },
+		};
+
+		for (const FShapeFallback& Fallback : ShapeFallbacks)
+		{
+			if (MeshPath.find(Fallback.AssetStem) == FString::npos && MeshPath.find(Fallback.ObjName) == FString::npos)
+			{
+				continue;
+			}
+
+			const FString Candidate = FString("Asset/SourceAssets/Meshes/BasicShape/") + Fallback.ObjName;
+			if (DoesProjectRelativePathExist(Candidate))
+			{
+				return Candidate;
+			}
+		}
+
+		return MeshPath;
 	}
 }
 
@@ -213,7 +265,12 @@ static FString GetMeshPath(const char* MeshKey)
 {
 	if (const FMeshResource* MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
 	{
-		return MeshResource->Path;
+		if (DoesProjectRelativePathExist(MeshResource->Path))
+		{
+			return MeshResource->Path;
+		}
+
+		return GetBasicShapeFallbackObjPath(MeshResource->Path);
 	}
 
 	return "";

@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
 
 #include "AssetEditor/Common/UI/BezierCurveEditor.h"
@@ -257,7 +257,7 @@ bool FCameraModifierStackEditor::PromptForSavePath(void *OwnerWindowHandle)
         .Filter = L"Asset Files (*.uasset)\0*.uasset\0All Files (*.*)\0*.*\0",
         .Title = L"Save Asset",
         .DefaultExtension = L"uasset",
-        .InitialDirectory = FPaths::AssetDir().c_str(),
+        .InitialDirectory = FPaths::ContentDir().c_str(),
         .DefaultFileName = L"CameraShakeStack.uasset",
         .OwnerWindowHandle = OwnerWindowHandle,
         .bFileMustExist = false,
