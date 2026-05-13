@@ -30,8 +30,12 @@ class FAssetEditorTabManager
     bool OpenTab(std::unique_ptr<IAssetEditor> Editor);
     bool ActivateTabByAssetPath(const std::filesystem::path &AssetPath);
 
-    void CloseTab(int32 TabIndex);
-    void CloseActiveTab();
+    bool CloseTab(int32 TabIndex, bool bPromptForDirty = true);
+    bool CloseActiveTab(bool bPromptForDirty = true);
+    bool CloseAllTabs(bool bPromptForDirty = true);
+    bool ConfirmCloseAllTabs() const;
+    bool HasDirtyTabs() const;
+    void SetClosePromptOwnerWindowHandle(void *OwnerWindowHandle);
     bool SaveActiveTab();
 
     void Tick(float DeltaTime);
@@ -53,8 +57,10 @@ class FAssetEditorTabManager
     bool SetActiveTabIndex(int32 NewIndex);
     void RenderActiveTab(float DeltaTime, ImGuiID DockspaceId);
     void CompactInvalidTabs();
+    bool ConfirmCloseTab(const FAssetEditorTab *Tab) const;
 
   private:
     TArray<std::unique_ptr<FAssetEditorTab>> Tabs;
     int32 ActiveTabIndex = -1;
+    void *ClosePromptOwnerWindowHandle = nullptr;
 };

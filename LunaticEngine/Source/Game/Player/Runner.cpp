@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Runner.h"
 #include "Object/Object.h"
 #include "Component/Shape/BoxComponent.h"
@@ -11,7 +11,7 @@
 #include "Engine/Runtime/Engine.h"
 #include "Texture/Texture2D.h"
 
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include <Core/Log.h>
 #include "Collision/OverlapInfo.h"
 #include "Math/Vector.h"
@@ -23,7 +23,7 @@ namespace
 {
 constexpr const char* DreamBillboardComponentName = "DreamBillboard";
 constexpr const char* DreamBillboardTextureKey = "Game.Texture.Dream";
-constexpr const char* DreamBillboardTextureFallback = "Asset/Content/Texture/Dream.png";
+constexpr const char* DreamBillboardTextureFallback = "Asset/Engine/Source/Sample/Texture/checker.png";
 constexpr float DreamBillboardInitialOffsetX = 1000.0f;
 constexpr float DreamBillboardSpriteSize = 100.0f;
 constexpr float DreamBillboardMirroredSpriteWidth = -DreamBillboardSpriteSize;
@@ -112,10 +112,10 @@ void ARunner::ApplyDefaultVisual()
 
 		FString MeshPath = FResourceManager::Get().ResolvePath(
 			FName("Game.Mesh.Player.Runner"),
-			"Asset/Content/Model/POD/Spaceship.obj"
+			"Asset/Game/Content/Meshes/Spaceship/SM_Spaceship.uasset"
 		);
 
-		UStaticMesh* Mesh = FObjManager::LoadObjStaticMesh(MeshPath, Device);
+		UStaticMesh* Mesh = FMeshAssetManager::LoadStaticMesh(MeshPath, Device);
 		if (Mesh)
 		{
 			MeshComponent->SetStaticMesh(Mesh);

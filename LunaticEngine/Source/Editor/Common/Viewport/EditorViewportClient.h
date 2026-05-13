@@ -2,6 +2,7 @@
 
 #include "Viewport/ViewportClient.h"
 #include "UI/SWindow.h"
+#include "Runtime/WindowsWindow.h"
 #include "Render/Types/ViewTypes.h"
 #include "Camera/MinimalViewInfo.h"
 #include "Common/Viewport/EditorViewportCamera.h"

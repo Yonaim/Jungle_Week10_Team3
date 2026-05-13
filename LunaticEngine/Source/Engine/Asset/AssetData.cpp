@@ -4,11 +4,13 @@
 #include "Engine/Asset/AssetFileSerializer.h"
 #include "Object/ObjectFactory.h"
 #include "Engine/Serialization/Archive.h"
+#include "Mesh/SkeletalMeshCommon.h"
 #include <algorithm>
 #include <chrono>
 
 IMPLEMENT_CLASS(UAssetData, UObject)
 IMPLEMENT_CLASS(UCameraModifierStackAssetData, UAssetData)
+IMPLEMENT_CLASS(USkeletonPoseAsset, UAssetData)
 
 namespace
 {
@@ -136,6 +138,40 @@ void SerializeCameraShakeModifierAssetDesc(FArchive &Ar, FCameraShakeModifierAss
     {
         Ar << Desc.bUseCurves;
         Desc.Curves.Serialize(Ar);
+    }
+}
+
+
+void FPoseBoneTransform::Serialize(FArchive &Ar)
+{
+    Ar << BoneName;
+    Ar << BoneIndex;
+    SerializeSkeletalTransform(Ar, LocalTransform);
+}
+
+void USkeletonPoseAsset::Serialize(FArchive &Ar)
+{
+    UAssetData::Serialize(Ar);
+
+    Ar << TargetSkeletonPath;
+    Ar << Space;
+
+    uint32 BoneTransformCount = static_cast<uint32>(BoneTransforms.size());
+    Ar << BoneTransformCount;
+
+    if (Ar.IsLoading())
+    {
+        BoneTransforms.resize(BoneTransformCount);
+    }
+
+    for (uint32 Index = 0; Index < BoneTransformCount; ++Index)
+    {
+        BoneTransforms[Index].Serialize(Ar);
+    }
+
+    if (Ar.IsLoading() && Space.empty())
+    {
+        Space = "Local";
     }
 }
 

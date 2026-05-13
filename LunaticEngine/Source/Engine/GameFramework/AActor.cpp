@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "GameFramework/AActor.h"
 #include "Object/ObjectFactory.h"
 #include "Component/PrimitiveComponent.h"
@@ -112,6 +112,30 @@ bool ActorHasVisibleStaticMesh(const AActor* Actor)
 
 	return false;
 }
+
+bool ActorHasVisibleSkeletalMesh(const AActor* Actor)
+{
+	if (!Actor)
+	{
+		return false;
+	}
+
+	for (UActorComponent* Component : Actor->GetComponents())
+	{
+		USkinnedMeshComponent* SkinnedMeshComponent = Cast<USkinnedMeshComponent>(Component);
+		if (SkinnedMeshComponent && SkinnedMeshComponent->IsVisible() && SkinnedMeshComponent->GetSkeletalMesh())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ActorNeedsEditorBillboardFallback(const AActor* Actor)
+{
+	return !ActorHasVisibleStaticMesh(Actor) && !ActorHasVisibleSkeletalMesh(Actor);
+}
 }
 
 UBillboardComponent* AActor::FindEditorOnlyBillboardComponent() const
@@ -133,31 +157,12 @@ bool AActor::HasNonEditorOnlyPrimitiveComponent() const
 	for (UActorComponent* Component : OwnedComponents)
 	{
 		UPrimitiveComponent* PrimitiveComponent = Cast<UPrimitiveComponent>(Component);
-		if (!PrimitiveComponent || PrimitiveComponent->IsEditorOnlyComponent())
+		if (PrimitiveComponent && !PrimitiveComponent->IsEditorOnlyComponent())
 		{
-			continue;
-		}
-
-		if (UStaticMeshComponent* StaticMeshComponent = Cast<UStaticMeshComponent>(PrimitiveComponent))
-		{
-			if (StaticMeshComponent->GetStaticMesh())
-			{
-				return true;
-			}
-			continue;
-		}
-
-		if (USkinnedMeshComponent* SkinnedMeshComponent = Cast<USkinnedMeshComponent>(PrimitiveComponent))
-		{
-			if (SkinnedMeshComponent->GetSkeletalMesh())
-			{
-				return true;
-			}
-			continue;
-		}
-
-		if (PrimitiveComponent->IsVisible())
-		{
+			// Actor helper billboard는 "보일 만한 mesh가 있느냐"가 아니라
+			// "실제 primitive component가 존재하느냐"를 기준으로 숨긴다.
+			// StaticMesh/SkeletalMesh 데이터가 아직 비어 있어도 primitive가 있으면
+			// 해당 component의 렌더/피킹 책임을 우선한다.
 			return true;
 		}
 	}
@@ -318,7 +323,7 @@ void AActor::SetRootComponent(USceneComponent* Comp)
 void AActor::EnsureEditorBillboardForActor()
 {
 	UBillboardComponent* BillboardComponent = FindEditorOnlyBillboardComponent();
-	if (!BillboardComponent && HasNonEditorOnlyPrimitiveComponent())
+	if (!BillboardComponent && HasNonEditorOnlyPrimitiveComponent() && !ActorNeedsEditorBillboardFallback(this))
 	{
 		return;
 	}
@@ -377,7 +382,8 @@ void AActor::SyncEditorBillboardVisibility()
 		return;
 	}
 
-	const bool bShouldShowBillboard = !HasNonEditorOnlyPrimitiveComponent() && !ActorHasVisibleStaticMesh(this);
+	const bool bShouldShowBillboard =
+		!HasNonEditorOnlyPrimitiveComponent() || ActorNeedsEditorBillboardFallback(this);
 	BillboardComponent->SetVisibility(bShouldShowBillboard);
 }
 

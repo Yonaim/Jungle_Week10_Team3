@@ -1,5 +1,6 @@
 #include "PCH/LunaticPCH.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialManager.h"
 #include "Serialization/Archive.h"
 #include "Render/Shader/Shader.h"
 #include "Texture/Texture2D.h"
@@ -11,10 +12,11 @@ IMPLEMENT_CLASS(UMaterial, UObject)
 
 // ─── FMaterialTemplate ───
 
-void FMaterialTemplate::Create(FShader* InShader)
+void FMaterialTemplate::Create(FShader* InShader, const FString& InShaderPath)
 {
 	ParameterLayout = InShader->GetParameterLayout(); // 셰이더에서 리플렉션된 파라미터 레이아웃 정보 확보
 	Shader = InShader;
+	ShaderPath = InShaderPath;
 }
 
 bool FMaterialTemplate::GetParameterInfo(const FString& Name, FMaterialParameterInfo& OutInfo) const
@@ -99,10 +101,12 @@ void UMaterial::Create(const FString& InPathFileName, FMaterialTemplate* InTempl
 	EBlendState InBlend,
 	EDepthStencilState InDepth,
 	ERasterizerState InRaster,
-	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>>&& InBuffers)
+	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>>&& InBuffers,
+	const FString& InShaderPath)
 {
 	PathFileName = InPathFileName;
 	Template = InTemplate;
+	ShaderPath = InShaderPath.empty() && InTemplate ? InTemplate->GetShaderPath() : InShaderPath;
 	RenderPass = InRenderPass;
 	BlendState = InBlend;
 	DepthStencilState = InDepth;
@@ -263,6 +267,22 @@ void UMaterial::RebuildCachedSRVs()
 void UMaterial::Serialize(FArchive& Ar)
 {
 	Ar << PathFileName;
+	Ar << ShaderPath;
+	Ar << RenderPass;
+	Ar << BlendState;
+	Ar << DepthStencilState;
+	Ar << RasterizerState;
+
+	if (Ar.IsLoading())
+	{
+		if (ShaderPath.empty())
+		{
+			ShaderPath = "Shaders/Geometry/UberLit.hlsl";
+		}
+
+		Template = FMaterialManager::Get().GetOrCreateTemplate(ShaderPath);
+		ConstantBufferMap = FMaterialManager::Get().CreateConstantBuffers(Template);
+	}
 
 	uint32 BufferCount = static_cast<uint32>(ConstantBufferMap.size());
 	Ar << BufferCount;
@@ -291,7 +311,7 @@ void UMaterial::Serialize(FArchive& Ar)
 			Ar << Size;
 
 			auto It = ConstantBufferMap.find(BufferName);
-			if (It != ConstantBufferMap.end())
+			if (It != ConstantBufferMap.end() && It->second && It->second->CPUData && Size <= It->second->Size)
 			{
 				Ar.Serialize(It->second->CPUData, Size);
 				It->second->bDirty = true;
@@ -319,7 +339,7 @@ void UMaterial::Serialize(FArchive& Ar)
 			Ar << TexturePath;
 		}
 	}
-	else // IsLoading
+	else
 	{
 		for (uint32 i = 0; i < TextureCount; ++i)
 		{

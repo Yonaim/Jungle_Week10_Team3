@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "LogFragmentItemActor.h"
 #include "Component/Shape/BoxComponent.h"
 
@@ -11,7 +11,7 @@ ALogFragmentItemActor::ALogFragmentItemActor()
 	SetItemScript("Scripts/Game/Items/LogItem.lua");
 
 	// 생성자에서는 texture 경로만 지정한다.
-	SetItemTexturePath("Asset/Content/Texture/item_log.png");
+	SetItemTexturePath("Asset/Engine/Source/Sample/Texture/checker.png");
 
 	InteractionConfig.ScoreValue = 10;
 	InteractionConfig.RequiredInteractorTag = "Player";

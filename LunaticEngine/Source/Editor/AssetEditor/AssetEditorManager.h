@@ -18,14 +18,12 @@ class FEditorViewportClient;
  *
  * 역할:
  * - Content Browser / 메뉴에서 들어온 파일 열기 요청을 받는다.
- * - .uasset / .fbx 같은 입력 경로를 판별한다.
+ * - Asset Editor는 .uasset만 열고 저장한다. Source 파일 import는 FAssetImportManager가 담당한다.
  * - UObject 타입에 맞는 IAssetEditor 인스턴스를 생성한다.
  * - 생성된 에디터를 AssetEditorWindow(현재는 패널 컨트롤러)에 등록한다.
  *
  * 주의:
- * - SkeletalMeshEditor는 FBX 파일을 직접 파싱하지 않는다.
- * - .fbx는 여기서 Preview용 USkeletalMesh로 변환한 뒤 SkeletalMeshEditor에 넘긴다.
- * - 실제 FBX SDK 기반 import/bake가 완성되면 OpenFbxForPreview() 내부의 Dummy 생성 경로를 교체한다.
+ * - SkeletalMeshEditor는 FBX 파일을 직접 파싱하지 않는다. .fbx는 Import 버튼으로 .uasset을 만든 뒤 연다.
  */
 class FAssetEditorManager
 {
@@ -37,15 +35,9 @@ class FAssetEditorManager
     void RenderContent(float DeltaTime, ImGuiID DockspaceId = 0);
 
     bool OpenAssetFromPath(const std::filesystem::path &AssetPath);
-    bool OpenSourceFileFromPath(const std::filesystem::path &SourcePath);
-    bool OpenLoadedAsset(UObject *Asset, const std::filesystem::path &AssetPath);
+    bool OpenOwnedWorkingCopy(UObject *Asset, const std::filesystem::path &AssetPath);
+    bool OpenLoadedAsset(UObject *Asset, const std::filesystem::path &AssetPath) { return OpenOwnedWorkingCopy(Asset, AssetPath); }
     bool OpenAssetWithDialog(void *OwnerWindowHandle = nullptr);
-    bool OpenFbxWithDialog(void *OwnerWindowHandle = nullptr);
-
-    /**
-     * FBX를 SkeletalMeshEditor에서 미리보기 위한 진입점.
-     */
-    bool OpenFbxForPreview(const std::filesystem::path &FbxPath);
 
     /**
      * 빈 Asset Editor 패널을 표시한다.
@@ -55,6 +47,9 @@ class FAssetEditorManager
 
     bool SaveActiveEditor();
     void CloseActiveEditor();
+    bool CloseAllEditors(bool bPromptForDirty = true, void *OwnerWindowHandle = nullptr);
+    bool HasDirtyEditors() const;
+    bool ConfirmCloseAllEditors(void *OwnerWindowHandle = nullptr) const;
 
     bool IsCapturingInput() const;
     FEditorViewportClient *GetActiveViewportClient() const;
@@ -65,12 +60,6 @@ class FAssetEditorManager
 
   private:
     std::unique_ptr<IAssetEditor> CreateEditorForAsset(UObject *Asset) const;
-
-    /**
-     * 임시 Preview Mesh 생성 경로.
-     * 실제 Importer가 완성되기 전까지 SkeletalMeshEditor 작업이 막히지 않도록 둔다.
-     */
-    USkeletalMesh *CreateSkeletalMeshForEditorPreview(const std::filesystem::path &SourcePath) const;
 
   private:
     UEditorEngine *EditorEngine = nullptr;

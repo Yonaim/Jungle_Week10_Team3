@@ -3,6 +3,7 @@
 #include "Core/CoreTypes.h"
 #include "Component/Gizmo/GizmoTypes.h"
 #include "Common/Gizmo/EditorGizmoSharedState.h"
+#include "Math/Vector.h"
 
 // Skeletal Mesh Editor에서 사용하는 프리뷰 표시 모드.
 // 실제 Reference Pose / Skinned Pose 렌더링은 Runtime 담당자가 USkeletalMeshComponent와 연동하면 여기서 선택값만 넘겨주면 된다.
@@ -102,6 +103,17 @@ struct FSkeletalMeshEditorState
     float AxisIntensity = 1.0f;
     float DebugLineThickness = 1.0f;
     float BillboardIconScale = 1.0f;
+
+    // Previewer Settings 패널: 현재 렌더러가 직접 수치 조명을 모두 소비하지 않더라도,
+    // 프리뷰 씬의 조명/시각화 정책을 한 곳에서 조정하기 위한 상태다.
+    bool bPreviewLighting = true;
+    float PreviewDirectionalLightIntensity = 1.0f;
+    float PreviewAmbientLightIntensity = 0.25f;
+    FVector4 PreviewDirectionalLightColor = FVector4(1.0f, 0.96f, 0.88f, 1.0f);
+    FVector4 PreviewAmbientLightColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+    float PreviewLightYaw = 45.0f;
+    float PreviewLightPitch = -35.0f;
+
     FEditorGizmoSharedState GizmoSharedState;
     EGizmoMode GizmoMode = EGizmoMode::Translate;
     EGizmoSpace GizmoSpace = EGizmoSpace::Local;

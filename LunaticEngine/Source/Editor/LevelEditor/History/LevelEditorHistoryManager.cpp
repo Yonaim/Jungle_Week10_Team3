@@ -45,11 +45,11 @@ void FLevelEditorHistoryManager::BeginTrackedSceneChange()
     bTrackingSceneChange = true;
 }
 
-void FLevelEditorHistoryManager::CommitTrackedSceneChange()
+bool FLevelEditorHistoryManager::CommitTrackedSceneChange()
 {
     if (!EditorEngine || !bTrackingSceneChange || !PendingTrackedSceneBefore.has_value())
     {
-        return;
+        return false;
     }
 
     const FTrackedSceneSnapshot Before = *PendingTrackedSceneBefore;
@@ -61,7 +61,7 @@ void FLevelEditorHistoryManager::CommitTrackedSceneChange()
 
     if (!FSceneHistoryBuilder::HasMeaningfulDelta(Before, After))
     {
-        return;
+        return false;
     }
 
     const FTrackedSceneChange Change = FSceneHistoryBuilder::BuildChange(Before, After);
@@ -77,6 +77,7 @@ void FLevelEditorHistoryManager::CommitTrackedSceneChange()
         SceneHistory.erase(SceneHistory.begin());
     }
     SceneHistoryCursor = static_cast<int32>(SceneHistory.size()) - 1;
+    return true;
 }
 
 void FLevelEditorHistoryManager::CancelTrackedSceneChange()
@@ -134,9 +135,9 @@ void FLevelEditorHistoryManager::BeginTrackedTransformChange()
     BeginTrackedSceneChange();
 }
 
-void FLevelEditorHistoryManager::CommitTrackedTransformChange()
+bool FLevelEditorHistoryManager::CommitTrackedTransformChange()
 {
-    CommitTrackedSceneChange();
+    return CommitTrackedSceneChange();
 }
 
 bool FLevelEditorHistoryManager::CanUndoTransformChange() const

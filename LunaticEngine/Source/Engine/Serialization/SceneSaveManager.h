@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Camera/MinimalViewInfo.h"
 #include <string>
@@ -39,7 +39,7 @@ struct FPerspectiveCameraData
 class FSceneSaveManager
 {
 public:
-	static constexpr const wchar_t* SceneExtension = L".Scene";
+	static constexpr const wchar_t* SceneExtension = L".umap";
 
 	static std::wstring GetSceneDirectory() { return FPaths::SceneDir(); }
 
@@ -48,7 +48,7 @@ public:
 	static string SerializeActorToJSONString(AActor* Actor);
 	static void LoadSceneFromJSON(const string& filepath, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 	static void SaveWorldToBinary(const FString& FilePath, UWorld* World);
-	static void LoadWorldFromBinary(const FString& FilePath, UWorld* World);
+    static bool LoadWorldFromBinary(const FString& FilePath, UWorld* World);
 	static void LoadSceneFromJSONString(const string& SceneJson, FWorldContext& OutWorldContext, FPerspectiveCameraData& OutCam);
 	static AActor* LoadActorFromJSONString(const string& ActorJson, UWorld* World);
 	static bool ApplyActorFromJSONString(AActor* Actor, const string& ActorJson);

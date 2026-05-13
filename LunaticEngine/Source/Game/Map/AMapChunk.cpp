@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "AMapChunk.h"
 #include "GameFramework/World.h"
 #include "Component/SceneComponent.h"
@@ -14,11 +14,26 @@
 #include "Game/GameActors/Items/LogFragmentItemActor.h"
 #include "Game/Map/MapRandom.h"
 #include "Materials/MaterialManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Resource/ResourceManager.h"
+#include "Platform/Paths.h"
+
+#include <filesystem>
+#include <algorithm>
+#include <cctype>
 
 IMPLEMENT_CLASS(AMapChunk, AActor)
 
 namespace {  
+	FString ToLowerAsciiCopy(FString Value)
+	{
+		std::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char Character)
+		{
+			return static_cast<char>(std::tolower(Character));
+		});
+		return Value;
+	}
+
 	constexpr const char* BuggedMaterialKey = "Default.Material.BasicShape";
 	constexpr const char* NormalMaterialKey = "Sample.Material.BlueGrid";
 
@@ -29,6 +44,57 @@ namespace {
 			: NormalMaterialKey;
 
 		return FResourceManager::Get().ResolvePath(FName(MaterialKey));
+	}
+
+	static bool DoesProjectRelativePathExist(const FString& Path)
+	{
+		if (Path.empty())
+		{
+			return false;
+		}
+
+		std::filesystem::path Candidate(FPaths::ToWide(Path));
+		if (!Candidate.is_absolute())
+		{
+			Candidate = std::filesystem::path(FPaths::RootDir()) / Candidate;
+		}
+		return std::filesystem::exists(Candidate.lexically_normal());
+	}
+
+	static FString GetBasicShapeFallbackObjPath(const FString& MeshPath)
+	{
+		struct FShapeFallback
+		{
+			const char* AssetStem;
+			const char* ObjName;
+		};
+
+		static constexpr FShapeFallback ShapeFallbacks[] = {
+			{ "sm_cone", "cone.obj" },
+			{ "sm_cube", "cube.obj" },
+			{ "sm_cylinder", "cylinder.obj" },
+			{ "sm_plane", "plane.obj" },
+			{ "sm_sphere_lowpoly", "sphere_lowpoly.obj" },
+			{ "sm_sphere", "sphere.obj" },
+		};
+
+		const FString LowerMeshPath = ToLowerAsciiCopy(MeshPath);
+
+		for (const FShapeFallback& Fallback : ShapeFallbacks)
+		{
+			if (LowerMeshPath.find(Fallback.AssetStem) == FString::npos && LowerMeshPath.find(Fallback.ObjName) == FString::npos)
+			{
+				continue;
+			}
+
+			const FString Candidate = FPaths::ToUtf8((std::filesystem::path(FPaths::EngineBasicShapeSourceDir()) / Fallback.ObjName).generic_wstring());
+			if (DoesProjectRelativePathExist(Candidate))
+			{
+				return Candidate;
+			}
+		}
+
+		return MeshPath;
 	}
 }
 
@@ -212,7 +278,12 @@ static FString GetMeshPath(const char* MeshKey)
 {
 	if (const FMeshResource* MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
 	{
-		return MeshResource->Path;
+		if (DoesProjectRelativePathExist(MeshResource->Path))
+		{
+			return MeshResource->Path;
+		}
+
+		return GetBasicShapeFallbackObjPath(MeshResource->Path);
 	}
 
 	return "";
@@ -258,7 +329,7 @@ static void ApplyCubeMesh(UStaticMeshComponent* MeshComponent, const FString& Ma
 	}
 
 	ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-	UStaticMesh* Mesh = FObjManager::LoadObjStaticMesh(MeshPath, Device);
+	UStaticMesh* Mesh = FMeshAssetManager::LoadStaticMesh(MeshPath, Device);
 	MeshComponent->SetStaticMesh(Mesh);
 	ApplyBasicShapeMaterial(MeshComponent, Mesh, MaterialPath);
 }

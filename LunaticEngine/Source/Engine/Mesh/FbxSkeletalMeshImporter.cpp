@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Mesh/FbxImporter.h"
 #include "Mesh/FbxCommon.h"
 
@@ -743,7 +743,7 @@ namespace
 		for (const FFbxMaterialInfo& MaterialInfo : Context.Materials)
 		{
 			FStaticMaterial StaticMaterial;
-			StaticMaterial.MaterialInterface = FMaterialManager::Get().GetOrCreateMaterial(FFbxCommon::ConvertMaterialInfoToMat(MaterialInfo));
+			StaticMaterial.MaterialInterface = FMaterialManager::Get().GetOrCreateMaterial(FFbxCommon::ConvertMaterialInfoToMaterialAsset(FbxFilePath, MaterialInfo));
 			StaticMaterial.MaterialSlotName = MaterialInfo.MaterialSlotName;
 			OutMaterials.push_back(StaticMaterial);
 		}

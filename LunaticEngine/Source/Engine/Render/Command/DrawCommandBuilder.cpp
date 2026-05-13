@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "DrawCommandBuilder.h"
 #include "EditorGridRenderer.h"
 #include "Resource/ResourceManager.h"
@@ -36,10 +36,10 @@ namespace
 			return MaterialPath;
 		}
 
-		FString ResolvedPath = "Asset/Content/Materials/" + MaterialPath;
-		if (ResolvedPath.find(".mat") == FString::npos)
+		FString ResolvedPath = "Asset/Game/Content/Materials/" + MaterialPath;
+		if (ResolvedPath.find(".uasset") == FString::npos)
 		{
-			ResolvedPath += ".mat";
+			ResolvedPath += ".uasset";
 		}
 		return ResolvedPath;
 	}

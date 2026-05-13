@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Object/ObjectFactory.h"
 #include "Math/Vector.h"
@@ -34,13 +34,15 @@ class FMaterialTemplate
 private:
 	uint32 MaterialTemplateID; // 고유 ID
 	FShader* Shader; // 어떤 셰이더를 사용하는지
+	FString ShaderPath; // uasset 직렬화를 위한 셰이더 경로
 	TMap<FString, FMaterialParameterInfo*> ParameterLayout; // 리플렉션 결과 : 쉐이더 constant buffer 레이아웃 정보
 
 public:
 	const TMap<FString, FMaterialParameterInfo*>& GetParameterInfo() const { return ParameterLayout; }
-	void Create(FShader* InShader);
+	void Create(FShader* InShader, const FString& InShaderPath = FString());
 
 	FShader* GetShader() const { return Shader; }
+	const FString& GetShaderPath() const { return ShaderPath; }
 	bool GetParameterInfo(const FString& Name, FMaterialParameterInfo& OutInfo) const;
 };
 
@@ -91,6 +93,8 @@ private:
 	// Per-shader CB 오버라이드 — transient Material에서 프록시가 관리하는 외부 CB
 	FConstantBufferBinding PerShaderOverride;
 
+	FString ShaderPath; // .uasset 로드 시 Template/CB 재구성을 위한 source shader path
+
 	// SRV 캐시 — SetTextureParameter 시 갱신, BuildCommandForProxy에서 map lookup 회피
 	ID3D11ShaderResourceView* CachedSRVs[(int)EMaterialTextureSlot::Max] = {};
 
@@ -105,7 +109,8 @@ public:
 		EBlendState InBlend,
 		EDepthStencilState InDepth,
 		ERasterizerState InRaster,
-		TMap<FString, std::unique_ptr<FMaterialConstantBuffer>>&& InBuffers);
+		TMap<FString, std::unique_ptr<FMaterialConstantBuffer>>&& InBuffers,
+		const FString& InShaderPath = FString());
 
 	const uint8* GetRawPtr(const FString& BufferName, uint32 Offset) const;
 
@@ -149,6 +154,7 @@ public:
 	const FString& GetTexturePathFileName(const FString& TextureName)const;
 
 	const FString& GetAssetPathFileName() const { return PathFileName; }
+	const FString& GetShaderPath() const { return ShaderPath; }
 	void SetAssetPathFileName(const FString& InPath) { PathFileName = InPath; }
 	void Serialize(FArchive& Ar);//>>>>>Manager가 위임
 

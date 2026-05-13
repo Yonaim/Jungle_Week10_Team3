@@ -24,6 +24,7 @@ inline constexpr ImVec4 PopupMenuItemHoverTextColor = ImVec4(0.02f, 0.02f, 0.025
 inline constexpr ImVec4 PopupSectionHeaderTextColor = ImVec4(0.82f, 0.82f, 0.84f, 1.0f);
 inline constexpr ImVec4 PopupSectionLineColor = PopupSectionHeaderTextColor;
 inline constexpr float PopupSectionLineThickness = 1.0f;
+inline constexpr float PopupHorizontalPadding = 10.0f;
 
 inline constexpr ImVec4 HeaderButtonColor = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
 inline constexpr ImVec4 HeaderButtonHoveredColor = ImVec4(0.24f, 0.24f, 0.24f, 1.0f);
@@ -85,11 +86,12 @@ inline void DrawTitleTextWithLine(const char *Label)
     const float HeaderHeight = (std::max)(TextSize.y, ImGui::GetTextLineHeight());
     const float CenterY = Cursor.y + HeaderHeight * 0.5f;
     const float TextY = CenterY - TextSize.y * 0.5f;
+    const float TextX = Cursor.x + PopupHorizontalPadding;
 
-    DrawList->AddText(ImVec2(Cursor.x, TextY), TextColor, Label);
+    DrawList->AddText(ImVec2(TextX, TextY), TextColor, Label);
 
-    const float LineStartX = Cursor.x + TextSize.x + 8.0f;
-    const float LineEndX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    const float LineStartX = TextX + TextSize.x + 8.0f;
+    const float LineEndX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x - PopupHorizontalPadding;
     const float LineY = CenterY + 0.5f;
     if (LineEndX > LineStartX)
     {
@@ -101,6 +103,7 @@ inline void DrawTitleTextWithLine(const char *Label)
 
 inline void DrawPopupSectionHeader(const char *Label)
 {
+    ImGui::Dummy(ImVec2(0.0f, 5.0f));
     DrawTitleTextWithLine(Label);
     ImGui::Dummy(ImVec2(0.0f, 3.0f));
 }
@@ -179,8 +182,8 @@ inline void PushPopupWindowStyle()
     ImGui::PushStyleColor(ImGuiCol_Separator, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorHovered, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorActive, PopupSectionLineColor);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(7.0f, 5.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 14.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(5.0f, 4.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);

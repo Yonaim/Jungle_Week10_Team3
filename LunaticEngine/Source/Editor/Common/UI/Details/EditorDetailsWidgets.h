@@ -36,6 +36,18 @@ inline FString MakeAssetPreviewLabel(const FString &Path)
     return (Path.empty() || Path == "None") ? FString("None") : GetStemFromPath(Path);
 }
 
+inline bool IsNoneAssetPath(const FString &Path)
+{
+    return Path.empty() || Path == "None";
+}
+
+inline bool AssetPathsMatch(const FString &A, const FString &B)
+{
+    const FString NormalizedA = IsNoneAssetPath(A) ? FString("None") : A;
+    const FString NormalizedB = IsNoneAssetPath(B) ? FString("None") : B;
+    return NormalizedA == NormalizedB;
+}
+
 inline void DrawSmallIconButton(const char *Id, const char *Label, const char *Tooltip = nullptr)
 {
     FEditorUIStyle::PushHeaderButtonStyle(4.0f);
@@ -181,6 +193,7 @@ struct FMaterialSlotWidgetArgs
     int32 ElementIndex = -1;
     const char *SlotName = "None";
     FMaterialSlot *Slot = nullptr;
+    const char *ResetPath = nullptr;
     bool bReadOnly = false;
     bool bAllowDragDrop = true;
     float LeftColumnWidth = 120.0f;
@@ -220,6 +233,11 @@ inline bool DrawMaterialSlotRow(const FMaterialSlotWidgetArgs &Args)
     ImGui::BeginGroup();
     constexpr float PreviewImageSize = 26.0f;
     constexpr float PreviewSpacing = 6.0f;
+    constexpr float ResetButtonSize = 22.0f;
+
+    const FString ResetPath = (Args.ResetPath && Args.ResetPath[0] != '\0') ? FString(Args.ResetPath) : FString();
+    const bool bShowResetButton = !Args.bReadOnly && !ResetPath.empty();
+    const bool bCanReset = bShowResetButton && !AssetPathsMatch(Args.Slot->Path, ResetPath);
 
     UMaterial *CurrentMaterial = (Args.Slot->Path.empty() || Args.Slot->Path == "None")
                                      ? nullptr
@@ -227,7 +245,8 @@ inline bool DrawMaterialSlotRow(const FMaterialSlotWidgetArgs &Args)
     UTexture2D *CurrentPreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(CurrentMaterial);
     const float ReservedPreviewWidth =
         (CurrentPreviewTexture && CurrentPreviewTexture->GetSRV()) ? (PreviewImageSize + PreviewSpacing) : 0.0f;
-    float ComboWidth = ImGui::GetContentRegionAvail().x - ReservedPreviewWidth;
+    const float ReservedResetWidth = bShowResetButton ? (ResetButtonSize + PreviewSpacing) : 0.0f;
+    float ComboWidth = ImGui::GetContentRegionAvail().x - ReservedPreviewWidth - ReservedResetWidth;
     if (ComboWidth < 120.0f)
     {
         ComboWidth = 120.0f;
@@ -292,6 +311,35 @@ inline bool DrawMaterialSlotRow(const FMaterialSlotWidgetArgs &Args)
         if (ImGui::IsItemHovered())
         {
             ImGui::SetTooltip("%s", Preview.c_str());
+        }
+    }
+
+    if (bShowResetButton)
+    {
+        ImGui::SameLine(0.0f, PreviewSpacing);
+        if (!bCanReset)
+        {
+            ImGui::BeginDisabled();
+        }
+        const bool bResetClicked = ImGui::Button("##ResetMaterialSlot", ImVec2(ResetButtonSize, ResetButtonSize));
+        const ImVec2 Min = ImGui::GetItemRectMin();
+        const ImVec2 LabelSize = ImGui::CalcTextSize("R");
+        ImGui::GetWindowDrawList()->AddText(
+            ImVec2(Min.x + (ResetButtonSize - LabelSize.x) * 0.5f, Min.y + (ResetButtonSize - LabelSize.y) * 0.5f),
+            ImGui::GetColorU32(ImGuiCol_Text), "R");
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Reset to default material");
+        }
+        if (!bCanReset)
+        {
+            ImGui::EndDisabled();
+        }
+
+        if (bResetClicked && bCanReset)
+        {
+            Args.Slot->Path = ResetPath;
+            bChanged = true;
         }
     }
 

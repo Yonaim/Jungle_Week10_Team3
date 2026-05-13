@@ -27,6 +27,11 @@ class ContentBrowserElement : public std::enable_shared_from_this<ContentBrowser
         return ContentItem.Path.filename();
     }
 
+    const std::filesystem::path& GetPath() const
+    {
+        return ContentItem.Path;
+    }
+
   protected:
     virtual ImU32 GetIconTint() const
     {
@@ -84,10 +89,14 @@ class SceneElement final : public ContentBrowserElement
 class ObjectElement final : public ContentBrowserElement
 {
   public:
+    void OnDoubleLeftClicked(ContentBrowserContext &Context) override;
     virtual const char *GetDragItemType() override
     {
         return "ObjectContentItem";
     }
+
+  protected:
+    void DrawContextMenu(ContentBrowserContext &Context) override;
 };
 
 class FbxElement final : public ContentBrowserElement
@@ -111,6 +120,7 @@ class SkeletalMeshElement final : public ContentBrowserElement
 class PNGElement final : public ContentBrowserElement
 {
   public:
+    void OnDoubleLeftClicked(ContentBrowserContext &Context) override;
     virtual const char *GetDragItemType() override
     {
         return "PNGElement";
@@ -119,6 +129,9 @@ class PNGElement final : public ContentBrowserElement
     {
         return true;
     }
+
+  protected:
+    void DrawContextMenu(ContentBrowserContext &Context) override;
 };
 
 #include "LevelEditor/UI/Panels/LevelMaterialInspectorPanel.h"

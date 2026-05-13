@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "BillboardComponent.h"
 #include "GameFramework/World.h"
 #include "Component/CameraComponent.h"
@@ -29,27 +29,27 @@ FString ResolveLegacyBillboardTexturePath(const FString& InPath)
 {
 	const FString FileName = std::filesystem::path(InPath).filename().string();
 
-	if (FileName == "AmbientLight.mat")
+	if (FileName == "AmbientLight.uasset")
 	{
 		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.AmbientLight"));
 	}
-	if (FileName == "DirectionalLight.mat")
+	if (FileName == "DirectionalLight.uasset")
 	{
 		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.DirectionalLight"));
 	}
-	if (FileName == "PointLight.mat")
+	if (FileName == "PointLight.uasset")
 	{
 		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.PointLight"));
 	}
-	if (FileName == "SpotLight.mat")
+	if (FileName == "SpotLight.uasset")
 	{
 		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.SpotLight"));
 	}
-	if (FileName == "HeightFog.mat")
+	if (FileName == "HeightFog.uasset")
 	{
 		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.HeightFog"));
 	}
-	if (FileName == "Decal.mat")
+	if (FileName == "Decal.uasset")
 	{
 		return FResourceManager::Get().ResolvePath(FName("Editor.Billboard.Decal"));
 	}
@@ -368,7 +368,7 @@ bool UBillboardComponent::ResolveTextureFromPath(const FString& InPath)
 	std::wstring Ext = Path.extension().wstring();
 	std::transform(Ext.begin(), Ext.end(), Ext.begin(), towlower);
 
-	if (Ext == L".mat")
+	if (Ext == L".uasset")
 	{
 		UMaterial* LoadedMat = FMaterialManager::Get().GetOrCreateMaterial(ResolvedPath);
 		if (!LoadedMat)

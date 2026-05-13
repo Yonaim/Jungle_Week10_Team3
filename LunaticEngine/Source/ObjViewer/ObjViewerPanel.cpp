@@ -6,7 +6,7 @@
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Engine/Input/InputManager.h"
 #include "Render/Pipeline/Renderer.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Viewport/Viewport.h"
 
 #include "ImGui/imgui.h"
@@ -20,6 +20,26 @@
 
 namespace
 {
+	const TArray<FMeshAssetListItem>& GetAvailableObjSourceFiles()
+	{
+		static TArray<FMeshAssetListItem> FilteredObjFiles;
+		FilteredObjFiles.clear();
+
+		const TArray<FMeshAssetListItem>& SourceFiles = FMeshAssetManager::GetAvailableMeshSourceFiles();
+		for (const FMeshAssetListItem& Item : SourceFiles)
+		{
+			std::filesystem::path Path(FPaths::ToWide(Item.FullPath));
+			std::wstring Extension = Path.extension().wstring();
+			std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::towlower);
+			if (Extension == L".obj")
+			{
+				FilteredObjFiles.push_back(Item);
+			}
+		}
+
+		return FilteredObjFiles;
+	}
+
 	void ApplyEditorTabStyle()
 	{
 		ImGuiStyle& Style = ImGui::GetStyle();
@@ -136,7 +156,7 @@ void FObjViewerPanel::RenderMeshList()
 	// OBJ Files 섹션
 	if (ImGui::CollapsingHeader("OBJ Files", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		const TArray<FMeshAssetListItem>& ObjFiles = FObjManager::GetAvailableObjFiles();
+		const TArray<FMeshAssetListItem>& ObjFiles = GetAvailableObjSourceFiles();
 
 		for (int32 i = 0; i < static_cast<int32>(ObjFiles.size()); ++i)
 		{
@@ -164,7 +184,7 @@ void FObjViewerPanel::RenderMeshList()
 	// Cached Meshes (.bin) 섹션
 	if (ImGui::CollapsingHeader("Cached Meshes (.bin)", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		const TArray<FMeshAssetListItem>& MeshFiles = FObjManager::GetAvailableMeshFiles();
+		const TArray<FMeshAssetListItem>& MeshFiles = FMeshAssetManager::GetAvailableMeshFiles();
 
 		for (int32 i = 0; i < static_cast<int32>(MeshFiles.size()); ++i)
 		{
@@ -231,7 +251,7 @@ void FObjViewerPanel::RenderImportPopup()
 		// Import / Cancel 버튼
 		if (ImGui::Button("Import", ImVec2(120, 0)))
 		{
-			const TArray<FMeshAssetListItem>& ObjFiles = FObjManager::GetAvailableObjFiles();
+			const TArray<FMeshAssetListItem>& ObjFiles = GetAvailableObjSourceFiles();
 			if (Engine && SelectedObjIndex >= 0 && SelectedObjIndex < static_cast<int32>(ObjFiles.size()))
 			{
 				Engine->ImportObjWithOptions(ObjFiles[SelectedObjIndex].FullPath, PendingImportOptions);

@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Engine/Runtime/Engine.h"
 
 #include "Audio/AudioManager.h"
@@ -13,7 +13,7 @@
 #include "Resource/ResourceManager.h"
 #include "Render/Pipeline/DefaultRenderPipeline.h"
 #include "Render/Resource/MeshBufferManager.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Texture/Texture2D.h"
 #include "GameFramework/World.h"
 #include "GameFramework/AActor.h"
@@ -28,6 +28,8 @@
 #include "Viewport/Viewport.h"
 #include "Component/CameraComponent.h"
 
+#include <filesystem>
+
 DEFINE_CLASS(UEngine, UObject)
 
 UEngine* GEngine = nullptr;
@@ -37,6 +39,43 @@ bool GIsEditor = false;
 
 namespace
 {
+
+	void EnsureBuiltinEngineContent(ID3D11Device* Device)
+	{
+		if (!Device)
+		{
+			UE_LOG_CATEGORY(Engine, Warning, "[INIT][Asset] Skip Engine/Content generation: invalid D3D device");
+			return;
+		}
+
+		const wchar_t* BasicShapeSources[] = {
+			L"cone.obj",
+			L"cube.obj",
+			L"cylinder.obj",
+			L"plane.obj",
+			L"sphere.obj",
+			L"sphere_lowpoly.obj",
+		};
+
+		const std::filesystem::path SourceRoot = std::filesystem::path(FPaths::EngineBasicShapeSourceDir()).lexically_normal();
+		for (const wchar_t* SourceFileName : BasicShapeSources)
+		{
+			const std::filesystem::path SourcePath = (SourceRoot / SourceFileName).lexically_normal();
+			if (!std::filesystem::exists(SourcePath))
+			{
+				UE_LOG_CATEGORY(Engine, Warning, "[INIT][Asset] Missing built-in mesh source: %s", FPaths::ToUtf8(SourcePath.generic_wstring()).c_str());
+				continue;
+			}
+
+			const FString SourcePathUtf8 = FPaths::ToUtf8(SourcePath.generic_wstring());
+			UE_LOG_CATEGORY(Engine, Info, "[INIT][Asset] Ensure built-in mesh: source=%s", SourcePathUtf8.c_str());
+			if (!FMeshAssetManager::LoadStaticMesh(SourcePathUtf8, Device))
+			{
+				UE_LOG_CATEGORY(Engine, Error, "[INIT][Asset] Failed to generate/load built-in mesh from source: %s", SourcePathUtf8.c_str());
+			}
+		}
+	}
+
 	ELevelTick ToLevelTickType(EWorldType WorldType)
 	{
 		switch (WorldType)
@@ -99,34 +138,34 @@ void UEngine::Init(FWindowsWindow* InWindow)
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] MeshBufferManager::Init complete");
 	}
 
+
+	{
+		SCOPE_STARTUP_STAT("EngineContent::EnsureGenerated");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Ensuring built-in Engine/Content assets");
+		EnsureBuiltinEngineContent(Device);
+	}
+
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadDefaultResources");
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading default resources");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::DefaultContentResourceFilePath()), Device);
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::BuiltinAssetCatalogFilePath()), Device);
 	}
 
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadEditorResources");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading editor resources");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::EditorResourceFilePath()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadImportAssetSources");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading import asset sources");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ImportAssetSourcesFilePath()), Device);
 	}
 
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadProjectResources");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading project resources");
-		FResourceManager::Get().LoadFromScanFile(FPaths::ToUtf8(FPaths::ProjectResourcePathsFilePath()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadGameAssetCatalog");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading game asset catalog");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::GameAssetCatalogFilePath()), Device);
 	}
-
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadProjectResourceRegistry");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading project resource registry");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ProjectResourceRegistryFilePath()), Device);
-	}
-
-	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadFromDir");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning resource directory: %s", FPaths::ToUtf8(FPaths::RootDir()).c_str());
-		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::RootDir()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadFromEngineSourceDir");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning engine source asset directory: %s", FPaths::ToUtf8(FPaths::EngineSourceDir()).c_str());
+		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::EngineSourceDir()), Device);
 	}
 
 	{
@@ -164,7 +203,7 @@ void UEngine::Shutdown()
 	RenderPipeline.reset();
 	FResourceManager::Get().ReleaseGPUResources();
 	UTexture2D::ReleaseAllGPU();
-	FObjManager::ReleaseAllGPU();
+	FMeshAssetManager::ReleaseAllGPU();
 	FMeshBufferManager::Get().Release();
 	Renderer.Release();
 }

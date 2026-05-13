@@ -41,7 +41,14 @@ class FAssetEditorWindow : public IEditorMenuProvider
     bool OpenEditorTab(std::unique_ptr<IAssetEditor> Editor);
     bool ActivateTabByAssetPath(const std::filesystem::path &AssetPath);
     bool SaveActiveTab();
-    void CloseActiveTab();
+    bool UndoActiveTab();
+    bool RedoActiveTab();
+    bool CanUndoActiveTab() const;
+    bool CanRedoActiveTab() const;
+    bool CloseActiveTab(bool bPromptForDirty = true);
+    bool CloseAllTabs(bool bPromptForDirty = true, void *OwnerWindowHandle = nullptr);
+    bool HasDirtyTabs() const;
+    bool ConfirmCloseAllTabs(void *OwnerWindowHandle = nullptr) const;
 
     void Tick(float DeltaTime);
 
@@ -64,9 +71,13 @@ class FAssetEditorWindow : public IEditorMenuProvider
     FString GetFrameTitle() const override;
     FString GetFrameTitleTooltip() const override;
 
+    static float GetFrameToolbarHeight();
+
   private:
     void RenderDocumentTabBar();
+    void RenderAssetFrameToolbar();
     void RenderEmptyState(ImGuiID DockspaceId);
+    void HandleGlobalShortcuts();
 
   private:
     UEditorEngine       *EditorEngine = nullptr;

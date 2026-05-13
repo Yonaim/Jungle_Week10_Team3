@@ -4,8 +4,7 @@
 #include "Materials/Material.h"
 #include "Core/Log.h"
 #include "Engine/Platform/Paths.h"
-#include "Mesh/ObjManager.h"
-#include "Resource/ResourceManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 #include "Materials/MaterialManager.h"
 #include <algorithm>
@@ -16,6 +15,61 @@
 
 const FVector FallbackColor3 = FVector(1.0f, 0.0f, 1.0f);
 const FVector4 FallbackColor4 = FVector4(1.0f, 0.0f, 1.0f, 1.0f);
+
+namespace
+{
+	FString SanitizeAssetName(FString Name)
+	{
+		if (Name.empty())
+		{
+			return "None";
+		}
+
+		for (char& Character : Name)
+		{
+			const bool bAlphaNum = (Character >= 'a' && Character <= 'z')
+				|| (Character >= 'A' && Character <= 'Z')
+				|| (Character >= '0' && Character <= '9');
+			if (!bAlphaNum && Character != '_' && Character != '-')
+			{
+				Character = '_';
+			}
+		}
+
+		return Name;
+	}
+
+	FString MakeProjectRelativePath(const std::filesystem::path& Path)
+	{
+		const std::filesystem::path RootPath = std::filesystem::path(FPaths::RootDir()).lexically_normal();
+		const std::filesystem::path NormalizedPath = Path.lexically_normal();
+		std::error_code ErrorCode;
+		const std::filesystem::path RelativePath = std::filesystem::relative(NormalizedPath, RootPath, ErrorCode);
+		if (!ErrorCode && !RelativePath.empty())
+		{
+			return FPaths::ToUtf8(RelativePath.generic_wstring());
+		}
+		return FPaths::ToUtf8(NormalizedPath.generic_wstring());
+	}
+
+	FString MakeImportedMaterialAssetPath(const FString& SourceFilePath, const FString& MaterialSlotName)
+	{
+		const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(SourceFilePath)).stem().wstring()));
+		FString SlotName = SanitizeAssetName(MaterialSlotName.empty() ? FString("None") : MaterialSlotName);
+		const bool bHasMaterialPrefix =
+			SlotName.size() > 2 &&
+			SlotName[0] == 'M' &&
+			SlotName[1] == '_';
+
+		std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials";
+		const std::wstring FileName = bHasMaterialPrefix
+			? FPaths::ToWide(SlotName) + L".uasset"
+			: L"M_" + FPaths::ToWide(SlotName) + L".uasset";
+		std::filesystem::path MaterialAssetPath = MaterialDirectory / FileName;
+		return MakeProjectRelativePath(MaterialAssetPath);
+	}
+
+}
 
 struct FVertexKey {
     uint32 p, t, n;
@@ -107,6 +161,62 @@ struct FStringParser
 	}
 };
 
+namespace
+{
+	FString ParseMtlTextureMapPath(std::string_view Line, const FString& MtlFilePath)
+	{
+		std::string TextureFileName;
+
+		while (!Line.empty())
+		{
+			std::string_view LineBeforeToken = Line;
+			std::string_view Token = FStringParser::GetNextWhitespaceToken(Line);
+			if (Token.empty())
+			{
+				break;
+			}
+
+			if (Token[0] == '-')
+			{
+				int32 ArgsToSkip = 0;
+				if (Token == "-s" || Token == "-o" || Token == "-t")
+				{
+					ArgsToSkip = 3;
+				}
+				else if (Token == "-mm")
+				{
+					ArgsToSkip = 2;
+				}
+				else if (Token == "-bm" || Token == "-boost" || Token == "-texres" ||
+						 Token == "-blendu" || Token == "-blendv" || Token == "-clamp" ||
+						 Token == "-cc" || Token == "-imfchan" || Token == "-type")
+				{
+					ArgsToSkip = 1;
+				}
+
+				for (int32 i = 0; i < ArgsToSkip; ++i)
+				{
+					FStringParser::GetNextWhitespaceToken(Line);
+				}
+			}
+			else
+			{
+				FStringParser::TrimLeft(LineBeforeToken);
+				TextureFileName = FString(LineBeforeToken);
+				break;
+			}
+		}
+
+		size_t LastNonSpace = TextureFileName.find_last_not_of(" \t");
+		if (LastNonSpace != FString::npos)
+		{
+			TextureFileName.erase(LastNonSpace + 1);
+		}
+
+		return TextureFileName.empty() ? FString() : FPaths::ResolveAssetPath(MtlFilePath, TextureFileName);
+	}
+}
+
 struct FRawFaceVertex
 {
     int32 PosIndex = -1;
@@ -145,6 +255,7 @@ FRawFaceVertex ParseSingleFaceVertex(std::string_view FaceToken)
 bool FObjImporter::ParseObj(const FString& ObjFilePath, FObjInfo& OutObjInfo)
 {
 	OutObjInfo = FObjInfo();
+	OutObjInfo.SourceFilePath = ObjFilePath;
 
 	std::ifstream File(FPaths::ToWide(ObjFilePath), std::ios::binary | std::ios::ate);
 	if (!File.is_open())
@@ -371,6 +482,25 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Kd.Y);
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Kd.Z);
 		}
+		else if (Prefix == "Ks")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FObjMaterialInfo& CurrentMaterial = OutMtlInfos.back();
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.X);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.Y);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.Z);
+		}
+		else if (Prefix == "Ns")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), OutMtlInfos.back().Ns);
+		}
 		else if (Prefix == "map_Kd")
 		{
 			if (OutMtlInfos.empty())
@@ -441,33 +571,58 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 				OutMtlInfos.back().map_Kd = FPaths::ResolveAssetPath(MtlFilePath, TextureFileName);
 			}
 		}
+		else if (Prefix == "map_Ks" || Prefix == "bump" || Prefix == "map_Bump" || Prefix == "map_bump")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+
+			const FString ParsedTexturePath = ParseMtlTextureMapPath(Line, MtlFilePath);
+			if (ParsedTexturePath.empty())
+			{
+				continue;
+			}
+
+			if (Prefix == "map_Ks")
+			{
+				OutMtlInfos.back().map_Ks = ParsedTexturePath;
+			}
+			else
+			{
+				OutMtlInfos.back().bump = ParsedTexturePath;
+			}
+		}
 	}
 
 	return true;
 }
 
-// MTL 정보에서 머티리얼 파일로 변환하는 레거시 래퍼
-FString FObjImporter::ConvertMtlInfoToJson(const FObjMaterialInfo* MtlInfo)
+// MTL 정보에서 정식 Material .uasset 파일로 변환한다.
+// 생성 위치는 Asset/Game/Content/Materials/<SourceAssetName>/ 이다.
+FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePath, const FObjMaterialInfo* MtlInfo)
 {
-	return ConvertMtlInfoToMat(MtlInfo);
-}
+	if (!MtlInfo)
+	{
+		return "None";
+	}
 
-// MTL 정보에서 머티리얼 mat 파일로 변환하는 함수
-FString FObjImporter::ConvertMtlInfoToMat(const FObjMaterialInfo* MtlInfo)
-{
-	const FString AutoMaterialDirectory = FResourceManager::Get().ResolvePath(FName("Default.Directory.MaterialAuto"));
-	const FString MatPath = AutoMaterialDirectory + "/" + MtlInfo->MaterialSlotName + ".mat";
+	const FString MaterialAssetPath = MakeImportedMaterialAssetPath(SourceFilePath, MtlInfo->MaterialSlotName);
 
-	// 이미 존재하면 덮어쓰지 않음 (에디터에서 수정했을 수 있으므로)
-	if (std::filesystem::exists(FPaths::ToWide(MatPath)))
-		return MatPath;
+	const std::filesystem::path MaterialAssetPathW = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(MaterialAssetPath);
 
-	// Auto/ 디렉토리 보장
-	std::filesystem::create_directories(FPaths::ToWide(AutoMaterialDirectory));
+	// 이미 존재하면 덮어쓰지 않음. 사용자가 Material Editor에서 수정했을 수 있다.
+	if (std::filesystem::exists(MaterialAssetPathW))
+	{
+		return MaterialAssetPath;
+	}
+
+	std::filesystem::create_directories(MaterialAssetPathW.parent_path());
 
 	json::JSON JsonData;
-	JsonData["PathFileName"] = MatPath;
+	JsonData["PathFileName"] = MaterialAssetPath;
 	JsonData["Origin"] = "ObjImport";
+	JsonData["SourceFilePath"] = MakeProjectRelativePath(std::filesystem::path(FPaths::ToWide(SourceFilePath)));
 	JsonData["ShaderPath"] = "Shaders/Geometry/UberLit.hlsl";
 	JsonData["RenderPass"] = "Opaque";
 
@@ -482,17 +637,27 @@ FString FObjImporter::ConvertMtlInfoToMat(const FObjMaterialInfo* MtlInfo)
 	}
 	else
 	{
-
 		JsonData["Parameters"]["SectionColor"][0] = MtlInfo->Kd.X;
 		JsonData["Parameters"]["SectionColor"][1] = MtlInfo->Kd.Y;
 		JsonData["Parameters"]["SectionColor"][2] = MtlInfo->Kd.Z;
 		JsonData["Parameters"]["SectionColor"][3] = 1.0f;
 	}
 
-	std::ofstream File(FPaths::ToWide(MatPath));
-	File << JsonData.dump();
+	JsonData["Parameters"]["HasNormalMap"] = MtlInfo->bump.empty() ? 0.0f : 1.0f;
 
-	return MatPath;
+	if (!MtlInfo->bump.empty())
+	{
+		JsonData["Textures"]["NormalTexture"] = MtlInfo->bump;
+	}
+
+	if (!MtlInfo->map_Ks.empty())
+	{
+		JsonData["Textures"]["SpecularTexture"] = MtlInfo->map_Ks;
+	}
+
+	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);
+
+	return MaterialAssetPath;
 }
 
 FVector FObjImporter::RemapPosition(const FVector& ObjPos, EForwardAxis Axis)
@@ -563,7 +728,7 @@ bool FObjImporter::Convert(const FObjInfo& ObjInfo, const TArray<FObjMaterialInf
 			UE_LOG_CATEGORY(ObjImporter, Debug, "Importer TargetSlotName: %s;", TargetSlotName.c_str());
 
 			// Convert() 안에서 기존 직접 세팅 대신
-			FString MaterialPath = ConvertMtlInfoToMat(MatchedMaterial); // .mat 파일 생성
+			FString MaterialPath = ConvertMtlInfoToMaterialAsset(ObjInfo.SourceFilePath, MatchedMaterial); // Material .uasset 생성
 
 			UMaterial* MaterialObject = FMaterialManager::Get().GetOrCreateMaterial(MaterialPath);
 
@@ -850,11 +1015,11 @@ bool FObjImporter::Import(const FString& ObjFilePath, const FImportOptions& Opti
 	return true;
 }
 
-bool FObjImporter::ImportMtl(const FString& MtlFilePath, TArray<FString>* OutGeneratedMatPaths)
+bool FObjImporter::ImportMtl(const FString& MtlFilePath, TArray<FString>* OutGeneratedMaterialAssetPaths)
 {
-	if (OutGeneratedMatPaths)
+	if (OutGeneratedMaterialAssetPaths)
 	{
-		OutGeneratedMatPaths->clear();
+		OutGeneratedMaterialAssetPaths->clear();
 	}
 
 	TArray<FObjMaterialInfo> ParsedMtlInfos;
@@ -877,19 +1042,19 @@ bool FObjImporter::ImportMtl(const FString& MtlFilePath, TArray<FString>* OutGen
 			continue;
 		}
 
-		const FString MatPath = ConvertMtlInfoToMat(&MaterialInfo);
-		if (!MatPath.empty())
+		const FString MaterialAssetPath = ConvertMtlInfoToMaterialAsset(MtlFilePath, &MaterialInfo);
+		if (!MaterialAssetPath.empty())
 		{
-			if (OutGeneratedMatPaths)
+			if (OutGeneratedMaterialAssetPaths)
 			{
-				OutGeneratedMatPaths->push_back(MatPath);
+				OutGeneratedMaterialAssetPaths->push_back(MaterialAssetPath);
 			}
 
-			// Force-load so the new .mat is immediately available in editor/runtime caches.
-			FMaterialManager::Get().GetOrCreateMaterial(MatPath);
+			// Force-load so the new .uasset is immediately available in editor/runtime caches.
+			FMaterialManager::Get().GetOrCreateMaterial(MaterialAssetPath);
 		}
 	}
 
-	UE_LOG_CATEGORY(ObjImporter, Info, "MTL Imported successfully. File: %s. Generated %zu material(s)", MtlFilePath.c_str(), OutGeneratedMatPaths ? OutGeneratedMatPaths->size() : ParsedMtlInfos.size());
+	UE_LOG_CATEGORY(ObjImporter, Info, "MTL Imported successfully. File: %s. Generated %zu material asset(s)", MtlFilePath.c_str(), OutGeneratedMaterialAssetPaths ? OutGeneratedMaterialAssetPaths->size() : ParsedMtlInfos.size());
 	return true;
 }

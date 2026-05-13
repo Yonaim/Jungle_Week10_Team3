@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "SkinnedMeshComponent.h"
 
 // 시연용 — 랜덤 본 사인파 진동
@@ -28,6 +28,8 @@ public:
 	~USkeletalMeshComponent() override = default;
 
 	bool SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform);
+	bool ApplyLocalPoseTransforms(const TArray<FTransform>& LocalTransforms);
+	void ResetToBindPose();
 	void SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform);
 
 	TArray<FNormalVertex>* GetCPUSkinnedVertices() override { return &SkinBuffer; }

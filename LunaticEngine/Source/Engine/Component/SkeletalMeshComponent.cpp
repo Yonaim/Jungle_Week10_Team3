@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "SkeletalMeshComponent.h"
 #include "Serialization/Archive.h"
 #include "Mesh/SkeletalMesh.h"
@@ -14,6 +14,33 @@ IMPLEMENT_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 bool USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
 {
 	return CurrentPose.SetLocalTransform(BoneIndex, LocalTransform);
+}
+
+
+bool USkeletalMeshComponent::ApplyLocalPoseTransforms(const TArray<FTransform>& LocalTransforms)
+{
+	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
+	{
+		return false;
+	}
+
+	const int32 BoneCount = static_cast<int32>(SkeletalMesh->GetSkeletalMeshAsset()->Bones.size());
+	if (BoneCount <= 0 || static_cast<int32>(LocalTransforms.size()) != BoneCount)
+	{
+		return false;
+	}
+
+	CurrentPose.LocalTransforms = LocalTransforms;
+	++CurrentPose.PoseVersion;
+	CurrentPose.bComponentDirty = true;
+	RefreshSkinningNow();
+	return true;
+}
+
+void USkeletalMeshComponent::ResetToBindPose()
+{
+	InitBoneTransform();
+	RefreshSkinningNow();
 }
 
 void USkeletalMeshComponent::SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform)

@@ -158,8 +158,7 @@ void FLogManager::LogMessageV(ELogLevel Level, const char* Category, const char*
 	vsnprintf(Message, sizeof(Message), Fmt, Args);
 
 	char FormattedMessage[2304];
-	snprintf(FormattedMessage, sizeof(FormattedMessage), "[%s] %s: %s",
-		GetLogLevelLabel(Level),
+	snprintf(FormattedMessage, sizeof(FormattedMessage), "%s: %s",
 		(Category != nullptr && Category[0] != '\0') ? Category : "Log",
 		Message);
 
