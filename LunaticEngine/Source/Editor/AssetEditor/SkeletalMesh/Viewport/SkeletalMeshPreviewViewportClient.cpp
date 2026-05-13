@@ -1,4 +1,4 @@
-#include "PCH/LunaticPCH.h"
+﻿#include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
@@ -201,14 +201,16 @@ float ComputeBoneConnectionBaseRadius(float BoneLength, float ReferenceSphereRad
 void BuildBoneDebugRadii(
     const TArray<FBoneInfo>& Bones,
     const FSkeletonPose& Pose,
+    float BoneDebugScale,
     TArray<float>& OutBoneSphereRadii,
     TArray<float>& OutConnectionBaseRadii)
 {
     const int32 BoneCount = static_cast<int32>(Bones.size());
     const float DefaultSphereRadius = ComputeBoneSphereRadius(Bones, Pose);
-    constexpr float SphereRadiusScale = 10.f;
+    constexpr float SphereRadiusScale = 1.75f;
+    const float EffectiveBoneDebugScale = ClampFloat(BoneDebugScale, 0.1f, 4.0f);
 
-    OutBoneSphereRadii.resize(BoneCount, DefaultSphereRadius * SphereRadiusScale);
+    OutBoneSphereRadii.resize(BoneCount, DefaultSphereRadius * SphereRadiusScale * EffectiveBoneDebugScale);
     OutConnectionBaseRadii.resize(BoneCount, 0.0f);
 
     for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
@@ -227,7 +229,7 @@ void BuildBoneDebugRadii(
         }
 
         const float BoneLength = FVector::Distance(ParentPosition, BonePosition);
-        const float ConnectionBaseRadius = ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius);
+        const float ConnectionBaseRadius = ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius) * EffectiveBoneDebugScale;
         OutConnectionBaseRadii[BoneIndex] = ConnectionBaseRadius;
         const float DesiredSphereRadius = ConnectionBaseRadius * SphereRadiusScale;
         OutBoneSphereRadii[BoneIndex] = (std::max)(OutBoneSphereRadii[BoneIndex], DesiredSphereRadius);
@@ -509,8 +511,12 @@ void ApplySkeletalMeshGizmoStateToManager(const FSkeletalMeshEditorState* State,
         return;
     }
 
+    const EGizmoSpace EffectiveSpace = (State->GizmoMode == EGizmoMode::Scale)
+        ? EGizmoSpace::Local
+        : State->GizmoSpace;
+
     Manager.SetMode(State->GizmoMode);
-    Manager.SetSpace(State->GizmoSpace);
+    Manager.SetSpace(EffectiveSpace);
     Manager.SetSnapSettings(State->bEnableTranslationSnap, State->TranslationSnapSize,
                             State->bEnableRotationSnap, State->RotationSnapSize,
                             State->bEnableScaleSnap, State->ScaleSnapSize);
@@ -1233,7 +1239,7 @@ int32 FSkeletalMeshPreviewViewportClient::HitTestBoneSelection(const FRay& Ray) 
 
     TArray<float> BoneSphereRadii;
     TArray<float> ConnectionBaseRadii;
-    BuildBoneDebugRadii(Bones, Pose, BoneSphereRadii, ConnectionBaseRadii);
+    BuildBoneDebugRadii(Bones, Pose, State->BoneDebugScale, BoneSphereRadii, ConnectionBaseRadii);
     const float ComponentRadiusScale = GetComponentWorldRadiusScale(PreviewComponent);
 
     int32 BestBoneIndex = -1;
@@ -1489,7 +1495,7 @@ void FSkeletalMeshPreviewViewportClient::SubmitSkeletonDebugDraw()
     const int32 SelectedBoneIndex = ResolveSelectedBoneIndex(State, SelectionManager);
     TArray<float> BoneSphereRadii;
     TArray<float> ConnectionBaseRadii;
-    BuildBoneDebugRadii(Bones, Pose, BoneSphereRadii, ConnectionBaseRadii);
+    BuildBoneDebugRadii(Bones, Pose, State->BoneDebugScale, BoneSphereRadii, ConnectionBaseRadii);
     const float ComponentRadiusScale = GetComponentWorldRadiusScale(PreviewComponent);
     constexpr int32 SphereSegments = 12;
     const FColor NormalSphereColor(0, 255, 0, 255);

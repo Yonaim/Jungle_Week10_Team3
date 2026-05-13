@@ -28,6 +28,7 @@ public:
 
     FTransform GetLocalTransform() const override;
     void SetLocalTransform(const FTransform& NewLocalTransform) override;
+    float GetScaleDeltaSensitivity(EGizmoSpace InSpace) const override;
 
     void BeginTransform() override;
     void EndTransform() override;

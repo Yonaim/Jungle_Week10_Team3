@@ -30,21 +30,26 @@ struct VSOutput
 	float3 AxisColor : TEXCOORD2;
 };
 
-float ComputeGridLineAlpha(float2 coord, float2 derivative, float lineThickness)
+float ComputeGridLineAlpha(float2 coord, float2 safeDerivative, float lineThickness)
 {
-	const float2 grid = abs(frac(coord - 0.5f) - 0.5f) / max(derivative, 0.0001f.xx);
+	const float2 grid = abs(frac(coord - 0.5f) - 0.5f) / safeDerivative;
 	return saturate(lineThickness - min(grid.x, grid.y));
 }
 
-float ComputeAxisSuppressionAlpha(float2 coord, float2 derivative, float lineThickness)
+float ComputeAxisSuppressionAlpha(float2 coord, float2 safeDerivative, float lineThickness)
 {
-	const float2 axisDistance = abs(coord) / max(derivative, 0.0001f.xx);
+	const float2 axisDistance = abs(coord) / safeDerivative;
 	return saturate(lineThickness - min(axisDistance.x, axisDistance.y));
 }
 
-float ComputeSingleAxisAlpha(float coord, float derivative, float lineThickness)
+float ComputeSingleAxisAlpha(float coord, float safeDerivative, float lineThickness)
 {
-	return saturate(lineThickness - abs(coord) / max(derivative, 0.0001f));
+	return saturate(lineThickness - abs(coord) / safeDerivative);
+}
+
+float Max3(float a, float b, float c)
+{
+	return max(a, max(b, c));
 }
 
 float3 NormalizeSafe(float3 v, float3 fallbackDir)
@@ -134,37 +139,49 @@ float4 PS(VSOutput input) : SV_TARGET
 	const float dist = distance(input.WorldPos, CameraWorldPos);
 	const float nearMask = step(0.5f, dist);
 	const float fade = pow(saturate(1.0f - dist / MaxDistance), 2.0f);
+	clip(fade * nearMask - 1.0e-4f);
 
 	if (DrawAxisPass > 0.5f)
 	{
+		clip(fade * AxisIntensity - 0.01f);
+
 		const float derivative = max(fwidth(input.LocalPos.x), 0.0001f);
 		const float axisDrawWidth = derivative * max(AxisThickness * 3.0f, 1.0f);
 		float axisAlpha = 1.0f - smoothstep(0.0f, axisDrawWidth, abs(input.LocalPos.x));
 		axisAlpha *= 1.0f - smoothstep(0.85f, 1.0f, abs(input.LocalPos.y));
 		float finalAlpha = axisAlpha * fade * AxisIntensity * nearMask;
-		finalAlpha *= step(0.01f, finalAlpha);
+		clip(finalAlpha - 0.01f);
 		return float4(input.AxisColor, finalAlpha);
 	}
 
+	clip(fade * Max3(MinorIntensity, MajorIntensity, AxisIntensity) - 0.01f);
+
 	const float2 planeCoord = float2(dot(input.WorldPos, GridAxisA.xyz), dot(input.WorldPos, GridAxisB.xyz));
-	const float2 minorCoord = planeCoord / GridSize;
-	float2 minorDerivative = max(fwidth(input.LocalPos.xy) * (Range / GridSize), 0.0001f.xx);
+	const float2 localDerivative = fwidth(input.LocalPos.xy);
+	const float invGridSize = rcp(GridSize);
+	const float minorScale = Range * invGridSize;
+	const float2 minorCoord = planeCoord * invGridSize;
+	const float2 minorDerivative = max(localDerivative * minorScale, 0.0001f.xx);
+	const float minorDerivativeMax = max(minorDerivative.x, minorDerivative.y);
 	float minorAlpha = ComputeGridLineAlpha(minorCoord, minorDerivative, LineThickness);
 	if (AxisThickness > 0.0f)
 	{
 		minorAlpha *= (1.0f - ComputeAxisSuppressionAlpha(minorCoord, minorDerivative, max(LineThickness, AxisThickness)));
 	}
-	minorAlpha *= MinorIntensity * saturate(0.8f - max(minorDerivative.x, minorDerivative.y));
+	minorAlpha *= MinorIntensity * saturate(0.8f - minorDerivativeMax);
 
-	const float majorGridSize = GridSize * max(MajorLineInterval, 1.0f);
-	const float2 majorCoord = planeCoord / majorGridSize;
-	float2 majorDerivative = max(fwidth(input.LocalPos.xy) * (Range / majorGridSize), 0.0001f.xx);
+	const float majorInterval = max(MajorLineInterval, 1.0f);
+	const float invMajorGridSize = invGridSize / majorInterval;
+	const float majorScale = minorScale / majorInterval;
+	const float2 majorCoord = planeCoord * invMajorGridSize;
+	const float2 majorDerivative = max(localDerivative * majorScale, 0.0001f.xx);
+	const float majorDerivativeMax = max(majorDerivative.x, majorDerivative.y);
 	float majorAlpha = ComputeGridLineAlpha(majorCoord, majorDerivative, MajorLineThickness);
 	if (AxisThickness > 0.0f)
 	{
 		majorAlpha *= (1.0f - ComputeAxisSuppressionAlpha(majorCoord, majorDerivative, max(MajorLineThickness, AxisThickness)));
 	}
-	majorAlpha *= MajorIntensity * saturate(1.2f - max(majorDerivative.x, majorDerivative.y));
+	majorAlpha *= MajorIntensity * saturate(1.2f - majorDerivativeMax);
 
 	const float gridAlpha = max(minorAlpha, majorAlpha) * fade;
 	const float3 gridColor = lerp(float3(0.35f, 0.35f, 0.35f), float3(0.55f, 0.55f, 0.55f), saturate(majorAlpha));
@@ -178,7 +195,7 @@ float4 PS(VSOutput input) : SV_TARGET
 	}
 
 	float finalAlpha = max(gridAlpha, max(axisAAlpha, axisBAlpha)) * nearMask;
-	finalAlpha *= step(0.01f, finalAlpha);
+	clip(finalAlpha - 0.01f);
 
 	const float totalWeight = gridAlpha + axisAAlpha + axisBAlpha;
 	float3 color = gridColor;

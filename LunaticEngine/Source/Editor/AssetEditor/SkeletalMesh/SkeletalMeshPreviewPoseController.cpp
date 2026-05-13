@@ -4,6 +4,9 @@
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace
 {
 const FSkeletalMesh* GetSkeletalMeshAsset(const USkeletalMeshComponent* Component)
@@ -127,16 +130,22 @@ bool FSkeletalMeshPreviewPoseController::BeginBoneGizmoSession(int32 BoneIndex, 
 
 bool FSkeletalMeshPreviewPoseController::ApplyBoneGizmoDelta(int32 BoneIndex, const FGizmoDelta& Delta)
 {
-    if (!ActiveSession.bActive || ActiveSession.BoneIndex != BoneIndex || Delta.Mode != EGizmoMode::Translate)
+    if (!ActiveSession.bActive || ActiveSession.BoneIndex != BoneIndex)
     {
         return false;
     }
 
-    const FVector DeltaParent = ConvertComponentDeltaToParentDelta(ActiveSession, Delta.LinearDeltaComponent);
-
-    FTransform NewLocal = ActiveSession.StartLocalTransform;
-    NewLocal.Location = ActiveSession.StartLocalTransform.Location + DeltaParent;
-    return ApplyLocalTransform(BoneIndex, NewLocal);
+    switch (Delta.Mode)
+    {
+    case EGizmoMode::Translate:
+        return ApplyTranslationDelta(BoneIndex, Delta);
+    case EGizmoMode::Rotate:
+        return ApplyRotationDelta(BoneIndex, Delta);
+    case EGizmoMode::Scale:
+        return ApplyScaleDelta(BoneIndex, Delta);
+    default:
+        return false;
+    }
 }
 
 void FSkeletalMeshPreviewPoseController::EndBoneGizmoSession(int32 BoneIndex, bool bCancelled)
@@ -201,6 +210,102 @@ void FSkeletalMeshPreviewPoseController::EnsurePoseInitialized() const
     }
 }
 
+FQuat FSkeletalMeshPreviewPoseController::ExtractRotationFromMatrix(const FMatrix& Matrix) const
+{
+    FVector AxisX(Matrix.M[0][0], Matrix.M[0][1], Matrix.M[0][2]);
+    FVector AxisY(Matrix.M[1][0], Matrix.M[1][1], Matrix.M[1][2]);
+
+    const float ScaleX = AxisX.Length();
+    const float ScaleY = AxisY.Length();
+    AxisX = (ScaleX > 1.0e-6f) ? (AxisX / ScaleX) : FVector::ForwardVector;
+    AxisY = (ScaleY > 1.0e-6f) ? (AxisY / ScaleY) : FVector::RightVector;
+
+    if (Matrix.GetBasisDeterminant3x3() < 0.0f)
+    {
+        AxisX *= -1.0f;
+    }
+
+    AxisX = AxisX.Normalized();
+    AxisY = (AxisY - AxisX * AxisY.Dot(AxisX)).Normalized();
+    if (AxisY.IsNearlyZero())
+    {
+        AxisY = (std::abs(AxisX.Dot(FVector::UpVector)) < 0.95f)
+            ? (FVector::UpVector - AxisX * FVector::UpVector.Dot(AxisX)).Normalized()
+            : (FVector::RightVector - AxisX * FVector::RightVector.Dot(AxisX)).Normalized();
+    }
+
+    FVector AxisZ = AxisX.Cross(AxisY).Normalized();
+    if (AxisZ.IsNearlyZero())
+    {
+        AxisZ = FVector::UpVector;
+    }
+    AxisY = AxisZ.Cross(AxisX).Normalized();
+
+    FMatrix RotationMatrix = FMatrix::Identity;
+    RotationMatrix.M[0][0] = AxisX.X; RotationMatrix.M[0][1] = AxisX.Y; RotationMatrix.M[0][2] = AxisX.Z;
+    RotationMatrix.M[1][0] = AxisY.X; RotationMatrix.M[1][1] = AxisY.Y; RotationMatrix.M[1][2] = AxisY.Z;
+    RotationMatrix.M[2][0] = AxisZ.X; RotationMatrix.M[2][1] = AxisZ.Y; RotationMatrix.M[2][2] = AxisZ.Z;
+    return RotationMatrix.ToQuat().GetNormalized();
+}
+
+bool FSkeletalMeshPreviewPoseController::DecomposeMatrixWithReference(
+    const FMatrix& Matrix,
+    const FTransform& ReferenceLocalTransform,
+    FTransform& OutTransform) const
+{
+    const FVector RawAxisX(Matrix.M[0][0], Matrix.M[0][1], Matrix.M[0][2]);
+    const FVector RawAxisY(Matrix.M[1][0], Matrix.M[1][1], Matrix.M[1][2]);
+    const FVector RawAxisZ(Matrix.M[2][0], Matrix.M[2][1], Matrix.M[2][2]);
+
+    const float MagnitudeX = RawAxisX.Length();
+    const float MagnitudeY = RawAxisY.Length();
+    const float MagnitudeZ = RawAxisZ.Length();
+
+    const FVector ReferenceAxisX = ReferenceLocalTransform.Rotation.GetForwardVector().Normalized();
+    const FVector ReferenceAxisY = ReferenceLocalTransform.Rotation.GetRightVector().Normalized();
+    const FVector ReferenceAxisZ = ReferenceLocalTransform.Rotation.GetUpVector().Normalized();
+
+    const float SignX = (MagnitudeX > 1.0e-6f && RawAxisX.Dot(ReferenceAxisX) < 0.0f) ? -1.0f : 1.0f;
+    const float SignY = (MagnitudeY > 1.0e-6f && RawAxisY.Dot(ReferenceAxisY) < 0.0f) ? -1.0f : 1.0f;
+    const float SignZ = (MagnitudeZ > 1.0e-6f && RawAxisZ.Dot(ReferenceAxisZ) < 0.0f) ? -1.0f : 1.0f;
+
+    FVector Scale(
+        (MagnitudeX > 1.0e-6f) ? (MagnitudeX * SignX) : ReferenceLocalTransform.Scale.X,
+        (MagnitudeY > 1.0e-6f) ? (MagnitudeY * SignY) : ReferenceLocalTransform.Scale.Y,
+        (MagnitudeZ > 1.0e-6f) ? (MagnitudeZ * SignZ) : ReferenceLocalTransform.Scale.Z);
+
+    FVector AxisX = (std::abs(Scale.X) > 1.0e-6f) ? (RawAxisX / Scale.X) : ReferenceAxisX;
+    FVector AxisY = (std::abs(Scale.Y) > 1.0e-6f) ? (RawAxisY / Scale.Y) : ReferenceAxisY;
+    FVector AxisZ = (std::abs(Scale.Z) > 1.0e-6f) ? (RawAxisZ / Scale.Z) : ReferenceAxisZ;
+
+    AxisX = AxisX.Normalized();
+    AxisY = (AxisY - AxisX * AxisY.Dot(AxisX)).Normalized();
+    if (AxisY.IsNearlyZero())
+    {
+        AxisY = ReferenceAxisY;
+    }
+    AxisZ = AxisX.Cross(AxisY).Normalized();
+    if (AxisZ.IsNearlyZero())
+    {
+        AxisZ = ReferenceAxisZ;
+    }
+    AxisY = AxisZ.Cross(AxisX).Normalized();
+    if (AxisY.IsNearlyZero())
+    {
+        AxisY = ReferenceAxisY;
+    }
+
+    FMatrix RotationMatrix = FMatrix::Identity;
+    RotationMatrix.M[0][0] = AxisX.X; RotationMatrix.M[0][1] = AxisX.Y; RotationMatrix.M[0][2] = AxisX.Z;
+    RotationMatrix.M[1][0] = AxisY.X; RotationMatrix.M[1][1] = AxisY.Y; RotationMatrix.M[1][2] = AxisY.Z;
+    RotationMatrix.M[2][0] = AxisZ.X; RotationMatrix.M[2][1] = AxisZ.Y; RotationMatrix.M[2][2] = AxisZ.Z;
+
+    OutTransform.Location = Matrix.GetLocation();
+    OutTransform.Rotation = RotationMatrix.ToQuat().GetNormalized();
+    OutTransform.Scale = Scale;
+    return true;
+}
+
 FVector FSkeletalMeshPreviewPoseController::ConvertComponentDeltaToParentDelta(
     const FBoneGizmoEditSession& Session,
     const FVector& DeltaComponent) const
@@ -212,6 +317,87 @@ FVector FSkeletalMeshPreviewPoseController::ConvertComponentDeltaToParentDelta(
 
     const FMatrix ParentInverse = Session.StartParentComponentMatrix.GetInverse();
     return ParentInverse.TransformVector(DeltaComponent);
+}
+
+float FSkeletalMeshPreviewPoseController::ApplySignedScaleDelta(float StartScale, float DeltaMagnitude) const
+{
+    const float Sign = (StartScale < 0.0f) ? -1.0f : 1.0f;
+    const float NewMagnitude = (std::max)(0.001f, std::abs(StartScale) + DeltaMagnitude);
+    return Sign * NewMagnitude;
+}
+
+bool FSkeletalMeshPreviewPoseController::ApplyTranslationDelta(int32 BoneIndex, const FGizmoDelta& Delta)
+{
+    const FVector DeltaParent = ConvertComponentDeltaToParentDelta(ActiveSession, Delta.LinearDeltaComponent);
+
+    FTransform NewLocal = ActiveSession.StartLocalTransform;
+    NewLocal.Location = ActiveSession.StartLocalTransform.Location + DeltaParent;
+    return ApplyLocalTransform(BoneIndex, NewLocal);
+}
+
+bool FSkeletalMeshPreviewPoseController::ApplyRotationDelta(int32 BoneIndex, const FGizmoDelta& Delta)
+{
+    if (std::abs(Delta.AngularDeltaRadians) <= FMath::Epsilon || Delta.AxisVectorComponent.IsNearlyZero())
+    {
+        return true;
+    }
+
+    const FVector AxisComponent = Delta.AxisVectorComponent.Normalized();
+    const FQuat DeltaWorldQuat = FQuat::FromAxisAngle(AxisComponent, Delta.AngularDeltaRadians);
+    const FQuat ParentWorldQuat = ActiveSession.bHasParent
+        ? ExtractRotationFromMatrix(ActiveSession.StartParentComponentMatrix)
+        : FQuat::Identity;
+    const FQuat StartWorldQuat = ActiveSession.bHasParent
+        ? (ActiveSession.StartLocalTransform.Rotation * ParentWorldQuat).GetNormalized()
+        : ActiveSession.StartLocalTransform.Rotation.GetNormalized();
+    const FQuat NewWorldQuat = (DeltaWorldQuat * StartWorldQuat).GetNormalized();
+    const FQuat NewLocalQuat = ActiveSession.bHasParent
+        ? (NewWorldQuat * ParentWorldQuat.Inverse()).GetNormalized()
+        : NewWorldQuat;
+
+    FTransform NewLocal = ActiveSession.StartLocalTransform;
+    NewLocal.Rotation = NewLocalQuat;
+    return ApplyLocalTransform(BoneIndex, NewLocal);
+}
+
+bool FSkeletalMeshPreviewPoseController::ApplyScaleDelta(int32 BoneIndex, const FGizmoDelta& Delta)
+{
+    const int32 Axis = Delta.ActiveAxis;
+    if (Axis < 0 || Axis > 2)
+    {
+        return false;
+    }
+
+    if (Delta.Space == EGizmoSpace::Local)
+    {
+        FTransform NewLocal = ActiveSession.StartLocalTransform;
+        if (Axis == 0) NewLocal.Scale.X = ApplySignedScaleDelta(ActiveSession.StartLocalTransform.Scale.X, Delta.ScaleDelta.X);
+        if (Axis == 1) NewLocal.Scale.Y = ApplySignedScaleDelta(ActiveSession.StartLocalTransform.Scale.Y, Delta.ScaleDelta.Y);
+        if (Axis == 2) NewLocal.Scale.Z = ApplySignedScaleDelta(ActiveSession.StartLocalTransform.Scale.Z, Delta.ScaleDelta.Z);
+        return ApplyLocalTransform(BoneIndex, NewLocal);
+    }
+
+    FVector WorldScaleFactor(1.0f, 1.0f, 1.0f);
+    if (Axis == 0) WorldScaleFactor.X = (std::max)(0.001f, 1.0f + Delta.ScaleDelta.X);
+    if (Axis == 1) WorldScaleFactor.Y = (std::max)(0.001f, 1.0f + Delta.ScaleDelta.Y);
+    if (Axis == 2) WorldScaleFactor.Z = (std::max)(0.001f, 1.0f + Delta.ScaleDelta.Z);
+
+    const FVector Center = ActiveSession.DragContext.StartTargetTransform.GetLocation();
+    const FMatrix ToCenter = FMatrix::MakeTranslationMatrix(Center * -1.0f);
+    const FMatrix WorldScaleMatrix = FMatrix::MakeScaleMatrix(WorldScaleFactor);
+    const FMatrix FromCenter = FMatrix::MakeTranslationMatrix(Center);
+    const FMatrix NewWorldMatrix = ActiveSession.DragContext.StartTargetWorldMatrix * ToCenter * WorldScaleMatrix * FromCenter;
+    const FMatrix NewLocalMatrix = ActiveSession.bHasParent
+        ? (NewWorldMatrix * ActiveSession.StartParentComponentMatrix.GetInverse())
+        : NewWorldMatrix;
+
+    FTransform NewLocal;
+    if (!DecomposeMatrixWithReference(NewLocalMatrix, ActiveSession.StartLocalTransform, NewLocal))
+    {
+        return false;
+    }
+
+    return ApplyLocalTransform(BoneIndex, NewLocal);
 }
 
 bool FSkeletalMeshPreviewPoseController::ApplyLocalTransform(int32 BoneIndex, const FTransform& NewLocalTransform)

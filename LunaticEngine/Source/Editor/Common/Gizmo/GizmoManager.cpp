@@ -409,7 +409,7 @@ bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
     LastIntersectionLocation = FVector::ZeroVector;
     bFirstDragUpdate = true;
 
-    if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+    if (DragStartMode != EGizmoMode::Select && DeltaTarget)
     {
         FGizmoDragBeginContext BeginContext{};
         BeginContext.Mode = DragStartMode;
@@ -465,7 +465,7 @@ void FGizmoManager::EndDrag()
 {
     if (bDragging && Target && Target->IsValid())
     {
-        if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+        if (DragStartMode != EGizmoMode::Select && DeltaTarget)
         {
             DeltaTarget->EndGizmoDrag(false);
         }
@@ -485,7 +485,7 @@ void FGizmoManager::CancelDrag()
 {
     if (bDragging && Target && Target->IsValid())
     {
-        if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+        if (DragStartMode != EGizmoMode::Select && DeltaTarget)
         {
             DeltaTarget->EndGizmoDrag(true);
         }
@@ -722,12 +722,31 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
     if (DragStartMode == EGizmoMode::Scale && !bPlanar)
     {
         const FVector TotalDelta = CurrentIntersection - DragStartIntersectionLocation;
-        const float RawScaleDelta = TotalDelta.Dot(DragAxisVector);
+        const float ScaleSensitivity = Target ? Target->GetScaleDeltaSensitivity(DragStartSpace) : 1.0f;
+        const float RawScaleDelta = TotalDelta.Dot(DragAxisVector) * ScaleSensitivity;
         const float ScaleDelta = ApplySnapToTotalDragAmount(RawScaleDelta);
         if (std::abs(ScaleDelta) <= FMath::Epsilon)
         {
             LastIntersectionLocation = CurrentIntersection;
             return;
+        }
+
+        if (DeltaTarget)
+        {
+            FGizmoDelta Delta{};
+            Delta.Mode = DragStartMode;
+            Delta.Space = DragStartSpace;
+            Delta.ActiveAxis = ActiveAxis;
+            Delta.AxisVectorComponent = DragAxisVector;
+            Delta.StartTargetTransform = DragStartTransform;
+            if (ActiveAxis == 0) Delta.ScaleDelta.X = ScaleDelta;
+            if (ActiveAxis == 1) Delta.ScaleDelta.Y = ScaleDelta;
+            if (ActiveAxis == 2) Delta.ScaleDelta.Z = ScaleDelta;
+            if (DeltaTarget->ApplyGizmoDelta(Delta))
+            {
+                LastIntersectionLocation = CurrentIntersection;
+                return;
+            }
         }
 
         if (DragStartSpace == EGizmoSpace::World)
@@ -755,6 +774,7 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
         Delta.Mode = DragStartMode;
         Delta.Space = DragStartSpace;
         Delta.ActiveAxis = ActiveAxis;
+        Delta.AxisVectorComponent = DragAxisVector;
         Delta.StartTargetTransform = DragStartTransform;
 
         if (bPlanar)
@@ -877,6 +897,22 @@ void FGizmoManager::ApplyAngularDrag(const FRay& Ray)
     {
         LastIntersectionLocation = CurrentIntersection;
         return;
+    }
+
+    if (DeltaTarget)
+    {
+        FGizmoDelta Delta{};
+        Delta.Mode = DragStartMode;
+        Delta.Space = DragStartSpace;
+        Delta.ActiveAxis = ActiveAxis;
+        Delta.AxisVectorComponent = AxisVector;
+        Delta.AngularDeltaRadians = TotalAngleRadians;
+        Delta.StartTargetTransform = DragStartTransform;
+        if (DeltaTarget->ApplyGizmoDelta(Delta))
+        {
+            LastIntersectionLocation = CurrentIntersection;
+            return;
+        }
     }
 
     FTransform NewTransform = DragStartTransform;

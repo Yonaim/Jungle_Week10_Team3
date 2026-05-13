@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Component/Gizmo/GizmoDeltaTarget.h"
 #include "Mesh/SkeletonPose.h"
@@ -40,7 +40,13 @@ public:
 
 private:
     void EnsurePoseInitialized() const;
+    FQuat ExtractRotationFromMatrix(const FMatrix& Matrix) const;
+    bool DecomposeMatrixWithReference(const FMatrix& Matrix, const FTransform& ReferenceLocalTransform, FTransform& OutTransform) const;
     FVector ConvertComponentDeltaToParentDelta(const FBoneGizmoEditSession& Session, const FVector& DeltaComponent) const;
+    float ApplySignedScaleDelta(float StartScale, float DeltaMagnitude) const;
+    bool ApplyTranslationDelta(int32 BoneIndex, const FGizmoDelta& Delta);
+    bool ApplyRotationDelta(int32 BoneIndex, const FGizmoDelta& Delta);
+    bool ApplyScaleDelta(int32 BoneIndex, const FGizmoDelta& Delta);
     bool ApplyLocalTransform(int32 BoneIndex, const FTransform& NewLocalTransform);
     void PushWorkingPoseToPreviewComponent();
 

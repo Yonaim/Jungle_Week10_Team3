@@ -19,6 +19,7 @@ struct FGizmoDelta
     EGizmoMode Mode = EGizmoMode::Select;
     EGizmoSpace Space = EGizmoSpace::Local;
     int32 ActiveAxis = -1;
+    FVector AxisVectorComponent = FVector::ZeroVector;
     FVector LinearDeltaComponent = FVector::ZeroVector;
     float AngularDeltaRadians = 0.0f;
     FVector ScaleDelta = FVector::ZeroVector;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Component/Gizmo/GizmoTypes.h"
 #include "Math/Transform.h"
 
 // Transform을 가진 조작 대상을 추상화하는 엔진 공용 인터페이스.
@@ -24,6 +25,12 @@ public:
 
     virtual FTransform GetLocalTransform() const = 0;
     virtual void SetLocalTransform(const FTransform& NewLocalTransform) = 0;
+
+    virtual float GetScaleDeltaSensitivity(EGizmoSpace InSpace) const
+    {
+        (void)InSpace;
+        return 1.0f;
+    }
 
     virtual void BeginTransform() {}
     virtual void EndTransform() {}
