@@ -1,4 +1,4 @@
-#include "PCH/LunaticPCH.h"
+﻿#include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
@@ -862,7 +862,7 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && bCanFreeLook)
     {
         const ImVec2 Delta = IO.MouseDelta;
-        GetCameraController().Rotate(Delta.x * 0.25f, -Delta.y * 0.25f);
+        GetCameraController().Rotate(Delta.x * 0.25f, Delta.y * 0.25f);
     }
 
     const float CameraSpeed = State ? State->CameraSpeed : 5.0f;
@@ -876,6 +876,7 @@ void FSkeletalMeshPreviewViewportClient::TickViewportInput(float DeltaTime)
         GetCameraController().MoveLocalImmediate(FVector(0.0f, -Delta.x * PanScale, Delta.y * PanScale));
     }
 
+	IO.MouseWheel = FInputManager::Get().GetMouseWheelDelta();
     if (IO.MouseWheel != 0.0f && IsHovered())
     {
         const float DollyAmount = IO.MouseWheel * DistanceScale * 0.08f * SpeedScale;
