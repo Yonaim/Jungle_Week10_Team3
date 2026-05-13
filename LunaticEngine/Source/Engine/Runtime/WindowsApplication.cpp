@@ -152,6 +152,19 @@ LRESULT FWindowsApplication::WndProc(HWND hWnd, unsigned int Msg, WPARAM wParam,
 	case WM_SYSKEYUP:
 	case WM_SYSCHAR:
 		return 0;
+#if WITH_EDITOR
+	case WM_CLOSE:
+	{
+		if (UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine))
+		{
+			if (!EditorEngine->CanCloseEditorWithPrompt())
+			{
+				return 0;
+			}
+		}
+		break;
+	}
+#endif
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;

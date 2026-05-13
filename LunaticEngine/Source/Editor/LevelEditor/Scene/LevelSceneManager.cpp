@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/Scene/LevelSceneManager.h"
 
 #include "Common/File/EditorFileUtils.h"
@@ -234,7 +234,10 @@ void FLevelSceneManager::ProcessDeferredActions()
     }
 
     bRequestSaveSceneAsDialogQueued = false;
-    SaveSceneAsWithDialog();
+    if (SaveSceneAsWithDialog() && EditorEngine)
+    {
+        EditorEngine->LevelEditorWindow.MarkActiveLevelDocumentClean();
+    }
 }
 
 void FLevelSceneManager::DestroyCurrentSceneWorlds(bool bClearHistory, bool bResetLevelPath)

@@ -119,6 +119,21 @@ namespace
         return Result == IDYES;
     }
 
+    std::wstring MakeLevelClosePromptMessage(const std::filesystem::path& ScenePath, const std::string& Title)
+    {
+        std::wstring SceneName = L"This scene";
+        if (!ScenePath.empty())
+        {
+            SceneName = ScenePath.filename().wstring();
+        }
+        else if (!Title.empty())
+        {
+            SceneName = FPaths::ToWide(Title);
+        }
+
+        return SceneName + L" has unsaved changes.\n\nClose without saving?";
+    }
+
     void ApplyEditorTabStyle()
     {
         ImGuiStyle &Style = ImGui::GetStyle();
@@ -259,6 +274,108 @@ void FLevelEditorWindow::OpenLevelDocumentTabFromCurrentScene()
     ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
 }
 
+void FLevelEditorWindow::ReplaceActiveLevelDocumentTabFromCurrentScene()
+{
+    FLevelDocumentTab NewTab;
+    if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
+    {
+        NewTab.ScenePath = std::filesystem::path(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath())).lexically_normal();
+        NewTab.Title = FPaths::ToUtf8(NewTab.ScenePath.filename().wstring());
+    }
+    else
+    {
+        NewTab.Title = std::string("Untitled ") + std::to_string(NextUntitledSceneIndex++);
+    }
+
+    NewTab.bDirty = false;
+
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        LevelDocumentTabs[ActiveLevelDocumentTabIndex] = std::move(NewTab);
+        return;
+    }
+
+    LevelDocumentTabs.push_back(std::move(NewTab));
+    ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
+}
+
+void FLevelEditorWindow::MarkActiveLevelDocumentDirty()
+{
+    SyncCurrentLevelDocumentTab();
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        LevelDocumentTabs[ActiveLevelDocumentTabIndex].bDirty = true;
+    }
+}
+
+void FLevelEditorWindow::MarkActiveLevelDocumentClean()
+{
+    SyncCurrentLevelDocumentTab();
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        FLevelDocumentTab &ActiveTab = LevelDocumentTabs[ActiveLevelDocumentTabIndex];
+        if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
+        {
+            ActiveTab.ScenePath = std::filesystem::path(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath())).lexically_normal();
+            ActiveTab.Title = FPaths::ToUtf8(ActiveTab.ScenePath.filename().wstring());
+        }
+        ActiveTab.bDirty = false;
+    }
+}
+
+bool FLevelEditorWindow::HasDirtyLevelDocument() const
+{
+    for (const FLevelDocumentTab &Tab : LevelDocumentTabs)
+    {
+        if (Tab.bDirty)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool FLevelEditorWindow::ConfirmCloseLevelDocumentTab(int32 TabIndex) const
+{
+    if (TabIndex < 0 || TabIndex >= static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        return true;
+    }
+
+    const FLevelDocumentTab &Tab = LevelDocumentTabs[TabIndex];
+    if (!Tab.bDirty)
+    {
+        return true;
+    }
+
+    const std::wstring Message = MakeLevelClosePromptMessage(Tab.ScenePath, Tab.Title);
+    const int32 Result = MessageBoxW(Window ? Window->GetHWND() : nullptr,
+                                    Message.c_str(),
+                                    L"Unsaved Scene",
+                                    MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+    return Result == IDYES;
+}
+
+bool FLevelEditorWindow::ConfirmCloseActiveLevelDocument() const
+{
+    return ConfirmCloseLevelDocumentTab(ActiveLevelDocumentTabIndex);
+}
+
+bool FLevelEditorWindow::CanCloseEditorWindowWithPrompt() const
+{
+    if (!ConfirmCloseActiveLevelDocument())
+    {
+        return false;
+    }
+
+    if (EditorEngine && !EditorEngine->GetAssetEditorManager().ConfirmCloseAllEditors(Window ? Window->GetHWND() : nullptr))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 void FLevelEditorWindow::SyncCurrentLevelDocumentTab()
 {
     if (!EditorEngine)
@@ -330,6 +447,16 @@ bool FLevelEditorWindow::SetActiveLevelDocumentTab(int32 NewIndex)
         return true;
     }
 
+    if (!ConfirmCloseActiveLevelDocument())
+    {
+        return false;
+    }
+
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        LevelDocumentTabs[ActiveLevelDocumentTabIndex].bDirty = false;
+    }
+
     ActiveLevelDocumentTabIndex = NewIndex;
     if (!EditorEngine)
     {
@@ -351,6 +478,11 @@ bool FLevelEditorWindow::SetActiveLevelDocumentTab(int32 NewIndex)
 void FLevelEditorWindow::CloseLevelDocumentTab(int32 TabIndex)
 {
     if (TabIndex < 0 || TabIndex >= static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        return;
+    }
+
+    if (!ConfirmCloseLevelDocumentTab(TabIndex))
     {
         return;
     }
@@ -549,19 +681,19 @@ void FLevelEditorWindow::FlushPendingMenuAction()
         if (EditorEngine)
         {
             HWND OwnerWindowHandle = Window ? Window->GetHWND() : nullptr;
-            if (ConfirmNewScene(OwnerWindowHandle))
+            if (ConfirmCloseActiveLevelDocument() && ConfirmNewScene(OwnerWindowHandle))
             {
                 EditorEngine->NewScene();
-                OpenLevelDocumentTabFromCurrentScene();
+                ReplaceActiveLevelDocumentTabFromCurrentScene();
             }
         }
         return;
     case EPendingMenuAction::OpenScene:
         if (EditorEngine)
         {
-            if (EditorEngine->LoadSceneWithDialog())
+            if (ConfirmCloseActiveLevelDocument() && EditorEngine->LoadSceneWithDialog())
             {
-                SyncCurrentLevelDocumentTab();
+                ReplaceActiveLevelDocumentTabFromCurrentScene();
             }
         }
         return;
@@ -570,7 +702,7 @@ void FLevelEditorWindow::FlushPendingMenuAction()
         {
             if (EditorEngine->SaveScene())
             {
-                SyncCurrentLevelDocumentTab();
+                MarkActiveLevelDocumentClean();
             }
         }
         return;
@@ -1090,14 +1222,18 @@ void FLevelEditorWindow::HandleGlobalShortcuts()
 
     if (Input.IsKeyPressed('N'))
     {
-        EditorEngine->NewScene();
-        OpenLevelDocumentTabFromCurrentScene();
+        HWND OwnerWindowHandle = Window ? Window->GetHWND() : nullptr;
+        if (ConfirmCloseActiveLevelDocument() && ConfirmNewScene(OwnerWindowHandle))
+        {
+            EditorEngine->NewScene();
+            ReplaceActiveLevelDocumentTabFromCurrentScene();
+        }
     }
     else if (Input.IsKeyPressed('O'))
     {
-        if (EditorEngine->LoadSceneWithDialog())
+        if (ConfirmCloseActiveLevelDocument() && EditorEngine->LoadSceneWithDialog())
         {
-            SyncCurrentLevelDocumentTab();
+            ReplaceActiveLevelDocumentTabFromCurrentScene();
         }
     }
     else if (Input.IsKeyPressed('S'))
@@ -1110,7 +1246,7 @@ void FLevelEditorWindow::HandleGlobalShortcuts()
         {
             if (EditorEngine->SaveScene())
             {
-                SyncCurrentLevelDocumentTab();
+                MarkActiveLevelDocumentClean();
             }
         }
     }

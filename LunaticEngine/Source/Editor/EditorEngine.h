@@ -151,6 +151,7 @@ class UEditorEngine : public UEngine
     bool IsMouseOverViewport() const { return LevelEditor.GetViewportLayout().IsMouseOverViewport(); }
 
     void RenderUI(float DeltaTime);
+    bool CanCloseEditorWithPrompt() const;
     void RenderPIEOverlayPopups();
 
     FOverlayStatSystem       &GetOverlayStatSystem() { return LevelEditor.GetOverlayStatSystem(); }

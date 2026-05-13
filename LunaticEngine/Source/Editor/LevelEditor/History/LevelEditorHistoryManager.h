@@ -21,7 +21,7 @@ public:
     void Shutdown();
 
     void BeginTrackedSceneChange();
-    void CommitTrackedSceneChange();
+    bool CommitTrackedSceneChange();
     void CancelTrackedSceneChange();
 
     bool CanUndoSceneChange() const;
@@ -32,7 +32,7 @@ public:
     void ClearTrackedTransformHistory();
 
     void BeginTrackedTransformChange();
-    void CommitTrackedTransformChange();
+    bool CommitTrackedTransformChange();
     bool CanUndoTransformChange() const;
     bool CanRedoTransformChange() const;
     void UndoTrackedTransformChange();

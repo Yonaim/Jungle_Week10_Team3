@@ -265,6 +265,11 @@ void UEditorEngine::RenderUI(float DeltaTime)
     LevelEditorWindow.FlushPendingMenuAction();
 }
 
+bool UEditorEngine::CanCloseEditorWithPrompt() const
+{
+    return LevelEditorWindow.CanCloseEditorWindowWithPrompt();
+}
+
 void UEditorEngine::RenderPIEOverlayPopups() { LevelEditor.GetPIEManager().RenderOverlayPopups(); }
 
 void UEditorEngine::OpenScoreSavePopup(int32 InScore) { LevelEditor.GetPIEManager().OpenScoreSavePopup(InScore); }
@@ -395,7 +400,10 @@ void UEditorEngine::BeginTrackedSceneChange()
 
 void UEditorEngine::CommitTrackedSceneChange()
 {
-    LevelEditor.GetHistoryManager().CommitTrackedSceneChange();
+    if (LevelEditor.GetHistoryManager().CommitTrackedSceneChange())
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
 }
 
 void UEditorEngine::CancelTrackedSceneChange()
@@ -412,12 +420,20 @@ bool UEditorEngine::CanRedoSceneChange() const { return LevelEditor.GetHistoryMa
 
 void UEditorEngine::UndoTrackedSceneChange()
 {
-    LevelEditor.GetHistoryManager().UndoTrackedSceneChange();
+    if (CanUndoSceneChange())
+    {
+        LevelEditor.GetHistoryManager().UndoTrackedSceneChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
 }
 
 void UEditorEngine::RedoTrackedSceneChange()
 {
-    LevelEditor.GetHistoryManager().RedoTrackedSceneChange();
+    if (CanRedoSceneChange())
+    {
+        LevelEditor.GetHistoryManager().RedoTrackedSceneChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
 }
 
 void UEditorEngine::ClearTrackedTransformHistory()
@@ -427,15 +443,29 @@ void UEditorEngine::ClearTrackedTransformHistory()
 
 void UEditorEngine::BeginTrackedTransformChange() { LevelEditor.GetHistoryManager().BeginTrackedTransformChange(); }
 
-void UEditorEngine::CommitTrackedTransformChange() { LevelEditor.GetHistoryManager().CommitTrackedTransformChange(); }
+void UEditorEngine::CommitTrackedTransformChange() { CommitTrackedSceneChange(); }
 
 bool UEditorEngine::CanUndoTransformChange() const { return LevelEditor.GetHistoryManager().CanUndoTransformChange(); }
 
 bool UEditorEngine::CanRedoTransformChange() const { return LevelEditor.GetHistoryManager().CanRedoTransformChange(); }
 
-void UEditorEngine::UndoTrackedTransformChange() { LevelEditor.GetHistoryManager().UndoTrackedTransformChange(); }
+void UEditorEngine::UndoTrackedTransformChange()
+{
+    if (CanUndoTransformChange())
+    {
+        LevelEditor.GetHistoryManager().UndoTrackedTransformChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
+}
 
-void UEditorEngine::RedoTrackedTransformChange() { LevelEditor.GetHistoryManager().RedoTrackedTransformChange(); }
+void UEditorEngine::RedoTrackedTransformChange()
+{
+    if (CanRedoTransformChange())
+    {
+        LevelEditor.GetHistoryManager().RedoTrackedTransformChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
+}
 
 void UEditorEngine::ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo)
 {
@@ -502,13 +532,37 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData &CamData)
     }
 }
 
-bool UEditorEngine::SaveSceneAs(const FString &InScenePath) { return LevelEditor.GetSceneManager().SaveSceneAs(InScenePath); }
+bool UEditorEngine::SaveSceneAs(const FString &InScenePath)
+{
+    const bool bSaved = LevelEditor.GetSceneManager().SaveSceneAs(InScenePath);
+    if (bSaved)
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentClean();
+    }
+    return bSaved;
+}
 
-bool UEditorEngine::SaveScene() { return LevelEditor.GetSceneManager().SaveScene(); }
+bool UEditorEngine::SaveScene()
+{
+    const bool bSaved = LevelEditor.GetSceneManager().SaveScene();
+    if (bSaved)
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentClean();
+    }
+    return bSaved;
+}
 
 void UEditorEngine::RequestSaveSceneAsDialog() { LevelEditor.GetSceneManager().RequestSaveSceneAsDialog(); }
 
-bool UEditorEngine::SaveSceneAsWithDialog() { return LevelEditor.GetSceneManager().SaveSceneAsWithDialog(); }
+bool UEditorEngine::SaveSceneAsWithDialog()
+{
+    const bool bSaved = LevelEditor.GetSceneManager().SaveSceneAsWithDialog();
+    if (bSaved)
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentClean();
+    }
+    return bSaved;
+}
 
 bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath) { return LevelEditor.GetSceneManager().LoadSceneFromPath(InScenePath); }
 
