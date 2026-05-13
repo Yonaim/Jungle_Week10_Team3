@@ -11,7 +11,8 @@ DEVLOG.md
 # Asset
 *.cso
 *.uasset
-!**/Asset/Engine/**.uasset
+!**/Asset/Engine/**/**.uasset
+!**/Asset/Game/**/**.uasset
 !**/Asset/**/**.obj
 
 # User-specific files
