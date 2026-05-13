@@ -1,13 +1,147 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Shader.h"
 #include "ShaderInclude.h"
 #include "Profiling/MemoryStats.h"
 #include "Materials/Material.h"
 #include "Core/Log.h"
 #include "Core/Notification.h"
+#include "Engine/Platform/Paths.h"
+
+#include <d3dcompiler.h>
+#include <filesystem>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+
+namespace
+{
+    FString MakeShaderDefineKey(const D3D_SHADER_MACRO* Defines)
+    {
+        if (!Defines)
+        {
+            return {};
+        }
+
+        FString Result;
+        for (const D3D_SHADER_MACRO* Macro = Defines; Macro && Macro->Name; ++Macro)
+        {
+            Result += Macro->Name ? Macro->Name : "";
+            Result += "=";
+            Result += Macro->Definition ? Macro->Definition : "";
+            Result += ";";
+        }
+        return Result;
+    }
+
+    FString SanitizeShaderCacheName(FString Name)
+    {
+        for (char& Character : Name)
+        {
+            const bool bAlphaNum = (Character >= 'a' && Character <= 'z')
+                || (Character >= 'A' && Character <= 'Z')
+                || (Character >= '0' && Character <= '9');
+            if (!bAlphaNum && Character != '_' && Character != '-')
+            {
+                Character = '_';
+            }
+        }
+        return Name.empty() ? "Shader" : Name;
+    }
+
+    FString HashShaderCacheKey(const FString& Key)
+    {
+        const std::hash<FString> Hasher;
+        const size_t H0 = Hasher(Key);
+        const size_t H1 = Hasher(FString("ShaderCache|") + Key);
+
+        std::ostringstream Stream;
+        Stream << std::hex << H0 << "_" << H1;
+        return Stream.str();
+    }
+
+    long long GetShaderSourceWriteStamp(const wchar_t* Path)
+    {
+        if (!Path)
+        {
+            return 0;
+        }
+
+        std::error_code Error;
+        const std::filesystem::path SourcePath(Path);
+        const auto Stamp = std::filesystem::last_write_time(SourcePath, Error);
+        if (Error)
+        {
+            return 0;
+        }
+
+        return Stamp.time_since_epoch().count();
+    }
+
+    std::filesystem::path BuildShaderCachePath(const wchar_t* SourcePath, const D3D_SHADER_MACRO* Defines,
+                                               const char* EntryPoint, const char* Profile)
+    {
+        const std::filesystem::path SourceFile(SourcePath ? SourcePath : L"");
+        const FString SourceKey = FPaths::ToUtf8(SourceFile.lexically_normal().generic_wstring());
+        const FString DefineKey = MakeShaderDefineKey(Defines);
+        const FString Entry = EntryPoint ? EntryPoint : "Entry";
+        const FString Target = Profile ? Profile : "profile";
+        const long long SourceStamp = GetShaderSourceWriteStamp(SourcePath);
+
+        const FString CacheKey = SourceKey + "|" + Entry + "|" + Target + "|" + DefineKey + "|" + std::to_string(SourceStamp);
+        const FString CacheName = SanitizeShaderCacheName(FPaths::ToUtf8(SourceFile.stem().wstring()) + "_" + Entry + "_" + Target)
+            + "_" + HashShaderCacheKey(CacheKey) + ".cso";
+
+        return std::filesystem::path(FPaths::ShaderCacheDir()) / FPaths::ToWide(CacheName);
+    }
+
+    HRESULT LoadOrCompileShaderBlob(const wchar_t* SourcePath, const D3D_SHADER_MACRO* Defines, ID3DInclude* IncludeHandler,
+                                    const char* EntryPoint, const char* Profile, bool bAllowCacheRead,
+                                    ID3DBlob** OutBlob, ID3DBlob** OutErrorBlob)
+    {
+        if (OutBlob)
+        {
+            *OutBlob = nullptr;
+        }
+        if (OutErrorBlob)
+        {
+            *OutErrorBlob = nullptr;
+        }
+
+        const std::filesystem::path CachePath = BuildShaderCachePath(SourcePath, Defines, EntryPoint, Profile);
+        std::filesystem::create_directories(CachePath.parent_path());
+
+        if (bAllowCacheRead && std::filesystem::exists(CachePath))
+        {
+            HRESULT CacheHr = D3DReadFileToBlob(CachePath.c_str(), OutBlob);
+            if (SUCCEEDED(CacheHr) && OutBlob && *OutBlob)
+            {
+                UE_LOG_CATEGORY(Shader, Debug, "[ShaderCache] Hit: %s (%s/%s)",
+                                FPaths::ToUtf8(CachePath.generic_wstring()).c_str(), EntryPoint ? EntryPoint : "", Profile ? Profile : "");
+                return CacheHr;
+            }
+        }
+
+        HRESULT Hr = D3DCompileFromFile(SourcePath, Defines, IncludeHandler, EntryPoint, Profile, 0, 0, OutBlob, OutErrorBlob);
+        if (SUCCEEDED(Hr) && OutBlob && *OutBlob)
+        {
+            HRESULT SaveHr = D3DWriteBlobToFile(*OutBlob, CachePath.c_str(), TRUE);
+            if (SUCCEEDED(SaveHr))
+            {
+                UE_LOG_CATEGORY(Shader, Info, "[ShaderCache] Saved compiled shader: %s (%s/%s)",
+                                FPaths::ToUtf8(CachePath.generic_wstring()).c_str(), EntryPoint ? EntryPoint : "", Profile ? Profile : "");
+            }
+            else
+            {
+                UE_LOG_CATEGORY(Shader, Warning, "[ShaderCache] Failed to save compiled shader cache: %s",
+                                FPaths::ToUtf8(CachePath.generic_wstring()).c_str());
+            }
+        }
+        return Hr;
+    }
+}
+
 
 // ============================================================
 // FComputeShader
@@ -26,8 +160,8 @@ bool FComputeShader::Create(ID3D11Device* InDevice, const wchar_t* Path, const c
 		IncludeHandler.OutIncludes = OutIncludes;
 	}
 
-	HRESULT hr = D3DCompileFromFile(Path, nullptr, &IncludeHandler,
-		EntryPoint, "cs_5_0", 0, 0, &CSBlob, &ErrBlob);
+	HRESULT hr = LoadOrCompileShaderBlob(Path, nullptr, &IncludeHandler,
+		EntryPoint, "cs_5_0", OutIncludes == nullptr, &CSBlob, &ErrBlob);
 
 	if (FAILED(hr))
 	{
@@ -102,7 +236,7 @@ void FShader::Create(ID3D11Device* InDevice, const wchar_t* InFilePath, const ch
 	IncludeHandler.OutIncludes = OutIncludes;
 
 	// Vertex Shader 컴파일
-	HRESULT hr = D3DCompileFromFile(InFilePath, InDefines, &IncludeHandler, InVSEntryPoint, "vs_5_0", 0, 0, &vertexShaderCSO, &errorBlob);
+	HRESULT hr = LoadOrCompileShaderBlob(InFilePath, InDefines, &IncludeHandler, InVSEntryPoint, "vs_5_0", OutIncludes == nullptr, &vertexShaderCSO, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)
@@ -119,7 +253,7 @@ void FShader::Create(ID3D11Device* InDevice, const wchar_t* InFilePath, const ch
 	}
 
 	// Pixel Shader 컴파일
-	hr = D3DCompileFromFile(InFilePath, InDefines, &IncludeHandler, InPSEntryPoint, "ps_5_0", 0, 0, &pixelShaderCSO, &errorBlob);
+	hr = LoadOrCompileShaderBlob(InFilePath, InDefines, &IncludeHandler, InPSEntryPoint, "ps_5_0", OutIncludes == nullptr, &pixelShaderCSO, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)

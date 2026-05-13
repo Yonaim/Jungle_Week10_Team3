@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Mesh/FbxImporter.h"
 #include "Mesh/FbxCommon.h"
 
@@ -295,8 +295,8 @@ namespace
 				Vertex.pos = FFbxCommon::RemapVector(GlobalTransform.MultT(Mesh->GetControlPointAt(ControlPointIndex)));
 
 				FbxVector4 FbxNormal(0.0, 0.0, 1.0, 0.0);
-				Mesh->GetPolygonVertexNormal(PolygonIndex, CornerIndex, FbxNormal);
-				Vertex.normal = FFbxCommon::RemapVector(GlobalTransform.MultR(FbxNormal)).Normalized();
+				FFbxCommon::ReadNormal(Mesh, ControlPointIndex, PolygonIndex, CornerIndex, FbxNormal);
+				Vertex.normal = FFbxCommon::TransformNormalByMatrix(GlobalTransform, FbxNormal);
 
 				FbxVector2 FbxUV(0.0, 0.0);
 				bool bUnmapped = false;
@@ -743,7 +743,7 @@ namespace
 		for (const FFbxMaterialInfo& MaterialInfo : Context.Materials)
 		{
 			FStaticMaterial StaticMaterial;
-			StaticMaterial.MaterialInterface = FMaterialManager::Get().GetOrCreateMaterial(FFbxCommon::ConvertMaterialInfoToMat(MaterialInfo));
+			StaticMaterial.MaterialInterface = FMaterialManager::Get().GetOrCreateMaterial(FFbxCommon::ConvertMaterialInfoToMaterialAsset(FbxFilePath, MaterialInfo));
 			StaticMaterial.MaterialSlotName = MaterialInfo.MaterialSlotName;
 			OutMaterials.push_back(StaticMaterial);
 		}

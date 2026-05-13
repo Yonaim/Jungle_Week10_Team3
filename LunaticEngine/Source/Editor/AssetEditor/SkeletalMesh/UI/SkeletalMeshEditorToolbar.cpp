@@ -153,43 +153,54 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
 
     Desc.DrawShowPopup = [&]()
     {
-        FEditorViewportToolbar::DrawPopupSectionHeader("COMMON SHOW FLAGS");
-        ImGui::Checkbox("Primitives", &State.bShowPrimitives);
-        ImGui::Checkbox("SkeletalMesh", &State.bShowSkeletalMesh);
-        ImGui::Checkbox("Billboard Text", &State.bShowBillboardText);
+        FEditorViewportToolbar::DrawPopupSectionHeader("SHOW FLAGS");
 
-        FEditorViewportToolbar::DrawPopupSectionHeader("ACTOR HELPERS");
-        ImGui::Checkbox("Grid", &State.bShowGrid);
-        if (State.bShowGrid)
+        if (ImGui::CollapsingHeader("Common", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            FEditorViewportToolbar::DrawSliderFloat("Spacing", State.GridSpacing, 0.1f, 10.0f, "%.1f");
-            FEditorViewportToolbar::DrawSliderInt("Half Line Count", State.GridHalfLineCount, 10, 500);
-            FEditorViewportToolbar::DrawSliderFloat("Grid Line", State.GridLineThickness, 0.0f, 4.0f);
-            FEditorViewportToolbar::DrawSliderFloat("Major Line", State.GridMajorLineThickness, 0.0f, 6.0f);
-            FEditorViewportToolbar::DrawSliderInt("Major Interval", State.GridMajorLineInterval, 1, 50);
-            FEditorViewportToolbar::DrawSliderFloat("Minor Intensity", State.GridMinorIntensity, 0.0f, 2.0f);
-            FEditorViewportToolbar::DrawSliderFloat("Major Intensity", State.GridMajorIntensity, 0.0f, 2.0f);
+            ImGui::Checkbox("Primitives", &State.bShowPrimitives);
+            ImGui::Checkbox("SkeletalMesh", &State.bShowSkeletalMesh);
+            ImGui::Checkbox("Billboard Text", &State.bShowBillboardText);
         }
-        ImGui::Checkbox("World Axis", &State.bShowWorldAxis);
-        if (State.bShowWorldAxis)
+
+        if (ImGui::CollapsingHeader("Grid / Axis", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            FEditorViewportToolbar::DrawSliderFloat("Axis Thickness", State.AxisThickness, 0.0f, 8.0f);
-            FEditorViewportToolbar::DrawSliderFloat("Axis Intensity", State.AxisIntensity, 0.0f, 2.0f);
+            ImGui::Checkbox("Grid", &State.bShowGrid);
+            if (State.bShowGrid)
+            {
+                FEditorViewportToolbar::DrawSliderFloat("Spacing", State.GridSpacing, 0.1f, 10.0f, "%.1f");
+                FEditorViewportToolbar::DrawSliderInt("Half Line Count", State.GridHalfLineCount, 10, 500);
+                FEditorViewportToolbar::DrawSliderFloat("Grid Line", State.GridLineThickness, 0.0f, 4.0f);
+                FEditorViewportToolbar::DrawSliderFloat("Major Line", State.GridMajorLineThickness, 0.0f, 6.0f);
+                FEditorViewportToolbar::DrawSliderInt("Major Interval", State.GridMajorLineInterval, 1, 50);
+                FEditorViewportToolbar::DrawSliderFloat("Minor Intensity", State.GridMinorIntensity, 0.0f, 2.0f);
+                FEditorViewportToolbar::DrawSliderFloat("Major Intensity", State.GridMajorIntensity, 0.0f, 2.0f);
+            }
+
+            ImGui::Checkbox("World Axis", &State.bShowWorldAxis);
+            if (State.bShowWorldAxis)
+            {
+                FEditorViewportToolbar::DrawSliderFloat("Axis Thickness", State.AxisThickness, 0.0f, 8.0f);
+                FEditorViewportToolbar::DrawSliderFloat("Axis Intensity", State.AxisIntensity, 0.0f, 2.0f);
+            }
         }
-        ImGui::Checkbox("Gizmo", &State.bShowGizmo);
-        ImGui::Checkbox("Bones", &State.bShowBones);
-        FEditorViewportToolbar::DrawSliderFloat("Billboard Icon Scale", State.BillboardIconScale, 0.1f, 5.0f);
 
-        FEditorViewportToolbar::DrawPopupSectionHeader("SKELETAL PREVIEW");
-        ImGui::Checkbox("Reference Pose", &State.bShowReferencePose);
-        ImGui::Checkbox("Mesh Stats", &State.bShowMeshStatsOverlay);
+        if (ImGui::CollapsingHeader("Skeletal Preview", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Checkbox("Gizmo", &State.bShowGizmo);
+            ImGui::Checkbox("Bones", &State.bShowBones);
+            ImGui::Checkbox("Reference Pose", &State.bShowReferencePose);
+            ImGui::Checkbox("Mesh Stats", &State.bShowMeshStatsOverlay);
+            FEditorViewportToolbar::DrawSliderFloat("Billboard Icon Scale", State.BillboardIconScale, 0.1f, 5.0f);
+        }
 
-        FEditorViewportToolbar::DrawPopupSectionHeader("DEBUG");
-        FEditorViewportToolbar::DrawSliderFloat("Line Thickness", State.DebugLineThickness, 1.0f, 12.0f, "%.1f");
-        ImGui::Checkbox("Scene BVH (Green)", &State.bShowSceneBVH);
-        ImGui::Checkbox("Scene Octree (Cyan)", &State.bShowOctree);
-        ImGui::Checkbox("World Bound (Magenta)", &State.bShowWorldBound);
-        ImGui::Checkbox("Light Visualization", &State.bShowLightVisualization);
+        if (ImGui::CollapsingHeader("Debug"))
+        {
+            FEditorViewportToolbar::DrawSliderFloat("Line Thickness", State.DebugLineThickness, 1.0f, 12.0f, "%.1f");
+            ImGui::Checkbox("Scene BVH (Green)", &State.bShowSceneBVH);
+            ImGui::Checkbox("Scene Octree (Cyan)", &State.bShowOctree);
+            ImGui::Checkbox("World Bound (Magenta)", &State.bShowWorldBound);
+            ImGui::Checkbox("Light Visualization", &State.bShowLightVisualization);
+        }
     };
 
     Desc.DrawLayoutPopup = [&]()

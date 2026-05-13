@@ -20,6 +20,7 @@ class UObject;
 class UEditorEngine;
 class FRenderer;
 class USkeletalMesh;
+class USkeletalMeshComponent;
 class FSkeletalMeshPreviewPoseController;
 
 /**
@@ -54,6 +55,11 @@ class FSkeletalMeshEditor final : public IAssetEditor
     void BuildWindowMenu() override;
     void BuildCustomMenus() override;
 
+    bool CanUndo() const override;
+    bool CanRedo() const override;
+    void Undo() override;
+    void Redo() override;
+
     bool IsDirty() const override { return bDirty; }
     bool IsCapturingInput() const override { return bCapturingInput; }
     FEditorViewportClient *GetActiveViewportClient() override;
@@ -64,8 +70,20 @@ class FSkeletalMeshEditor final : public IAssetEditor
     ImVec4 GetDocumentTabIconTint() const override { return ImVec4(1.0f, 0.42f, 0.78f, 1.0f); }
 
   private:
+    struct FHistoryState
+    {
+        TArray<FString> MaterialPaths;
+    };
+
     void RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId);
     void BuildDefaultDockLayout(ImGuiID DockspaceId);
+    void RenderPreviewerSettingsPanel(const FPanelDesc& Desc);
+
+    FHistoryState CaptureHistoryState() const;
+    void ApplyHistoryState(const FHistoryState &HistoryState);
+    bool AreHistoryStatesEqual(const FHistoryState &A, const FHistoryState &B) const;
+    void PushUndoStateIfChanged(const FHistoryState &BeforeState, const FHistoryState &AfterState);
+    USkeletalMeshComponent *GetPreviewComponent() const;
 
     std::string MakePanelStableId(const char *PanelName) const;
     FPanelDesc MakePanelDesc(const char *DisplayName, const char *StableName, const char *IconKey,
@@ -90,6 +108,9 @@ class FSkeletalMeshEditor final : public IAssetEditor
     // Skeleton Tree / Asset Details / Preview Viewport가 공유하는 Bone 선택 관리자.
     FSkeletalMeshSelectionManager SelectionManager;
 
+    TArray<FHistoryState> UndoStack;
+    TArray<FHistoryState> RedoStack;
+
     bool bOpen = false;
     bool bDirty = false;
 
@@ -98,6 +119,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     bool bSkeletonTreePanelOpen = true;
     bool bDetailsPanelOpen = true;
     bool bBoneDetailsPanelOpen = true;
+    bool bPreviewerSettingsPanelOpen = true;
 
     // 동일 타입 에디터를 여러 개 열었을 때 ImGui ID 충돌을 피하기 위한 인스턴스 ID.
     uint32 EditorInstanceId = 0;

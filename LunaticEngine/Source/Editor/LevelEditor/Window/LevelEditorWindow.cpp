@@ -3,6 +3,7 @@
 
 #include "Component/CameraComponent.h"
 #include "EditorEngine.h"
+#include "AssetEditor/Window/AssetEditorWindow.h"
 #include "Engine/Profiling/Timer.h"
 #include "Engine/Runtime/WindowsWindow.h"
 #include "GameFramework/AActor.h"
@@ -119,6 +120,21 @@ namespace
         return Result == IDYES;
     }
 
+    std::wstring MakeLevelClosePromptMessage(const std::filesystem::path& ScenePath, const std::string& Title)
+    {
+        std::wstring SceneName = L"This scene";
+        if (!ScenePath.empty())
+        {
+            SceneName = ScenePath.filename().wstring();
+        }
+        else if (!Title.empty())
+        {
+            SceneName = FPaths::ToWide(Title);
+        }
+
+        return SceneName + L" has unsaved changes.\n\nClose without saving?";
+    }
+
     void ApplyEditorTabStyle()
     {
         ImGuiStyle &Style = ImGui::GetStyle();
@@ -168,12 +184,12 @@ namespace
     {
         if (!EditorEngine || !EditorEngine->HasCurrentLevelFilePath())
         {
-            return "Untitled.Scene";
+            return "Untitled.umap";
         }
 
         const std::filesystem::path ScenePath(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath()));
         const std::wstring          FileName = ScenePath.filename().wstring();
-        return FileName.empty() ? FString("Untitled.Scene") : FPaths::ToUtf8(FileName);
+        return FileName.empty() ? FString("Untitled.umap") : FPaths::ToUtf8(FileName);
     }
 
     float GetCustomTitleBarHeight() { return 42.0f; }
@@ -259,6 +275,108 @@ void FLevelEditorWindow::OpenLevelDocumentTabFromCurrentScene()
     ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
 }
 
+void FLevelEditorWindow::ReplaceActiveLevelDocumentTabFromCurrentScene()
+{
+    FLevelDocumentTab NewTab;
+    if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
+    {
+        NewTab.ScenePath = std::filesystem::path(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath())).lexically_normal();
+        NewTab.Title = FPaths::ToUtf8(NewTab.ScenePath.filename().wstring());
+    }
+    else
+    {
+        NewTab.Title = std::string("Untitled ") + std::to_string(NextUntitledSceneIndex++);
+    }
+
+    NewTab.bDirty = false;
+
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        LevelDocumentTabs[ActiveLevelDocumentTabIndex] = std::move(NewTab);
+        return;
+    }
+
+    LevelDocumentTabs.push_back(std::move(NewTab));
+    ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
+}
+
+void FLevelEditorWindow::MarkActiveLevelDocumentDirty()
+{
+    SyncCurrentLevelDocumentTab();
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        LevelDocumentTabs[ActiveLevelDocumentTabIndex].bDirty = true;
+    }
+}
+
+void FLevelEditorWindow::MarkActiveLevelDocumentClean()
+{
+    SyncCurrentLevelDocumentTab();
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        FLevelDocumentTab &ActiveTab = LevelDocumentTabs[ActiveLevelDocumentTabIndex];
+        if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
+        {
+            ActiveTab.ScenePath = std::filesystem::path(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath())).lexically_normal();
+            ActiveTab.Title = FPaths::ToUtf8(ActiveTab.ScenePath.filename().wstring());
+        }
+        ActiveTab.bDirty = false;
+    }
+}
+
+bool FLevelEditorWindow::HasDirtyLevelDocument() const
+{
+    for (const FLevelDocumentTab &Tab : LevelDocumentTabs)
+    {
+        if (Tab.bDirty)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool FLevelEditorWindow::ConfirmCloseLevelDocumentTab(int32 TabIndex) const
+{
+    if (TabIndex < 0 || TabIndex >= static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        return true;
+    }
+
+    const FLevelDocumentTab &Tab = LevelDocumentTabs[TabIndex];
+    if (!Tab.bDirty)
+    {
+        return true;
+    }
+
+    const std::wstring Message = MakeLevelClosePromptMessage(Tab.ScenePath, Tab.Title);
+    const int32 Result = MessageBoxW(Window ? Window->GetHWND() : nullptr,
+                                    Message.c_str(),
+                                    L"Unsaved Scene",
+                                    MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+    return Result == IDYES;
+}
+
+bool FLevelEditorWindow::ConfirmCloseActiveLevelDocument() const
+{
+    return ConfirmCloseLevelDocumentTab(ActiveLevelDocumentTabIndex);
+}
+
+bool FLevelEditorWindow::CanCloseEditorWindowWithPrompt() const
+{
+    if (!ConfirmCloseActiveLevelDocument())
+    {
+        return false;
+    }
+
+    if (EditorEngine && !EditorEngine->GetAssetEditorManager().ConfirmCloseAllEditors(Window ? Window->GetHWND() : nullptr))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 void FLevelEditorWindow::SyncCurrentLevelDocumentTab()
 {
     if (!EditorEngine)
@@ -330,6 +448,16 @@ bool FLevelEditorWindow::SetActiveLevelDocumentTab(int32 NewIndex)
         return true;
     }
 
+    if (!ConfirmCloseActiveLevelDocument())
+    {
+        return false;
+    }
+
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        LevelDocumentTabs[ActiveLevelDocumentTabIndex].bDirty = false;
+    }
+
     ActiveLevelDocumentTabIndex = NewIndex;
     if (!EditorEngine)
     {
@@ -351,6 +479,11 @@ bool FLevelEditorWindow::SetActiveLevelDocumentTab(int32 NewIndex)
 void FLevelEditorWindow::CloseLevelDocumentTab(int32 TabIndex)
 {
     if (TabIndex < 0 || TabIndex >= static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        return;
+    }
+
+    if (!ConfirmCloseLevelDocumentTab(TabIndex))
     {
         return;
     }
@@ -549,19 +682,19 @@ void FLevelEditorWindow::FlushPendingMenuAction()
         if (EditorEngine)
         {
             HWND OwnerWindowHandle = Window ? Window->GetHWND() : nullptr;
-            if (ConfirmNewScene(OwnerWindowHandle))
+            if (ConfirmCloseActiveLevelDocument() && ConfirmNewScene(OwnerWindowHandle))
             {
                 EditorEngine->NewScene();
-                OpenLevelDocumentTabFromCurrentScene();
+                ReplaceActiveLevelDocumentTabFromCurrentScene();
             }
         }
         return;
     case EPendingMenuAction::OpenScene:
         if (EditorEngine)
         {
-            if (EditorEngine->LoadSceneWithDialog())
+            if (ConfirmCloseActiveLevelDocument() && EditorEngine->LoadSceneWithDialog())
             {
-                SyncCurrentLevelDocumentTab();
+                ReplaceActiveLevelDocumentTabFromCurrentScene();
             }
         }
         return;
@@ -570,7 +703,7 @@ void FLevelEditorWindow::FlushPendingMenuAction()
         {
             if (EditorEngine->SaveScene())
             {
-                SyncCurrentLevelDocumentTab();
+                MarkActiveLevelDocumentClean();
             }
         }
         return;
@@ -592,22 +725,10 @@ void FLevelEditorWindow::FlushPendingMenuAction()
             EditorEngine->GetAssetEditorManager().OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
         }
         return;
-    case EPendingMenuAction::OpenFBX:
+    case EPendingMenuAction::ImportAsset:
         if (EditorEngine)
         {
-            EditorEngine->GetAssetEditorManager().OpenFbxWithDialog(Window ? Window->GetHWND() : nullptr);
-        }
-        return;
-    case EPendingMenuAction::ImportMaterial:
-        if (EditorEngine)
-        {
-            EditorEngine->ImportMaterialWithDialog();
-        }
-        return;
-    case EPendingMenuAction::ImportTexture:
-        if (EditorEngine)
-        {
-            EditorEngine->ImportTextureWithDialog();
+            EditorEngine->ImportAssetWithDialog();
         }
         return;
     case EPendingMenuAction::CookCurrentScene:
@@ -670,8 +791,12 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.OnOpenProjectSettings = [this]() { bShowProjectSettings = true; };
     MenuContext.OnToggleShortcutOverlay = [this]() { bShowShortcutOverlay = !bShowShortcutOverlay; };
     MenuContext.OnOpenCredits = [this]() { bShowCreditsOverlay = !bShowCreditsOverlay; };
+    const bool bAssetEditorContextActiveEarly = EditorEngine && EditorEngine->IsAssetEditorContextActive();
     MenuBar.Render(MenuContext);
-    RenderDocumentTabBar();
+    if (!bAssetEditorContextActiveEarly)
+    {
+        RenderDocumentTabBar();
+    }
     RenderLevelFrameToolbar();
 
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
@@ -679,11 +804,17 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     const float          TopFrameInset = GetWindowTopContentInset(Window);
     const float          OuterPadding = GetWindowOuterPadding();
     const float          DocumentTabBarHeight = GetDocumentTabBarHeight();
-    const bool           bLevelFrameToolbarVisible = !(EditorEngine && EditorEngine->IsAssetEditorContextActive());
+    const bool           bAssetEditorContextActive = bAssetEditorContextActiveEarly;
+    const bool           bLevelFrameToolbarVisible = !bAssetEditorContextActive;
     const float          LevelFrameToolbarHeight = (bLevelFrameToolbarVisible && EditorEngine)
                                                      ? EditorEngine->GetViewportLayout().GetFrameToolbarHeight()
                                                      : 0.0f;
-    const float          TopEditorStripHeight = DocumentTabBarHeight + LevelFrameToolbarHeight;
+    const bool           bAssetFrameToolbarVisible = bAssetEditorContextActive &&
+                                                     EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().IsOpen();
+    const float          AssetFrameToolbarHeight = bAssetFrameToolbarVisible
+                                                     ? FAssetEditorWindow::GetFrameToolbarHeight()
+                                                     : 0.0f;
+    const float          TopEditorStripHeight = DocumentTabBarHeight + LevelFrameToolbarHeight + AssetFrameToolbarHeight;
     const float          CornerRadius = GetWindowCornerRadius();
     const ImVec2         ViewportMin = MainViewport->Pos;
     const ImVec2         ViewportMax(MainViewport->Pos.x + MainViewport->Size.x, MainViewport->Pos.y + MainViewport->Size.y);
@@ -791,8 +922,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     // 그래야 FBX/SkeletalMesh 패널도 Level Editor 패널과 같은 dock tab fill / selected accent line을 적용받는다.
     RenderCommonOverlays();
 
-    // 토스트 알림 (항상 최상위에 표시)
-    FNotificationToast::Render();
+    // 토스트 알림은 UEditorEngine::RenderUI()에서 Level/Asset Editor 렌더 이후 한 번만 그린다.
 
 }
 
@@ -831,33 +961,11 @@ void FLevelEditorWindow::BuildFileMenu()
         PendingMenuAction = EPendingMenuAction::OpenUAsset;
         return;
     }
-    if (ImGui::MenuItem("Open FBX...", "Ctrl+Alt+F") && EditorEngine)
-    {
-        PendingMenuAction = EPendingMenuAction::OpenFBX;
-        return;
-    }
 
     DrawPopupSectionHeader("IMPORT");
-    if (ImGui::MenuItem("Import Material...") && EditorEngine)
+    if (ImGui::MenuItem("Import Asset...", "Ctrl+Alt+I") && EditorEngine)
     {
-        PendingMenuAction = EPendingMenuAction::ImportMaterial;
-        return;
-    }
-    if (ImGui::MenuItem("Import Texture...") && EditorEngine)
-    {
-        PendingMenuAction = EPendingMenuAction::ImportTexture;
-        return;
-    }
-
-    DrawPopupSectionHeader("COOK");
-    if (ImGui::MenuItem("Cook Current Scene") && EditorEngine)
-    {
-        PendingMenuAction = EPendingMenuAction::CookCurrentScene;
-        return;
-    }
-    if (ImGui::MenuItem("Cook All Scenes"))
-    {
-        PendingMenuAction = EPendingMenuAction::CookAllScenes;
+        PendingMenuAction = EPendingMenuAction::ImportAsset;
         return;
     }
 
@@ -1124,14 +1232,18 @@ void FLevelEditorWindow::HandleGlobalShortcuts()
 
     if (Input.IsKeyPressed('N'))
     {
-        EditorEngine->NewScene();
-        OpenLevelDocumentTabFromCurrentScene();
+        HWND OwnerWindowHandle = Window ? Window->GetHWND() : nullptr;
+        if (ConfirmCloseActiveLevelDocument() && ConfirmNewScene(OwnerWindowHandle))
+        {
+            EditorEngine->NewScene();
+            ReplaceActiveLevelDocumentTabFromCurrentScene();
+        }
     }
     else if (Input.IsKeyPressed('O'))
     {
-        if (EditorEngine->LoadSceneWithDialog())
+        if (ConfirmCloseActiveLevelDocument() && EditorEngine->LoadSceneWithDialog())
         {
-            SyncCurrentLevelDocumentTab();
+            ReplaceActiveLevelDocumentTabFromCurrentScene();
         }
     }
     else if (Input.IsKeyPressed('S'))
@@ -1144,7 +1256,7 @@ void FLevelEditorWindow::HandleGlobalShortcuts()
         {
             if (EditorEngine->SaveScene())
             {
-                SyncCurrentLevelDocumentTab();
+                MarkActiveLevelDocumentClean();
             }
         }
     }
@@ -1568,7 +1680,7 @@ void FLevelEditorWindow::RenderCreditsOverlay()
         return;
     }
 
-    ID3D11ShaderResourceView *CreditsTexture = FResourceManager::Get().FindLoadedTexture("Asset/Editor/icons/App/lunatic_icon.png").Get();
+    ID3D11ShaderResourceView *CreditsTexture = FResourceManager::Get().FindLoadedTexture("Asset/Engine/Source/Editor/Icons/App/lunatic_icon.png").Get();
     if (!CreditsTexture)
     {
         CreditsTexture = FResourceManager::Get().FindLoadedTexture(FResourceManager::Get().ResolvePath(FName("Editor.Icon.AppLogo"))).Get();
@@ -1600,4 +1712,3 @@ void FLevelEditorWindow::RenderCreditsOverlay()
 
     ImGui::End();
 }
-

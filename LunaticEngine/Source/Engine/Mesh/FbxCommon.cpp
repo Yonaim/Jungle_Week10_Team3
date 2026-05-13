@@ -1,15 +1,58 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Mesh/FbxCommon.h"
+#include "Materials/MaterialManager.h"
 
 #include "Core/Log.h"
 #include "Engine/Platform/Paths.h"
-#include "Materials/MaterialManager.h"
-#include "Resource/ResourceManager.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 
 #include <fstream>
+#include <filesystem>
+#include <cmath>
 
 #if defined(_WIN64)
+
+namespace
+{
+	int32 GetPolygonVertexLinearIndex(FbxMesh* Mesh, int32 PolygonIndex, int32 CornerIndex)
+	{
+		if (!Mesh || PolygonIndex < 0 || CornerIndex < 0)
+		{
+			return -1;
+		}
+
+		int32 LinearIndex = 0;
+		for (int32 Index = 0; Index < PolygonIndex; ++Index)
+		{
+			LinearIndex += Mesh->GetPolygonSize(Index);
+		}
+		return LinearIndex + CornerIndex;
+	}
+
+	int32 ResolveLayerElementIndex(const FbxLayerElementTemplate<FbxVector4>* Element, int32 ElementIndex)
+	{
+		if (!Element || ElementIndex < 0)
+		{
+			return -1;
+		}
+
+		switch (Element->GetReferenceMode())
+		{
+		case FbxLayerElement::eDirect:
+			return ElementIndex;
+		case FbxLayerElement::eIndexToDirect:
+			return ElementIndex < Element->GetIndexArray().GetCount() ? Element->GetIndexArray().GetAt(ElementIndex) : -1;
+		default:
+			return -1;
+		}
+	}
+
+	bool IsFiniteVector(const FVector& Vector)
+	{
+		return std::isfinite(Vector.X) && std::isfinite(Vector.Y) && std::isfinite(Vector.Z);
+	}
+}
+
 size_t FFbxVertexKeyHash::operator()(const FFbxVertexKey& Key) const noexcept
 {
 	size_t Seed = std::hash<int32>{}(Key.ControlPointIndex);
@@ -125,26 +168,31 @@ int32 FFbxCommon::FindOrAddMaterial(const FString& FbxFilePath, FbxNode* Node, i
 	return MaterialIndex;
 }
 
-FString FFbxCommon::ConvertMaterialInfoToMat(const FFbxMaterialInfo& MaterialInfo)
+FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePath, const FFbxMaterialInfo& MaterialInfo)
 {
 	if (!MaterialInfo.SourceMaterial)
 	{
 		return "None";
 	}
 
-	const FString AutoMaterialDirectory = FResourceManager::Get().ResolvePath(FName("Default.Directory.MaterialAuto"));
-	const FString MatPath = AutoMaterialDirectory + "/" + MaterialInfo.MaterialSlotName + ".mat";
+	const FString SourceAssetName = SanitizeName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(FbxFilePath)).stem().wstring()));
+	const FString SlotAssetName = SanitizeName(MaterialInfo.MaterialSlotName.empty() ? FString("None") : MaterialInfo.MaterialSlotName);
 
-	if (std::filesystem::exists(FPaths::ToWide(MatPath)))
+	std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials";
+	std::filesystem::path MaterialAssetPathW = MaterialDirectory / (L"M_" + FPaths::ToWide(SlotAssetName) + L".uasset");
+	const FString MaterialAssetPath = MakeProjectRelativePath(MaterialAssetPathW);
+
+	if (std::filesystem::exists(MaterialAssetPathW))
 	{
-		return MatPath;
+		return MaterialAssetPath;
 	}
 
-	std::filesystem::create_directories(FPaths::ToWide(AutoMaterialDirectory));
+	std::filesystem::create_directories(MaterialDirectory);
 
 	json::JSON JsonData;
-	JsonData["PathFileName"] = MatPath;
+	JsonData["PathFileName"] = MaterialAssetPath;
 	JsonData["Origin"] = "FbxImport";
+	JsonData["SourceFilePath"] = MakeProjectRelativePath(std::filesystem::path(FPaths::ToWide(FbxFilePath)));
 	JsonData["ShaderPath"] = "Shaders/Geometry/UberLit.hlsl";
 	JsonData["RenderPass"] = "Opaque";
 
@@ -164,9 +212,8 @@ FString FFbxCommon::ConvertMaterialInfoToMat(const FFbxMaterialInfo& MaterialInf
 		JsonData["Parameters"]["SectionColor"][3] = 1.0f;
 	}
 
-	std::ofstream File(FPaths::ToWide(MatPath));
-	File << JsonData.dump();
-	return MatPath;
+	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);
+	return MaterialAssetPath;
 }
 
 FString FFbxCommon::SanitizeName(FString Name)
@@ -266,12 +313,99 @@ FString FFbxCommon::MakeProjectRelativePath(const std::filesystem::path& Path)
 	return FPaths::ToUtf8(NormalizedPath.generic_wstring());
 }
 
+bool FFbxCommon::ReadNormal(FbxMesh* Mesh, int32 ControlPointIndex, int32 PolygonIndex, int32 CornerIndex, FbxVector4& OutNormal)
+{
+	if (!Mesh)
+	{
+		return false;
+	}
+
+	const FbxGeometryElementNormal* NormalElement = Mesh->GetElementNormal(0);
+	if (NormalElement)
+	{
+		int32 ElementIndex = -1;
+		switch (NormalElement->GetMappingMode())
+		{
+		case FbxLayerElement::eByControlPoint:
+			ElementIndex = ControlPointIndex;
+			break;
+		case FbxLayerElement::eByPolygonVertex:
+			ElementIndex = GetPolygonVertexLinearIndex(Mesh, PolygonIndex, CornerIndex);
+			break;
+		case FbxLayerElement::eByPolygon:
+			ElementIndex = PolygonIndex;
+			break;
+		case FbxLayerElement::eAllSame:
+			ElementIndex = 0;
+			break;
+		default:
+			ElementIndex = -1;
+			break;
+		}
+
+		const int32 DirectIndex = ResolveLayerElementIndex(NormalElement, ElementIndex);
+		if (DirectIndex >= 0 && DirectIndex < NormalElement->GetDirectArray().GetCount())
+		{
+			OutNormal = NormalElement->GetDirectArray().GetAt(DirectIndex);
+			return true;
+		}
+	}
+
+	return Mesh->GetPolygonVertexNormal(PolygonIndex, CornerIndex, OutNormal);
+}
+
 FVector FFbxCommon::RemapVector(const FbxVector4& Vector)
 {
 	return FVector(
 		static_cast<float>(-Vector[1]),
 		static_cast<float>(-Vector[0]),
 		static_cast<float>(Vector[2]));
+}
+
+FbxVector4 FFbxCommon::UnmapVector(const FVector& Vector)
+{
+	return FbxVector4(
+		static_cast<double>(-Vector.Y),
+		static_cast<double>(-Vector.X),
+		static_cast<double>(Vector.Z),
+		0.0);
+}
+
+FMatrix FFbxCommon::MakeEngineLinearMatrix(const FbxAMatrix& Matrix)
+{
+	const FVector EngineBasisX = RemapVector(Matrix.MultR(UnmapVector(FVector(1.0f, 0.0f, 0.0f))));
+	const FVector EngineBasisY = RemapVector(Matrix.MultR(UnmapVector(FVector(0.0f, 1.0f, 0.0f))));
+	const FVector EngineBasisZ = RemapVector(Matrix.MultR(UnmapVector(FVector(0.0f, 0.0f, 1.0f))));
+
+	FMatrix Result = FMatrix::Identity;
+	Result.M[0][0] = EngineBasisX.X; Result.M[0][1] = EngineBasisX.Y; Result.M[0][2] = EngineBasisX.Z; Result.M[0][3] = 0.0f;
+	Result.M[1][0] = EngineBasisY.X; Result.M[1][1] = EngineBasisY.Y; Result.M[1][2] = EngineBasisY.Z; Result.M[1][3] = 0.0f;
+	Result.M[2][0] = EngineBasisZ.X; Result.M[2][1] = EngineBasisZ.Y; Result.M[2][2] = EngineBasisZ.Z; Result.M[2][3] = 0.0f;
+	Result.M[3][0] = 0.0f; Result.M[3][1] = 0.0f; Result.M[3][2] = 0.0f; Result.M[3][3] = 1.0f;
+	return Result;
+}
+
+FVector FFbxCommon::TransformNormalByMatrix(const FbxAMatrix& Matrix, const FbxVector4& Normal)
+{
+	const FVector EngineNormal = RemapVector(Normal);
+	const FMatrix EngineLinear = MakeEngineLinearMatrix(Matrix);
+
+	FVector Result;
+	if (std::fabs(EngineLinear.GetBasisDeterminant3x3()) > 1.0e-8f)
+	{
+		Result = EngineLinear.GetInverse().GetTransposed().TransformVector(EngineNormal);
+	}
+	else
+	{
+		Result = EngineLinear.TransformVector(EngineNormal);
+	}
+
+	Result = Result.Normalized();
+	if (Result.IsNearlyZero() || !IsFiniteVector(Result))
+	{
+		return FVector(0.0f, 0.0f, 1.0f);
+	}
+	return Result;
 }
 
 FVector2 FFbxCommon::RemapUV(const FbxVector2& UV)

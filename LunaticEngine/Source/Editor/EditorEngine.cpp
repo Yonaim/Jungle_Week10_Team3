@@ -1,6 +1,7 @@
 #include "PCH/LunaticPCH.h"
 #include "EditorEngine.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/UI/Notifications/NotificationToast.h"
 
 #include "Audio/AudioManager.h"
 #include "Common/File/EditorFileUtils.h"
@@ -17,7 +18,7 @@
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Materials/MaterialManager.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Object/Object.h"
 #include "Object/ObjectFactory.h"
 #include "Profiling/StartupProfiler.h"
@@ -46,9 +47,9 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     }
 
     {
-        SCOPE_STARTUP_STAT("ObjManager::ScanMeshAssets");
-        FObjManager::ScanMeshAssets();
-        FObjManager::ScanObjSourceFiles();
+        SCOPE_STARTUP_STAT("MeshAssetManager::ScanMeshAssets");
+        FMeshAssetManager::ScanMeshAssets();
+        FMeshAssetManager::ScanMeshSourceFiles();
     }
 
     {
@@ -138,7 +139,15 @@ void UEditorEngine::Tick(float DeltaTime)
     }
     FNotificationManager::Get().Tick(DeltaTime);
     FAudioManager::Get().Update();
-    AssetEditorManager.Tick(DeltaTime);
+
+    // Asset Editor는 Level Editor로 돌아간 뒤에도 탭을 메모리에 유지할 수 있다.
+    // 하지만 비활성 컨텍스트에서는 preview viewport / skeletal skinning / gizmo debug tick을
+    // 돌리면 보이지 않는 Asset Editor 때문에 프레임이 크게 떨어진다.
+    if (IsAssetEditorContextActive())
+    {
+        AssetEditorManager.Tick(DeltaTime);
+    }
+
     LevelEditorWindow.Update();
 
     // 입력 캡처 여부는 보이는 모든 패널이 아니라 현재 활성 에디터 컨텍스트가 결정한다.
@@ -196,6 +205,7 @@ void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
         }
         else
         {
+            AssetEditorManager.GetAssetEditorWindow().Hide();
             RestoreLevelEditorUIAfterAssetEditor();
             LevelEditorWindow.RequestDefaultDockLayout();
         }
@@ -214,6 +224,10 @@ void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
     }
     else
     {
+        // Asset Editor 탭은 닫지 않고 workspace만 숨긴다.
+        // 숨김 상태에서는 FAssetEditorWindow::IsOpen()이 false가 되어 preview tick/render/viewport 수집이 멈춘다.
+        AssetEditorManager.GetAssetEditorWindow().Hide();
+
         RestoreLevelEditorUIAfterAssetEditor();
         LevelEditorWindow.RequestDefaultDockLayout();
         if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
@@ -260,9 +274,15 @@ void UEditorEngine::RenderUI(float DeltaTime)
     // Level Editor 패널과 Asset/SkeletalMesh Editor 패널을 모두 렌더링한 뒤 한 번만 flush한다.
     // PanelTitleUtils는 이 시점에 dock tab bar의 빈 영역 fill과 선택 탭 accent line을 그린다.
     PanelTitleUtils::FlushPanelDecorations();
+    FNotificationToast::Render();
 
     ImGuiSystem.EndFrame();
     LevelEditorWindow.FlushPendingMenuAction();
+}
+
+bool UEditorEngine::CanCloseEditorWithPrompt() const
+{
+    return LevelEditorWindow.CanCloseEditorWindowWithPrompt();
 }
 
 void UEditorEngine::RenderPIEOverlayPopups() { LevelEditor.GetPIEManager().RenderOverlayPopups(); }
@@ -395,7 +415,10 @@ void UEditorEngine::BeginTrackedSceneChange()
 
 void UEditorEngine::CommitTrackedSceneChange()
 {
-    LevelEditor.GetHistoryManager().CommitTrackedSceneChange();
+    if (LevelEditor.GetHistoryManager().CommitTrackedSceneChange())
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
 }
 
 void UEditorEngine::CancelTrackedSceneChange()
@@ -412,12 +435,20 @@ bool UEditorEngine::CanRedoSceneChange() const { return LevelEditor.GetHistoryMa
 
 void UEditorEngine::UndoTrackedSceneChange()
 {
-    LevelEditor.GetHistoryManager().UndoTrackedSceneChange();
+    if (CanUndoSceneChange())
+    {
+        LevelEditor.GetHistoryManager().UndoTrackedSceneChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
 }
 
 void UEditorEngine::RedoTrackedSceneChange()
 {
-    LevelEditor.GetHistoryManager().RedoTrackedSceneChange();
+    if (CanRedoSceneChange())
+    {
+        LevelEditor.GetHistoryManager().RedoTrackedSceneChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
 }
 
 void UEditorEngine::ClearTrackedTransformHistory()
@@ -427,15 +458,29 @@ void UEditorEngine::ClearTrackedTransformHistory()
 
 void UEditorEngine::BeginTrackedTransformChange() { LevelEditor.GetHistoryManager().BeginTrackedTransformChange(); }
 
-void UEditorEngine::CommitTrackedTransformChange() { LevelEditor.GetHistoryManager().CommitTrackedTransformChange(); }
+void UEditorEngine::CommitTrackedTransformChange() { CommitTrackedSceneChange(); }
 
 bool UEditorEngine::CanUndoTransformChange() const { return LevelEditor.GetHistoryManager().CanUndoTransformChange(); }
 
 bool UEditorEngine::CanRedoTransformChange() const { return LevelEditor.GetHistoryManager().CanRedoTransformChange(); }
 
-void UEditorEngine::UndoTrackedTransformChange() { LevelEditor.GetHistoryManager().UndoTrackedTransformChange(); }
+void UEditorEngine::UndoTrackedTransformChange()
+{
+    if (CanUndoTransformChange())
+    {
+        LevelEditor.GetHistoryManager().UndoTrackedTransformChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
+}
 
-void UEditorEngine::RedoTrackedTransformChange() { LevelEditor.GetHistoryManager().RedoTrackedTransformChange(); }
+void UEditorEngine::RedoTrackedTransformChange()
+{
+    if (CanRedoTransformChange())
+    {
+        LevelEditor.GetHistoryManager().RedoTrackedTransformChange();
+        LevelEditorWindow.MarkActiveLevelDocumentDirty();
+    }
+}
 
 void UEditorEngine::ApplyTrackedSceneChange(const FTrackedSceneChange &Change, bool bRedo)
 {
@@ -502,17 +547,45 @@ void UEditorEngine::RestoreViewportCamera(const FPerspectiveCameraData &CamData)
     }
 }
 
-bool UEditorEngine::SaveSceneAs(const FString &InScenePath) { return LevelEditor.GetSceneManager().SaveSceneAs(InScenePath); }
+bool UEditorEngine::SaveSceneAs(const FString &InScenePath)
+{
+    const bool bSaved = LevelEditor.GetSceneManager().SaveSceneAs(InScenePath);
+    if (bSaved)
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentClean();
+    }
+    return bSaved;
+}
 
-bool UEditorEngine::SaveScene() { return LevelEditor.GetSceneManager().SaveScene(); }
+bool UEditorEngine::SaveScene()
+{
+    const bool bSaved = LevelEditor.GetSceneManager().SaveScene();
+    if (bSaved)
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentClean();
+    }
+    return bSaved;
+}
 
 void UEditorEngine::RequestSaveSceneAsDialog() { LevelEditor.GetSceneManager().RequestSaveSceneAsDialog(); }
 
-bool UEditorEngine::SaveSceneAsWithDialog() { return LevelEditor.GetSceneManager().SaveSceneAsWithDialog(); }
+bool UEditorEngine::SaveSceneAsWithDialog()
+{
+    const bool bSaved = LevelEditor.GetSceneManager().SaveSceneAsWithDialog();
+    if (bSaved)
+    {
+        LevelEditorWindow.MarkActiveLevelDocumentClean();
+    }
+    return bSaved;
+}
 
 bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath) { return LevelEditor.GetSceneManager().LoadSceneFromPath(InScenePath); }
 
 bool UEditorEngine::LoadSceneWithDialog() { return LevelEditor.GetSceneManager().LoadSceneWithDialog(); }
+
+bool UEditorEngine::ImportAssetWithDialog() { return AssetImportManager.ImportAssetWithDialog(); }
+
+bool UEditorEngine::ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath) { return AssetImportManager.ImportAssetFromPath(SourcePath, OutImportedAssetPath); }
 
 bool UEditorEngine::ImportMaterialWithDialog() { return AssetImportManager.ImportMaterialWithDialog(); }
 

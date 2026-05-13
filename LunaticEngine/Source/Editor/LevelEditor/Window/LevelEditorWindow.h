@@ -66,11 +66,16 @@ class FLevelEditorWindow : public IEditorMenuProvider
     void  HideEditorWindowsForPIE();
     void  RestoreEditorWindowsAfterPIE();
     void  RefreshContentBrowser() { ContentBrowser.Refresh(); }
+    void  SelectContentBrowserPath(const std::filesystem::path& Path) { ContentBrowser.RevealAndSelect(Path); }
     ImGuiID GetMainDockspaceId() const { return MainDockspaceId; }
     void  SetContentBrowserIconSize(float Size) { ContentBrowser.SetIconSize(Size); }
     float GetContentBrowserIconSize() const { return ContentBrowser.GetIconSize(); }
     void  RequestDefaultDockLayout();
     void  FlushPendingMenuAction();
+    void  MarkActiveLevelDocumentDirty();
+    void  MarkActiveLevelDocumentClean();
+    bool  HasDirtyLevelDocument() const;
+    bool  CanCloseEditorWindowWithPrompt() const;
 
     // IEditorMenuProvider: 공통 메뉴바에 Level Editor 전용 메뉴를 제공한다.
     void BuildFileMenu() override;
@@ -90,9 +95,7 @@ class FLevelEditorWindow : public IEditorMenuProvider
         SaveSceneAs,
         NewUAsset,
         OpenUAsset,
-        OpenFBX,
-        ImportMaterial,
-        ImportTexture,
+        ImportAsset,
         CookCurrentScene,
         CookAllScenes,
         PackageRelease,
@@ -105,8 +108,11 @@ class FLevelEditorWindow : public IEditorMenuProvider
     bool HasBlockingOverlayOpen() const;
     void HandleGlobalShortcuts();
     void OpenLevelDocumentTabFromCurrentScene();
+    void ReplaceActiveLevelDocumentTabFromCurrentScene();
     void SyncCurrentLevelDocumentTab();
     bool SetActiveLevelDocumentTab(int32 NewIndex);
+    bool ConfirmCloseLevelDocumentTab(int32 TabIndex) const;
+    bool ConfirmCloseActiveLevelDocument() const;
     void CloseLevelDocumentTab(int32 TabIndex);
     void PackageGameBuild(const char *BatFileName);
     void CookCurrentScene();

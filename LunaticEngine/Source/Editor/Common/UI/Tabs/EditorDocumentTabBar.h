@@ -50,6 +50,7 @@ struct FStyle
     ImVec4 HoverBg = ImVec4(0.18f, 0.18f, 0.19f, 1.0f);
     ImVec4 InactiveBg = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
     ImVec4 Text = ImVec4(0.96f, 0.96f, 0.98f, 1.0f);
+    ImVec4 ActiveText = ImVec4(0.20f, 0.58f, 1.0f, 1.0f);
     ImVec4 CloseText = ImVec4(0.86f, 0.86f, 0.88f, 1.0f);
     ImVec4 CloseHoverBg = ImVec4(0.28f, 0.28f, 0.30f, 1.0f);
 };
@@ -122,6 +123,7 @@ inline FRenderResult Render(const char *Id, const std::vector<FTabDesc> &Tabs, i
     const ImU32 TabActiveColor = ImGui::GetColorU32(Style.ActiveBg);
     const ImU32 TabInactiveColor = ImGui::GetColorU32(Style.InactiveBg);
     const ImU32 TextColor = ImGui::GetColorU32(Style.Text);
+    const ImU32 ActiveTextColor = ImGui::GetColorU32(Style.ActiveText);
     const ImU32 CloseTextColor = ImGui::GetColorU32(Style.CloseText);
     const ImU32 CloseHoverColor = ImGui::GetColorU32(Style.CloseHoverBg);
 
@@ -187,8 +189,15 @@ inline FRenderResult Render(const char *Id, const std::vector<FTabDesc> &Tabs, i
         const float TextY = TabMin.y + (TabHeight - TextSize.y) * 0.5f;
         const ImVec2 TextMin(TextX, TextY);
         const ImVec2 TextClipMax(TabMax.x - TextRightPadding, TabMax.y);
+        const ImU32 CurrentTextColor = bSelected ? ActiveTextColor : TextColor;
         DrawList->PushClipRect(TextMin, TextClipMax, true);
-        DrawList->AddText(TextMin, TextColor, DisplayTitle.c_str());
+        DrawList->AddText(TextMin, CurrentTextColor, DisplayTitle.c_str());
+        if (bSelected)
+        {
+            // ImGui 기본 폰트만 있는 환경에서도 active tab을 굵게 보이게 하기 위해
+            // 같은 텍스트를 1px 우측에 한 번 더 그린다.
+            DrawList->AddText(ImVec2(TextMin.x + 1.0f, TextMin.y), CurrentTextColor, DisplayTitle.c_str());
+        }
         DrawList->PopClipRect();
 
         const ImVec2 CloseMin(TabMax.x - CloseButtonSize - 8.0f, TabMin.y + (TabHeight - CloseButtonSize) * 0.5f);

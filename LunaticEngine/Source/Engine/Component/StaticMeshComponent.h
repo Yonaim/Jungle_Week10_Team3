@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include "Component/MeshComponent.h"
 #include "Core/PropertyTypes.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Mesh/StaticMesh.h"
 
 class UMaterial;

@@ -323,7 +323,7 @@
       <UniqueIdentifier>{c24236b0-50c3-3eb0-a473-1cc1de562d78}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\PCH">
-      <UniqueIdentifier>{9acf7ddb-e8cb-46b1-92dd-b59d7d1a2034}</UniqueIdentifier>
+      <UniqueIdentifier>{f3821763-e124-89a3-69ea-be29aaccf196}</UniqueIdentifier>
     </Filter>
     <Filter Include="ThirdParty">
       <UniqueIdentifier>{79954428-c734-efb9-6f5d-35a0c2056b24}</UniqueIdentifier>
@@ -1007,13 +1007,13 @@
     <ClCompile Include="Source\Engine\Mesh\FbxStaticMeshImporter.cpp">
       <Filter>Source\Engine\Mesh</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Mesh\MeshAssetManager.cpp">
+      <Filter>Source\Engine\Mesh</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\Mesh\MeshSimplifier.cpp">
       <Filter>Source\Engine\Mesh</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Mesh\ObjImporter.cpp">
-      <Filter>Source\Engine\Mesh</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Mesh\ObjManager.cpp">
       <Filter>Source\Engine\Mesh</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Mesh\SkeletalMesh.cpp">
@@ -2024,13 +2024,13 @@
     <ClInclude Include="Source\Engine\Mesh\FbxImporter.h">
       <Filter>Source\Engine\Mesh</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Mesh\MeshAssetManager.h">
+      <Filter>Source\Engine\Mesh</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Engine\Mesh\MeshSimplifier.h">
       <Filter>Source\Engine\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Mesh\ObjImporter.h">
-      <Filter>Source\Engine\Mesh</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Mesh\ObjManager.h">
       <Filter>Source\Engine\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Mesh\SkeletalMesh.h">

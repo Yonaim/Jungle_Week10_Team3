@@ -63,7 +63,7 @@ class FPanel
     static std::string MakeTitle(const FPanelDesc &Desc)
     {
         const char *StableId = (Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName;
-        const bool bHasIcon = Desc.IconKey && PanelTitleUtils::GetIcon(Desc.IconKey) != nullptr;
+        const bool bHasIcon = Desc.IconKey && Desc.IconKey[0] != '\0';
         const char *Prefix = bHasIcon ? "      " : "";
         return std::string(Prefix) + (Desc.DisplayName ? Desc.DisplayName : "") + "###" + StableId;
     }
@@ -104,11 +104,11 @@ class FPanel
         BeginState.bPushedStyle = true;
         GetBeginStateStack().push_back(BeginState);
 
+        const char *DecorationIconKey = (Desc.bDrawTitleIcon && Desc.IconKey) ? Desc.IconKey : nullptr;
+        PanelTitleUtils::QueuePanelDecoration(DecorationIconKey, nullptr);
+
         if (bVisible)
         {
-            const char *DecorationIconKey = (Desc.bDrawTitleIcon && Desc.IconKey) ? Desc.IconKey : nullptr;
-            PanelTitleUtils::QueuePanelDecoration(DecorationIconKey, nullptr);
-
             if (Desc.bApplyContentTopInset)
             {
                 PanelTitleUtils::ApplyPanelContentTopInset(Desc.bApplySideInset, Desc.bApplyBottomInset);

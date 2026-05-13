@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "SkeletalMeshComponent.h"
 #include "Serialization/Archive.h"
 #include "Mesh/SkeletalMesh.h"
@@ -14,6 +14,33 @@ IMPLEMENT_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 bool USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
 {
 	return CurrentPose.SetLocalTransform(BoneIndex, LocalTransform);
+}
+
+
+bool USkeletalMeshComponent::ApplyLocalPoseTransforms(const TArray<FTransform>& LocalTransforms)
+{
+	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
+	{
+		return false;
+	}
+
+	const int32 BoneCount = static_cast<int32>(SkeletalMesh->GetSkeletalMeshAsset()->Bones.size());
+	if (BoneCount <= 0 || static_cast<int32>(LocalTransforms.size()) != BoneCount)
+	{
+		return false;
+	}
+
+	CurrentPose.LocalTransforms = LocalTransforms;
+	++CurrentPose.PoseVersion;
+	CurrentPose.bComponentDirty = true;
+	RefreshSkinningNow();
+	return true;
+}
+
+void USkeletalMeshComponent::ResetToBindPose()
+{
+	InitBoneTransform();
+	RefreshSkinningNow();
 }
 
 void USkeletalMeshComponent::SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform)
@@ -197,7 +224,14 @@ void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 			const FMatrix SkinningMatrix = Bones[BoneIdx].InverseBindPose * ComponentSpaceTransforms[BoneIdx];
 
 			SkinnedPos += SkinningMatrix.TransformPositionWithW(BindVertex.pos) * W;
-			SkinnedNormal += SkinningMatrix.TransformVector(BindVertex.normal) * W;
+
+			// 노멀은 position/vector와 다르게 inverse-transpose로 변환해야 한다.
+			// 현재 포즈에 non-uniform scale/negative scale이 섞여도 WorldNormal View가 무너지지 않도록
+			// 스키닝 행렬의 선형부 기준 normal matrix를 사용한다.
+			const FMatrix NormalMatrix = std::fabs(SkinningMatrix.GetBasisDeterminant3x3()) > 1.0e-8f
+				? SkinningMatrix.GetInverse().GetTransposed()
+				: SkinningMatrix;
+			SkinnedNormal += NormalMatrix.TransformVector(BindVertex.normal) * W;
 			TotalWeight += W;
 		}
 

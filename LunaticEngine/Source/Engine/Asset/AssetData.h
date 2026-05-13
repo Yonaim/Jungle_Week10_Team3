@@ -2,6 +2,7 @@
 
 #include "Core/CoreTypes.h"
 #include "Math/Rotator.h"
+#include "Math/Transform.h"
 #include "Math/Vector.h"
 #include "Object/Object.h"
 
@@ -58,6 +59,28 @@ struct FCameraShakeModifierAssetDesc
     FRotator                       RotationAmplitude = FRotator(1.0f, 1.0f, 0.0f);
     bool                           bUseCurves = true;
     FCameraShakePatternCurves      Curves;
+};
+
+
+struct FPoseBoneTransform
+{
+    FString BoneName;
+    int32 BoneIndex = -1;
+    FTransform LocalTransform;
+
+    void Serialize(FArchive &Ar);
+};
+
+class USkeletonPoseAsset : public UAssetData
+{
+  public:
+    DECLARE_CLASS(USkeletonPoseAsset, UAssetData)
+
+    FString TargetSkeletonPath;
+    FString Space = "Local";
+    TArray<FPoseBoneTransform> BoneTransforms;
+
+    void Serialize(FArchive &Ar) override;
 };
 
 class UCameraModifierStackAssetData : public UAssetData

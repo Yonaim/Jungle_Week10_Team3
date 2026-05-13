@@ -168,9 +168,6 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>PCH\LunaticPCH.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)LunaticPCH.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -191,9 +188,6 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <ExceptionHandling>Async</ExceptionHandling>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>PCH\LunaticPCH.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)LunaticPCH.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -214,9 +208,6 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\FBXSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>PCH\LunaticPCH.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)LunaticPCH.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -242,9 +233,6 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\FBXSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>PCH\LunaticPCH.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)LunaticPCH.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -270,9 +258,6 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\FBXSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>PCH\LunaticPCH.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)LunaticPCH.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -298,9 +283,6 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\FBXSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>PCH\LunaticPCH.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)LunaticPCH.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -326,9 +308,6 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\FBXSDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>PCH\LunaticPCH.h</PrecompiledHeaderFile>
-      <PrecompiledHeaderOutputFile>$(IntDir)LunaticPCH.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -499,9 +478,9 @@
     <ClCompile Include="Source\Engine\Mesh\FbxCommon.cpp" />
     <ClCompile Include="Source\Engine\Mesh\FbxSkeletalMeshImporter.cpp" />
     <ClCompile Include="Source\Engine\Mesh\FbxStaticMeshImporter.cpp" />
+    <ClCompile Include="Source\Engine\Mesh\MeshAssetManager.cpp" />
     <ClCompile Include="Source\Engine\Mesh\MeshSimplifier.cpp" />
     <ClCompile Include="Source\Engine\Mesh\ObjImporter.cpp" />
-    <ClCompile Include="Source\Engine\Mesh\ObjManager.cpp" />
     <ClCompile Include="Source\Engine\Mesh\SkeletalMesh.cpp" />
     <ClCompile Include="Source\Engine\Mesh\StaticMesh.cpp" />
     <ClCompile Include="Source\Engine\Object\FName.cpp" />
@@ -622,46 +601,19 @@
     <ClCompile Include="Source\ObjViewer\ObjViewerPanel.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerRenderPipeline.cpp" />
     <ClCompile Include="Source\ObjViewer\ObjViewerViewportClient.cpp" />
-    <ClCompile Include="Source\PCH\LunaticPCH.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ObjViewDebug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Demo|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'">Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\ImCurveEdit.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\imgui.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\imgui_impl_dx11.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\imgui_impl_win32.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\imgui_tables.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\miniaudio\miniaudio.c">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="Source\PCH\LunaticPCH.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\ImCurveEdit.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_tables.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="ThirdParty\miniaudio\miniaudio.c" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\PCH\LunaticPCH.h" />
     <ClInclude Include="Source\Editor\EditorEngine.h" />
     <ClInclude Include="Source\Editor\AssetEditor\AssetEditorManager.h" />
     <ClInclude Include="Source\Editor\AssetEditor\IAssetEditor.h" />
@@ -867,9 +819,9 @@
     <ClInclude Include="Source\Engine\Math\Vector.h" />
     <ClInclude Include="Source\Engine\Mesh\FbxCommon.h" />
     <ClInclude Include="Source\Engine\Mesh\FbxImporter.h" />
+    <ClInclude Include="Source\Engine\Mesh\MeshAssetManager.h" />
     <ClInclude Include="Source\Engine\Mesh\MeshSimplifier.h" />
     <ClInclude Include="Source\Engine\Mesh\ObjImporter.h" />
-    <ClInclude Include="Source\Engine\Mesh\ObjManager.h" />
     <ClInclude Include="Source\Engine\Mesh\SkeletalMesh.h" />
     <ClInclude Include="Source\Engine\Mesh\SkeletalMeshCommon.h" />
     <ClInclude Include="Source\Engine\Mesh\SkeletonPose.h" />
@@ -1022,6 +974,7 @@
     <ClInclude Include="Source\ObjViewer\ObjViewerPanel.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerRenderPipeline.h" />
     <ClInclude Include="Source\ObjViewer\ObjViewerViewportClient.h" />
+    <ClInclude Include="Source\PCH\LunaticPCH.h" />
     <ClInclude Include="ThirdParty\FBXSDK\include\fbxsdk.h" />
     <ClInclude Include="ThirdParty\FBXSDK\include\fbxsdk\fbxsdk_def.h" />
     <ClInclude Include="ThirdParty\FBXSDK\include\fbxsdk\fbxsdk_nsbegin.h" />

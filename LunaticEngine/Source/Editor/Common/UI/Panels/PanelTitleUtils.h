@@ -228,7 +228,7 @@ inline ID3D11ShaderResourceView *GetIcon(const char *Key)
 
 inline std::string MakeClosablePanelTitle(const char *Title, const char *IconKey = nullptr)
 {
-    const char *Prefix = GetIcon(IconKey) ? "      " : "";
+    const char *Prefix = (IconKey && IconKey[0] != '\0') ? "      " : "";
     return std::string(Prefix) + Title + "          ###" + Title;
 }
 

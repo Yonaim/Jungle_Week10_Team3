@@ -99,6 +99,30 @@ public:
 
     void ClearFrameData() { Scene.ClearFrameData(); }
 
+    void SetPreviewLighting(bool bEnabled,
+                            float AmbientIntensity,
+                            const FVector4& AmbientColor,
+                            float DirectionalIntensity,
+                            const FVector4& DirectionalColor,
+                            const FVector& Direction)
+    {
+        FGlobalAmbientLightParams Ambient{};
+        Ambient.Intensity = AmbientIntensity;
+        Ambient.LightColor = AmbientColor;
+        Ambient.bVisible = bEnabled && AmbientIntensity > 0.0f;
+        Ambient.bCastShadows = false;
+        Scene.GetEnvironment().AddGlobalAmbientLight(nullptr, Ambient);
+
+        FGlobalDirectionalLightParams Directional{};
+        Directional.Intensity = DirectionalIntensity;
+        Directional.LightColor = DirectionalColor;
+        Directional.bVisible = bEnabled && DirectionalIntensity > 0.0f;
+        Directional.bCastShadows = false;
+        const float DirectionLength = Direction.Length();
+        Directional.Direction = DirectionLength > 1.0e-4f ? Direction.Normalized() : FVector(-0.45f, -0.55f, -0.70f).Normalized();
+        Scene.GetEnvironment().AddGlobalDirectionalLight(nullptr, Directional);
+    }
+
     void SetupDefaultLighting()
     {
         FGlobalAmbientLightParams Ambient{};

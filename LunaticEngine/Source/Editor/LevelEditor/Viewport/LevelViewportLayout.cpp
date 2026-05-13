@@ -954,13 +954,13 @@ namespace
 
         const std::filesystem::path RootPath(FPaths::RootDir());
         const std::filesystem::path ContentPath(FPaths::ContentDir());
+        const std::filesystem::path EngineContentPath(FPaths::EngineContentDir());
         const std::filesystem::path AssetPath(FPaths::AssetDir());
         const std::wstring StemW = FPaths::ToWide(Stem);
         const std::wstring ObjFileName = StemW + L".obj";
 
         const std::filesystem::path Candidates[] = {
-            ContentPath / L"BasicShape" / ObjFileName,
-            ContentPath / L"Mesh" / L"BasicShape" / ObjFileName,
+            std::filesystem::path(FPaths::EngineBasicShapeSourceDir()) / ObjFileName,
             ContentPath / L"Meshes" / L"BasicShape" / ObjFileName,
             AssetPath / L"BasicShape" / ObjFileName,
             RootPath / L"BasicShape" / ObjFileName,
@@ -975,20 +975,34 @@ namespace
         }
 
         // Last-resort scan. This keeps Place Actors working even when the resource scan
-        // file only registered cached .bin files and the original BasicShape .obj files
+        // file only registered cooked .uasset files and the original BasicShape .obj files
         // live in a slightly different content subdirectory.
-        const std::filesystem::path ScanRoots[] = { ContentPath, AssetPath };
+        const std::filesystem::path ScanRoots[] = { std::filesystem::path(FPaths::EngineSourceDir()), EngineContentPath, ContentPath, AssetPath };
         for (const std::filesystem::path& ScanRoot : ScanRoots)
         {
-            if (!std::filesystem::exists(ScanRoot) || !std::filesystem::is_directory(ScanRoot))
+            std::error_code ErrorCode;
+            if (!std::filesystem::exists(ScanRoot, ErrorCode) || !std::filesystem::is_directory(ScanRoot, ErrorCode))
             {
                 continue;
             }
 
             std::filesystem::directory_options Options = std::filesystem::directory_options::skip_permission_denied;
-            for (const auto& Entry : std::filesystem::recursive_directory_iterator(ScanRoot, Options))
+            std::filesystem::recursive_directory_iterator It(ScanRoot, Options, ErrorCode);
+            const std::filesystem::recursive_directory_iterator End;
+            for (; It != End; It.increment(ErrorCode))
             {
-                if (!Entry.is_regular_file()) continue;
+                if (ErrorCode)
+                {
+                    ErrorCode.clear();
+                    continue;
+                }
+
+                const std::filesystem::directory_entry& Entry = *It;
+                if (!Entry.is_regular_file(ErrorCode))
+                {
+                    ErrorCode.clear();
+                    continue;
+                }
                 if (_wcsicmp(Entry.path().filename().c_str(), ObjFileName.c_str()) != 0) continue;
 
                 std::filesystem::path Parent = Entry.path().parent_path();
@@ -1015,11 +1029,34 @@ namespace
         return "";
     }
 
+    bool DoesProjectRelativePathExist(const FString& Path)
+    {
+        if (Path.empty())
+        {
+            return false;
+        }
+
+        std::filesystem::path Candidate(FPaths::ToWide(Path));
+        if (!Candidate.is_absolute())
+        {
+            Candidate = std::filesystem::path(FPaths::RootDir()) / Candidate;
+        }
+        return std::filesystem::exists(Candidate.lexically_normal());
+    }
+
     FString GetRegisteredMeshPath(const char *MeshKey)
     {
-        // BasicShape place actors should be sourced from the authoring .obj files when
-        // they exist. FObjManager can still use/rebuild the Cache/*.bin internally, but
-        // passing the source path lets timestamp invalidation and material sidecar lookup work.
+        // Component assignment policy: scene components should reference cooked .uasset files.
+        // Built-in shapes now live under Asset/Engine/Content/BasicShape. Until real .uasset
+        // files are added there, keep the raw BasicShape OBJ fallback alive for editor spawning.
+        if (const FMeshResource *MeshResource = FResourceManager::Get().FindMesh(FName(MeshKey)))
+        {
+            if (DoesProjectRelativePathExist(MeshResource->Path))
+            {
+                return MeshResource->Path;
+            }
+        }
+
         if (FString BasicShapeObjPath = FindBasicShapeObjPath(MeshKey); !BasicShapeObjPath.empty())
         {
             return BasicShapeObjPath;

@@ -8,6 +8,12 @@ DEVLOG.md
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Asset
+*.cso
+*.uasset
+!**/Asset/Engine/**.uasset
+!**/Asset/**/**.obj
+
 # User-specific files
 *.rsuser
 *.suo
@@ -112,8 +118,6 @@ StyleCopReport.xml
 *_h.h
 *.ilk
 *.meta
-*.obj
-!**/Data/**/*.obj
 *.idb
 *.iobj
 *.pch

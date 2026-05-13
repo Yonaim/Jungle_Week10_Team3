@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Scripting/LuaComponentProxy.h"
 
 #include "Component/ActorComponent.h"
@@ -15,7 +15,7 @@
 #include "Component/UIScreenTextComponent.h"
 #include "Engine/Runtime/Engine.h"
 #include "GameFramework/AActor.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Object/Object.h"
 #include "Object/UClass.h"
 #include "Scripting/LuaActorProxy.h"
@@ -635,7 +635,7 @@ bool FLuaComponentProxy::SetStaticMesh(const FString& MeshPath)
 	}
 
 	// 현재 프로젝트의 StaticMeshComponent와 같은 OBJ 로딩 경로를 그대로 사용한다.
-	UStaticMesh* LoadedMesh = FObjManager::LoadObjStaticMesh(MeshPath, Device);
+	UStaticMesh* LoadedMesh = FMeshAssetManager::LoadStaticMesh(MeshPath, Device);
 	if (!LoadedMesh)
 	{
 		return false;

@@ -58,6 +58,13 @@ class IAssetEditor
     virtual void BuildWindowMenu() {}
     virtual void BuildCustomMenus() {}
 
+    // Asset Editor 공통 history hook.
+    // 개별 에셋 에디터가 실제 편집 가능한 상태만 undo/redo snapshot으로 관리한다.
+    virtual bool CanUndo() const { return false; }
+    virtual bool CanRedo() const { return false; }
+    virtual void Undo() {}
+    virtual void Redo() {}
+
     virtual bool IsDirty() const = 0;
     virtual bool IsCapturingInput() const = 0;
 

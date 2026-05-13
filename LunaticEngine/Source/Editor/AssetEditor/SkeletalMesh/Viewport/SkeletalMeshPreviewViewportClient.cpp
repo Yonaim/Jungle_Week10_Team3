@@ -250,6 +250,20 @@ bool IntersectRaySphere(const FRay& Ray, const FVector& Center, float Radius, fl
     return true;
 }
 
+FVector ComputePreviewLightDirection(float YawDegrees, float PitchDegrees)
+{
+    constexpr float DegToRad = 3.14159265358979323846f / 180.0f;
+    const float Yaw = YawDegrees * DegToRad;
+    const float Pitch = PitchDegrees * DegToRad;
+    const float CosPitch = std::cos(Pitch);
+    FVector Direction(CosPitch * std::cos(Yaw), CosPitch * std::sin(Yaw), std::sin(Pitch));
+    if (!IsFiniteVector(Direction) || Direction.Length() <= 1.0e-4f)
+    {
+        Direction = FVector(-0.45f, -0.55f, -0.70f);
+    }
+    return Direction.Normalized();
+}
+
 bool BuildBonePickingBasis(const FVector& SegmentStart, const FVector& SegmentEnd, FVector& OutDirection, FVector& OutRight, FVector& OutUp, float& OutLength)
 {
     if (!IsFiniteVector(SegmentStart) || !IsFiniteVector(SegmentEnd))
@@ -662,6 +676,14 @@ void FSkeletalMeshPreviewViewportClient::SyncRenderOptionsFromState()
     RenderOptions.DebugLineThickness = State->DebugLineThickness;
     RenderOptions.ActorHelperBillboardScale = State->BillboardIconScale;
     RenderOptions.CameraMoveSensitivity = State->CameraSpeed;
+
+    PreviewScene.SetPreviewLighting(
+        State->bPreviewLighting,
+        State->PreviewAmbientLightIntensity,
+        State->PreviewAmbientLightColor,
+        State->PreviewDirectionalLightIntensity,
+        State->PreviewDirectionalLightColor,
+        ComputePreviewLightDirection(State->PreviewLightYaw, State->PreviewLightPitch));
 }
 
 void FSkeletalMeshPreviewViewportClient::ApplyViewportTypeToCamera()

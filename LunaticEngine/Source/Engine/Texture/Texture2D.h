@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "Object/Object.h"
+#include "Serialization/Archive.h"
 #include "Core/CoreTypes.h"
 #include "Engine/Platform/DirectoryWatcher.h"
 
@@ -31,6 +32,7 @@ public:
 
 	// 경로로 텍스처를 로드 (캐시 히트 시 기존 객체 반환)
 	static UTexture2D* LoadFromFile(const FString& FilePath, ID3D11Device* Device);
+	static UTexture2D* LoadFromAssetFile(const FString& AssetPath, ID3D11Device* Device);
 	static UTexture2D* LoadFromCached(const FString& FilePath);
 
 	// 캐시된 모든 텍스처의 GPU 리소스 해제 (Shutdown 시 Device 해제 전 호출)
@@ -43,6 +45,8 @@ public:
 
 	ID3D11ShaderResourceView* GetSRV() const { return SRV; }
 	const FString& GetSourcePath() const { return SourceFilePath; }
+	void SetSourcePathForAsset(const FString& InSourcePath) { SourceFilePath = InSourcePath; }
+	void Serialize(FArchive& Ar);
 	uint32 GetWidth() const { return Width; }
 	uint32 GetHeight() const { return Height; }
 	bool IsLoaded() const { return SRV != nullptr; }

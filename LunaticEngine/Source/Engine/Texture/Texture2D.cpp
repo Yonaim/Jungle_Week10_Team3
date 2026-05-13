@@ -1,10 +1,11 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Texture/Texture2D.h"
 #include "Object/ObjectFactory.h"
 #include "Core/AsciiUtils.h"
 #include "Core/Log.h"
 #include "Engine/Platform/DirectoryWatcher.h"
 #include "Platform/Paths.h"
+#include "Engine/Asset/AssetFileSerializer.h"
 #include "DDSTextureLoader.h"
 #include "WICTextureLoader.h"
 
@@ -58,7 +59,7 @@ namespace
 			return Path.lexically_normal().wstring();
 		}
 
-		// 1. Root relative (Asset/Content/...)
+		// 1. Root relative (Asset/Game/Content/...)
 		std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / Path;
 		if (std::filesystem::exists(FullPath))
 		{
@@ -103,7 +104,8 @@ namespace
 			|| Name == L".vs"
 			|| Name == L"Bin"
 			|| Name == L"Build"
-			|| Name == L"Intermediate";
+			|| Name == L"Intermediate"
+			|| Name == L"Cache";
 	}
 
 	bool ShouldIncludeInTextureAssetList(const std::filesystem::path& ProjectRelativePath)
@@ -341,20 +343,31 @@ void UTexture2D::ScanTextureAssets()
 		{
 			It.disable_recursion_pending();
 		}
-		else if (Entry.is_regular_file(ErrorCode) && IsSupportedTextureExtension(Entry.path()))
+		else if (Entry.is_regular_file(ErrorCode))
 		{
-			const std::filesystem::path RelativePath = Entry.path().lexically_relative(ProjectRoot).lexically_normal();
-			if (!ShouldIncludeInTextureAssetList(RelativePath))
+			bool bIsTextureListItem = IsSupportedTextureExtension(Entry.path());
+			if (!bIsTextureListItem && Entry.path().extension() == L".uasset")
 			{
-				It.increment(ErrorCode);
-				continue;
+				FAssetFileHeader Header;
+				bIsTextureListItem = FAssetFileSerializer::ReadAssetHeader(Entry.path(), Header)
+					&& Header.ClassId == EAssetClassId::Texture;
 			}
 
-			FTextureAssetListItem Item;
-			Item.DisplayName = FPaths::ToUtf8(Entry.path().filename().wstring());
-			Item.FullPath = FPaths::ToUtf8(RelativePath.generic_wstring());
-			Item.SourceFolder = FPaths::ToUtf8(RelativePath.parent_path().generic_wstring());
-			AvailableTextureFiles.push_back(std::move(Item));
+			if (bIsTextureListItem)
+			{
+				const std::filesystem::path RelativePath = Entry.path().lexically_relative(ProjectRoot).lexically_normal();
+				if (!ShouldIncludeInTextureAssetList(RelativePath))
+				{
+					It.increment(ErrorCode);
+					continue;
+				}
+
+				FTextureAssetListItem Item;
+				Item.DisplayName = FPaths::ToUtf8(Entry.path().filename().wstring());
+				Item.FullPath = FPaths::ToUtf8(RelativePath.generic_wstring());
+				Item.SourceFolder = FPaths::ToUtf8(RelativePath.parent_path().generic_wstring());
+				AvailableTextureFiles.push_back(std::move(Item));
+			}
 		}
 
 		It.increment(ErrorCode);
@@ -402,6 +415,40 @@ bool UTexture2D::IsSupportedTextureExtension(const std::filesystem::path& Path)
 		|| Ext == L".bmp"
 		|| Ext == L".tga"
 		|| Ext == L".dds";
+}
+
+UTexture2D* UTexture2D::LoadFromAssetFile(const FString& AssetPath, ID3D11Device* Device)
+{
+	if (AssetPath.empty() || !Device) return nullptr;
+
+	const FString NormalizedAssetPath = NormalizeTexturePath(AssetPath);
+	auto CachedIt = TextureCache.find(NormalizedAssetPath);
+	if (CachedIt != TextureCache.end())
+	{
+		return CachedIt->second;
+	}
+
+	FString Error;
+	UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(std::filesystem::path(FPaths::ToWide(AssetPath)), &Error);
+	UTexture2D* LoadedTextureAsset = Cast<UTexture2D>(LoadedObject);
+	if (!LoadedTextureAsset)
+	{
+		if (LoadedObject)
+		{
+			UObjectManager::Get().DestroyObject(LoadedObject);
+		}
+		return nullptr;
+	}
+
+	const FString SourcePath = LoadedTextureAsset->GetSourcePath();
+	if (SourcePath.empty() || !LoadedTextureAsset->LoadInternal(SourcePath, Device))
+	{
+		UObjectManager::Get().DestroyObject(LoadedTextureAsset);
+		return nullptr;
+	}
+
+	TextureCache[NormalizedAssetPath] = LoadedTextureAsset;
+	return LoadedTextureAsset;
 }
 
 UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Device)
@@ -614,6 +661,13 @@ void UTexture2D::QueueTextureRefresh(const FString& TexturePath)
 	}
 
 	PendingTextureRefreshPaths.insert(NormalizeTexturePath(TexturePath));
+}
+
+void UTexture2D::Serialize(FArchive& Ar)
+{
+	Ar << SourceFilePath;
+	Ar << Width;
+	Ar << Height;
 }
 
 bool UTexture2D::SampleAlpha(float U, float V, float& OutAlpha) const

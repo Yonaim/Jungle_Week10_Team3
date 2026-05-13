@@ -3,7 +3,7 @@
 #include "Object/ObjectFactory.h"
 #include "Engine/Runtime/Engine.h"
 #include "Component/SkeletalMeshComponent.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 
 IMPLEMENT_CLASS(ASkeletalMeshActor, AActor)
 
@@ -16,7 +16,7 @@ void ASkeletalMeshActor::InitDefaultComponents(const FString& FbxFileName)
 	if (!FbxFileName.empty() && FbxFileName != "None")
 	{
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-		USkeletalMesh* Asset = FObjManager::LoadObjSkeletalMesh(FbxFileName, Device);
+		USkeletalMesh* Asset = FMeshAssetManager::LoadSkeletalMesh(FbxFileName, Device);
 		SkeletalMeshComponent->SetSkeletalMesh(Asset);
 	}
 	else

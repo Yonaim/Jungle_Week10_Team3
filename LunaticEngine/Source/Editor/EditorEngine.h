@@ -2,6 +2,7 @@
 
 #include "AssetEditor/AssetEditorManager.h"
 #include "Engine/Runtime/Engine.h"
+#include "Engine/Platform/Paths.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 
 #include "AssetTools/AssetImportManager.h"
@@ -16,6 +17,8 @@
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #endif
+
+#include <filesystem>
 
 class UGizmoVisualComponent;
 class FLevelEditorViewportClient;
@@ -71,6 +74,8 @@ class UEditorEngine : public UEngine
     void           NewScene();
     bool           LoadSceneWithDialog();
     bool           LoadSceneFromPath(const FString &InScenePath);
+    bool           ImportAssetWithDialog();
+    bool           ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath = nullptr);
     bool           ImportMaterialWithDialog();
     bool           ImportTextureWithDialog();
     bool           SaveScene();
@@ -80,6 +85,8 @@ class UEditorEngine : public UEngine
     bool           HasCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().HasCurrentLevelFilePath(); }
     const FString &GetCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().GetCurrentLevelFilePath(); }
     void           RefreshContentBrowser() { LevelEditorWindow.RefreshContentBrowser(); }
+    void           SelectContentBrowserPath(const std::filesystem::path& Path) { LevelEditorWindow.SelectContentBrowserPath(Path); }
+    void           SelectContentBrowserPath(const FString& Path) { LevelEditorWindow.SelectContentBrowserPath(std::filesystem::path(FPaths::ToWide(Path))); }
     void           SetContentBrowserIconSize(float Size) { LevelEditorWindow.SetContentBrowserIconSize(Size); }
     float          GetContentBrowserIconSize() const { return LevelEditorWindow.GetContentBrowserIconSize(); }
     void           HideEditorWindows() { LevelEditorWindow.HideEditorWindows(); }
@@ -149,6 +156,7 @@ class UEditorEngine : public UEngine
     bool IsMouseOverViewport() const { return LevelEditor.GetViewportLayout().IsMouseOverViewport(); }
 
     void RenderUI(float DeltaTime);
+    bool CanCloseEditorWithPrompt() const;
     void RenderPIEOverlayPopups();
 
     FOverlayStatSystem       &GetOverlayStatSystem() { return LevelEditor.GetOverlayStatSystem(); }
@@ -178,10 +186,6 @@ class UEditorEngine : public UEngine
         return AssetEditorManager.OpenAssetFromPath(AssetPath);
     }
 
-    bool OpenSourceFileFromPath(const std::filesystem::path &SourcePath)
-    {
-        return AssetEditorManager.OpenSourceFileFromPath(SourcePath);
-    }
 
     FEditorImGuiSystem &GetImGuiSystem() { return ImGuiSystem; }
     const FEditorImGuiSystem &GetImGuiSystem() const { return ImGuiSystem; }

@@ -20,6 +20,13 @@ void USkeletalMesh::Serialize(FArchive& Ar)
 
 	SkeletalMesh->Serialize(Ar);
 	Ar << StaticMaterials;
+
+	// BoneChildren / RootBoneIndices는 파일에 저장하지 않는 runtime cache다.
+	// .uasset을 로드한 직후 재구성하지 않으면 Skeleton Tree가 비어 보인다.
+	if (Ar.IsLoading() && SkeletalMesh)
+	{
+		SkeletalMesh->BuildBoneHierarchyCache();
+	}
 }
 
 bool USkeletalMesh::IsValid() const
@@ -54,6 +61,10 @@ void USkeletalMesh::SetSkeletalMeshAsset(FSkeletalMesh* InMesh)
 	// 이전 애셋 메모리를 해제하고 새 Cooked Data로 교체한다.
 	delete SkeletalMesh;
 	SkeletalMesh = InMesh;
+	if (SkeletalMesh)
+	{
+		SkeletalMesh->BuildBoneHierarchyCache();
+	}
 }
 
 const TArray<FBoneInfo>& USkeletalMesh::GetBones() const
@@ -144,4 +155,28 @@ void USkeletalMesh::SetStaticMaterials(TArray<FStaticMaterial>&& InMaterials)
 const TArray<FStaticMaterial>& USkeletalMesh::GetStaticMaterials() const
 {
 	return StaticMaterials;
+}
+
+TArray<FStaticMaterial>& USkeletalMesh::GetStaticMaterialsMutable()
+{
+	return StaticMaterials;
+}
+
+FStaticMaterial* USkeletalMesh::GetStaticMaterial(int32 MaterialIndex)
+{
+	return (MaterialIndex >= 0 && MaterialIndex < static_cast<int32>(StaticMaterials.size()))
+		? &StaticMaterials[MaterialIndex]
+		: nullptr;
+}
+
+bool USkeletalMesh::SetStaticMaterialInterface(int32 MaterialIndex, UMaterial* InMaterial)
+{
+	FStaticMaterial* MaterialSlot = GetStaticMaterial(MaterialIndex);
+	if (!MaterialSlot)
+	{
+		return false;
+	}
+
+	MaterialSlot->MaterialInterface = InMaterial;
+	return true;
 }

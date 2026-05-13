@@ -4,7 +4,6 @@
 #include "Common/UI/Style/AccentColor.h"
 #include "Core/Notification.h"
 #include "Materials/MaterialManager.h"
-#include "Mesh/ObjImporter.h"
 #include "Platform/Paths.h"
 
 #include <algorithm>
@@ -81,18 +80,23 @@ namespace
 
     std::filesystem::path GetProtectedContentRoot()
     {
-        return (std::filesystem::path(FPaths::RootDir()) / L"Asset" / L"Content").lexically_normal();
+        return std::filesystem::path(FPaths::ContentDir()).lexically_normal();
+    }
+
+    std::filesystem::path GetProtectedEngineContentRoot()
+    {
+        return std::filesystem::path(FPaths::EngineContentDir()).lexically_normal();
     }
 
     std::filesystem::path GetProtectedScriptsRoot()
     {
-        return (std::filesystem::path(FPaths::RootDir()).parent_path() / L"Scripts").lexically_normal();
+        return std::filesystem::path(FPaths::ScriptsDir()).lexically_normal();
     }
 
     bool IsProtectedContentBrowserPath(const std::filesystem::path &InPath)
     {
         const std::filesystem::path NormalizedPath = InPath.lexically_normal();
-        return NormalizedPath == GetProtectedContentRoot() || NormalizedPath == GetProtectedScriptsRoot();
+        return NormalizedPath == GetProtectedContentRoot() || NormalizedPath == GetProtectedEngineContentRoot() || NormalizedPath == GetProtectedScriptsRoot();
     }
 } // namespace
 
@@ -284,47 +288,72 @@ void MaterialElement::OnLeftClicked(ContentBrowserContext &Context) { MaterialIn
 
 void MaterialElement::RenderDetail() { MaterialInspector.Render(); }
 
-void MtlElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
+namespace
 {
-    TArray<FString> GeneratedMatPaths;
-    const FString   RelativeMtlPath = FPaths::ToUtf8(ContentItem.Path.lexically_relative(FPaths::RootDir()).generic_wstring());
-
-    if (FObjImporter::ImportMtl(RelativeMtlPath, &GeneratedMatPaths))
+    void ImportSourceFileFromContentBrowser(ContentBrowserContext &Context, const std::filesystem::path& SourcePath, const FString& DisplayName)
     {
-        FMaterialManager::Get().ScanMaterialAssets();
-        Context.bIsNeedRefresh = true;
+        (void)DisplayName;
 
-        FString Message = "Imported MTL: " + RelativeMtlPath;
-        if (!GeneratedMatPaths.empty())
+        if (!Context.EditorEngine)
         {
-            Message += " (" + std::to_string(GeneratedMatPaths.size()) + " mat)";
+            return;
         }
-        FNotificationManager::Get().AddNotification(Message, ENotificationType::Success, 3.0f);
-    }
-    else
-    {
-        FNotificationManager::Get().AddNotification("Failed to import MTL: " + RelativeMtlPath, ENotificationType::Error, 5.0f);
+
+        // Queue the import instead of executing it from the item render callback.
+        // ImportAssetFromPath refreshes/selects Content Browser entries, and doing that
+        // while DrawContents() is iterating CachedBrowserElements can invalidate the vector.
+        Context.PendingImportSourcePath = SourcePath;
     }
 }
 
+void ObjectElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
+{
+    ImportSourceFileFromContentBrowser(Context, ContentItem.Path, GetDisplayName());
+}
+
+void ObjectElement::DrawContextMenu(ContentBrowserContext &Context)
+{
+    const bool bCanImport = std::filesystem::exists(ContentItem.Path);
+    if (ImGui::MenuItem("Import as UAsset", nullptr, false, bCanImport))
+    {
+        OnDoubleLeftClicked(Context);
+    }
+
+    ImGui::Separator();
+    ContentBrowserElement::DrawContextMenu(Context);
+}
+
+void PNGElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
+{
+    ImportSourceFileFromContentBrowser(Context, ContentItem.Path, GetDisplayName());
+}
+
+void PNGElement::DrawContextMenu(ContentBrowserContext &Context)
+{
+    const bool bCanImport = std::filesystem::exists(ContentItem.Path);
+    if (ImGui::MenuItem("Import as UAsset", nullptr, false, bCanImport))
+    {
+        OnDoubleLeftClicked(Context);
+    }
+
+    ImGui::Separator();
+    ContentBrowserElement::DrawContextMenu(Context);
+}
+
+void MtlElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
+{
+    ImportSourceFileFromContentBrowser(Context, ContentItem.Path, GetDisplayName());
+}
 
 void FbxElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
 {
-    if (!Context.EditorEngine)
-    {
-        return;
-    }
-
-    if (!Context.EditorEngine->OpenSourceFileFromPath(ContentItem.Path))
-    {
-        FNotificationManager::Get().AddNotification("Failed to open FBX preview: " + GetDisplayName(), ENotificationType::Error, 5.0f);
-    }
+    ImportSourceFileFromContentBrowser(Context, ContentItem.Path, GetDisplayName());
 }
 
 void FbxElement::DrawContextMenu(ContentBrowserContext &Context)
 {
-    const bool bCanOpen = std::filesystem::exists(ContentItem.Path);
-    if (ImGui::MenuItem("Open FBX Preview", nullptr, false, bCanOpen))
+    const bool bCanImport = std::filesystem::exists(ContentItem.Path);
+    if (ImGui::MenuItem("Import as UAsset", nullptr, false, bCanImport))
     {
         OnDoubleLeftClicked(Context);
     }
@@ -340,17 +369,16 @@ void SkeletalMeshElement::OnDoubleLeftClicked(ContentBrowserContext &Context)
         return;
     }
 
-    if (!Context.EditorEngine->OpenSourceFileFromPath(ContentItem.Path))
+    if (!Context.EditorEngine->OpenAssetFromPath(ContentItem.Path))
     {
-        FNotificationManager::Get().AddNotification("Failed to open skeletal mesh asset: " + GetDisplayName(), ENotificationType::Error,
-                                                    5.0f);
+        FNotificationManager::Get().AddNotification("Failed to open skeletal mesh asset: " + GetDisplayName(), ENotificationType::Error, 5.0f);
     }
 }
 
 void SkeletalMeshElement::DrawContextMenu(ContentBrowserContext &Context)
 {
     const bool bCanOpen = std::filesystem::exists(ContentItem.Path);
-    if (ImGui::MenuItem("Open Skeletal Mesh Preview", nullptr, false, bCanOpen))
+    if (ImGui::MenuItem("Open UAsset", nullptr, false, bCanOpen))
     {
         OnDoubleLeftClicked(Context);
     }
