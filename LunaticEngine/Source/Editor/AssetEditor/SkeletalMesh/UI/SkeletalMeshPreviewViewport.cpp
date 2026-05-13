@@ -41,6 +41,24 @@ void FSkeletalMeshPreviewViewport::Shutdown()
     Window = nullptr;
 }
 
+void FSkeletalMeshPreviewViewport::ActivateForTabSwitch(FSkeletalMeshEditorState& State,
+                                                        FSkeletalMeshSelectionManager* SelectionManager)
+{
+    EnsureViewportResources();
+    if (PreviewViewportClient)
+    {
+        PreviewViewportClient->ActivateForTabSwitch(&State, SelectionManager);
+    }
+}
+
+void FSkeletalMeshPreviewViewport::DeactivateForTabSwitch()
+{
+    if (PreviewViewportClient)
+    {
+        PreviewViewportClient->DeactivateForTabSwitch();
+    }
+}
+
 void FSkeletalMeshPreviewViewport::Tick(float DeltaTime)
 {
     if (PreviewViewportClient)

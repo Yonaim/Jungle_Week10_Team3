@@ -1,6 +1,7 @@
 #include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditor.h"
 
+#include "AssetEditor/SkeletalMesh/SkeletalMeshPreviewPoseController.h"
 #include "Common/UI/Docking/DockLayoutUtils.h"
 #include "Common/UI/Style/EditorUIStyle.h"
 #include "Core/Notification.h"
@@ -36,6 +37,14 @@ void FSkeletalMeshEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *I
     }
 
     PreviewViewport.Initialize(EditorEngine ? EditorEngine->GetWindow() : nullptr, Renderer);
+    if (!PoseController)
+    {
+        PoseController = std::make_shared<FSkeletalMeshPreviewPoseController>();
+    }
+    if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+    {
+        PreviewClient->SetPoseController(PoseController);
+    }
 }
 
 bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath)
@@ -152,6 +161,18 @@ void FSkeletalMeshEditor::RenderContent(float DeltaTime)
 void FSkeletalMeshEditor::InvalidateDockLayout()
 {
     BuiltDockspaceId = 0;
+}
+
+void FSkeletalMeshEditor::OnActivated()
+{
+    bCapturingInput = false;
+    PreviewViewport.ActivateForTabSwitch(State, &SelectionManager);
+}
+
+void FSkeletalMeshEditor::OnDeactivated()
+{
+    bCapturingInput = false;
+    PreviewViewport.DeactivateForTabSwitch();
 }
 
 void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
@@ -461,6 +482,10 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
 
     if (bPreviewPanelOpen)
     {
+        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        {
+            PreviewClient->SetPoseController(PoseController);
+        }
         PreviewViewport.Render(EditingAsset, State, &SelectionManager, &Toolbar, DeltaTime, PreviewDesc);
     }
     if (bSkeletonTreePanelOpen)
@@ -480,8 +505,12 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     }
     if (bBoneDetailsPanelOpen)
     {
-        USkeletalMeshComponent *PreviewComponent = GetPreviewComponent();
-        DetailsPanel.Render(EditingAsset, PreviewComponent, State, SelectionManager, BoneDetailsDesc);
+        USkeletalMeshComponent *PreviewComponent = nullptr;
+        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        {
+            PreviewComponent = PreviewClient->GetPreviewComponent();
+        }
+        DetailsPanel.Render(EditingAsset, PreviewComponent, PoseController.get(), State, SelectionManager, BoneDetailsDesc);
     }
     if (bPreviewerSettingsPanelOpen)
     {

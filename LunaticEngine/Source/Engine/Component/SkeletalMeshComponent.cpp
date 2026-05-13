@@ -59,6 +59,12 @@ void USkeletalMeshComponent::SetBoneLocalTransformByName(const FString& BoneName
 	}
 }
 
+void USkeletalMeshComponent::SetPreviewPoseForEditor(const FSkeletonPose& InPose)
+{
+	CurrentPose = InPose;
+	RefreshSkinningNow();
+}
+
 // 메시 할당 시 즉시 초기화 — 에디터에서 BeginPlay 없이도 렌더링되도록
 void USkeletalMeshComponent::SetSkeletalMesh(USkeletalMesh* Mesh)
 {

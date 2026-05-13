@@ -109,6 +109,9 @@
     <Filter Include="Source\Editor\Common\UI\Tabs">
       <UniqueIdentifier>{1403f173-fecd-d607-fe8a-574322231af6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Editor\Common\UI\Toolbar">
+      <UniqueIdentifier>{4ebdaf6d-e082-3968-f218-272629c72479}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Editor\Common\UI\Viewport">
       <UniqueIdentifier>{315bc4ff-3a25-a257-693b-b9448fc7301a}</UniqueIdentifier>
     </Filter>
@@ -554,6 +557,9 @@
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\Gizmo</Filter>
     </ClCompile>
@@ -589,9 +595,6 @@
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp">
       <Filter>Source\Editor\Common\File</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.cpp">
-      <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClCompile>
     <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp">
       <Filter>Source\Editor\Common\Gizmo</Filter>
@@ -1439,6 +1442,9 @@
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.h">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\Gizmo</Filter>
     </ClInclude>
@@ -1474,9 +1480,6 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h">
       <Filter>Source\Editor\Common\File</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.h">
-      <Filter>Source\Editor\Common\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h">
       <Filter>Source\Editor\Common\Gizmo</Filter>
@@ -1525,6 +1528,9 @@
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Tabs\EditorDocumentTabBar.h">
       <Filter>Source\Editor\Common\UI\Tabs</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Editor\Common\UI\Toolbar\EditorPlayToolbar.h">
+      <Filter>Source\Editor\Common\UI\Toolbar</Filter>
     </ClInclude>
     <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h">
       <Filter>Source\Editor\Common\UI\Viewport</Filter>
@@ -1783,6 +1789,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h">
       <Filter>Source\Engine\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoDeltaTarget.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoHitProxyTypes.h">
       <Filter>Source\Engine\Component\Gizmo</Filter>

@@ -31,6 +31,7 @@ public:
 	bool ApplyLocalPoseTransforms(const TArray<FTransform>& LocalTransforms);
 	void ResetToBindPose();
 	void SetBoneLocalTransformByName(const FString& BoneName, const FTransform& LocalTransform);
+	void SetPreviewPoseForEditor(const FSkeletonPose& InPose);
 
 	TArray<FNormalVertex>* GetCPUSkinnedVertices() override { return &SkinBuffer; }
 

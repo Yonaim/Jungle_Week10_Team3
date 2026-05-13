@@ -2,7 +2,6 @@
 
 #include "Core/CoreTypes.h"
 #include "Component/Gizmo/GizmoTypes.h"
-#include "Common/Gizmo/EditorGizmoSharedState.h"
 #include "Math/Vector.h"
 
 // Skeletal Mesh Editor에서 사용하는 프리뷰 표시 모드.
@@ -114,7 +113,6 @@ struct FSkeletalMeshEditorState
     float PreviewLightYaw = 45.0f;
     float PreviewLightPitch = -35.0f;
 
-    FEditorGizmoSharedState GizmoSharedState;
     EGizmoMode GizmoMode = EGizmoMode::Translate;
     EGizmoSpace GizmoSpace = EGizmoSpace::Local;
     bool bShowMeshStatsOverlay = true;

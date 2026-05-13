@@ -4,6 +4,7 @@
 #include "Common/UI/Panels/Panel.h"
 
 class FSkeletalMeshSelectionManager;
+class FSkeletalMeshPreviewPoseController;
 class USkeletalMesh;
 class USkeletalMeshComponent;
 
@@ -12,12 +13,14 @@ class USkeletalMeshComponent;
 class FSkeletalMeshDetailsPanel
 {
   public:
-    void Render(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent, FSkeletalMeshEditorState &State,
+    void Render(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent, FSkeletalMeshPreviewPoseController *PoseController,
+                FSkeletalMeshEditorState &State,
                 FSkeletalMeshSelectionManager &SelectionManager, const FPanelDesc &PanelDesc);
 
   private:
     void RenderSearchToolbar();
     void RenderBoneSection(USkeletalMesh *Mesh, FSkeletalMeshSelectionManager &SelectionManager);
     void RenderTransformSection(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                FSkeletalMeshPreviewPoseController *PoseController,
                                 FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);
 };

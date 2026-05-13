@@ -1,11 +1,17 @@
 #include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 
+#include "AssetEditor/SkeletalMesh/SkeletalMeshPreviewPoseController.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 
-FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent, int32 InBoneIndex)
+#include <utility>
+
+FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent,
+                                                     std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController,
+                                                     int32 InBoneIndex)
     : Component(InComponent)
+    , PoseController(std::move(InPoseController))
     , BoneIndex(InBoneIndex)
 {
 }
@@ -15,6 +21,11 @@ bool FBoneTransformGizmoTarget::IsValid() const
     if (!Component || BoneIndex < 0)
     {
         return false;
+    }
+
+    if (PoseController)
+    {
+        return PoseController->IsBoneValid(BoneIndex);
     }
 
     const FSkeletonPose& Pose = Component->GetCurrentPose();
@@ -27,6 +38,11 @@ FTransform FBoneTransformGizmoTarget::GetWorldTransform() const
     if (!IsValid())
     {
         return FTransform();
+    }
+
+    if (PoseController)
+    {
+        return PoseController->GetBoneComponentTransform(BoneIndex);
     }
 
     const FSkeletonPose& Pose = Component->GetCurrentPose();
@@ -45,6 +61,11 @@ FMatrix FBoneTransformGizmoTarget::GetWorldMatrix() const
         return FMatrix::Identity;
     }
 
+    if (PoseController)
+    {
+        return PoseController->GetBoneComponentMatrix(BoneIndex);
+    }
+
     const FSkeletonPose& Pose = Component->GetCurrentPose();
     return Pose.ComponentTransforms[BoneIndex];
 }
@@ -56,22 +77,28 @@ void FBoneTransformGizmoTarget::SetWorldMatrix(const FMatrix& NewWorldMatrix)
         return;
     }
 
-    // Bone gizmo의 WorldMatrix는 현재 preview component-space transform이다.
-    // parent가 있는 bone은 component-space 행렬을 parent component-space의 inverse로 되돌린 뒤
-    // local transform으로 저장해야 부모 기준으로 한 번 더 누적되는 문제를 피할 수 있다.
     const FSkeletalMesh* MeshAsset = Component->GetSkeletalMesh()->GetSkeletalMeshAsset();
-    const FSkeletonPose& Pose = Component->GetCurrentPose();
     const int32 ParentIndex = MeshAsset->Bones[BoneIndex].ParentIndex;
 
     FMatrix NewLocalMatrix = NewWorldMatrix;
-    if (ParentIndex != InvalidBoneIndex &&
-        ParentIndex >= 0 &&
-        ParentIndex < static_cast<int32>(Pose.ComponentTransforms.size()))
+    if (ParentIndex != InvalidBoneIndex)
     {
-        const FMatrix ParentComponentInverse = Pose.ComponentTransforms[ParentIndex].GetInverse();
-        NewLocalMatrix = NewWorldMatrix * ParentComponentInverse;
-    }
+        FMatrix ParentComponentMatrix = FMatrix::Identity;
+        if (PoseController)
+        {
+            ParentComponentMatrix = PoseController->GetBoneComponentMatrix(ParentIndex);
+        }
+        else
+        {
+            const FSkeletonPose& Pose = Component->GetCurrentPose();
+            if (ParentIndex >= 0 && ParentIndex < static_cast<int32>(Pose.ComponentTransforms.size()))
+            {
+                ParentComponentMatrix = Pose.ComponentTransforms[ParentIndex];
+            }
+        }
 
+        NewLocalMatrix = NewWorldMatrix * ParentComponentMatrix.GetInverse();
+    }
     SetLocalTransform(FTransform::FromMatrix(NewLocalMatrix));
 }
 
@@ -82,6 +109,11 @@ FTransform FBoneTransformGizmoTarget::GetLocalTransform() const
         return FTransform();
     }
 
+    if (PoseController)
+    {
+        return PoseController->GetBoneLocalTransform(BoneIndex);
+    }
+
     const FSkeletonPose& Pose = Component->GetCurrentPose();
     return Pose.LocalTransforms[BoneIndex];
 }
@@ -90,6 +122,12 @@ void FBoneTransformGizmoTarget::SetLocalTransform(const FTransform& NewLocalTran
 {
     if (!IsValid())
     {
+        return;
+    }
+
+    if (PoseController)
+    {
+        PoseController->SetBoneLocalTransformFromUI(BoneIndex, NewLocalTransform);
         return;
     }
 
@@ -104,12 +142,40 @@ void FBoneTransformGizmoTarget::BeginTransform()
 
 void FBoneTransformGizmoTarget::EndTransform()
 {
-    if (!bTransforming || !Component)
+    if (!PoseController && bTransforming && Component)
     {
-        bTransforming = false;
+        Component->RefreshSkinningForEditor(0.0f);
+    }
+
+    bTransforming = false;
+}
+
+bool FBoneTransformGizmoTarget::BeginGizmoDrag(const FGizmoDragBeginContext& Context)
+{
+    if (!PoseController || !IsValid())
+    {
+        return false;
+    }
+
+    return PoseController->BeginBoneGizmoSession(BoneIndex, Context);
+}
+
+bool FBoneTransformGizmoTarget::ApplyGizmoDelta(const FGizmoDelta& Delta)
+{
+    if (!PoseController || !IsValid())
+    {
+        return false;
+    }
+
+    return PoseController->ApplyBoneGizmoDelta(BoneIndex, Delta);
+}
+
+void FBoneTransformGizmoTarget::EndGizmoDrag(bool bCancelled)
+{
+    if (!PoseController)
+    {
         return;
     }
 
-    Component->RefreshSkinningForEditor(0.0f);
-    bTransforming = false;
+    PoseController->EndBoneGizmoSession(BoneIndex, bCancelled);
 }

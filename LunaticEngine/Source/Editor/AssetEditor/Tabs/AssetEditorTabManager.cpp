@@ -2,6 +2,8 @@
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
 #include "Common/UI/Panels/Panel.h"
 #include "Common/UI/Tabs/EditorDocumentTabBar.h"
+#include "Common/Viewport/EditorViewportClient.h"
+#include "Common/Gizmo/GizmoManager.h"
 
 #include "AssetEditor/IAssetEditor.h"
 #include "AssetEditor/Tabs/AssetEditorTab.h"
@@ -35,6 +37,40 @@ namespace
 
         return AssetName + L" has unsaved changes.\n\nClose without saving?";
     }
+    void DeactivateAssetEditorViewport(IAssetEditor* Editor)
+    {
+        if (!Editor)
+        {
+            return;
+        }
+
+        Editor->OnDeactivated();
+
+        FEditorViewportClient* ViewportClient = Editor->GetActiveViewportClient();
+        if (!ViewportClient)
+        {
+            return;
+        }
+
+        ViewportClient->SetActive(false);
+        ViewportClient->SetHovered(false);
+        ViewportClient->GetGizmoManager().CancelDrag();
+        ViewportClient->GetGizmoManager().ClearTarget();
+        ViewportClient->GetGizmoManager().ResetVisualInteractionState();
+    }
+
+    void ActivateAssetEditorViewport(IAssetEditor* Editor)
+    {
+        if (Editor)
+        {
+            Editor->OnActivated();
+            if (FEditorViewportClient* ViewportClient = Editor->GetActiveViewportClient())
+            {
+                ViewportClient->SetActive(true);
+            }
+        }
+    }
+
 }
 
 bool FAssetEditorTabManager::OpenTab(std::unique_ptr<IAssetEditor> Editor)
@@ -88,6 +124,12 @@ bool FAssetEditorTabManager::CloseTab(int32 TabIndex, bool bPromptForDirty)
         return false;
     }
 
+    const bool bClosingActiveTab = ActiveTabIndex == TabIndex;
+    if (bClosingActiveTab && Tab)
+    {
+        DeactivateAssetEditorViewport(Tab->GetEditor());
+    }
+
     if (Tab && Tab->GetEditor())
     {
         Tab->GetEditor()->Close();
@@ -101,8 +143,9 @@ bool FAssetEditorTabManager::CloseTab(int32 TabIndex, bool bPromptForDirty)
         return true;
     }
 
-    if (ActiveTabIndex == TabIndex)
+    if (bClosingActiveTab)
     {
+        ActiveTabIndex = -1;
         SetActiveTabIndex((std::min)(TabIndex, static_cast<int32>(Tabs.size()) - 1));
     }
     else if (TabIndex < ActiveTabIndex)
@@ -111,6 +154,7 @@ bool FAssetEditorTabManager::CloseTab(int32 TabIndex, bool bPromptForDirty)
     }
     else if (ActiveTabIndex >= static_cast<int32>(Tabs.size()))
     {
+        ActiveTabIndex = -1;
         SetActiveTabIndex(static_cast<int32>(Tabs.size()) - 1);
     }
 
@@ -173,6 +217,22 @@ bool FAssetEditorTabManager::SaveActiveTab()
 {
     IAssetEditor *Editor = GetActiveEditor();
     return Editor ? Editor->Save() : false;
+}
+
+void FAssetEditorTabManager::ActivateActiveTab()
+{
+    if (FAssetEditorTab* ActiveTab = GetActiveTab())
+    {
+        ActivateAssetEditorViewport(ActiveTab->GetEditor());
+    }
+}
+
+void FAssetEditorTabManager::DeactivateActiveTab()
+{
+    if (FAssetEditorTab* ActiveTab = GetActiveTab())
+    {
+        DeactivateAssetEditorViewport(ActiveTab->GetEditor());
+    }
 }
 
 void FAssetEditorTabManager::Tick(float DeltaTime)
@@ -333,7 +393,13 @@ bool FAssetEditorTabManager::SetActiveTabIndex(int32 NewIndex)
 
     if (ActiveTabIndex == NewIndex)
     {
+        ActivateAssetEditorViewport(Tabs[ActiveTabIndex] ? Tabs[ActiveTabIndex]->GetEditor() : nullptr);
         return true;
+    }
+
+    if (FAssetEditorTab *OldTab = GetActiveTab())
+    {
+        DeactivateAssetEditorViewport(OldTab->GetEditor());
     }
 
     ActiveTabIndex = NewIndex;
@@ -342,6 +408,7 @@ bool FAssetEditorTabManager::SetActiveTabIndex(int32 NewIndex)
         // DockspaceId는 그대로인데 ActiveEditor만 바뀌는 경우가 있으므로,
         // 새로 활성화된 에디터가 자기 기본 layout을 다시 보장하게 한다.
         Tabs[ActiveTabIndex]->GetEditor()->InvalidateDockLayout();
+        ActivateAssetEditorViewport(Tabs[ActiveTabIndex]->GetEditor());
     }
     return true;
 }

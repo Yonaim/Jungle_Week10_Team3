@@ -46,6 +46,12 @@ class IAssetEditor
     // 패널 배치가 깨질 수 있다. 다시 활성화될 때 각 에디터가 자기 layout을 재빌드하도록 한다.
     virtual void InvalidateDockLayout() {}
 
+    // Document tab/context activation hooks.
+    // Use these to detach transient viewport/gizmo targets when an editor tab is hidden,
+    // so a stale target from an inactive tab cannot receive later input/render sync.
+    virtual void OnActivated() {}
+    virtual void OnDeactivated() {}
+
     virtual void RenderPanels(float DeltaTime, ImGuiID DockspaceId)
     {
         (void)DockspaceId;

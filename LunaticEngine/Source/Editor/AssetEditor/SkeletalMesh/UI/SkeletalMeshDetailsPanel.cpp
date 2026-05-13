@@ -1,6 +1,7 @@
 #include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/UI/SkeletalMeshDetailsPanel.h"
 
+#include "AssetEditor/SkeletalMesh/SkeletalMeshPreviewPoseController.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 #include "Common/UI/Details/EditorDetailsWidgets.h"
 #include "Common/UI/Style/EditorUIStyle.h"
@@ -159,6 +160,7 @@ bool IsValidBone(USkeletalMesh *Mesh, int32 BoneIndex)
 } // namespace
 
 void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                       FSkeletalMeshPreviewPoseController *PoseController,
                                        FSkeletalMeshEditorState &State,
                                        FSkeletalMeshSelectionManager &SelectionManager,
                                        const FPanelDesc &PanelDesc)
@@ -180,7 +182,7 @@ void FSkeletalMeshDetailsPanel::Render(USkeletalMesh *Mesh, USkeletalMeshCompone
 
     RenderBoneSection(Mesh, SelectionManager);
     ImGui::Spacing();
-    RenderTransformSection(Mesh, PreviewComponent, State, SelectionManager);
+    RenderTransformSection(Mesh, PreviewComponent, PoseController, State, SelectionManager);
 
     FPanel::End();
 }
@@ -211,6 +213,7 @@ void FSkeletalMeshDetailsPanel::RenderBoneSection(USkeletalMesh *Mesh, FSkeletal
 }
 
 void FSkeletalMeshDetailsPanel::RenderTransformSection(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                                       FSkeletalMeshPreviewPoseController *PoseController,
                                                        FSkeletalMeshEditorState &State,
                                                        FSkeletalMeshSelectionManager &SelectionManager)
 {
@@ -251,7 +254,19 @@ void FSkeletalMeshDetailsPanel::RenderTransformSection(USkeletalMesh *Mesh, USke
     FTransform DisplayTransform = MeshAsset->Bones[BoneIndex].LocalBindTransform;
     bool bCanEdit = false;
 
-    if (PreviewComponent)
+    if (PoseController)
+    {
+        if (State.BoneDetailsSpace == ESkeletalMeshBoneDetailsSpace::Bone)
+        {
+            DisplayTransform = PoseController->GetBoneLocalTransform(BoneIndex);
+            bCanEdit = State.bEnablePoseEditMode;
+        }
+        else if (State.BoneDetailsSpace == ESkeletalMeshBoneDetailsSpace::MeshRelative)
+        {
+            DisplayTransform = PoseController->GetBoneComponentTransform(BoneIndex);
+        }
+    }
+    else if (PreviewComponent)
     {
         const FSkeletonPose &Pose = PreviewComponent->GetCurrentPose();
         if (BoneIndex < static_cast<int32>(Pose.LocalTransforms.size()))
@@ -289,13 +304,20 @@ void FSkeletalMeshDetailsPanel::RenderTransformSection(USkeletalMesh *Mesh, USke
     bChanged |= FEditorDetailsWidgets::DrawVector3Row("Rotation", RotationEuler, bReadOnly);
     bChanged |= FEditorDetailsWidgets::DrawVector3Row("Scale", Scale, bReadOnly);
 
-    if (bChanged && bCanEdit && PreviewComponent)
+    if (bChanged && bCanEdit)
     {
         FTransform NewLocal = DisplayTransform;
         NewLocal.Location = Location;
         NewLocal.Rotation = FRotator(RotationEuler).ToQuaternion();
         NewLocal.Scale = Scale;
-        PreviewComponent->SetBoneLocalTransform(BoneIndex, NewLocal);
-        PreviewComponent->RefreshSkinningNow();
+        if (PoseController)
+        {
+            PoseController->SetBoneLocalTransformFromUI(BoneIndex, NewLocal);
+        }
+        else if (PreviewComponent)
+        {
+            PreviewComponent->SetBoneLocalTransform(BoneIndex, NewLocal);
+            PreviewComponent->RefreshSkinningNow();
+        }
     }
 }

@@ -36,6 +36,9 @@ class FSkeletalMeshPreviewViewport
     void Initialize(FWindowsWindow *InWindow, FRenderer *InRenderer);
     void Shutdown();
 
+    void ActivateForTabSwitch(FSkeletalMeshEditorState& State, FSkeletalMeshSelectionManager* SelectionManager);
+    void DeactivateForTabSwitch();
+
     void Tick(float DeltaTime);
     void Render(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager *SelectionManager,
                 FSkeletalMeshEditorToolbar *Toolbar, float DeltaTime, const FPanelDesc &PanelDesc);

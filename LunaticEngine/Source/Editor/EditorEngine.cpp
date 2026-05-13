@@ -1,6 +1,8 @@
 #include "PCH/LunaticPCH.h"
 #include "EditorEngine.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
+#include "Common/Gizmo/GizmoManager.h"
+#include "Common/Viewport/EditorViewportClient.h"
 #include "Common/UI/Notifications/NotificationToast.h"
 
 #include "Audio/AudioManager.h"
@@ -31,6 +33,33 @@ IMPLEMENT_CLASS(UEditorEngine, UEngine)
 
 namespace
 {
+void DeactivateEditorViewportClient(FEditorViewportClient* Client)
+{
+    if (!Client)
+    {
+        return;
+    }
+
+    Client->SetActive(false);
+    Client->SetHovered(false);
+    Client->GetGizmoManager().CancelDrag();
+    Client->GetGizmoManager().ResetVisualInteractionState();
+}
+
+void ApplyLevelTransformSettingsToGizmo(FGizmoManager& Manager, const FLevelEditorSettings& Settings, EGizmoMode Mode)
+{
+    const bool bForceLocalForScale = Mode == EGizmoMode::Scale;
+    const EGizmoSpace Space = bForceLocalForScale || Settings.CoordSystem != EEditorCoordSystem::World
+                                  ? EGizmoSpace::Local
+                                  : EGizmoSpace::World;
+
+    Manager.SetMode(Mode);
+    Manager.SetSpace(Space);
+    Manager.SetSnapSettings(Settings.bEnableTranslationSnap, Settings.TranslationSnapSize,
+                            Settings.bEnableRotationSnap, Settings.RotationSnapSize,
+                            Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
+    Manager.SyncVisualFromTarget();
+}
 } // namespace
 
 void UEditorEngine::Init(FWindowsWindow *InWindow)
@@ -197,17 +226,39 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 
 void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
 {
+    const EEditorContextType PreviousContextType = ActiveEditorContextType;
+
+    if (PreviousContextType != InContextType)
+    {
+        if (PreviousContextType == EEditorContextType::AssetEditor)
+        {
+            DeactivateEditorViewportClient(AssetEditorManager.GetActiveViewportClient());
+        }
+        else
+        {
+            DeactivateEditorViewportClient(GetActiveViewport());
+        }
+    }
+
     if (ActiveEditorContextType == InContextType)
     {
         if (InContextType == EEditorContextType::AssetEditor)
         {
             HideLevelEditorUIForAssetEditor();
+            if (FEditorViewportClient *ViewportClient = AssetEditorManager.GetActiveViewportClient())
+            {
+                ViewportClient->SetActive(true);
+            }
         }
         else
         {
             AssetEditorManager.GetAssetEditorWindow().Hide();
             RestoreLevelEditorUIAfterAssetEditor();
             LevelEditorWindow.RequestDefaultDockLayout();
+            if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
+            {
+                LevelViewportClient->SetActive(true);
+            }
         }
         return;
     }
@@ -233,6 +284,7 @@ void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
         if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
         {
             LevelViewportClient->SetActive(true);
+            ApplyTransformSettingsToGizmo();
         }
     }
 }
@@ -312,78 +364,46 @@ void UEditorEngine::ToggleCoordSystem()
 
 void UEditorEngine::SetEditorGizmoMode(EGizmoMode NewMode)
 {
-    EditorGizmoSharedState.Mode = NewMode;
-    ApplyTransformSettingsToGizmo();
+    if (!IsLevelEditorContextActive())
+    {
+        return;
+    }
+
+    if (FLevelEditorViewportClient *Client = GetActiveViewport())
+    {
+        ApplyLevelTransformSettingsToGizmo(Client->GetGizmoManager(), FLevelEditorSettings::Get(), NewMode);
+    }
+}
+
+EGizmoMode UEditorEngine::GetEditorGizmoMode() const
+{
+    if (const FEditorViewportClient *Client = GetActiveEditorViewportClient())
+    {
+        return Client->GetGizmoManager().GetMode();
+    }
+    return EGizmoMode::Translate;
 }
 
 void UEditorEngine::ApplyTransformSettingsToGizmo()
 {
-    const FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-
-    const bool bForceLocalForScale = EditorGizmoSharedState.Mode == EGizmoMode::Scale;
-    EditorGizmoSharedState.Space =
-        bForceLocalForScale || Settings.CoordSystem != EEditorCoordSystem::World
-            ? EGizmoSpace::Local
-            : EGizmoSpace::World;
-
-    EditorGizmoSharedState.bTranslationSnapEnabled = Settings.bEnableTranslationSnap;
-    EditorGizmoSharedState.TranslationSnapSize = Settings.TranslationSnapSize;
-    EditorGizmoSharedState.bRotationSnapEnabled = Settings.bEnableRotationSnap;
-    EditorGizmoSharedState.RotationSnapSizeDegrees = Settings.RotationSnapSize;
-    EditorGizmoSharedState.bScaleSnapEnabled = Settings.bEnableScaleSnap;
-    EditorGizmoSharedState.ScaleSnapSize = Settings.ScaleSnapSize;
-
-    // The tool state is editor-context-wide. Each viewport still owns its own
-    // FGizmoManager / visual / drag state, but mode/space/snap must be identical
-    // across all visible Level viewport managers.
-    if (IsLevelEditorContextActive())
+    if (!IsLevelEditorContextActive())
     {
-        for (FLevelEditorViewportClient* Client : GetLevelViewportClients())
-        {
-            if (Client)
-            {
-                EditorGizmoSharedState.ApplyTo(Client->GetGizmoManager());
-            }
-        }
+        // Asset Editor 탭은 각 탭/viewport client가 자기 상태를 직접 적용한다.
+        // Level Editor 전역 툴 상태를 Asset Editor의 FGizmoManager에 절대 밀어넣지 않는다.
         return;
     }
 
-    // Asset editor viewport clients use their own editor state where available.
-    // For generic asset viewports, apply the current shared editor tool state to
-    // every collected asset viewport instead of only the active one.
-    TArray<FEditorViewportClient*> AssetClients;
-    CollectAssetViewportClients(AssetClients);
-    for (FEditorViewportClient* Client : AssetClients)
+    if (FLevelEditorViewportClient *Client = GetActiveViewport())
     {
-        if (Client)
-        {
-            EditorGizmoSharedState.ApplyTo(Client->GetGizmoManager());
-        }
+        ApplyLevelTransformSettingsToGizmo(Client->GetGizmoManager(), FLevelEditorSettings::Get(), Client->GetGizmoManager().GetMode());
     }
 }
 
 void UEditorEngine::SyncActiveGizmoVisualFromTarget()
 {
-    if (IsLevelEditorContextActive())
+    if (FEditorViewportClient *Client = GetActiveEditorViewportClient())
     {
-        for (FLevelEditorViewportClient* Client : GetLevelViewportClients())
-        {
-            if (Client)
-            {
-                Client->GetGizmoManager().SyncVisualFromTarget();
-            }
-        }
-        return;
-    }
-
-    TArray<FEditorViewportClient*> AssetClients;
-    CollectAssetViewportClients(AssetClients);
-    for (FEditorViewportClient* Client : AssetClients)
-    {
-        if (Client)
-        {
-            Client->GetGizmoManager().SyncVisualFromTarget();
-        }
+        Client->GetGizmoManager().SyncVisualFromTarget();
     }
 }
 

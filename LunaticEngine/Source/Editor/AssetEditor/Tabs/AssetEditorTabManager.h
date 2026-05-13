@@ -38,6 +38,9 @@ class FAssetEditorTabManager
     void SetClosePromptOwnerWindowHandle(void *OwnerWindowHandle);
     bool SaveActiveTab();
 
+    void ActivateActiveTab();
+    void DeactivateActiveTab();
+
     void Tick(float DeltaTime);
     void Render(float DeltaTime, ImGuiID DockspaceId = 0);
     void InvalidateEditorLayouts();

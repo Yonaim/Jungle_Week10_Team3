@@ -12,7 +12,7 @@
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "LevelEditor/Window/LevelEditorWindow.h"
 #include "Common/Viewport/EditorViewportCamera.h"
-#include "Common/Gizmo/EditorGizmoSharedState.h"
+#include "Component/Gizmo/GizmoTypes.h"
 
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
@@ -98,7 +98,7 @@ class UEditorEngine : public UEngine
     bool           IsWorldCoordSystem() const { return FLevelEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }
     void           ToggleCoordSystem();
     void           SetEditorGizmoMode(EGizmoMode NewMode);
-    EGizmoMode     GetEditorGizmoMode() const { return EditorGizmoSharedState.Mode; }
+    EGizmoMode     GetEditorGizmoMode() const;
     void           ApplyTransformSettingsToGizmo();
     void           SyncActiveGizmoVisualFromTarget();
     void           BeginTrackedSceneChange();
@@ -217,8 +217,6 @@ class UEditorEngine : public UEngine
     void              InvalidateTrackedSceneSnapshotCache();
 
     EEditorContextType ActiveEditorContextType = EEditorContextType::LevelEditor;
-    FEditorGizmoSharedState EditorGizmoSharedState;
-
     FLevelEditor       LevelEditor;
     FEditorImGuiSystem ImGuiSystem;
     FLevelEditorWindow LevelEditorWindow;

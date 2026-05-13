@@ -1,4 +1,4 @@
-#include "PCH/LunaticPCH.h"
+﻿#include "PCH/LunaticPCH.h"
 #include "Common/Gizmo/GizmoManager.h"
 
 #include "Component/GizmoVisualComponent.h"
@@ -9,7 +9,7 @@
 #include <cmath>
 #include <cfloat>
 
-void FGizmoManager::SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget)
+void FGizmoManager::SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget, std::shared_ptr<IGizmoDeltaTarget> InDeltaTarget)
 {
     if (bDragging)
     {
@@ -17,14 +17,19 @@ void FGizmoManager::SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget)
     }
 
     Target = InTarget;
+    DeltaTarget = InDeltaTarget;
     bHasTargetKey = false;
     SyncVisualFromTarget();
 }
 
-bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey, std::shared_ptr<ITransformGizmoTarget> InTarget)
+bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey,
+                                       std::shared_ptr<ITransformGizmoTarget> InTarget,
+                                       std::shared_ptr<IGizmoDeltaTarget> InDeltaTarget)
 {
     if (bHasTargetKey && TargetKey == InKey && HasValidTarget())
     {
+        Target = InTarget;
+        DeltaTarget = InDeltaTarget;
         SyncVisualFromTarget();
         return false;
     }
@@ -37,6 +42,7 @@ bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey, std::shared
     TargetKey = InKey;
     bHasTargetKey = true;
     Target = InTarget;
+    DeltaTarget = InDeltaTarget;
     SyncVisualFromTarget();
     return true;
 }
@@ -49,6 +55,7 @@ void FGizmoManager::ClearTarget()
     }
 
     Target.reset();
+    DeltaTarget.reset();
     bHasTargetKey = false;
     SyncVisualFromTarget();
 }
@@ -390,6 +397,29 @@ bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
     }
     LastIntersectionLocation = FVector::ZeroVector;
     bFirstDragUpdate = true;
+
+    if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+    {
+        FGizmoDragBeginContext BeginContext{};
+        BeginContext.Mode = DragStartMode;
+        BeginContext.Space = DragStartSpace;
+        BeginContext.ActiveAxis = ActiveAxis;
+        BeginContext.StartTargetTransform = DragStartTransform;
+        BeginContext.StartTargetWorldMatrix = DragStartWorldMatrix;
+        BeginContext.StartAxisVector = DragAxisVector;
+        if (!DeltaTarget->BeginGizmoDrag(BeginContext))
+        {
+            Target->EndTransform();
+            ActiveAxis = -1;
+            if (VisualComponent)
+            {
+                VisualComponent->SetPressedOnHandle(false);
+                VisualComponent->SetHolding(false);
+            }
+            return false;
+        }
+    }
+
     bDragging = true;
     ResetSnapAccumulation();
 
@@ -424,6 +454,10 @@ void FGizmoManager::EndDrag()
 {
     if (bDragging && Target && Target->IsValid())
     {
+        if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+        {
+            DeltaTarget->EndGizmoDrag(false);
+        }
         Target->EndTransform();
     }
 
@@ -440,7 +474,14 @@ void FGizmoManager::CancelDrag()
 {
     if (bDragging && Target && Target->IsValid())
     {
-        Target->SetWorldMatrix(DragStartWorldMatrix);
+        if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+        {
+            DeltaTarget->EndGizmoDrag(true);
+        }
+        else
+        {
+            Target->SetWorldMatrix(DragStartWorldMatrix);
+        }
         Target->EndTransform();
     }
 
@@ -695,6 +736,44 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
 
         LastIntersectionLocation = CurrentIntersection;
         return;
+    }
+
+    if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+    {
+        FGizmoDelta Delta{};
+        Delta.Mode = DragStartMode;
+        Delta.Space = DragStartSpace;
+        Delta.ActiveAxis = ActiveAxis;
+        Delta.StartTargetTransform = DragStartTransform;
+
+        if (bPlanar)
+        {
+            Delta.LinearDeltaComponent = CurrentIntersection - DragStartIntersectionLocation;
+            if (Delta.LinearDeltaComponent.Dot(Delta.LinearDeltaComponent) <= FMath::Epsilon)
+            {
+                LastIntersectionLocation = CurrentIntersection;
+                return;
+            }
+        }
+        else
+        {
+            const FVector TotalDelta = CurrentIntersection - DragStartIntersectionLocation;
+            const float RawTotalDragAmount = TotalDelta.Dot(DragAxisVector);
+            const float SnappedTotalDragAmount = ApplySnapToTotalDragAmount(RawTotalDragAmount);
+            if (std::abs(SnappedTotalDragAmount) <= FMath::Epsilon)
+            {
+                LastIntersectionLocation = CurrentIntersection;
+                return;
+            }
+
+            Delta.LinearDeltaComponent = DragAxisVector * SnappedTotalDragAmount;
+        }
+
+        if (DeltaTarget->ApplyGizmoDelta(Delta))
+        {
+            LastIntersectionLocation = CurrentIntersection;
+            return;
+        }
     }
 
     const FVector FullDelta = CurrentIntersection - LastIntersectionLocation;

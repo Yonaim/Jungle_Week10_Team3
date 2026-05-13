@@ -11,6 +11,7 @@
 #include "Common/UI/Panels/Panel.h"
 
 #include <filesystem>
+#include <memory>
 #include <string>
 
 #include "ImGui/imgui.h"
@@ -20,6 +21,7 @@ class UEditorEngine;
 class FRenderer;
 class USkeletalMesh;
 class USkeletalMeshComponent;
+class FSkeletalMeshPreviewPoseController;
 
 /**
  * SkeletalMesh Viewer / Asset Editor.
@@ -49,6 +51,8 @@ class FSkeletalMeshEditor final : public IAssetEditor
     // SkeletalMeshEditor는 단일 탭 내부 content가 아니라 여러 도킹 패널을 직접 렌더링한다.
     bool UsesExternalPanels() const override { return true; }
     void InvalidateDockLayout() override;
+    void OnActivated() override;
+    void OnDeactivated() override;
     void RenderPanels(float DeltaTime, ImGuiID DockspaceId) override;
     void BuildWindowMenu() override;
     void BuildCustomMenus() override;
@@ -101,6 +105,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     FSkeletonTreePanel SkeletonTreePanel;
     FAssetDetailsPanel AssetDetailsPanel;
     FSkeletalMeshDetailsPanel DetailsPanel;
+    std::shared_ptr<FSkeletalMeshPreviewPoseController> PoseController;
 
     // Skeleton Tree / Asset Details / Preview Viewport가 공유하는 Bone 선택 관리자.
     FSkeletalMeshSelectionManager SelectionManager;

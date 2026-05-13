@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Common/Viewport/EditorViewportClient.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditorTypes.h"
@@ -6,10 +6,13 @@
 #include "Common/Viewport/EditorViewportCamera.h"
 #include "Common/Viewport/PreviewScene.h"
 
+#include <memory>
+
 class USkeletalMesh;
 class USkeletalMeshComponent;
 class FPrimitiveSceneProxy;
 class FSkeletalMeshSelectionManager;
+class FSkeletalMeshPreviewPoseController;
 struct FRay;
 
 /**
@@ -44,6 +47,10 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
 
     void SetEditorState(FSkeletalMeshEditorState *InState) { State = InState; }
     void SetSelectionManager(FSkeletalMeshSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
+    void SetPoseController(std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController);
+
+    void ActivateForTabSwitch(FSkeletalMeshEditorState* InState, FSkeletalMeshSelectionManager* InSelectionManager);
+    void DeactivateForTabSwitch();
 
     void RenderViewportImage(bool bIsActiveViewport) override;
     const char *GetViewportTooltipBarText() const override;
@@ -84,6 +91,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
 
     FViewportRenderOptions RenderOptions;
     int32 GizmoTargetBoneIndex = -1;
+    std::shared_ptr<FSkeletalMeshPreviewPoseController> PoseController;
 
     ESkeletalMeshPreviewViewportType LastAppliedViewportType = ESkeletalMeshPreviewViewportType::Perspective;
     bool bHasAppliedViewportType = false;

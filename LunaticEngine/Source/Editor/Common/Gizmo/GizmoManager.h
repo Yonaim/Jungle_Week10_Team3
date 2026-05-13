@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "Component/Gizmo/GizmoTypes.h"
 #include "Component/Gizmo/GizmoHitProxyTypes.h"
+#include "Component/Gizmo/GizmoDeltaTarget.h"
 #include "Component/Gizmo/TransformGizmoTarget.h"
 #include "Core/RayTypes.h"
 #include "Core/CollisionTypes.h"
@@ -60,8 +61,10 @@ struct FGizmoTargetKey
 class FGizmoManager
 {
 public:
-    void SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget);
-    bool SetTargetIfChanged(const FGizmoTargetKey& InKey, std::shared_ptr<ITransformGizmoTarget> InTarget);
+    void SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget, std::shared_ptr<IGizmoDeltaTarget> InDeltaTarget = nullptr);
+    bool SetTargetIfChanged(const FGizmoTargetKey& InKey,
+                           std::shared_ptr<ITransformGizmoTarget> InTarget,
+                           std::shared_ptr<IGizmoDeltaTarget> InDeltaTarget = nullptr);
     void ClearTarget();
 
     bool HasValidTarget() const;
@@ -130,6 +133,7 @@ private:
 
 private:
     std::shared_ptr<ITransformGizmoTarget> Target;
+    std::shared_ptr<IGizmoDeltaTarget> DeltaTarget;
     FGizmoTargetKey TargetKey{};
     bool bHasTargetKey = false;
     UGizmoVisualComponent* VisualComponent = nullptr;

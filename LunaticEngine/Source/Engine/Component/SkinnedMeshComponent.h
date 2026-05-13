@@ -45,7 +45,6 @@ public:
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 	void UpdateWorldAABB() const override;
-	bool LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult) override;
 
 	void GetEditableProperties(TArray<FPropertyDescriptor>& OutProps) override;
 	void PostEditProperty(const char* PropertyName) override;

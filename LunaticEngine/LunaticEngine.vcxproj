@@ -327,6 +327,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp" />
@@ -339,7 +340,6 @@
     <ClCompile Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.cpp" />
     <ClCompile Include="Source\Editor\AssetTools\AssetImportManager.cpp" />
     <ClCompile Include="Source\Editor\Common\File\EditorFileUtils.cpp" />
-    <ClCompile Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.cpp" />
     <ClCompile Include="Source\Editor\Common\Gizmo\GizmoManager.cpp" />
     <ClCompile Include="Source\Editor\Common\Menu\EditorMenuBar.cpp" />
     <ClCompile Include="Source\Editor\Common\UI\Base\UIElement.cpp" />
@@ -624,6 +624,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.h" />
@@ -636,7 +637,6 @@
     <ClInclude Include="Source\Editor\AssetEditor\Window\AssetEditorWindow.h" />
     <ClInclude Include="Source\Editor\AssetTools\AssetImportManager.h" />
     <ClInclude Include="Source\Editor\Common\File\EditorFileUtils.h" />
-    <ClInclude Include="Source\Editor\Common\Gizmo\EditorGizmoSharedState.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\GizmoManager.h" />
     <ClInclude Include="Source\Editor\Common\Gizmo\TransformGizmoTargets.h" />
     <ClInclude Include="Source\Editor\Common\Menu\EditorMenuBar.h" />
@@ -653,6 +653,7 @@
     <ClInclude Include="Source\Editor\Common\UI\Style\AccentColor.h" />
     <ClInclude Include="Source\Editor\Common\UI\Style\EditorUIStyle.h" />
     <ClInclude Include="Source\Editor\Common\UI\Tabs\EditorDocumentTabBar.h" />
+    <ClInclude Include="Source\Editor\Common\UI\Toolbar\EditorPlayToolbar.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\EditorViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\UI\Viewport\ViewportToolbar.h" />
     <ClInclude Include="Source\Editor\Common\Viewport\EditorViewportCamera.h" />
@@ -739,6 +740,7 @@
     <ClInclude Include="Source\Engine\Component\UIImageComponent.h" />
     <ClInclude Include="Source\Engine\Component\UIScreenTextComponent.h" />
     <ClInclude Include="Source\Engine\Component\UWindowPanelComponent.h" />
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoDeltaTarget.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoHitProxyTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\TransformGizmoTarget.h" />

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Viewport/ViewportClient.h"
 #include "UI/SWindow.h"
@@ -114,7 +114,7 @@ class FEditorViewportClient : public FViewportClient
 
     FRect ViewportScreenRect;
 
-    // Level/Asset Preview 뷰포트가 공유하는 에디터 전용 카메라/카메라 컨트롤러/기즈모 상태.
+    // 각 ViewportClient가 독립 소유하는 에디터 전용 카메라/카메라 컨트롤러/기즈모 상태.
     FEditorViewportCamera ViewCamera;
     FViewportCameraController CameraController;
     FGizmoManager GizmoManager;
