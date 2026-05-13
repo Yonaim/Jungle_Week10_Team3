@@ -35,19 +35,7 @@ namespace
 
     std::filesystem::path ResolveSourcePathOnDisk(const FString& SourcePath)
     {
-        std::filesystem::path Path(FPaths::ToWide(SourcePath));
-        if (Path.is_absolute())
-        {
-            return Path.lexically_normal();
-        }
-
-        std::filesystem::path RootRelative = std::filesystem::path(FPaths::RootDir()) / Path;
-        if (std::filesystem::exists(RootRelative))
-        {
-            return RootRelative.lexically_normal();
-        }
-
-        return Path.lexically_normal();
+        return std::filesystem::path(FPaths::ResolvePathToDisk(SourcePath)).lexically_normal();
     }
 
     FString ToUtf8GenericPath(const std::filesystem::path& Path)
@@ -318,17 +306,21 @@ bool FAssetImportManager::ImportTextureSource(const FString& SourcePath, FString
 {
     const std::filesystem::path SourceDiskPath = ResolveSourcePathOnDisk(SourcePath);
     const FString SourceDiskPathString = ToUtf8GenericPath(SourceDiskPath);
-    const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(SourceDiskPath.stem().wstring()));
-    const std::filesystem::path TextureAssetDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Textures";
+    const FString ImportedAssetPath = UTexture2D::ImportTextureAsset(SourceDiskPathString);
+    if (ImportedAssetPath.empty())
+    {
+        UE_LOG_CATEGORY(AssetImport, Error, "[Import] Texture conversion failed: %s", SourceDiskPathString.c_str());
+        FNotificationManager::Get().AddNotification("Import failed: texture conversion failed.", ENotificationType::Error, 5.0f);
+        return false;
+    }
 
-    UTexture2D* Texture = UObjectManager::Get().CreateObject<UTexture2D>();
-    Texture->SetFName(FName(FString("T_") + SourceStem));
-    Texture->SetSourcePathForAsset(SourceDiskPathString);
+    if (OutImportedAssetPath)
+    {
+        *OutImportedAssetPath = ImportedAssetPath;
+    }
 
-    std::filesystem::path DestinationPath = TextureAssetDirectory / (L"T_" + FPaths::ToWide(SourceStem) + L".uasset");
-    EnsureUniquePath(DestinationPath);
-    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Source classified as UTexture2D: source=%s target=%s", SourceDiskPathString.c_str(), ToUtf8GenericPath(DestinationPath).c_str());
-    return SaveImportedObject(DestinationPath, Texture, OutImportedAssetPath);
+    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Source classified as UTexture2D: source=%s target=%s", SourceDiskPathString.c_str(), ImportedAssetPath.c_str());
+    return true;
 }
 
 bool FAssetImportManager::ImportExistingUAsset(const FString& SourcePath, FString* OutImportedAssetPath)
@@ -431,7 +423,7 @@ FString FAssetImportManager::MakeProjectRelativePath(const std::filesystem::path
     const std::filesystem::path Relative = Normalized.lexically_relative(ProjectRoot);
     if (!Relative.empty() && Relative.native().find(L"..") != 0)
     {
-        return FPaths::ToUtf8(Relative.generic_wstring());
+        return FPaths::NormalizePath(FPaths::ToUtf8(Relative.generic_wstring()));
     }
-    return FPaths::ToUtf8(Normalized.generic_wstring());
+    return FPaths::NormalizePath(FPaths::ToUtf8(Normalized.generic_wstring()));
 }

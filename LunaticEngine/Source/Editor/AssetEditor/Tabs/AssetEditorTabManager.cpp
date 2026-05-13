@@ -312,10 +312,7 @@ void FAssetEditorTabManager::ActivateActiveTabContext()
     bEditorContextActive = true;
     if (FAssetEditorTab* ActiveTab = GetActiveTab())
     {
-        // Hard-pin Asset Editor panels to the default layout whenever the Asset
-        // context becomes active again. This avoids restoring stale dock ids from
-        // the Level Editor/previous asset tab after tab/context switches.
-        ActiveTab->RequestDefaultLayout();
+        ActiveTab->RequestRestoreCapturedLayout();
         ActivateAssetEditorViewport(ActiveTab->GetEditor());
     }
 }
@@ -413,9 +410,10 @@ FDockPanelLayoutState *FAssetEditorTabManager::GetActiveLayoutState()
 
 void FAssetEditorTabManager::RequestRestoreForActiveTab()
 {
-    // Restore is disabled for Asset Editor tabs. On every return, rebuild the
-    // default layout instead of applying captured dock ids.
-    RequestDefaultLayoutForActiveTab();
+    if (FAssetEditorTab *Tab = GetActiveTab())
+    {
+        Tab->RequestRestoreCapturedLayout();
+    }
 }
 
 bool FAssetEditorTabManager::RenderDocumentTabBar()
@@ -603,7 +601,7 @@ bool FAssetEditorTabManager::SetActiveTabIndex(int32 NewIndex)
     ActiveTabIndex = NewIndex;
     if (Tabs[ActiveTabIndex] && Tabs[ActiveTabIndex]->GetEditor())
     {
-        Tabs[ActiveTabIndex]->RequestDefaultLayout();
+        Tabs[ActiveTabIndex]->RequestRestoreCapturedLayout();
         if (bEditorContextActive)
         {
             ActivateAssetEditorViewport(Tabs[ActiveTabIndex]->GetEditor());

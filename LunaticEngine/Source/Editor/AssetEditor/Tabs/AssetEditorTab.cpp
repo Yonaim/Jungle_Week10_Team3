@@ -72,10 +72,13 @@ void FAssetEditorTab::RequestDefaultLayout()
 
 void FAssetEditorTab::RequestRestoreCapturedLayout()
 {
-    // Asset editor document tabs are intentionally pinned to the default dock layout
-    // when they become active again. Restoring captured dock ids can reuse stale
-    // Level/Asset dock nodes after context switches and make panels appear in the
-    // wrong place. Treat every restore request as a hard default-layout rebuild.
+    LayoutState.bRequestDefaultLayout = false;
+    if (FPanel::HasCapturedDockLayout(&LayoutState))
+    {
+        FPanel::RequestCapturedLayoutRestore(&LayoutState);
+        return;
+    }
+
     RequestDefaultLayout();
 }
 

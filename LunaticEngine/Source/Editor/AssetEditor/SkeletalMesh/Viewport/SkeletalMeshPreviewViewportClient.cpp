@@ -591,6 +591,14 @@ void FSkeletalMeshPreviewViewportClient::ActivateEditorContext()
     // Activation is only ownership restoration; the first normal live Tick will sync selection -> target
     // after mouse capture has settled. This prevents stale input from applying to the old bone target.
     GizmoManager.ResetVisualInteractionState();
+
+    // 탭 복귀 시 자신의 State(GizmoMode/GizmoSpace/Snap)를 즉시 GizmoManager에 적용한다.
+    // Tick/BuildRenderRequest에서도 ApplyEditorStateToViewport()가 이를 수행하지만,
+    // ActivateEditorContext()와 첫 Tick 사이의 구간에서도 올바른 모드가 보장되도록 여기서도 적용한다.
+    // 특히 Level Editor에서 기즈모 모드를 바꾼 후 Asset Editor로 복귀할 때,
+    // Asset Editor의 GizmoManager가 자신의 State 값으로 즉시 덮어써지므로
+    // Level Editor의 마지막 상태가 잔류하는 현상이 차단된다.
+    ApplySkeletalMeshGizmoStateToManager(State, GizmoManager);
 }
 
 void FSkeletalMeshPreviewViewportClient::DeactivateEditorContext()
@@ -1643,7 +1651,8 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
             PoseController,
             SelectedBoneIndex,
             this,
-            GetEditorContextActiveFlag());
+            GetEditorContextActiveFlag(),
+            GetEditorContextEpoch());
     std::shared_ptr<IGizmoDeltaTarget> BoneDeltaTarget = PoseController
         ? std::static_pointer_cast<IGizmoDeltaTarget>(BoneTarget)
         : nullptr;

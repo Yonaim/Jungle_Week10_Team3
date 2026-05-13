@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <cwctype>
+#include <vector>
 
 TMap<FString, UStaticMesh*> FMeshAssetManager::StaticMeshCache;
 TMap<FString, USkeletalMesh*> FMeshAssetManager::SkeletalMeshCache;
@@ -43,9 +44,9 @@ namespace
         std::filesystem::path Relative = Normalized.lexically_relative(ProjectRoot);
         if (!Relative.empty() && Relative.native().find(L"..") != 0)
         {
-            return FPaths::ToUtf8(Relative.generic_wstring());
+            return FPaths::NormalizePath(FPaths::ToUtf8(Relative.generic_wstring()));
         }
-        return FPaths::ToUtf8(Normalized.generic_wstring());
+        return FPaths::NormalizePath(FPaths::ToUtf8(Normalized.generic_wstring()));
     }
 
     std::wstring AddPrefixIfNeeded(const std::wstring& Stem, const wchar_t* Prefix)
@@ -60,12 +61,7 @@ namespace
 
     std::filesystem::path ResolvePathAgainstProjectRoot(const FString& Path)
     {
-        std::filesystem::path FsPath(FPaths::ToWide(Path));
-        if (!FsPath.is_absolute())
-        {
-            FsPath = std::filesystem::path(FPaths::RootDir()) / FsPath;
-        }
-        return FsPath.lexically_normal();
+        return std::filesystem::path(FPaths::ResolvePathToDisk(Path)).lexically_normal();
     }
 
     bool IsUnderDirectory(const std::filesystem::path& Parent, const std::filesystem::path& Child)
@@ -100,21 +96,21 @@ namespace
         }
 
         const std::filesystem::path SourcePath = ResolvePathAgainstProjectRoot(SourceOrAssetPath);
-        const std::filesystem::path EngineSourceRoot = std::filesystem::path(FPaths::EngineSourceDir()).lexically_normal();
+        const std::filesystem::path EngineBasicShapeRoot = std::filesystem::path(FPaths::EngineBasicShapeSourceDir()).lexically_normal();
         const std::wstring Stem = ToTitleStem(SourcePath.stem().wstring());
 
-        if (IsUnderDirectory(EngineSourceRoot, SourcePath))
+        if (IsUnderDirectory(EngineBasicShapeRoot, SourcePath))
         {
-            const std::filesystem::path RelativeSource = SourcePath.lexically_relative(EngineSourceRoot);
+            const std::filesystem::path RelativeSource = SourcePath.lexically_relative(EngineBasicShapeRoot);
             const std::filesystem::path RelativeParent = RelativeSource.parent_path();
-            std::filesystem::path AssetPath = std::filesystem::path(FPaths::EngineContentDir()) / RelativeParent / Stem / AddPrefixIfNeeded(Stem, Prefix);
+            std::filesystem::path AssetPath = std::filesystem::path(FPaths::BasicShapeDir()) / RelativeParent / AddPrefixIfNeeded(Stem, Prefix);
             AssetPath += L".uasset";
-            return FPaths::ToUtf8(AssetPath.lexically_normal().generic_wstring());
+            return FPaths::NormalizePath(FPaths::ToUtf8(AssetPath.lexically_normal().generic_wstring()));
         }
 
         std::filesystem::path AssetPath = std::filesystem::path(FPaths::ContentDir()) / L"Meshes" / Stem / AddPrefixIfNeeded(Stem, Prefix);
         AssetPath += L".uasset";
-        return FPaths::ToUtf8(AssetPath.lexically_normal().generic_wstring());
+        return FPaths::NormalizePath(FPaths::ToUtf8(AssetPath.lexically_normal().generic_wstring()));
     }
 
     bool IsSourceNewerThanAsset(const FString& SourcePath, const FString& AssetPath)
@@ -140,17 +136,7 @@ namespace
             return {};
         }
 
-        std::filesystem::path FsPath(FPaths::ToWide(Path));
-        FsPath = FsPath.lexically_normal();
-
-        const std::filesystem::path ProjectRoot(FPaths::RootDir());
-        std::filesystem::path Relative = FsPath.lexically_relative(ProjectRoot);
-        if (!Relative.empty() && Relative.native().find(L"..") != 0)
-        {
-            return FPaths::ToUtf8(Relative.generic_wstring());
-        }
-
-        return FPaths::ToUtf8(FsPath.generic_wstring());
+        return FPaths::NormalizePath(Path);
     }
 
     void EnsureParentDirectoryExists(const FString& Path)
@@ -223,16 +209,24 @@ void FMeshAssetManager::ScanMeshAssets()
         std::filesystem::path(FPaths::EngineContentDir())
     };
 
+    std::vector<std::filesystem::path> UniqueRoots;
     for (const std::filesystem::path& ContentRoot : ScanRoots)
     {
+        const std::filesystem::path NormalizedRoot = ContentRoot.lexically_normal();
+        if (std::find(UniqueRoots.begin(), UniqueRoots.end(), NormalizedRoot) != UniqueRoots.end())
+        {
+            continue;
+        }
+        UniqueRoots.push_back(NormalizedRoot);
+
         std::error_code ErrorCode;
-        if (!std::filesystem::exists(ContentRoot, ErrorCode) || !std::filesystem::is_directory(ContentRoot, ErrorCode))
+        if (!std::filesystem::exists(NormalizedRoot, ErrorCode) || !std::filesystem::is_directory(NormalizedRoot, ErrorCode))
         {
             continue;
         }
 
         std::filesystem::recursive_directory_iterator It(
-            ContentRoot,
+            NormalizedRoot,
             std::filesystem::directory_options::skip_permission_denied,
             ErrorCode);
         const std::filesystem::recursive_directory_iterator End;

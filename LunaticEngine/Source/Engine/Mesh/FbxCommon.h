@@ -17,6 +17,7 @@ struct FFbxMaterialInfo
 	FbxSurfaceMaterial* SourceMaterial = nullptr;
 	FString MaterialSlotName = "None";
 	FString DiffuseTexturePath;
+	FString NormalTexturePath;
 	FVector DiffuseColor = FVector(1.0f, 1.0f, 1.0f);
 };
 
@@ -62,6 +63,7 @@ struct FFbxCommon
 	static FString SanitizeName(FString Name);
 	static FVector GetDiffuseColor(FbxSurfaceMaterial* FbxMaterial);
 	static FString FindDiffuseTexturePath(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial);
+	static FString FindNormalTexturePath(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial);
 	static FString ResolveFbxTexturePath(const FString& FbxFilePath, FbxFileTexture* Texture);
 	static FString MakeProjectRelativePath(const std::filesystem::path& Path);
 

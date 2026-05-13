@@ -82,6 +82,7 @@ class FEditorViewportClient : public FViewportClient
     virtual void DeactivateEditorContext();
     bool IsEditorContextActive() const { return bEditorContextActive; }
     const bool* GetEditorContextActiveFlag() const { return &bEditorContextActive; }
+    uint64 GetEditorContextEpoch() const { return EditorContextEpoch; }
 
     // Stronger than bEditorContextActive. The first Level tab and first Asset tab can
     // both have been activated once during workspace bootstrapping. Before accepting
@@ -128,6 +129,7 @@ class FEditorViewportClient : public FViewportClient
     bool bIsActive = false;
     bool bIsHovered = false;
     bool bEditorContextActive = false;
+    uint64 EditorContextEpoch = 0;
 
     FRect ViewportScreenRect;
 

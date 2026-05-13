@@ -1,6 +1,7 @@
 ﻿#include "PCH/LunaticPCH.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
+#include "Platform/Paths.h"
 #include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 
@@ -140,8 +141,8 @@ void FLevelEditorSettings::SaveToFile(const FString &Path) const
 
     // Paths
     JSON PathsObj = Object();
-    PathsObj[Key::EditorStartLevel] = EditorStartLevel;
-    PathsObj[Key::ContentBrowserPath] = ContentBrowserPath;
+    PathsObj[Key::EditorStartLevel] = FPaths::NormalizePath(EditorStartLevel);
+    PathsObj[Key::ContentBrowserPath] = FPaths::NormalizePath(ContentBrowserPath);
     Root[Key::Paths] = PathsObj;
 
     // Layout
@@ -294,9 +295,9 @@ void FLevelEditorSettings::LoadFromFile(const FString &Path)
         JSON PathsObj = Root[Key::Paths];
 
         if (PathsObj.hasKey(Key::EditorStartLevel))
-            EditorStartLevel = PathsObj[Key::EditorStartLevel].ToString();
+            EditorStartLevel = FPaths::NormalizePath(PathsObj[Key::EditorStartLevel].ToString());
         if (PathsObj.hasKey(Key::ContentBrowserPath))
-            ContentBrowserPath = PathsObj[Key::ContentBrowserPath].ToString();
+            ContentBrowserPath = FPaths::NormalizePath(PathsObj[Key::ContentBrowserPath].ToString());
     }
 
     // Layout

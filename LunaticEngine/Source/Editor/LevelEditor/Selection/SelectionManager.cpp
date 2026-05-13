@@ -448,7 +448,8 @@ std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarg
     return std::make_shared<FSceneComponentTransformGizmoTarget>(
         TargetComponent,
         OwnerViewportClient,
-        OwnerContextActiveFlag);
+        OwnerContextActiveFlag,
+        OwnerViewportClient ? OwnerViewportClient->GetEditorContextEpoch() : 0);
 }
 
 void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)

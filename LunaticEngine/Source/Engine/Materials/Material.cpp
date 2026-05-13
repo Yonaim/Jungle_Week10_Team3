@@ -104,6 +104,22 @@ void UMaterial::Create(const FString& InPathFileName, FMaterialTemplate* InTempl
 	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>>&& InBuffers,
 	const FString& InShaderPath)
 {
+	for (auto& Pair : ConstantBufferMap)
+	{
+		if (Pair.second)
+		{
+			Pair.second->Release();
+		}
+	}
+	ConstantBufferMap.clear();
+	TextureParameters.clear();
+	for (ID3D11ShaderResourceView*& CachedSRV : CachedSRVs)
+	{
+		CachedSRV = nullptr;
+	}
+	PerShaderOverride = {};
+	TransientShader = nullptr;
+
 	PathFileName = InPathFileName;
 	Template = InTemplate;
 	ShaderPath = InShaderPath.empty() && InTemplate ? InTemplate->GetShaderPath() : InShaderPath;

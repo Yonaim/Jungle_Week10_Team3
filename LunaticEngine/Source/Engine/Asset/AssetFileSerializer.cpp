@@ -27,7 +27,7 @@ namespace
 
     FString ToAssetPathString(const std::filesystem::path& FilePath)
     {
-        return FPaths::ToUtf8(FilePath.lexically_normal().generic_wstring());
+        return FPaths::ConvertRelativePathToFull(FPaths::NormalizePath(FPaths::ToUtf8(FilePath.lexically_normal().generic_wstring())));
     }
 
     FString MakeAssetGuidString()

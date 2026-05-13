@@ -19,7 +19,8 @@ public:
                               std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController,
                               int32 InBoneIndex,
                               const FEditorViewportClient* InOwnerViewportClient,
-                              const bool* InOwnerContextActiveFlag);
+                              const bool* InOwnerContextActiveFlag,
+                              uint64 InOwnerContextEpoch);
 
     bool IsValid() const override;
 
@@ -45,5 +46,6 @@ private:
     int32 BoneIndex = -1;
     const FEditorViewportClient* OwnerViewportClient = nullptr;
     const bool* OwnerContextActiveFlag = nullptr;
+    uint64 OwnerContextEpoch = 0;
     bool bTransforming = false;
 };

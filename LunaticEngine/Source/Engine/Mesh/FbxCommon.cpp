@@ -3,8 +3,10 @@
 #include "Materials/MaterialManager.h"
 
 #include "Core/Log.h"
+#include "Core/Notification.h"
 #include "Engine/Platform/Paths.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
+#include "Texture/Texture2D.h"
 
 #include <fstream>
 #include <filesystem>
@@ -14,6 +16,28 @@
 
 namespace
 {
+	FString FindTexturePathFromProperty(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial, const char* PropertyName)
+	{
+		if (!FbxMaterial || !PropertyName)
+		{
+			return "";
+		}
+
+		FbxProperty Property = FbxMaterial->FindProperty(PropertyName);
+		if (!Property.IsValid())
+		{
+			return "";
+		}
+
+		const int32 TextureCount = Property.GetSrcObjectCount<FbxFileTexture>();
+		if (TextureCount <= 0)
+		{
+			return "";
+		}
+
+		return FFbxCommon::ResolveFbxTexturePath(FbxFilePath, Property.GetSrcObject<FbxFileTexture>(0));
+	}
+
 	int32 GetPolygonVertexLinearIndex(FbxMesh* Mesh, int32 PolygonIndex, int32 CornerIndex)
 	{
 		if (!Mesh || PolygonIndex < 0 || CornerIndex < 0)
@@ -51,6 +75,12 @@ namespace
 	{
 		return std::isfinite(Vector.X) && std::isfinite(Vector.Y) && std::isfinite(Vector.Z);
 	}
+
+	void NotifyFbxMaterialImport(const FString& Message, ENotificationType Type = ENotificationType::Info, float Duration = 3.0f)
+	{
+		FNotificationManager::Get().AddNotification(Message, Type, Duration);
+	}
+
 }
 
 size_t FFbxVertexKeyHash::operator()(const FFbxVertexKey& Key) const noexcept
@@ -160,6 +190,7 @@ int32 FFbxCommon::FindOrAddMaterial(const FString& FbxFilePath, FbxNode* Node, i
 	MaterialInfo.SourceMaterial = SourceMaterial;
 	MaterialInfo.MaterialSlotName = SanitizeName(SourceMaterial->GetName());
 	MaterialInfo.DiffuseTexturePath = FindDiffuseTexturePath(FbxFilePath, SourceMaterial);
+	MaterialInfo.NormalTexturePath = FindNormalTexturePath(FbxFilePath, SourceMaterial);
 	MaterialInfo.DiffuseColor = GetDiffuseColor(SourceMaterial);
 
 	const int32 MaterialIndex = static_cast<int32>(Context.Materials.size());
@@ -178,14 +209,9 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 	const FString SourceAssetName = SanitizeName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(FbxFilePath)).stem().wstring()));
 	const FString SlotAssetName = SanitizeName(MaterialInfo.MaterialSlotName.empty() ? FString("None") : MaterialInfo.MaterialSlotName);
 
-	std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials";
+	std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::MaterialsDir());
 	std::filesystem::path MaterialAssetPathW = MaterialDirectory / (L"M_" + FPaths::ToWide(SlotAssetName) + L".uasset");
 	const FString MaterialAssetPath = MakeProjectRelativePath(MaterialAssetPathW);
-
-	if (std::filesystem::exists(MaterialAssetPathW))
-	{
-		return MaterialAssetPath;
-	}
 
 	std::filesystem::create_directories(MaterialDirectory);
 
@@ -196,9 +222,27 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 	JsonData["ShaderPath"] = "Shaders/Geometry/UberLit.hlsl";
 	JsonData["RenderPass"] = "Opaque";
 
-	if (!MaterialInfo.DiffuseTexturePath.empty())
+	NotifyFbxMaterialImport("FBX material: " + SlotAssetName + " -> " + MaterialAssetPath, ENotificationType::Info, 2.5f);
+
+	const FString DiffuseTextureAssetPath = MaterialInfo.DiffuseTexturePath.empty()
+		? FString()
+		: UTexture2D::ImportTextureAsset(MaterialInfo.DiffuseTexturePath);
+	const FString NormalTextureAssetPath = MaterialInfo.NormalTexturePath.empty()
+		? FString()
+		: UTexture2D::ImportTextureAsset(MaterialInfo.NormalTexturePath);
+
+	if (!MaterialInfo.DiffuseTexturePath.empty() && DiffuseTextureAssetPath.empty())
 	{
-		JsonData["Textures"]["DiffuseTexture"] = MaterialInfo.DiffuseTexturePath;
+		NotifyFbxMaterialImport("FBX material warning: diffuse texture import failed - " + SlotAssetName, ENotificationType::Error, 5.0f);
+	}
+	if (!MaterialInfo.NormalTexturePath.empty() && NormalTextureAssetPath.empty())
+	{
+		NotifyFbxMaterialImport("FBX material warning: normal texture import failed - " + SlotAssetName, ENotificationType::Error, 5.0f);
+	}
+
+	if (!DiffuseTextureAssetPath.empty())
+	{
+		JsonData["Textures"]["DiffuseTexture"] = DiffuseTextureAssetPath;
 		JsonData["Parameters"]["SectionColor"][0] = 1.0f;
 		JsonData["Parameters"]["SectionColor"][1] = 1.0f;
 		JsonData["Parameters"]["SectionColor"][2] = 1.0f;
@@ -212,7 +256,14 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 		JsonData["Parameters"]["SectionColor"][3] = 1.0f;
 	}
 
+	JsonData["Parameters"]["HasNormalMap"] = NormalTextureAssetPath.empty() ? 0.0f : 1.0f;
+	if (!NormalTextureAssetPath.empty())
+	{
+		JsonData["Textures"]["NormalTexture"] = NormalTextureAssetPath;
+	}
+
 	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);
+	NotifyFbxMaterialImport("Saved material asset: " + MaterialAssetPath, ENotificationType::Success, 2.5f);
 	return MaterialAssetPath;
 }
 
@@ -254,24 +305,18 @@ FVector FFbxCommon::GetDiffuseColor(FbxSurfaceMaterial* FbxMaterial)
 
 FString FFbxCommon::FindDiffuseTexturePath(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial)
 {
-	if (!FbxMaterial)
+	return FindTexturePathFromProperty(FbxFilePath, FbxMaterial, FbxSurfaceMaterial::sDiffuse);
+}
+
+FString FFbxCommon::FindNormalTexturePath(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial)
+{
+	FString TexturePath = FindTexturePathFromProperty(FbxFilePath, FbxMaterial, FbxSurfaceMaterial::sNormalMap);
+	if (!TexturePath.empty())
 	{
-		return "";
+		return TexturePath;
 	}
 
-	FbxProperty DiffuseProperty = FbxMaterial->FindProperty(FbxSurfaceMaterial::sDiffuse);
-	if (!DiffuseProperty.IsValid())
-	{
-		return "";
-	}
-
-	const int32 TextureCount = DiffuseProperty.GetSrcObjectCount<FbxFileTexture>();
-	if (TextureCount <= 0)
-	{
-		return "";
-	}
-
-	return ResolveFbxTexturePath(FbxFilePath, DiffuseProperty.GetSrcObject<FbxFileTexture>(0));
+	return FindTexturePathFromProperty(FbxFilePath, FbxMaterial, FbxSurfaceMaterial::sBump);
 }
 
 FString FFbxCommon::ResolveFbxTexturePath(const FString& FbxFilePath, FbxFileTexture* Texture)
@@ -308,9 +353,9 @@ FString FFbxCommon::MakeProjectRelativePath(const std::filesystem::path& Path)
 	const std::filesystem::path RelativePath = std::filesystem::relative(NormalizedPath, RootPath, ErrorCode);
 	if (!ErrorCode && !RelativePath.empty())
 	{
-		return FPaths::ToUtf8(RelativePath.generic_wstring());
+		return FPaths::NormalizePath(FPaths::ToUtf8(RelativePath.generic_wstring()));
 	}
-	return FPaths::ToUtf8(NormalizedPath.generic_wstring());
+	return FPaths::NormalizePath(FPaths::ToUtf8(NormalizedPath.generic_wstring()));
 }
 
 bool FFbxCommon::ReadNormal(FbxMesh* Mesh, int32 ControlPointIndex, int32 PolygonIndex, int32 CornerIndex, FbxVector4& OutNormal)

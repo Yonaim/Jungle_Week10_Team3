@@ -11,10 +11,12 @@ class FSceneComponentTransformGizmoTarget final : public ITransformGizmoTarget
 public:
     explicit FSceneComponentTransformGizmoTarget(USceneComponent* InComponent,
                                                  const FEditorViewportClient* InOwnerViewportClient = nullptr,
-                                                 const bool* InOwnerContextActiveFlag = nullptr)
+                                                 const bool* InOwnerContextActiveFlag = nullptr,
+                                                 uint64 InOwnerContextEpoch = 0)
         : Component(InComponent)
         , OwnerViewportClient(InOwnerViewportClient)
         , OwnerContextActiveFlag(InOwnerContextActiveFlag)
+        , OwnerContextEpoch(InOwnerContextEpoch)
     {
     }
 
@@ -26,6 +28,11 @@ public:
         }
 
         if (OwnerViewportClient && !OwnerViewportClient->CanProcessLiveContextWork())
+        {
+            return false;
+        }
+
+        if (OwnerViewportClient && OwnerViewportClient->GetEditorContextEpoch() != OwnerContextEpoch)
         {
             return false;
         }
@@ -102,4 +109,5 @@ private:
     USceneComponent* Component = nullptr;
     const FEditorViewportClient* OwnerViewportClient = nullptr;
     const bool* OwnerContextActiveFlag = nullptr;
+    uint64 OwnerContextEpoch = 0;
 };

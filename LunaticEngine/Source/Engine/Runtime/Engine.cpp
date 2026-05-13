@@ -40,6 +40,16 @@ bool GIsEditor = false;
 namespace
 {
 
+	void EnsureAssetContentDirectories()
+	{
+		std::filesystem::create_directories(FPaths::ContentDir());
+		std::filesystem::create_directories(FPaths::MeshesDir());
+		std::filesystem::create_directories(FPaths::MaterialsDir());
+		std::filesystem::create_directories(FPaths::TexturesDir());
+		std::filesystem::create_directories(FPaths::SceneDir());
+		std::filesystem::create_directories(FPaths::DataDir());
+	}
+
 	void EnsureBuiltinEngineContent(ID3D11Device* Device)
 	{
 		if (!Device)
@@ -96,6 +106,7 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	Window = InWindow;
 
 	UE_LOG_CATEGORY(Engine, Info, "[INIT] UEngine::Init begin");
+	EnsureAssetContentDirectories();
 
 	// 싱글턴 초기화 순서 보장
 	FNamePool::Get();

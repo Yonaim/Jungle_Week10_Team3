@@ -12,18 +12,25 @@ FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InC
                                                      std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController,
                                                      int32 InBoneIndex,
                                                      const FEditorViewportClient* InOwnerViewportClient,
-                                                     const bool* InOwnerContextActiveFlag)
+                                                     const bool* InOwnerContextActiveFlag,
+                                                     uint64 InOwnerContextEpoch)
     : Component(InComponent)
     , PoseController(std::move(InPoseController))
     , BoneIndex(InBoneIndex)
     , OwnerViewportClient(InOwnerViewportClient)
     , OwnerContextActiveFlag(InOwnerContextActiveFlag)
+    , OwnerContextEpoch(InOwnerContextEpoch)
 {
 }
 
 bool FBoneTransformGizmoTarget::IsValid() const
 {
     if (OwnerViewportClient && !OwnerViewportClient->CanProcessLiveContextWork())
+    {
+        return false;
+    }
+
+    if (OwnerViewportClient && OwnerViewportClient->GetEditorContextEpoch() != OwnerContextEpoch)
     {
         return false;
     }

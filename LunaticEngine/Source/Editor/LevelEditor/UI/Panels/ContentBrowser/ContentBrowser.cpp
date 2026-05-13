@@ -344,13 +344,14 @@ void FContentBrowser::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
     ICons[".umap"] = ICons[".Scene"];
     ICons[".UMAP"] = ICons[".Scene"];
     ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Mesh"));
-    ICons[".fbx"] = FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.SkeletalMesh"));
+    ICons[".fbx"] = ICons[".Scene"];
     ICons[".uasset.Material"] =
         FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Material"));
     ICons[".uasset.Texture"] = ICons["Default"];
     ICons[".uasset.Mesh"] = ICons[".obj"];
-    ICons[".uasset.SkeletalMesh"] = ICons[".fbx"];
-    ICons[".uasset.PoseAsset"] = ICons[".fbx"];
+    ICons[".uasset.SkeletalMesh"] =
+        FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.SkeletalMesh"));
+    ICons[".uasset.PoseAsset"] = ICons[".uasset.SkeletalMesh"];
     ICons[".mtl"] =
         FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Material"));
 

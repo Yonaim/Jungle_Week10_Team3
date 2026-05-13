@@ -78,6 +78,7 @@ bool FEditorViewportClient::CanProcessLiveContextWork() const
 
 void FEditorViewportClient::ActivateEditorContext()
 {
+    ++EditorContextEpoch;
     bEditorContextActive = true;
     SetActive(true);
     // Reactivation starts with a clean input/drag cache.  The derived viewport will
@@ -97,6 +98,7 @@ void FEditorViewportClient::DeactivateEditorContext()
     bEditorContextActive = false;
     SetHovered(false);
     SetActive(false);
+    ++EditorContextEpoch;
 }
 
 void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
