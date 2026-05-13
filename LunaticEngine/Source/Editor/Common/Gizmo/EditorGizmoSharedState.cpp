@@ -5,8 +5,10 @@
 
 void FEditorGizmoSharedState::ApplyTo(FGizmoManager& Manager) const
 {
+    const EGizmoSpace EffectiveSpace = Mode == EGizmoMode::Scale ? EGizmoSpace::Local : Space;
+
     Manager.SetMode(Mode);
-    Manager.SetSpace(Space);
+    Manager.SetSpace(EffectiveSpace);
     Manager.SetSnapSettings(bTranslationSnapEnabled, TranslationSnapSize,
                             bRotationSnapEnabled, RotationSnapSizeDegrees,
                             bScaleSnapEnabled, ScaleSnapSize);

@@ -79,6 +79,11 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
     Desc.ToolbarWidth = ImGui::GetWindowWidth();
     Desc.Renderer = Renderer;
     Desc.bEnabled = Mesh != nullptr;
+    if (State.GizmoMode == EGizmoMode::Scale)
+    {
+        State.GizmoSpace = EGizmoSpace::Local;
+    }
+
     Desc.ToolMode = ToCommonToolMode(State.GizmoMode);
     Desc.CoordSpace = State.GizmoSpace == EGizmoSpace::World ? FEditorViewportToolbar::ECoordSpace::World
                                                              : FEditorViewportToolbar::ECoordSpace::Local;
@@ -92,9 +97,18 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
     {
         State.bEnablePoseEditMode = true;
         State.GizmoMode = ToGizmoMode(Mode);
+        if (State.GizmoMode == EGizmoMode::Scale)
+        {
+            State.GizmoSpace = EGizmoSpace::Local;
+        }
     };
     Desc.OnCoordSpaceToggled = [&]()
     {
+        if (State.GizmoMode == EGizmoMode::Scale)
+        {
+            State.GizmoSpace = EGizmoSpace::Local;
+            return;
+        }
         State.GizmoSpace = State.GizmoSpace == EGizmoSpace::World ? EGizmoSpace::Local : EGizmoSpace::World;
     };
 
