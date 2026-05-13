@@ -92,7 +92,9 @@ void FGizmoSceneProxy::UpdatePerViewport(const FFrameContext& Frame)
 		? static_cast<uint32>(Gizmo->GetSelectedAxis())
 		: 0xFFFFFFFFu;
 	G.HoveredAxisOpacity = 0.7f;
-	G.AxisMask = UGizmoVisualComponent::ComputeAxisMask(Frame.RenderOptions.ViewportType, Gizmo->GetMode());
+	// Hit proxy and rendered opacity must use the same mask.
+	// The viewport client computes this once and pushes it through FGizmoManager.
+	G.AxisMask = Gizmo->GetAxisMask();
 }
 
 void FGizmoSceneProxy::RebuildGizmoSectionDraws()

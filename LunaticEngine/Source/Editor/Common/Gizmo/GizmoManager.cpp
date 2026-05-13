@@ -217,6 +217,20 @@ void FGizmoManager::CycleMode()
 
 void FGizmoManager::SetSpace(EGizmoSpace InSpace)
 {
+    if (Space == InSpace)
+    {
+        SyncVisualFromTarget();
+        return;
+    }
+
+    // Space changes redefine the visual axes and drag planes.  Do not allow a
+    // toolbar/shortcut update in the middle of a drag to silently switch the
+    // math basis while the old handle is still active.
+    if (bDragging)
+    {
+        CancelDrag();
+    }
+
     Space = InSpace;
     if (VisualComponent)
     {
@@ -344,7 +358,7 @@ bool FGizmoManager::HitTestHitProxy(const FGizmoHitProxyContext& Context, FGizmo
 
 bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
 {
-    if (!CanInteract() || !HitResult.bHit || HitResult.Axis < 0)
+    if (!CanInteract() || !HitResult.bHit || HitResult.Axis < 0 || (HitResult.Axis == 3 && Mode != EGizmoMode::Translate))
     {
         if (VisualComponent)
         {
@@ -361,18 +375,30 @@ bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
 
     Target->BeginTransform();
     DragStartTransform = Target->GetWorldTransform();
-    DragAxisVector = GetAxisVectorFromTransform(DragStartTransform, ActiveAxis).Normalized();
-    if (ActiveAxis >= 0 && ActiveAxis <= 2 && DragAxisVector.IsNearlyZero())
+    DragMode = Mode;
+    DragSpace = Space;
+    DragOriginLocation = DragStartTransform.GetLocation();
+
+    if (ActiveAxis >= 0 && ActiveAxis <= 2)
     {
-        Target->EndTransform();
-        ActiveAxis = -1;
-        if (VisualComponent)
+        DragAxisVector = GetAxisVectorFromTransform(DragStartTransform, ActiveAxis, DragMode, DragSpace).Normalized();
+        if (DragAxisVector.IsNearlyZero())
         {
-            VisualComponent->SetPressedOnHandle(false);
-            VisualComponent->SetHolding(false);
+            Target->EndTransform();
+            ActiveAxis = -1;
+            if (VisualComponent)
+            {
+                VisualComponent->SetPressedOnHandle(false);
+                VisualComponent->SetHolding(false);
+            }
+            return false;
         }
-        return false;
     }
+    else
+    {
+        DragAxisVector = FVector::ZeroVector;
+    }
+
     LastIntersectionLocation = FVector::ZeroVector;
     bFirstDragUpdate = true;
     bDragging = true;
@@ -393,7 +419,15 @@ void FGizmoManager::UpdateDrag(const FRay& Ray)
         return;
     }
 
-    if (Mode == EGizmoMode::Rotate)
+    if (!std::isfinite(Ray.Origin.X) || !std::isfinite(Ray.Origin.Y) || !std::isfinite(Ray.Origin.Z) ||
+        !std::isfinite(Ray.Direction.X) || !std::isfinite(Ray.Direction.Y) || !std::isfinite(Ray.Direction.Z) ||
+        Ray.Direction.IsNearlyZero())
+    {
+        bFirstDragUpdate = true;
+        return;
+    }
+
+    if (DragMode == EGizmoMode::Rotate)
     {
         ApplyAngularDrag(Ray);
     }
@@ -451,10 +485,20 @@ void FGizmoManager::SetTargetWorldLocation(const FVector& NewLocation)
 
 FVector FGizmoManager::GetAxisVectorFromTransform(const FTransform& Transform, int32 Axis) const
 {
-    // 실제 조작 축은 visual component의 현재 matrix가 아니라 mode/space와 대상 transform에서 계산한다.
-    // 이렇게 해야 Render/HitProxy/Drag가 동일한 축 정책을 쓰고, Euler/scale 라운드트립으로
-    // 한 축만 뒤집히는 문제가 드래그 계산에 전파되지 않는다.
-    const bool bUseLocalAxes = (Mode == EGizmoMode::Scale || Space == EGizmoSpace::Local);
+    return GetAxisVectorFromTransform(Transform, Axis, Mode, Space);
+}
+
+FVector FGizmoManager::GetAxisVectorFromTransform(const FTransform& Transform, int32 Axis, EGizmoMode InMode, EGizmoSpace InSpace) const
+{
+    // 실제 조작 축은 visual component의 현재 relative matrix가 아니라
+    // mode/space와 대상 transform에서 계산한다. Render/HitProxy/Drag가
+    // 같은 정책을 쓰지 않으면 "보이는 축"과 "움직이는 축"이 어긋난다.
+    //
+    // Scale은 non-uniform scale + 임의 회전 상태에서 world-axis scale을
+    // FTransform(Location/Rotation/Scale)만으로 정확히 표현할 수 없다.
+    // shear가 필요하기 때문이다. 따라서 Scale은 항상 Local axis 기준으로
+    // 표시/계산한다. UI도 effective space를 Local로 맞추는 것이 맞다.
+    const bool bUseLocalAxes = (InMode == EGizmoMode::Scale || InSpace == EGizmoSpace::Local);
     if (!bUseLocalAxes)
     {
         switch (Axis)
@@ -499,7 +543,18 @@ bool FGizmoManager::ComputeLinearIntersection(const FRay& Ray, FVector& OutPoint
     }
 
     const FVector AxisVector = GetAxisVector(ActiveAxis);
+    if (AxisVector.IsNearlyZero())
+    {
+        return false;
+    }
+
+    const FVector PlaneOrigin = bDragging ? DragOriginLocation : VisualComponent->GetWorldLocation();
     const FVector PlaneNormal = AxisVector.Cross(Ray.Direction);
+    if (PlaneNormal.Dot(PlaneNormal) <= 1.0e-8f)
+    {
+        return false;
+    }
+
     const FVector ProjectDir = PlaneNormal.Cross(AxisVector);
     const float Denom = Ray.Direction.Dot(ProjectDir);
     if (std::abs(Denom) < 1e-6f)
@@ -507,9 +562,9 @@ bool FGizmoManager::ComputeLinearIntersection(const FRay& Ray, FVector& OutPoint
         return false;
     }
 
-    const float DistanceToPlane = (VisualComponent->GetWorldLocation() - Ray.Origin).Dot(ProjectDir) / Denom;
+    const float DistanceToPlane = (PlaneOrigin - Ray.Origin).Dot(ProjectDir) / Denom;
     OutPoint = Ray.Origin + Ray.Direction * DistanceToPlane;
-    return true;
+    return std::isfinite(OutPoint.X) && std::isfinite(OutPoint.Y) && std::isfinite(OutPoint.Z);
 }
 
 bool FGizmoManager::ComputePlanarIntersection(const FRay& Ray, FVector& OutPoint)
@@ -524,15 +579,21 @@ bool FGizmoManager::ComputePlanarIntersection(const FRay& Ray, FVector& OutPoint
         DragPlaneNormal = (Ray.Direction * -1.0f).Normalized();
     }
 
+    if (DragPlaneNormal.IsNearlyZero())
+    {
+        return false;
+    }
+
     const float Denom = Ray.Direction.Dot(DragPlaneNormal);
     if (std::abs(Denom) < 1e-6f)
     {
         return false;
     }
 
-    const float DistanceToPlane = (VisualComponent->GetWorldLocation() - Ray.Origin).Dot(DragPlaneNormal) / Denom;
+    const FVector PlaneOrigin = bDragging ? DragOriginLocation : VisualComponent->GetWorldLocation();
+    const float DistanceToPlane = (PlaneOrigin - Ray.Origin).Dot(DragPlaneNormal) / Denom;
     OutPoint = Ray.Origin + Ray.Direction * DistanceToPlane;
-    return true;
+    return std::isfinite(OutPoint.X) && std::isfinite(OutPoint.Y) && std::isfinite(OutPoint.Z);
 }
 
 bool FGizmoManager::ComputeAngularIntersection(const FRay& Ray, FVector& OutPoint)
@@ -543,15 +604,21 @@ bool FGizmoManager::ComputeAngularIntersection(const FRay& Ray, FVector& OutPoin
     }
 
     const FVector AxisVector = GetAxisVector(ActiveAxis);
+    if (AxisVector.IsNearlyZero())
+    {
+        return false;
+    }
+
     const float Denom = Ray.Direction.Dot(AxisVector);
     if (std::abs(Denom) < 1e-6f)
     {
         return false;
     }
 
-    const float DistanceToPlane = (VisualComponent->GetWorldLocation() - Ray.Origin).Dot(AxisVector) / Denom;
+    const FVector PlaneOrigin = bDragging ? DragOriginLocation : VisualComponent->GetWorldLocation();
+    const float DistanceToPlane = (PlaneOrigin - Ray.Origin).Dot(AxisVector) / Denom;
     OutPoint = Ray.Origin + Ray.Direction * DistanceToPlane;
-    return true;
+    return std::isfinite(OutPoint.X) && std::isfinite(OutPoint.Y) && std::isfinite(OutPoint.Z);
 }
 
 
@@ -560,7 +627,8 @@ float FGizmoManager::ApplySnapToDragAmount(float DragAmount)
     bool bSnapEnabled = false;
     float SnapSize = 0.0f;
 
-    switch (Mode)
+    const EGizmoMode SnapMode = bDragging ? DragMode : Mode;
+    switch (SnapMode)
     {
     case EGizmoMode::Translate:
         bSnapEnabled = bTranslationSnapEnabled;
@@ -604,6 +672,11 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
                               : ComputeLinearIntersection(Ray, CurrentIntersection);
     if (!bHit)
     {
+        // Ray/plane degeneracy can happen when the cursor leaves the viewport
+        // or the ray becomes almost parallel to the active axis.  Re-anchor on
+        // the next valid sample instead of applying a huge delta from a stale
+        // intersection.
+        bFirstDragUpdate = true;
         return;
     }
 
@@ -635,7 +708,7 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
             LastIntersectionLocation = CurrentIntersection;
             return;
         }
-        if (Mode == EGizmoMode::Scale)
+        if (DragMode == EGizmoMode::Scale)
         {
             FVector NewScale = NewTransform.Scale;
             const float ScaleDelta = DragAmount;
@@ -659,6 +732,7 @@ void FGizmoManager::ApplyAngularDrag(const FRay& Ray)
     FVector CurrentIntersection;
     if (!ComputeAngularIntersection(Ray, CurrentIntersection))
     {
+        bFirstDragUpdate = true;
         return;
     }
 
@@ -670,12 +744,14 @@ void FGizmoManager::ApplyAngularDrag(const FRay& Ray)
     }
 
     const FVector AxisVector = GetAxisVector(ActiveAxis);
-    const FVector Center = VisualComponent->GetWorldLocation();
+    const FVector Center = bDragging ? DragOriginLocation : VisualComponent->GetWorldLocation();
     FVector CenterToLast = LastIntersectionLocation - Center;
     FVector CenterToCurrent = CurrentIntersection - Center;
     if (CenterToLast.Dot(CenterToLast) <= 1.0e-8f || CenterToCurrent.Dot(CenterToCurrent) <= 1.0e-8f)
     {
-        LastIntersectionLocation = CurrentIntersection;
+        // Do not measure the next angle from a near-center vector.
+        // That vector has an unstable direction and causes sudden rotation flips.
+        bFirstDragUpdate = true;
         return;
     }
     CenterToLast = CenterToLast.Normalized();

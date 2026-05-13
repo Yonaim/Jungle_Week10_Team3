@@ -118,6 +118,7 @@ public:
 private:
     FVector GetAxisVector(int32 Axis) const;
     FVector GetAxisVectorFromTransform(const FTransform& Transform, int32 Axis) const;
+    FVector GetAxisVectorFromTransform(const FTransform& Transform, int32 Axis, EGizmoMode InMode, EGizmoSpace InSpace) const;
     bool ComputeLinearIntersection(const FRay& Ray, FVector& OutPoint);
     bool ComputePlanarIntersection(const FRay& Ray, FVector& OutPoint);
     bool ComputeAngularIntersection(const FRay& Ray, FVector& OutPoint);
@@ -142,6 +143,9 @@ private:
     bool bFirstDragUpdate = true;
     int32 ActiveAxis = -1;
     FTransform DragStartTransform;
+    EGizmoMode DragMode = EGizmoMode::Translate;
+    EGizmoSpace DragSpace = EGizmoSpace::Local;
+    FVector DragOriginLocation = FVector::ZeroVector;
     FVector LastIntersectionLocation;
     FVector DragAxisVector = FVector(1.0f, 0.0f, 0.0f);
     FVector DragPlaneNormal = FVector(0.0f, 0.0f, 1.0f);

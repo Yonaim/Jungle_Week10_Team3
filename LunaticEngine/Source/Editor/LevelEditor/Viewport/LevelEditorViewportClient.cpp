@@ -37,6 +37,7 @@
 #include "Viewport/GameViewportClient.h"
 
 
+#include <algorithm>
 #include <cfloat>
 
 UWorld *FLevelEditorViewportClient::GetWorld() const
@@ -67,6 +68,17 @@ void SyncPIEViewportRect(FViewport *Viewport, const FRect &ViewportScreenRect)
             }
         }
     }
+}
+
+ImVec2 ClampMouseToViewportRect(ImVec2 MousePos, const FRect& Rect)
+{
+    const float MinX = Rect.X;
+    const float MinY = Rect.Y;
+    const float MaxX = Rect.X + (std::max)(0.0f, Rect.Width - 1.0f);
+    const float MaxY = Rect.Y + (std::max)(0.0f, Rect.Height - 1.0f);
+    MousePos.x = Clamp(MousePos.x, MinX, MaxX);
+    MousePos.y = Clamp(MousePos.y, MinY, MaxY);
+    return MousePos;
 }
 
 struct FCameraBookmark
@@ -1567,13 +1579,22 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     GizmoManager.GetUIScreenInteractionState().HoveredAxis = HasUIScreenTranslateGizmo() ? HitTestUIScreenTranslateGizmo(MousePos) : 0;
     float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
     float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
+
+    // While dragging, do not deproject arbitrary coordinates outside the pane.
+    // Off-viewport NDC values can make the drag ray nearly parallel to the active
+    // axis/plane and produce a huge intersection jump.  Clamp only the ray used
+    // for gizmo drag; selection and UI hit tests still use the real mouse position.
+    const ImVec2 RayMousePos = GizmoManager.IsDragging()
+        ? ClampMouseToViewportRect(MousePos, ViewportScreenRect)
+        : MousePos;
+
     float LocalMouseX = 0.0f;
     float LocalMouseY = 0.0f;
-    if (!TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, LocalMouseX,
+    if (!TryConvertMouseToViewportPixel(RayMousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, LocalMouseX,
                                         LocalMouseY))
     {
-        LocalMouseX = MousePos.x - ViewportScreenRect.X;
-        LocalMouseY = MousePos.y - ViewportScreenRect.Y;
+        LocalMouseX = RayMousePos.x - ViewportScreenRect.X;
+        LocalMouseY = RayMousePos.y - ViewportScreenRect.Y;
     }
     FRay Ray = GetCamera()->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
     FGizmoHitProxyContext GizmoPickContext{};
