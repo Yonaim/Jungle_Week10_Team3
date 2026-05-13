@@ -84,6 +84,27 @@ namespace
         return std::filesystem::last_write_time(SourcePathW) > std::filesystem::last_write_time(AssetPathW);
     }
 
+
+    FString NormalizeMeshAssetCacheKey(const FString& Path)
+    {
+        if (Path.empty())
+        {
+            return {};
+        }
+
+        std::filesystem::path FsPath(FPaths::ToWide(Path));
+        FsPath = FsPath.lexically_normal();
+
+        const std::filesystem::path ProjectRoot(FPaths::RootDir());
+        std::filesystem::path Relative = FsPath.lexically_relative(ProjectRoot);
+        if (!Relative.empty() && Relative.native().find(L"..") != 0)
+        {
+            return FPaths::ToUtf8(Relative.generic_wstring());
+        }
+
+        return FPaths::ToUtf8(FsPath.generic_wstring());
+    }
+
     void EnsureParentDirectoryExists(const FString& Path)
     {
         const std::filesystem::path Parent = std::filesystem::path(FPaths::ToWide(Path)).parent_path();
@@ -211,12 +232,16 @@ const TArray<FMeshAssetListItem>& FMeshAssetManager::GetAvailableMeshSourceFiles
     return AvailableMeshSourceFiles;
 }
 
-UStaticMesh* FMeshAssetManager::LoadStaticMeshAssetFile(const FString& AssetPath, ID3D11Device* InDevice)
+UStaticMesh* FMeshAssetManager::LoadStaticMeshAssetFile(const FString& AssetPath, ID3D11Device* InDevice, EMeshAssetLoadPurpose Purpose)
 {
-    auto It = StaticMeshCache.find(AssetPath);
-    if (It != StaticMeshCache.end())
+    const FString CacheKey = NormalizeMeshAssetCacheKey(AssetPath);
+    if (Purpose == EMeshAssetLoadPurpose::RuntimeShared)
     {
-        return It->second;
+        auto It = StaticMeshCache.find(CacheKey);
+        if (It != StaticMeshCache.end())
+        {
+            return It->second;
+        }
     }
 
     FString Error;
@@ -232,18 +257,25 @@ UStaticMesh* FMeshAssetManager::LoadStaticMeshAssetFile(const FString& AssetPath
     }
 
     StaticMesh->InitResources(InDevice);
-    StaticMeshCache[AssetPath] = StaticMesh;
+    if (Purpose == EMeshAssetLoadPurpose::RuntimeShared)
+    {
+        StaticMeshCache[CacheKey] = StaticMesh;
+    }
     return StaticMesh;
 }
 
-USkeletalMesh* FMeshAssetManager::LoadSkeletalMeshAssetFile(const FString& AssetPath, ID3D11Device* InDevice)
+USkeletalMesh* FMeshAssetManager::LoadSkeletalMeshAssetFile(const FString& AssetPath, ID3D11Device* InDevice, EMeshAssetLoadPurpose Purpose)
 {
     (void)InDevice;
 
-    auto It = SkeletalMeshCache.find(AssetPath);
-    if (It != SkeletalMeshCache.end())
+    const FString CacheKey = NormalizeMeshAssetCacheKey(AssetPath);
+    if (Purpose == EMeshAssetLoadPurpose::RuntimeShared)
     {
-        return It->second;
+        auto It = SkeletalMeshCache.find(CacheKey);
+        if (It != SkeletalMeshCache.end())
+        {
+            return It->second;
+        }
     }
 
     FString Error;
@@ -263,8 +295,18 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMeshAssetFile(const FString& Asset
         MeshAsset->BuildBoneHierarchyCache();
     }
 
-    SkeletalMeshCache[AssetPath] = SkeletalMesh;
+    if (Purpose == EMeshAssetLoadPurpose::RuntimeShared)
+    {
+        SkeletalMeshCache[CacheKey] = SkeletalMesh;
+    }
     return SkeletalMesh;
+}
+
+void FMeshAssetManager::MarkAssetCacheStale(const FString& AssetPath)
+{
+    const FString CacheKey = NormalizeMeshAssetCacheKey(AssetPath);
+    StaticMeshCache.erase(CacheKey);
+    SkeletalMeshCache.erase(CacheKey);
 }
 
 UStaticMesh* FMeshAssetManager::LoadStaticMesh(const FString& PathFileName, const FImportOptions& Options, ID3D11Device* InDevice)
@@ -275,7 +317,7 @@ UStaticMesh* FMeshAssetManager::LoadStaticMesh(const FString& PathFileName, cons
     }
 
     const FString AssetPath = GetStaticMeshAssetPath(PathFileName);
-    StaticMeshCache.erase(AssetPath);
+    StaticMeshCache.erase(NormalizeMeshAssetCacheKey(AssetPath));
 
     UStaticMesh* StaticMesh = UObjectManager::Get().CreateObject<UStaticMesh>();
     FStaticMesh* NewMeshAsset = new FStaticMesh();
@@ -302,7 +344,7 @@ UStaticMesh* FMeshAssetManager::LoadStaticMesh(const FString& PathFileName, cons
     FAssetFileSerializer::SaveObjectToAssetFile(AssetPath, StaticMesh, &Error);
 
     StaticMesh->InitResources(InDevice);
-    StaticMeshCache[AssetPath] = StaticMesh;
+    StaticMeshCache[NormalizeMeshAssetCacheKey(AssetPath)] = StaticMesh;
 
     ScanMeshAssets();
     FMaterialManager::Get().ScanMaterialAssets();
@@ -378,7 +420,7 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMesh(const FString& PathFileName, 
     FString Error;
     FAssetFileSerializer::SaveObjectToAssetFile(AssetPath, SkeletalMesh, &Error);
 
-    SkeletalMeshCache[AssetPath] = SkeletalMesh;
+    SkeletalMeshCache[NormalizeMeshAssetCacheKey(AssetPath)] = SkeletalMesh;
 
     ScanMeshAssets();
     FMaterialManager::Get().ScanMaterialAssets();

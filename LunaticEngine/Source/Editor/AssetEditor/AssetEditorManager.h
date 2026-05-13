@@ -35,7 +35,8 @@ class FAssetEditorManager
     void RenderContent(float DeltaTime, ImGuiID DockspaceId = 0);
 
     bool OpenAssetFromPath(const std::filesystem::path &AssetPath);
-    bool OpenLoadedAsset(UObject *Asset, const std::filesystem::path &AssetPath);
+    bool OpenOwnedWorkingCopy(UObject *Asset, const std::filesystem::path &AssetPath);
+    bool OpenLoadedAsset(UObject *Asset, const std::filesystem::path &AssetPath) { return OpenOwnedWorkingCopy(Asset, AssetPath); }
     bool OpenAssetWithDialog(void *OwnerWindowHandle = nullptr);
 
     /**
@@ -46,6 +47,9 @@ class FAssetEditorManager
 
     bool SaveActiveEditor();
     void CloseActiveEditor();
+    bool CloseAllEditors(bool bPromptForDirty = true, void *OwnerWindowHandle = nullptr);
+    bool HasDirtyEditors() const;
+    bool ConfirmCloseAllEditors(void *OwnerWindowHandle = nullptr) const;
 
     bool IsCapturingInput() const;
     FEditorViewportClient *GetActiveViewportClient() const;

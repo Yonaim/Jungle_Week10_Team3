@@ -10,6 +10,9 @@
 #include "Engine/Asset/AssetData.h"
 #include "Engine/Asset/AssetFileSerializer.h"
 #include "Engine/Mesh/SkeletalMesh.h"
+#include "Mesh/MeshAssetManager.h"
+#include "Mesh/StaticMesh.h"
+#include "Render/Pipeline/Renderer.h"
 #include "EditorEngine.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
@@ -65,9 +68,41 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
         return false;
     }
 
+    const std::filesystem::path NormalizedPath = AssetPath.lexically_normal();
+
+    if (AssetEditorWindow.ActivateTabByAssetPath(NormalizedPath))
+    {
+        AssetEditorWindow.Show();
+        if (EditorEngine)
+        {
+            EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+        }
+        return true;
+    }
+
     UObject *LoadedAsset = nullptr;
     FString Error;
-    LoadedAsset = FAssetFileSerializer::LoadObjectFromAssetFile(AssetPath, &Error);
+
+    FAssetFileHeader Header;
+    if (FAssetFileSerializer::ReadAssetHeader(NormalizedPath, Header, &Error))
+    {
+        ID3D11Device *Device = Renderer ? Renderer->GetFD3DDevice().GetDevice() : nullptr;
+        const FString AssetPathUtf8 = FPaths::ToUtf8(NormalizedPath.generic_wstring());
+
+        if (Header.ClassId == EAssetClassId::StaticMesh)
+        {
+            LoadedAsset = FMeshAssetManager::LoadStaticMeshAssetFile(AssetPathUtf8, Device, EMeshAssetLoadPurpose::FreshInstance);
+        }
+        else if (Header.ClassId == EAssetClassId::SkeletalMesh)
+        {
+            LoadedAsset = FMeshAssetManager::LoadSkeletalMeshAssetFile(AssetPathUtf8, Device, EMeshAssetLoadPurpose::FreshInstance);
+        }
+    }
+
+    if (!LoadedAsset)
+    {
+        LoadedAsset = FAssetFileSerializer::LoadObjectFromAssetFile(NormalizedPath, &Error);
+    }
 
     if (!LoadedAsset)
     {
@@ -75,7 +110,7 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
         return false;
     }
 
-    if (OpenLoadedAsset(LoadedAsset, AssetPath))
+    if (OpenOwnedWorkingCopy(LoadedAsset, NormalizedPath))
     {
         return true;
     }
@@ -84,7 +119,7 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
     return false;
 }
 
-bool FAssetEditorManager::OpenLoadedAsset(UObject *Asset, const std::filesystem::path &AssetPath)
+bool FAssetEditorManager::OpenOwnedWorkingCopy(UObject *Asset, const std::filesystem::path &AssetPath)
 {
     if (!Asset)
     {
@@ -193,6 +228,26 @@ void FAssetEditorManager::CloseActiveEditor()
     {
         EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
     }
+}
+
+bool FAssetEditorManager::CloseAllEditors(bool bPromptForDirty, void *OwnerWindowHandle)
+{
+    const bool bClosed = AssetEditorWindow.CloseAllTabs(bPromptForDirty, OwnerWindowHandle);
+    if (EditorEngine && !AssetEditorWindow.IsOpen())
+    {
+        EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+    }
+    return bClosed;
+}
+
+bool FAssetEditorManager::HasDirtyEditors() const
+{
+    return AssetEditorWindow.HasDirtyTabs();
+}
+
+bool FAssetEditorManager::ConfirmCloseAllEditors(void *OwnerWindowHandle) const
+{
+    return AssetEditorWindow.ConfirmCloseAllTabs(OwnerWindowHandle);
 }
 
 bool FAssetEditorManager::IsCapturingInput() const

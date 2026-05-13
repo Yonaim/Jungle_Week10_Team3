@@ -6,6 +6,7 @@
 #include "EditorEngine.h"
 #include "Engine/Asset/AssetFileSerializer.h"
 #include "Engine/Mesh/SkeletalMesh.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
 
@@ -108,6 +109,8 @@ bool FSkeletalMeshEditor::Save()
             4.0f);
         return false;
     }
+
+    FMeshAssetManager::MarkAssetCacheStale(FPaths::ToUtf8(EditingAssetPath.generic_wstring()));
 
     bDirty = false;
     FNotificationManager::Get().AddNotification(
