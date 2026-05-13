@@ -3,9 +3,11 @@
 #include "Serialization/Archive.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/SkeletalMeshCommon.h"
-
-// 시연용
 #include "Math/Quat.h"
+
+// 시연용 — 랜덤 본 진동
+#include <random>
+#include <cmath>
 
 IMPLEMENT_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 
@@ -57,9 +59,7 @@ void USkeletalMeshComponent::InitializeSkeleton()
 void USkeletalMeshComponent::BeginPlay()
 {
 	InitializeSkeleton();
-
-	TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
-	LastTestBoneName.clear();
+	InitializeRandomBoneOscillations();
 }
 
 void USkeletalMeshComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction& ThisTickFunction)
@@ -95,67 +95,40 @@ void USkeletalMeshComponent::RefreshSkinningNow()
 
 void USkeletalMeshComponent::EvaluatePose(float DeltaTime)
 {
-	(void)DeltaTime;
-	// 현재는 Bind Pose를 유지
-
-
 	// 시연용
-	if (!bEnableBoneRotationTest || TestBoneName.empty())
+	if (!bEnableBoneRotationTest || BoneOscillations.empty())
 		return;
 
 	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
 		return;
 
-	// 본 이름이 바뀌면 누적 회전 초기화
-	if (TestBoneName != LastTestBoneName)
-	{
-		TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
-		LastTestBoneName = TestBoneName;
-
-		// 바인드 포즈로 리셋
-		InitBoneTransform();
-	}
+	OscillationTime += DeltaTime;
 
 	const TArray<FBoneInfo>& Bones = SkeletalMesh->GetSkeletalMeshAsset()->Bones;
 
-	int32 TargetBoneIndex = InvalidBoneIndex;
-	for (int32 i = 0; i < (int32)Bones.size(); ++i)
+	// 매 프레임 바인드 포즈에서 시작해 사인파 회전을 덮어씀
+	// (누적 오류 없이 시간축에서 직접 계산)
+	InitBoneTransform();
+
+	constexpr float TwoPi = 6.28318530718f;
+
+	for (const FBoneOscillationState& Osc : BoneOscillations)
 	{
-		if (Bones[i].Name == TestBoneName)
-		{
-			TargetBoneIndex = i;
-			break;
-		}
+		if (Osc.BoneIndex < 0 || Osc.BoneIndex >= (int32)Bones.size())
+			continue;
+
+		const float Pitch = Osc.AmpPitch * sinf(TwoPi * Osc.FreqPitch * OscillationTime + Osc.PhasePitch);
+		const float Yaw   = Osc.AmpYaw   * sinf(TwoPi * Osc.FreqYaw   * OscillationTime + Osc.PhaseYaw);
+		const float Roll  = Osc.AmpRoll  * sinf(TwoPi * Osc.FreqRoll  * OscillationTime + Osc.PhaseRoll);
+
+		const FTransform& BindLocal = Bones[Osc.BoneIndex].LocalBindTransform;
+		FQuat DeltaQuat = FRotator(Pitch, Yaw, Roll).ToQuaternion();
+		FQuat NewRotation = (BindLocal.Rotation * DeltaQuat).GetNormalized();
+
+		FTransform NewTransform = BindLocal;
+		NewTransform.Rotation = NewRotation;
+		SetBoneLocalTransform(Osc.BoneIndex, NewTransform);
 	}
-
-	if (TargetBoneIndex == InvalidBoneIndex)
-		return;
-
-	// 각속도 * DeltaTime 만큼 누적 (도 단위)
-	TestBoneAccumulatedRotation.Pitch += TestBoneRotationSpeed.Pitch * DeltaTime;
-	TestBoneAccumulatedRotation.Yaw += TestBoneRotationSpeed.Yaw * DeltaTime;
-	TestBoneAccumulatedRotation.Roll += TestBoneRotationSpeed.Roll * DeltaTime;
-
-	// [-180, 180] 정규화해서 float 오버플로 방지
-	auto WrapAngle = [](float Angle) -> float
-		{
-			Angle = fmodf(Angle, 360.f);
-			if (Angle > 180.f)  Angle -= 360.f;
-			if (Angle < -180.f) Angle += 360.f;
-			return Angle;
-		};
-	TestBoneAccumulatedRotation.Pitch = WrapAngle(TestBoneAccumulatedRotation.Pitch);
-	TestBoneAccumulatedRotation.Yaw = WrapAngle(TestBoneAccumulatedRotation.Yaw);
-	TestBoneAccumulatedRotation.Roll = WrapAngle(TestBoneAccumulatedRotation.Roll);
-
-	// 바인드 포즈 로컬 트랜스폼에 누적 회전을 합성
-	FTransform BindLocal = Bones[TargetBoneIndex].LocalBindTransform;
-	FQuat DeltaQuat = TestBoneAccumulatedRotation.ToQuaternion();
-	FQuat NewRotation = (BindLocal.Rotation * DeltaQuat).GetNormalized();
-
-	FTransform NewTransform = BindLocal;
-	NewTransform.Rotation = NewRotation;
-	SetBoneLocalTransform(TargetBoneIndex, NewTransform);
 }
 
 void USkeletalMeshComponent::UpdatePoseLocal(float DeltaTime)
@@ -243,33 +216,20 @@ void USkeletalMeshComponent::FinalizeRenderState()
 void USkeletalMeshComponent::GetEditableProperties(TArray<FPropertyDescriptor>& OutProps)
 {
 	USkinnedMeshComponent::GetEditableProperties(OutProps);
-
-	OutProps.push_back({ "Enable Bone Rotation Test", EPropertyType::Bool,    &bEnableBoneRotationTest });
-	OutProps.push_back({ "Test Bone Name",            EPropertyType::String,  &TestBoneName });
-	OutProps.push_back({ "Test Bone Rotation Speed",  EPropertyType::Rotator, &TestBoneRotationSpeed });
+	OutProps.push_back({ "Enable Bone Random Motion", EPropertyType::Bool, &bEnableBoneRotationTest });
 }
 
 void USkeletalMeshComponent::PostEditProperty(const char* PropertyName)
 {
 	USkinnedMeshComponent::PostEditProperty(PropertyName);
 
-	if (strcmp(PropertyName, "Test Bone Name") == 0)
+	if (strcmp(PropertyName, "Enable Bone Random Motion") == 0)
 	{
-		// 본 이름이 바뀌면 누적 회전 초기화
-		TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
-		LastTestBoneName.clear();
-		InitBoneTransform();
-		RebuildComponentSpace();
-		PerformCPUSkinning(CurrentPose);
-		FinalizeRenderState();
-	}
-	else if (strcmp(PropertyName, "Enable Bone Rotation Test") == 0)
-	{
+		// 토글 off 시 바인드 포즈로 즉시 복원
 		if (!bEnableBoneRotationTest)
 		{
-			// 비활성화 시 바인드 포즈로 복원
-			TestBoneAccumulatedRotation = FRotator(0.f, 0.f, 0.f);
-			LastTestBoneName.clear();
+			BoneOscillations.clear();
+			OscillationTime = 0.f;
 			InitBoneTransform();
 			RebuildComponentSpace();
 			PerformCPUSkinning(CurrentPose);
@@ -282,8 +242,56 @@ void USkeletalMeshComponent::Serialize(FArchive& Ar)
 {
 	USkinnedMeshComponent::Serialize(Ar);
 	Ar << bEnableBoneRotationTest;
-	Ar << TestBoneName;
-	Ar << TestBoneRotationSpeed.Pitch;
-	Ar << TestBoneRotationSpeed.Yaw;
-	Ar << TestBoneRotationSpeed.Roll;
+}
+
+void USkeletalMeshComponent::InitializeRandomBoneOscillations()
+{
+	BoneOscillations.clear();
+	OscillationTime = 0.f;
+
+	if (!bEnableBoneRotationTest)
+		return;
+
+	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
+		return;
+
+	const TArray<FBoneInfo>& Bones = SkeletalMesh->GetSkeletalMeshAsset()->Bones;
+	const int32 BoneCount = (int32)Bones.size();
+	if (BoneCount <= 1)
+		return;
+
+	// 재현 가능한 고정 시드 — 매번 같은 패턴으로 자연스러운 느낌 유지
+	std::mt19937 Rng(0xDEADBEEF);
+	std::uniform_real_distribution<float> FreqDist(0.08f, 0.35f); // Hz — 느린 유기적 움직임
+	std::uniform_real_distribution<float> PhaseDist(0.f, 6.2832f);
+	std::uniform_real_distribution<float> AmpPitchDist(2.f, 12.f); // degrees
+	std::uniform_real_distribution<float> AmpYawDist(3.f, 18.f);
+	std::uniform_real_distribution<float> AmpRollDist(1.f, 7.f);
+	std::uniform_int_distribution<int>    SkipDist(0, 2); // 약 1/3 확률로 건너뜀
+
+	for (int32 i = 0; i < BoneCount; ++i)
+	{
+		// 루트 본은 전체 메시를 흔들어버리므로 제외
+		if (Bones[i].ParentIndex == InvalidBoneIndex)
+			continue;
+
+		// 무작위 선별 (~67% 포함)
+		if (SkipDist(Rng) == 0)
+			continue;
+
+		FBoneOscillationState Osc;
+		Osc.BoneIndex = i;
+		// 각 축을 독립적인 주파수·위상으로 설정해 서로 다른 리듬 생성
+		Osc.FreqPitch = FreqDist(Rng);
+		Osc.FreqYaw = FreqDist(Rng);
+		Osc.FreqRoll = FreqDist(Rng);
+		Osc.AmpPitch = AmpPitchDist(Rng);
+		Osc.AmpYaw = AmpYawDist(Rng);
+		Osc.AmpRoll = AmpRollDist(Rng);
+		Osc.PhasePitch = PhaseDist(Rng);
+		Osc.PhaseYaw = PhaseDist(Rng);
+		Osc.PhaseRoll = PhaseDist(Rng);
+
+		BoneOscillations.push_back(Osc);
+	}
 }
