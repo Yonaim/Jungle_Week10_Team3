@@ -135,6 +135,12 @@ void FBoneTransformGizmoTarget::SetLocalTransform(const FTransform& NewLocalTran
     Component->RefreshSkinningNow();
 }
 
+float FBoneTransformGizmoTarget::GetScaleDeltaSensitivity(EGizmoSpace InSpace) const
+{
+    (void)InSpace;
+    return 0.1f;
+}
+
 void FBoneTransformGizmoTarget::BeginTransform()
 {
     bTransforming = IsValid();

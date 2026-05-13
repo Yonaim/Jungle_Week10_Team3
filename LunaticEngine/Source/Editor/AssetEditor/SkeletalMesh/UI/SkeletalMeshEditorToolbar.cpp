@@ -11,6 +11,11 @@
 
 namespace
 {
+    EGizmoSpace GetDisplayedGizmoSpace(const FSkeletalMeshEditorState& State)
+    {
+        return State.GizmoMode == EGizmoMode::Scale ? EGizmoSpace::Local : State.GizmoSpace;
+    }
+
     FEditorViewportToolbar::EToolMode ToCommonToolMode(EGizmoMode Mode)
     {
         switch (Mode)
@@ -80,8 +85,9 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
     Desc.Renderer = Renderer;
     Desc.bEnabled = Mesh != nullptr;
     Desc.ToolMode = ToCommonToolMode(State.GizmoMode);
-    Desc.CoordSpace = State.GizmoSpace == EGizmoSpace::World ? FEditorViewportToolbar::ECoordSpace::World
-                                                             : FEditorViewportToolbar::ECoordSpace::Local;
+    Desc.CoordSpace = GetDisplayedGizmoSpace(State) == EGizmoSpace::World
+        ? FEditorViewportToolbar::ECoordSpace::World
+        : FEditorViewportToolbar::ECoordSpace::Local;
     Desc.bSnapEnabled = State.bEnableTranslationSnap || State.bEnableRotationSnap || State.bEnableScaleSnap;
     Desc.ViewportTypeIcon = GetViewportTypeIcon(State.PreviewViewportType);
     Desc.ViewportTypeLabel = GetViewportTypeLabel(State.PreviewViewportType);

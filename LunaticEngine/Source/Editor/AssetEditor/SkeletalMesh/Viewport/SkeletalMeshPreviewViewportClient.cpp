@@ -474,8 +474,12 @@ void ApplySkeletalMeshGizmoStateToManager(const FSkeletalMeshEditorState* State,
         return;
     }
 
+    const EGizmoSpace EffectiveSpace = (State->GizmoMode == EGizmoMode::Scale)
+        ? EGizmoSpace::Local
+        : State->GizmoSpace;
+
     Manager.SetMode(State->GizmoMode);
-    Manager.SetSpace(State->GizmoSpace);
+    Manager.SetSpace(EffectiveSpace);
     Manager.SetSnapSettings(State->bEnableTranslationSnap, State->TranslationSnapSize,
                             State->bEnableRotationSnap, State->RotationSnapSize,
                             State->bEnableScaleSnap, State->ScaleSnapSize);
