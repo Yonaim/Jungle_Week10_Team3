@@ -167,6 +167,7 @@ namespace SceneKeys
 	static constexpr const char* Properties = "Properties";
 	static constexpr const char* Children = "Children";
 	static constexpr const char* HiddenInComponentTree = "bHiddenInComponentTree";
+	static constexpr const char* EditorOnly = "bEditorOnly";
 	static constexpr const char* GameModeClass = "GameModeClass";
 	static constexpr const char* OutlinerFolders = "OutlinerFolders";
 }
@@ -182,6 +183,10 @@ static void SerializeComponentEditorMetadata(json::JSON& Node, const UActorCompo
 	{
 		Node[SceneKeys::HiddenInComponentTree] = true;
 	}
+	if (Comp->IsEditorOnlyComponent())
+	{
+		Node[SceneKeys::EditorOnly] = true;
+	}
 }
 
 static void DeserializeComponentEditorMetadata(UActorComponent* Comp, json::JSON& Node)
@@ -194,6 +199,14 @@ static void DeserializeComponentEditorMetadata(UActorComponent* Comp, json::JSON
 	if (Node.hasKey(SceneKeys::HiddenInComponentTree))
 	{
 		Comp->SetHiddenInComponentTree(Node[SceneKeys::HiddenInComponentTree].ToBool());
+	}
+	if (Node.hasKey(SceneKeys::EditorOnly))
+	{
+		Comp->SetEditorOnlyComponent(Node[SceneKeys::EditorOnly].ToBool());
+	}
+	else if (Comp->IsA<UBillboardComponent>() && Comp->IsHiddenInComponentTree())
+	{
+		Comp->SetEditorOnlyComponent(true);
 	}
 }
 
