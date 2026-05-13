@@ -421,7 +421,7 @@ void FSelectionManager::SelectComponent(USceneComponent *Component)
     SyncGizmo();
 }
 
-std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarget() const
+std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarget(const bool* OwnerContextActiveFlag) const
 {
     if (!bGizmoEnabled || !SelectedComponent)
     {
@@ -442,7 +442,7 @@ std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarg
         }
     }
 
-    return std::make_shared<FSceneComponentTransformGizmoTarget>(TargetComponent);
+    return std::make_shared<FSceneComponentTransformGizmoTarget>(TargetComponent, OwnerContextActiveFlag);
 }
 
 void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)

@@ -47,6 +47,7 @@ void FEditorViewportClient::Init(FWindowsWindow *InWindow)
 
 void FEditorViewportClient::Shutdown()
 {
+    DeactivateEditorContext();
     Viewport = nullptr;
     LayoutWindow = nullptr;
     Window = nullptr;
@@ -55,6 +56,26 @@ void FEditorViewportClient::Shutdown()
 void FEditorViewportClient::Tick(float DeltaTime)
 {
     (void)DeltaTime;
+}
+
+void FEditorViewportClient::ActivateEditorContext()
+{
+    bEditorContextActive = true;
+    SetActive(true);
+}
+
+void FEditorViewportClient::DeactivateEditorContext()
+{
+    // Always cancel before invalidating the owner context.
+    // Some gizmo targets use the owner-context flag in IsValid(), and CancelDrag() needs
+    // the target to remain valid long enough to restore the drag-start transform.
+    GizmoManager.CancelDrag();
+    GizmoManager.ClearTarget();
+    GizmoManager.ResetVisualInteractionState();
+
+    bEditorContextActive = false;
+    SetHovered(false);
+    SetActive(false);
 }
 
 void FEditorViewportClient::SetViewportSize(float InWidth, float InHeight)

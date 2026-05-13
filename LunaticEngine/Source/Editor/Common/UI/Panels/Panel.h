@@ -7,6 +7,7 @@
 #include "ImGui/imgui_internal.h"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 /**
@@ -36,6 +37,19 @@ struct FPanelDesc
     bool bApplyBottomInset = true;
 };
 
+struct FDockPanelLayoutState
+{
+    // Per-document-tab layout state. This is intentionally in-memory only.
+    // It stores the current dock relationship that ImGui assigned to each panel,
+    // so tab switching restores the user's current layout instead of rebuilding
+    // the default layout every time.
+    bool bDefaultLayoutBuilt = false;
+    bool bRequestDefaultLayout = true;
+    bool bRestoreCapturedLayoutNextFrame = false;
+    bool bApplyingRestore = false;
+    std::unordered_map<std::string, ImGuiID> PanelDockIds;
+};
+
 /**
  * Panel 공통 wrapper.
  *
@@ -59,13 +73,77 @@ class FPanel
         return Stack;
     }
 
+    static std::string &GetStableIdPrefixStorage()
+    {
+        static std::string Prefix;
+        return Prefix;
+    }
+
+    static FDockPanelLayoutState *&GetCurrentLayoutStateStorage()
+    {
+        static FDockPanelLayoutState *State = nullptr;
+        return State;
+    }
+
+    static ImGuiID &GetCurrentDockspaceIdStorage()
+    {
+        static ImGuiID DockspaceId = 0;
+        return DockspaceId;
+    }
+
+    static std::string MakeEffectiveStableId(const char *StableId)
+    {
+        const char *RawStableId = (StableId && StableId[0] != '\0') ? StableId : "Panel";
+        const std::string &Prefix = GetStableIdPrefixStorage();
+        if (Prefix.empty())
+        {
+            return RawStableId;
+        }
+        return Prefix + "_" + RawStableId;
+    }
+
   public:
+    static void SetCurrentStableIdPrefix(const std::string &Prefix)
+    {
+        GetStableIdPrefixStorage() = Prefix;
+    }
+
+    static void ClearCurrentStableIdPrefix()
+    {
+        GetStableIdPrefixStorage().clear();
+    }
+
+    static void SetCurrentDockspaceId(ImGuiID DockspaceId)
+    {
+        GetCurrentDockspaceIdStorage() = DockspaceId;
+    }
+
+    static void ClearCurrentDockspaceId()
+    {
+        GetCurrentDockspaceIdStorage() = 0;
+    }
+
+    static void SetCurrentLayoutState(FDockPanelLayoutState *LayoutState)
+    {
+        GetCurrentLayoutStateStorage() = LayoutState;
+    }
+
+    static void ClearCurrentLayoutState()
+    {
+        GetCurrentLayoutStateStorage() = nullptr;
+    }
+
+    static bool HasCapturedDockLayout(const FDockPanelLayoutState *LayoutState)
+    {
+        return LayoutState && !LayoutState->PanelDockIds.empty();
+    }
+
     static std::string MakeTitle(const FPanelDesc &Desc)
     {
         const char *StableId = (Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName;
         const bool bHasIcon = Desc.IconKey && Desc.IconKey[0] != '\0';
         const char *Prefix = bHasIcon ? "      " : "";
-        return std::string(Prefix) + (Desc.DisplayName ? Desc.DisplayName : "") + "###" + StableId;
+        return std::string(Prefix) + (Desc.DisplayName ? Desc.DisplayName : "") + "###" + MakeEffectiveStableId(StableId);
     }
 
     static bool Begin(const FPanelDesc &Desc)
@@ -81,9 +159,31 @@ class FPanel
             return false;
         }
 
-        if (Desc.DockspaceId != 0)
+        const std::string EffectiveStableId = MakeEffectiveStableId((Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName);
+        FDockPanelLayoutState *LayoutState = GetCurrentLayoutStateStorage();
+        bool bAppliedCapturedDock = false;
+        if (LayoutState && LayoutState->bRestoreCapturedLayoutNextFrame && !LayoutState->bApplyingRestore)
         {
-            ImGui::SetNextWindowDockID(Desc.DockspaceId, Desc.DockCond);
+            const auto It = LayoutState->PanelDockIds.find(EffectiveStableId);
+            if (It != LayoutState->PanelDockIds.end() && It->second != 0)
+            {
+                // Do not require DockBuilderGetNode(It->second) here.
+                // When switching document tabs, ImGui may recreate the dock node later in
+                // the same frame. Falling back to the root DockSpace in that case is what
+                // makes panels reappear as undocked/floating windows. Re-apply the last
+                // captured DockId for one frame and let ImGui resolve/recreate the relation.
+                ImGui::SetNextWindowDockID(It->second, ImGuiCond_Always);
+                bAppliedCapturedDock = true;
+            }
+        }
+
+        if (!bAppliedCapturedDock)
+        {
+            const ImGuiID TargetDockspaceId = Desc.DockspaceId != 0 ? Desc.DockspaceId : GetCurrentDockspaceIdStorage();
+            if (TargetDockspaceId != 0)
+            {
+                ImGui::SetNextWindowDockID(TargetDockspaceId, Desc.DockCond);
+            }
         }
 
         // DockNode 오른쪽 끝의 전역 X / menu 버튼은 제거한다.
@@ -99,6 +199,15 @@ class FPanel
 
         const bool bVisible = ImGui::Begin(Title.c_str(), OpenPtr, Desc.WindowFlags);
         BeginState.bDidBeginWindow = true;
+
+        if (LayoutState && ImGui::GetCurrentWindowRead())
+        {
+            const ImGuiID CurrentDockId = ImGui::GetCurrentWindowRead()->DockId;
+            if (CurrentDockId != 0)
+            {
+                LayoutState->PanelDockIds[EffectiveStableId] = CurrentDockId;
+            }
+        }
 
         PanelTitleUtils::PushPanelStyle();
         BeginState.bPushedStyle = true;
@@ -116,6 +225,56 @@ class FPanel
         }
 
         return bVisible;
+    }
+
+
+    static void RenderDockKeepAliveWindows(FDockPanelLayoutState *LayoutState)
+    {
+        if (!LayoutState || LayoutState->PanelDockIds.empty())
+        {
+            return;
+        }
+
+        ImGuiWindowClass PanelWindowClass{};
+        PanelWindowClass.DockNodeFlagsOverrideSet =
+            ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton;
+        ImGui::SetNextWindowClass(&PanelWindowClass);
+
+        const ImGuiWindowFlags Flags = ImGuiWindowFlags_NoTitleBar |
+                                      ImGuiWindowFlags_NoCollapse |
+                                      ImGuiWindowFlags_NoResize |
+                                      ImGuiWindowFlags_NoMove |
+                                      ImGuiWindowFlags_NoScrollbar |
+                                      ImGuiWindowFlags_NoScrollWithMouse |
+                                      ImGuiWindowFlags_NoSavedSettings |
+                                      ImGuiWindowFlags_NoInputs |
+                                      ImGuiWindowFlags_NoNav |
+                                      ImGuiWindowFlags_NoFocusOnAppearing |
+                                      ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                      ImGuiWindowFlags_NoBackground;
+
+        LayoutState->bApplyingRestore = true;
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+        for (const auto &Pair : LayoutState->PanelDockIds)
+        {
+            if (Pair.first.empty() || Pair.second == 0)
+            {
+                continue;
+            }
+
+            ImGui::SetNextWindowDockID(Pair.second, ImGuiCond_Always);
+            const std::string HiddenTitle = std::string("###") + Pair.first;
+            bool bOpen = true;
+            if (ImGui::Begin(HiddenTitle.c_str(), &bOpen, Flags))
+            {
+            }
+            ImGui::End();
+        }
+
+        ImGui::PopStyleVar(2);
+        LayoutState->bApplyingRestore = false;
     }
 
     static void End()

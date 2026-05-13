@@ -128,4 +128,5 @@ class FSkeletalMeshEditor final : public IAssetEditor
     ImGuiID BuiltDockspaceId = 0;
 
     bool bCapturingInput = false;
+    bool bIsActiveTab = false;
 };

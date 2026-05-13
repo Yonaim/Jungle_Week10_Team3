@@ -131,29 +131,70 @@ class UEditorEngine : public UEngine
     FLevelViewportLayout       &GetViewportLayout() { return LevelEditor.GetViewportLayout(); }
     const FLevelViewportLayout &GetViewportLayout() const { return LevelEditor.GetViewportLayout(); }
     // 레이아웃에 위임
-    const TArray<FEditorViewportClient *> &GetAllViewportClients() const { return LevelEditor.GetViewportLayout().GetAllViewportClients(); }
+    // 다중 document tab 구조에서는 LevelEditor 내부 legacy ViewportLayout이 아니라
+    // 현재 활성 Level document tab이 소유한 ViewportLayout을 사용해야 한다.
+    const TArray<FEditorViewportClient *> &GetAllViewportClients() const
+    {
+        static const TArray<FEditorViewportClient *> EmptyClients;
+        const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+        return ActiveLayout ? ActiveLayout->GetAllViewportClients() : EmptyClients;
+    }
     const TArray<FLevelEditorViewportClient *> &GetLevelViewportClients() const
     {
-        return LevelEditor.GetViewportLayout().GetLevelViewportClients();
+        static const TArray<FLevelEditorViewportClient *> EmptyClients;
+        const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+        return ActiveLayout ? ActiveLayout->GetLevelViewportClients() : EmptyClients;
     }
     bool ShouldRenderViewportClient(const FLevelEditorViewportClient *ViewportClient) const
     {
-        return IsLevelEditorContextActive() && LevelEditor.GetViewportLayout().ShouldRenderViewportClient(ViewportClient);
+        const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+        return IsLevelEditorContextActive() && ActiveLayout && ActiveLayout->ShouldRenderViewportClient(ViewportClient);
     }
 
-    void SetActiveViewport(FLevelEditorViewportClient *InClient) { LevelEditor.GetViewportLayout().SetActiveViewport(InClient); }
-    FLevelEditorViewportClient *GetActiveViewport() const { return LevelEditor.GetViewportLayout().GetActiveViewport(); }
+    void SetActiveViewport(FLevelEditorViewportClient *InClient)
+    {
+        if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+        {
+            ActiveLayout->SetActiveViewport(InClient);
+        }
+    }
+    FLevelEditorViewportClient *GetActiveViewport() const
+    {
+        const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+        return ActiveLayout ? ActiveLayout->GetActiveViewport() : nullptr;
+    }
 
-    void ToggleViewportSplit() { LevelEditor.GetViewportLayout().ToggleViewportSplit(); }
-    bool IsSplitViewport() const { return LevelEditor.GetViewportLayout().IsSplitViewport(); }
+    void ToggleViewportSplit()
+    {
+        if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+        {
+            ActiveLayout->ToggleViewportSplit();
+        }
+    }
+    bool IsSplitViewport() const
+    {
+        const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+        return ActiveLayout && ActiveLayout->IsSplitViewport();
+    }
 
-    void    RenderViewportUI(float DeltaTime) { LevelEditor.GetViewportLayout().RenderViewportUI(DeltaTime); }
+    void RenderViewportUI(float DeltaTime)
+    {
+        if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+        {
+            ActiveLayout->RenderViewportUI(DeltaTime);
+        }
+    }
     AActor *SpawnPlaceActor(FLevelViewportLayout::EViewportPlaceActorType Type, const FVector &Location)
     {
-        return LevelEditor.GetViewportLayout().SpawnPlaceActor(Type, Location);
+        FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+        return ActiveLayout ? ActiveLayout->SpawnPlaceActor(Type, Location) : nullptr;
     }
 
-    bool IsMouseOverViewport() const { return LevelEditor.GetViewportLayout().IsMouseOverViewport(); }
+    bool IsMouseOverViewport() const
+    {
+        const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+        return ActiveLayout && ActiveLayout->IsMouseOverViewport();
+    }
 
     void RenderUI(float DeltaTime);
     bool CanCloseEditorWithPrompt() const;

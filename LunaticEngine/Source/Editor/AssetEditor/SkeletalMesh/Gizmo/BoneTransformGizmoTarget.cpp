@@ -9,15 +9,22 @@
 
 FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent,
                                                      std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController,
-                                                     int32 InBoneIndex)
+                                                     int32 InBoneIndex,
+                                                     const bool* InOwnerContextActiveFlag)
     : Component(InComponent)
     , PoseController(std::move(InPoseController))
     , BoneIndex(InBoneIndex)
+    , OwnerContextActiveFlag(InOwnerContextActiveFlag)
 {
 }
 
 bool FBoneTransformGizmoTarget::IsValid() const
 {
+    if (!OwnerContextActiveFlag || !(*OwnerContextActiveFlag))
+    {
+        return false;
+    }
+
     if (!Component || BoneIndex < 0)
     {
         return false;

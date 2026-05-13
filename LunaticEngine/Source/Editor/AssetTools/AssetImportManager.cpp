@@ -155,9 +155,12 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
         return false;
     }
 
+    const FString SourceFileNameForToast = FPaths::ToUtf8(SourceAbsolute.filename().wstring());
+    FNotificationManager::Get().AddNotification("Import 0%: preparing " + SourceFileNameForToast, ENotificationType::Info, 2.0f);
     UE_LOG_CATEGORY(AssetImport, Info, "[Import] Begin: source=%s", ToUtf8GenericPath(SourceAbsolute).c_str());
 
     const std::wstring Ext = ToLowerExtension(SourceAbsolute);
+    FNotificationManager::Get().AddNotification("Import 30%: converting source asset", ENotificationType::Info, 2.0f);
     bool bResult = false;
 
     if (Ext == L".fbx" || Ext == L".obj")
@@ -188,6 +191,8 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
         UE_LOG_CATEGORY(AssetImport, Error, "[Import] Failed: source=%s", ToUtf8GenericPath(SourceAbsolute).c_str());
         return false;
     }
+
+    FNotificationManager::Get().AddNotification("Import 70%: writing .uasset and refreshing browser", ENotificationType::Info, 2.0f);
 
     FMeshAssetManager::ScanMeshAssets();
     FMeshAssetManager::ScanMeshSourceFiles();

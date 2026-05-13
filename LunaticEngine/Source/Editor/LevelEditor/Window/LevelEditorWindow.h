@@ -2,10 +2,12 @@
 
 #include "Common/Menu/EditorMenuBar.h"
 #include "Common/Menu/EditorMenuProvider.h"
+#include "Common/UI/Panels/Panel.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "ImGui/imgui.h"
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 #include "LevelEditor/UI/Debug/ShadowMapDebugPanel.h"
@@ -15,6 +17,7 @@
 #include "LevelEditor/UI/Panels/LevelOutlinerPanel.h"
 #include "LevelEditor/UI/Panels/LevelPlaceActorsPanel.h"
 #include "LevelEditor/UI/Panels/LevelStatPanel.h"
+#include "LevelEditor/Viewport/LevelViewportLayout.h"
 
 class FRenderer;
 class UEditorEngine;
@@ -61,15 +64,18 @@ class FLevelEditorWindow : public IEditorMenuProvider
      */
     void  HideLevelEditorUIForAssetEditor();
     void  RestoreLevelEditorUIAfterAssetEditor();
-    void  SetShowEditorOnlyComponents(bool bEnable) { DetailsPanel.SetShowEditorOnlyComponents(bEnable); }
-    bool  IsShowingEditorOnlyComponents() const { return DetailsPanel.IsShowingEditorOnlyComponents(); }
+    void  SetShowEditorOnlyComponents(bool bEnable);
+    bool  IsShowingEditorOnlyComponents() const;
     void  HideEditorWindowsForPIE();
     void  RestoreEditorWindowsAfterPIE();
-    void  RefreshContentBrowser() { ContentBrowser.Refresh(); }
-    void  SelectContentBrowserPath(const std::filesystem::path& Path) { ContentBrowser.RevealAndSelect(Path); }
+    void  RefreshContentBrowser();
+    void  SelectContentBrowserPath(const std::filesystem::path& Path);
     ImGuiID GetMainDockspaceId() const { return MainDockspaceId; }
-    void  SetContentBrowserIconSize(float Size) { ContentBrowser.SetIconSize(Size); }
-    float GetContentBrowserIconSize() const { return ContentBrowser.GetIconSize(); }
+    FLevelViewportLayout *GetActiveLevelViewportLayout();
+    const FLevelViewportLayout *GetActiveLevelViewportLayout() const;
+    bool IsActiveDocumentAssetEditor() const;
+    void  SetContentBrowserIconSize(float Size);
+    float GetContentBrowserIconSize() const;
     void  RequestDefaultDockLayout();
     void  FlushPendingMenuAction();
     void  MarkActiveLevelDocumentDirty();
@@ -86,6 +92,9 @@ class FLevelEditorWindow : public IEditorMenuProvider
     FString GetFrameTitleTooltip() const override;
 
   private:
+    struct FLevelDocumentPanels;
+    struct FLevelDocumentTab;
+
     enum class EPendingMenuAction
     {
         None,
@@ -105,8 +114,17 @@ class FLevelEditorWindow : public IEditorMenuProvider
 
     void MakeCurrentContext() const;
     void ApplyPendingDefaultDockLayout();
+    FLevelDocumentTab *GetActiveLevelDocumentTab();
+    const FLevelDocumentTab *GetActiveLevelDocumentTab() const;
+    FLevelDocumentPanels *GetActiveLevelDocumentPanels();
+    const FLevelDocumentPanels *GetActiveLevelDocumentPanels() const;
+    std::string GetActiveDocumentLayoutId() const;
+    FDockPanelLayoutState *GetActiveDocumentLayoutState();
+    void RequestRestoreForActiveDocument();
     bool HasBlockingOverlayOpen() const;
     void HandleGlobalShortcuts();
+    void InitializeLevelDocumentPanels(FLevelDocumentTab &Tab);
+    void ShutdownLevelDocumentPanels(FLevelDocumentTab &Tab);
     void OpenLevelDocumentTabFromCurrentScene();
     void ReplaceActiveLevelDocumentTabFromCurrentScene();
     void SyncCurrentLevelDocumentTab();
@@ -130,24 +148,38 @@ class FLevelEditorWindow : public IEditorMenuProvider
     FEditorImGuiSystem *ImGuiSystem = nullptr;
 
     FEditorMenuBar MenuBar;
-    FLevelConsolePanel ConsolePanel;
-    FLevelDetailsPanel DetailsPanel;
-    FLevelOutlinerPanel OutlinerPanel;
-    FLevelPlaceActorsPanel PlaceActorsPanel;
-    FLevelStatPanel StatPanel;
-    FContentBrowser ContentBrowser;
-    FShadowMapDebugPanel ShadowMapDebugPanel;
+
+    struct FLevelDocumentPanels
+    {
+        // Each document tab owns its own panel instances.
+        // Layout state alone is not enough: ImGui windows such as Viewport/Details/Outliner
+        // need stable per-tab owner instances so tab switching does not collapse everything
+        // into one shared viewport/panel set.
+        std::unique_ptr<FLevelViewportLayout> ViewportLayout;
+        std::unique_ptr<FLevelConsolePanel> ConsolePanel;
+        std::unique_ptr<FLevelDetailsPanel> DetailsPanel;
+        std::unique_ptr<FLevelOutlinerPanel> OutlinerPanel;
+        std::unique_ptr<FLevelPlaceActorsPanel> PlaceActorsPanel;
+        std::unique_ptr<FLevelStatPanel> StatPanel;
+        std::unique_ptr<FContentBrowser> ContentBrowser;
+        std::unique_ptr<FShadowMapDebugPanel> ShadowMapDebugPanel;
+    };
 
     struct FLevelDocumentTab
     {
         std::filesystem::path ScenePath;
         std::string Title;
+        std::string LayoutId;
+        FDockPanelLayoutState LayoutState;
+        std::unique_ptr<FLevelDocumentPanels> Panels;
         bool bDirty = false;
     };
 
     std::vector<FLevelDocumentTab> LevelDocumentTabs;
     int32 ActiveLevelDocumentTabIndex = -1;
     uint32 NextUntitledSceneIndex = 1;
+    uint32 NextLevelLayoutId = 1;
+    bool bSuppressAutoLevelDocumentTab = false;
 
     bool bShowPanelList = false;
     bool bHideEditorWindows = false;

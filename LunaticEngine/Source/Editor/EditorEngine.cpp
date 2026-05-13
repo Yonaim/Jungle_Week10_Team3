@@ -35,15 +35,26 @@ namespace
 {
 void DeactivateEditorViewportClient(FEditorViewportClient* Client)
 {
-    if (!Client)
+    if (Client)
     {
-        return;
+        Client->DeactivateEditorContext();
     }
+}
 
-    Client->SetActive(false);
-    Client->SetHovered(false);
-    Client->GetGizmoManager().CancelDrag();
-    Client->GetGizmoManager().ResetVisualInteractionState();
+void DeactivateLevelViewportClients(const TArray<FLevelEditorViewportClient*>& Clients)
+{
+    for (FLevelEditorViewportClient* Client : Clients)
+    {
+        DeactivateEditorViewportClient(Client);
+    }
+}
+
+void ActivateLevelViewportClient(FLevelEditorViewportClient* Client)
+{
+    if (Client)
+    {
+        Client->ActivateEditorContext();
+    }
 }
 
 void ApplyLevelTransformSettingsToGizmo(FGizmoManager& Manager, const FLevelEditorSettings& Settings, EGizmoMode Mode)
@@ -113,6 +124,11 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
         SCOPE_STARTUP_STAT("Editor::LoadStartLevel");
         LevelEditor.GetSceneManager().LoadStartLevel();
     }
+
+    // Initial editor context must be explicitly activated after the Level viewport clients exist.
+    // ActiveEditorContextType defaults to LevelEditor, but the viewport clients start with
+    // bEditorContextActive=false; without this, the first Level viewport render request is rejected.
+    SetActiveEditorContext(EEditorContextType::LevelEditor);
     ApplyTransformSettingsToGizmo();
 
     // 에디터 렌더 파이프라인
@@ -182,13 +198,19 @@ void UEditorEngine::Tick(float DeltaTime)
     // 입력 캡처 여부는 보이는 모든 패널이 아니라 현재 활성 에디터 컨텍스트가 결정한다.
     // 이렇게 하면 Asset Editor 패널이 Level Viewport 입력을 가로채지 않고,
     // 커서가 Asset Preview Viewport 위에 있을 때는 해당 뷰포트가 ImGui 캡처를 적절히 해제할 수 있다.
-    LevelEditorWindow.UpdateInputState(IsMouseOverActiveViewport(), false, IsScoreSavePopupOpen());
+    LevelEditorWindow.UpdateInputState(IsMouseOverActiveViewport(), IsAssetEditorCapturingInput(), IsScoreSavePopupOpen());
 
     if (IsLevelEditorContextActive())
     {
-        for (FEditorViewportClient *VC : GetViewportLayout().GetAllViewportClients())
+        if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
         {
-            VC->Tick(DeltaTime);
+            for (FEditorViewportClient *VC : ActiveLayout->GetAllViewportClients())
+            {
+                if (VC)
+                {
+                    VC->Tick(DeltaTime);
+                }
+            }
         }
     }
 
@@ -208,18 +230,24 @@ bool UEditorEngine::LoadScene(const FString &InSceneReference)
 
 FEditorViewportCamera *UEditorEngine::GetCamera() const
 {
-    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
+    if (const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
     {
-        return ActiveVC->GetCamera();
+        if (FLevelEditorViewportClient *ActiveVC = ActiveLayout->GetActiveViewport())
+        {
+            return ActiveVC->GetCamera();
+        }
     }
     return nullptr;
 }
 
 bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 {
-    if (FLevelEditorViewportClient *ActiveVC = GetViewportLayout().GetActiveViewport())
+    if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
     {
-        return ActiveVC->FocusActor(Actor);
+        if (FLevelEditorViewportClient *ActiveVC = ActiveLayout->GetActiveViewport())
+        {
+            return ActiveVC->FocusActor(Actor);
+        }
     }
     return false;
 }
@@ -227,66 +255,53 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
 {
     const EEditorContextType PreviousContextType = ActiveEditorContextType;
-
-    if (PreviousContextType != InContextType)
-    {
-        if (PreviousContextType == EEditorContextType::AssetEditor)
-        {
-            DeactivateEditorViewportClient(AssetEditorManager.GetActiveViewportClient());
-        }
-        else
-        {
-            DeactivateEditorViewportClient(GetActiveViewport());
-        }
-    }
-
-    if (ActiveEditorContextType == InContextType)
+    if (PreviousContextType == InContextType)
     {
         if (InContextType == EEditorContextType::AssetEditor)
         {
-            HideLevelEditorUIForAssetEditor();
-            if (FEditorViewportClient *ViewportClient = AssetEditorManager.GetActiveViewportClient())
-            {
-                ViewportClient->SetActive(true);
-            }
+            AssetEditorManager.GetAssetEditorWindow().EnterEditorContext();
         }
         else
         {
-            AssetEditorManager.GetAssetEditorWindow().Hide();
-            RestoreLevelEditorUIAfterAssetEditor();
-            LevelEditorWindow.RequestDefaultDockLayout();
-            if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
+            if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
             {
-                LevelViewportClient->SetActive(true);
+                ActivateLevelViewportClient(ActiveLayout->GetActiveViewport());
             }
+            ApplyTransformSettingsToGizmo();
         }
         return;
+    }
+
+    if (PreviousContextType == EEditorContextType::AssetEditor)
+    {
+        AssetEditorManager.GetAssetEditorWindow().ExitEditorContext();
+    }
+    else
+    {
+        // Level Editor는 split viewport를 가질 수 있으므로 active viewport 하나만 끊으면 부족하다.
+        // Asset Editor 탭으로 넘어갈 때 모든 Level viewport의 live context / gizmo target / input state를 끊는다.
+        if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+        {
+            DeactivateLevelViewportClients(ActiveLayout->GetLevelViewportClients());
+        }
     }
 
     ActiveEditorContextType = InContextType;
 
     if (IsAssetEditorContextActive())
     {
-        HideLevelEditorUIForAssetEditor();
-        if (FEditorViewportClient *ViewportClient = AssetEditorManager.GetActiveViewportClient())
-        {
-            ViewportClient->SetActive(true);
-        }
+        AssetEditorManager.GetAssetEditorWindow().EnterEditorContext();
+        return;
     }
-    else
-    {
-        // Asset Editor 탭은 닫지 않고 workspace만 숨긴다.
-        // 숨김 상태에서는 FAssetEditorWindow::IsOpen()이 false가 되어 preview tick/render/viewport 수집이 멈춘다.
-        AssetEditorManager.GetAssetEditorWindow().Hide();
 
-        RestoreLevelEditorUIAfterAssetEditor();
-        LevelEditorWindow.RequestDefaultDockLayout();
-        if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
-        {
-            LevelViewportClient->SetActive(true);
-            ApplyTransformSettingsToGizmo();
-        }
+    // Asset Editor 탭은 닫지 않는다. state/selection/preview scene/layout은 탭 객체에 유지하고,
+    // live input/tick/render target sync만 ExitEditorContext()에서 끊는다.
+    RestoreLevelEditorUIAfterAssetEditor();
+    if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+    {
+        ActivateLevelViewportClient(ActiveLayout->GetActiveViewport());
     }
+    ApplyTransformSettingsToGizmo();
 }
 
 FEditorViewportClient *UEditorEngine::GetActiveEditorViewportClient() const
@@ -296,7 +311,11 @@ FEditorViewportClient *UEditorEngine::GetActiveEditorViewportClient() const
         return AssetEditorManager.GetActiveViewportClient();
     }
 
-    return GetViewportLayout().GetActiveViewport();
+    if (const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+    {
+        return ActiveLayout->GetActiveViewport();
+    }
+    return nullptr;
 }
 
 bool UEditorEngine::IsMouseOverActiveViewport() const
@@ -310,7 +329,11 @@ bool UEditorEngine::IsMouseOverActiveViewport() const
         return false;
     }
 
-    return IsMouseOverViewport();
+    if (const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+    {
+        return ActiveLayout->IsMouseOverViewport();
+    }
+    return false;
 }
 
 void UEditorEngine::RenderUI(float DeltaTime)
@@ -369,9 +392,12 @@ void UEditorEngine::SetEditorGizmoMode(EGizmoMode NewMode)
         return;
     }
 
-    if (FLevelEditorViewportClient *Client = GetActiveViewport())
+    if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
     {
-        ApplyLevelTransformSettingsToGizmo(Client->GetGizmoManager(), FLevelEditorSettings::Get(), NewMode);
+        if (FLevelEditorViewportClient *Client = ActiveLayout->GetActiveViewport())
+        {
+            ApplyLevelTransformSettingsToGizmo(Client->GetGizmoManager(), FLevelEditorSettings::Get(), NewMode);
+        }
     }
 }
 
@@ -393,9 +419,12 @@ void UEditorEngine::ApplyTransformSettingsToGizmo()
         return;
     }
 
-    if (FLevelEditorViewportClient *Client = GetActiveViewport())
+    if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
     {
-        ApplyLevelTransformSettingsToGizmo(Client->GetGizmoManager(), FLevelEditorSettings::Get(), Client->GetGizmoManager().GetMode());
+        if (FLevelEditorViewportClient *Client = ActiveLayout->GetActiveViewport())
+        {
+            ApplyLevelTransformSettingsToGizmo(Client->GetGizmoManager(), FLevelEditorSettings::Get(), Client->GetGizmoManager().GetMode());
+        }
     }
 }
 
@@ -531,7 +560,13 @@ void UEditorEngine::InvalidateTrackedSceneSnapshotCache() { LevelEditor.GetHisto
 
 FEditorViewportCamera *UEditorEngine::FindSceneViewportCamera() const
 {
-    for (FLevelEditorViewportClient *VC : GetViewportLayout().GetLevelViewportClients())
+    const FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout();
+    if (!ActiveLayout)
+    {
+        return nullptr;
+    }
+
+    for (FLevelEditorViewportClient *VC : ActiveLayout->GetLevelViewportClients())
     {
         if (!VC)
         {

@@ -49,8 +49,9 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void SetSelectionManager(FSkeletalMeshSelectionManager *InSelectionManager) { SelectionManager = InSelectionManager; }
     void SetPoseController(std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController);
 
-    void ActivateForTabSwitch(FSkeletalMeshEditorState* InState, FSkeletalMeshSelectionManager* InSelectionManager);
-    void DeactivateForTabSwitch();
+    void BindEditorContext(FSkeletalMeshEditorState* InState, FSkeletalMeshSelectionManager* InSelectionManager);
+    void ActivateEditorContext() override;
+    void DeactivateEditorContext() override;
 
     void RenderViewportImage(bool bIsActiveViewport) override;
     const char *GetViewportTooltipBarText() const override;
@@ -78,6 +79,8 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void SyncRenderOptionsFromState();
     void ApplyViewportTypeToCamera();
     void SyncGizmoTargetFromSelection();
+    bool CanProcessLiveViewportWork() const;
+    bool CanProcessViewportInput() const;
 
   private:
     USkeletalMesh *PreviewMesh = nullptr;
@@ -102,4 +105,5 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     float OrbitYaw = 180.0f;
     float OrbitPitch = -10.0f;
     bool bPreviewObjectsInitialized = false;
+    bool bNeedsDeferredTargetSync = false;
 };

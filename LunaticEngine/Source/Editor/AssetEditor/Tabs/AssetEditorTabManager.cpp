@@ -44,30 +44,38 @@ namespace
             return;
         }
 
-        Editor->OnDeactivated();
-
-        FEditorViewportClient* ViewportClient = Editor->GetActiveViewportClient();
-        if (!ViewportClient)
+        // Deactivate every viewport owned by this editor, not just the active one.
+        // An asset editor can have preview/detail viewports later, and hidden clients
+        // must not keep live gizmo/input targets.
+        TArray<FEditorViewportClient*> ViewportClients;
+        Editor->CollectViewportClients(ViewportClients);
+        for (FEditorViewportClient* ViewportClient : ViewportClients)
         {
-            return;
+            if (ViewportClient)
+            {
+                ViewportClient->DeactivateEditorContext();
+            }
         }
 
-        ViewportClient->SetActive(false);
-        ViewportClient->SetHovered(false);
-        ViewportClient->GetGizmoManager().CancelDrag();
-        ViewportClient->GetGizmoManager().ClearTarget();
-        ViewportClient->GetGizmoManager().ResetVisualInteractionState();
+        if (FEditorViewportClient* ViewportClient = Editor->GetActiveViewportClient())
+        {
+            ViewportClient->DeactivateEditorContext();
+        }
+
+        Editor->OnDeactivated();
     }
 
     void ActivateAssetEditorViewport(IAssetEditor* Editor)
     {
-        if (Editor)
+        if (!Editor)
         {
-            Editor->OnActivated();
-            if (FEditorViewportClient* ViewportClient = Editor->GetActiveViewportClient())
-            {
-                ViewportClient->SetActive(true);
-            }
+            return;
+        }
+
+        Editor->OnActivated();
+        if (FEditorViewportClient* ViewportClient = Editor->GetActiveViewportClient())
+        {
+            ViewportClient->ActivateEditorContext();
         }
     }
 
@@ -219,20 +227,41 @@ bool FAssetEditorTabManager::SaveActiveTab()
     return Editor ? Editor->Save() : false;
 }
 
-void FAssetEditorTabManager::ActivateActiveTab()
+void FAssetEditorTabManager::SetEditorContextActive(bool bActive)
 {
+    if (bEditorContextActive == bActive)
+    {
+        return;
+    }
+
+    bEditorContextActive = bActive;
+    if (bEditorContextActive)
+    {
+        ActivateActiveTabContext();
+    }
+    else
+    {
+        DeactivateActiveTabContext();
+    }
+}
+
+void FAssetEditorTabManager::ActivateActiveTabContext()
+{
+    bEditorContextActive = true;
     if (FAssetEditorTab* ActiveTab = GetActiveTab())
     {
+        ActiveTab->RequestRestoreCapturedLayout();
         ActivateAssetEditorViewport(ActiveTab->GetEditor());
     }
 }
 
-void FAssetEditorTabManager::DeactivateActiveTab()
+void FAssetEditorTabManager::DeactivateActiveTabContext()
 {
     if (FAssetEditorTab* ActiveTab = GetActiveTab())
     {
         DeactivateAssetEditorViewport(ActiveTab->GetEditor());
     }
+    bEditorContextActive = false;
 }
 
 void FAssetEditorTabManager::Tick(float DeltaTime)
@@ -247,14 +276,81 @@ void FAssetEditorTabManager::Tick(float DeltaTime)
     }
 }
 
+void FAssetEditorTabManager::RequestDefaultLayoutForActiveTab()
+{
+    if (FAssetEditorTab *Tab = GetActiveTab())
+    {
+        Tab->RequestDefaultLayout();
+    }
+}
+
 void FAssetEditorTabManager::InvalidateEditorLayouts()
 {
-    for (const std::unique_ptr<FAssetEditorTab>& Tab : Tabs)
+    // Legacy name kept for existing menu code. Reset only the active tab.
+    RequestDefaultLayoutForActiveTab();
+}
+
+void FAssetEditorTabManager::AppendDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const
+{
+    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
     {
-        if (Tab && Tab->GetEditor())
+        if (!Tab || !Tab->GetEditor())
         {
-            Tab->GetEditor()->InvalidateDockLayout();
+            continue;
         }
+
+        FEditorDocumentTabBar::FTabDesc Desc;
+        Desc.Label = Tab->GetTitle();
+        Desc.Tooltip = FPaths::ToUtf8(Tab->GetAssetPath().wstring());
+        Desc.bDirty = Tab->GetEditor()->IsDirty();
+        Desc.IconKey = Tab->GetEditor()->GetDocumentTabIconKey();
+        Desc.IconTint = Tab->GetEditor()->GetDocumentTabIconTint();
+        OutTabs.push_back(std::move(Desc));
+    }
+}
+
+const std::string &FAssetEditorTabManager::GetActiveLayoutId() const
+{
+    static const std::string EmptyLayoutId;
+    FAssetEditorTab *Tab = GetActiveTab();
+    return Tab ? Tab->GetLayoutId() : EmptyLayoutId;
+}
+
+void FAssetEditorTabManager::CollectLayoutIds(std::vector<std::string> &OutLayoutIds) const
+{
+    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    {
+        if (Tab)
+        {
+            OutLayoutIds.push_back(Tab->GetLayoutId());
+        }
+    }
+}
+
+void FAssetEditorTabManager::RenderInactiveDockKeepAliveWindows(const std::string &ActiveLayoutId)
+{
+    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    {
+        if (!Tab || Tab->GetLayoutId() == ActiveLayoutId)
+        {
+            continue;
+        }
+
+        FPanel::RenderDockKeepAliveWindows(&Tab->GetLayoutState());
+    }
+}
+
+FDockPanelLayoutState *FAssetEditorTabManager::GetActiveLayoutState()
+{
+    FAssetEditorTab *Tab = GetActiveTab();
+    return Tab ? &Tab->GetLayoutState() : nullptr;
+}
+
+void FAssetEditorTabManager::RequestRestoreForActiveTab()
+{
+    if (FAssetEditorTab *Tab = GetActiveTab())
+    {
+        Tab->RequestRestoreCapturedLayout();
     }
 }
 
@@ -315,11 +411,20 @@ void FAssetEditorTabManager::RenderActiveTab(float DeltaTime, ImGuiID DockspaceI
     }
 
     IAssetEditor *Editor = Tab->GetEditor();
+    FDockPanelLayoutState &LayoutState = Tab->GetLayoutState();
+    FPanel::SetCurrentStableIdPrefix(Tab->GetLayoutId());
+    FPanel::SetCurrentDockspaceId(DockspaceId);
+    FPanel::SetCurrentLayoutState(&LayoutState);
+
     if (Editor->UsesExternalPanels())
     {
         // SkeletalMeshEditor처럼 에디터 내부 영역이 실제 패널 단위로 나뉘는 경우.
         // 다중 문서 탭 구조에서는 반드시 ActiveTab 하나만 외부 패널을 렌더링해야 한다.
         Editor->RenderPanels(DeltaTime, DockspaceId);
+        LayoutState.bRestoreCapturedLayoutNextFrame = false;
+        FPanel::ClearCurrentLayoutState();
+        FPanel::ClearCurrentDockspaceId();
+        FPanel::ClearCurrentStableIdPrefix();
         return;
     }
 
@@ -340,6 +445,11 @@ void FAssetEditorTabManager::RenderActiveTab(float DeltaTime, ImGuiID DockspaceI
         Tab->Render(DeltaTime);
     }
     FPanel::End();
+
+    LayoutState.bRestoreCapturedLayoutNextFrame = false;
+    FPanel::ClearCurrentLayoutState();
+    FPanel::ClearCurrentDockspaceId();
+    FPanel::ClearCurrentStableIdPrefix();
 
     if (!bOpen)
     {
@@ -393,22 +503,25 @@ bool FAssetEditorTabManager::SetActiveTabIndex(int32 NewIndex)
 
     if (ActiveTabIndex == NewIndex)
     {
-        ActivateAssetEditorViewport(Tabs[ActiveTabIndex] ? Tabs[ActiveTabIndex]->GetEditor() : nullptr);
         return true;
     }
 
-    if (FAssetEditorTab *OldTab = GetActiveTab())
+    if (bEditorContextActive)
     {
-        DeactivateAssetEditorViewport(OldTab->GetEditor());
+        if (FAssetEditorTab *OldTab = GetActiveTab())
+        {
+            DeactivateAssetEditorViewport(OldTab->GetEditor());
+        }
     }
 
     ActiveTabIndex = NewIndex;
     if (Tabs[ActiveTabIndex] && Tabs[ActiveTabIndex]->GetEditor())
     {
-        // DockspaceId는 그대로인데 ActiveEditor만 바뀌는 경우가 있으므로,
-        // 새로 활성화된 에디터가 자기 기본 layout을 다시 보장하게 한다.
-        Tabs[ActiveTabIndex]->GetEditor()->InvalidateDockLayout();
-        ActivateAssetEditorViewport(Tabs[ActiveTabIndex]->GetEditor());
+        Tabs[ActiveTabIndex]->RequestRestoreCapturedLayout();
+        if (bEditorContextActive)
+        {
+            ActivateAssetEditorViewport(Tabs[ActiveTabIndex]->GetEditor());
+        }
     }
     return true;
 }
@@ -425,6 +538,11 @@ int32 FAssetEditorTabManager::GetTabCount() const
 
 bool FAssetEditorTabManager::IsCapturingInput() const
 {
+    if (!bEditorContextActive)
+    {
+        return false;
+    }
+
     IAssetEditor *Editor = GetActiveEditor();
     return Editor && Editor->IsCapturingInput();
 }
@@ -437,12 +555,22 @@ IAssetEditor *FAssetEditorTabManager::GetActiveEditor() const
 
 FEditorViewportClient *FAssetEditorTabManager::GetActiveViewportClient() const
 {
+    if (!bEditorContextActive)
+    {
+        return nullptr;
+    }
+
     IAssetEditor *Editor = GetActiveEditor();
     return Editor ? Editor->GetActiveViewportClient() : nullptr;
 }
 
 void FAssetEditorTabManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
 {
+    if (!bEditorContextActive)
+    {
+        return;
+    }
+
     // 비활성 document tab의 preview viewport는 화면에 보이지 않으므로 렌더/입력 대상에서 제외한다.
     IAssetEditor *Editor = GetActiveEditor();
     if (Editor)

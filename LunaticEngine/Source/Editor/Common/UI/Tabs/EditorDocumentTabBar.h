@@ -158,18 +158,23 @@ inline FRenderResult Render(const char *Id, const std::vector<FTabDesc> &Tabs, i
         const ImVec2 TabMax(X + CurrentTabWidth, TabTop + TabHeight);
 
         ImGui::PushID(Index);
+
+        const ImVec2 CloseMin(TabMax.x - CloseButtonSize - 8.0f, TabMin.y + (TabHeight - CloseButtonSize) * 0.5f);
+        const ImVec2 CloseMax(CloseMin.x + CloseButtonSize, CloseMin.y + CloseButtonSize);
+        const ImVec2 SelectMax((std::max)(TabMin.x + 1.0f, CloseMin.x - 4.0f), TabMax.y);
+
         ImGui::SetCursorScreenPos(TabMin);
-        ImGui::InvisibleButton("##DocumentTab", ImVec2(CurrentTabWidth, TabHeight));
-        const bool bHovered = ImGui::IsItemHovered();
-        Result.bAnyHovered |= bHovered;
+        ImGui::InvisibleButton("##DocumentTabSelect", ImVec2((std::max)(1.0f, SelectMax.x - TabMin.x), TabHeight));
+        const bool bSelectHovered = ImGui::IsItemHovered();
+        Result.bAnyHovered |= bSelectHovered;
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
         {
             Result.SelectedIndex = Index;
         }
 
         const bool bSelected = Index == ActiveTabIndex;
-        const ImU32 FillColor = bSelected ? TabActiveColor : (bHovered ? TabHoverColor : TabInactiveColor);
-        if (bSelected || bHovered)
+        const ImU32 FillColor = bSelected ? TabActiveColor : (bSelectHovered ? TabHoverColor : TabInactiveColor);
+        if (bSelected || bSelectHovered)
         {
             DrawList->AddRectFilled(TabMin, TabMax, FillColor, Style.Rounding, ImDrawFlags_RoundCornersTop);
         }
@@ -200,7 +205,6 @@ inline FRenderResult Render(const char *Id, const std::vector<FTabDesc> &Tabs, i
         }
         DrawList->PopClipRect();
 
-        const ImVec2 CloseMin(TabMax.x - CloseButtonSize - 8.0f, TabMin.y + (TabHeight - CloseButtonSize) * 0.5f);
         ImGui::SetCursorScreenPos(CloseMin);
         ImGui::InvisibleButton("##CloseDocumentTab", ImVec2(CloseButtonSize, CloseButtonSize));
         const bool bCloseHovered = ImGui::IsItemHovered();
@@ -214,7 +218,7 @@ inline FRenderResult Render(const char *Id, const std::vector<FTabDesc> &Tabs, i
             Result.CloseRequestedIndex = Index;
         }
 
-        if (bHovered && !bCloseHovered)
+        if ((bSelectHovered || bCloseHovered) && !bCloseHovered)
         {
             DrawWideTooltip(Tab);
         }

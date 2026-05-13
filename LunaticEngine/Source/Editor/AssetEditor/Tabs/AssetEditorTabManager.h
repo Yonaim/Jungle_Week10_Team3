@@ -6,9 +6,13 @@
 
 #include <filesystem>
 #include <memory>
+#include <string>
+#include <vector>
 
 class IAssetEditor;
 class FEditorViewportClient;
+
+namespace FEditorDocumentTabBar { struct FTabDesc; }
 
 /**
  * 열린 Asset Editor 문서들을 관리하는 관리자.
@@ -38,14 +42,28 @@ class FAssetEditorTabManager
     void SetClosePromptOwnerWindowHandle(void *OwnerWindowHandle);
     bool SaveActiveTab();
 
-    void ActivateActiveTab();
-    void DeactivateActiveTab();
+    void SetEditorContextActive(bool bActive);
+    void ActivateActiveTabContext();
+    void DeactivateActiveTabContext();
+    void ActivateActiveTab() { ActivateActiveTabContext(); }
+    void DeactivateActiveTab() { DeactivateActiveTabContext(); }
 
     void Tick(float DeltaTime);
     void Render(float DeltaTime, ImGuiID DockspaceId = 0);
+    void RequestDefaultLayoutForActiveTab();
     void InvalidateEditorLayouts();
 
-    /** 현재 ImGui window 안에 Unreal식 asset document tab bar를 그린다. */
+    /** Unified main-frame document tab bar support. */
+    void AppendDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const;
+    bool SetActiveTabIndex(int32 NewIndex);
+    int32 GetActiveTabIndex() const { return ActiveTabIndex; }
+    const std::string &GetActiveLayoutId() const;
+    void CollectLayoutIds(std::vector<std::string> &OutLayoutIds) const;
+    void RenderInactiveDockKeepAliveWindows(const std::string &ActiveLayoutId);
+    FDockPanelLayoutState *GetActiveLayoutState();
+    void RequestRestoreForActiveTab();
+
+    /** 현재 ImGui window 안에 Unreal식 asset document tab bar를 그린다. Legacy fallback only. */
     bool RenderDocumentTabBar();
 
     bool HasOpenTabs() const;
@@ -57,7 +75,6 @@ class FAssetEditorTabManager
 
   private:
     FAssetEditorTab *GetActiveTab() const;
-    bool SetActiveTabIndex(int32 NewIndex);
     void RenderActiveTab(float DeltaTime, ImGuiID DockspaceId);
     void CompactInvalidTabs();
     bool ConfirmCloseTab(const FAssetEditorTab *Tab) const;
@@ -65,5 +82,6 @@ class FAssetEditorTabManager
   private:
     TArray<std::unique_ptr<FAssetEditorTab>> Tabs;
     int32 ActiveTabIndex = -1;
+    bool bEditorContextActive = false;
     void *ClosePromptOwnerWindowHandle = nullptr;
 };

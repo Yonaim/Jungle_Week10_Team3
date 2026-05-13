@@ -41,6 +41,7 @@
 #include "Platform/Paths.h"
 #include "Resource/ResourceManager.h"
 
+#include <cfloat>
 #include <filesystem>
 #include <imm.h>
 #include <windows.h>
@@ -101,15 +102,17 @@ namespace
     {
         SetNextPopupWindowPosition(ImGuiCond_Appearing);
         ImGui::SetNextWindowSize(InitialSize, SizeCondition);
+        ImGui::SetNextWindowSizeConstraints(ImVec2((std::max)(InitialSize.x, 360.0f), (std::max)(InitialSize.y, 180.0f)), ImVec2(FLT_MAX, FLT_MAX));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 14.0f));
         ImGui::PushStyleColor(ImGuiCol_TitleBg, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_Border, UnrealBorder);
         const bool bVisible = ImGui::Begin(Title, bOpen, Flags);
         ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(3);
         return bVisible;
     }
 
@@ -178,6 +181,10 @@ namespace
         Style.Colors[ImGuiCol_SeparatorActive] = ImVec4(18.0f / 255.0f, 18.0f / 255.0f, 18.0f / 255.0f, 1.0f);
         Style.Colors[ImGuiCol_Border] = UnrealBorder;
         Style.Colors[ImGuiCol_DockingEmptyBg] = UnrealDockEmpty;
+        Style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.10f, 0.11f, 1.0f);
+        Style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.36f, 0.36f, 0.39f, 1.0f);
+        Style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.48f, 0.48f, 0.52f, 1.0f);
+        Style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.58f, 0.58f, 0.62f, 1.0f);
     }
 
     FString GetSceneTitleLabel(UEditorEngine *EditorEngine)
@@ -233,34 +240,301 @@ void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer,
     LevelEditor = InLevelEditor;
     ImGuiSystem = InEditorEngine ? &InEditorEngine->GetImGuiSystem() : nullptr;
 
-    ConsolePanel.Init(InEditorEngine);
-    DetailsPanel.Init(InEditorEngine);
-    OutlinerPanel.Init(InEditorEngine);
-    PlaceActorsPanel.Init(InEditorEngine);
-    StatPanel.Init(InEditorEngine);
-    ContentBrowser.Init(InEditorEngine, InRenderer.GetFD3DDevice().GetDevice());
-    ShadowMapDebugPanel.Init(InEditorEngine);
-
-    // 시작 시에는 사용자의 ImGui ini / 이전 Dock 레이아웃을 사용하지 않고 Level Editor 기본 레이아웃을 강제 적용한다.
+    // Panel instances are created per document tab.
+    // Create the initial Level document immediately, not during RenderDocumentTabBar().
+    // The render pipeline collects viewport clients before UI is drawn, so delaying this
+    // until the tab bar pass makes the first frame have no active viewport/render request.
     bPendingDefaultDockLayout = true;
+    OpenLevelDocumentTabFromCurrentScene();
 }
 
 void FLevelEditorWindow::Release()
 {
-    ConsolePanel.Shutdown();
+    for (FLevelDocumentTab &Tab : LevelDocumentTabs)
+    {
+        ShutdownLevelDocumentPanels(Tab);
+    }
+    LevelDocumentTabs.clear();
 }
 
-void FLevelEditorWindow::SaveToSettings() const { ContentBrowser.SaveToSettings(); }
+void FLevelEditorWindow::SaveToSettings() const
+{
+    if (const FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels())
+    {
+        if (Panels->ContentBrowser)
+        {
+            Panels->ContentBrowser->SaveToSettings();
+        }
+        if (Panels->ViewportLayout)
+        {
+            const_cast<FLevelViewportLayout *>(Panels->ViewportLayout.get())->SaveToSettings();
+        }
+    }
+}
+
+void FLevelEditorWindow::InitializeLevelDocumentPanels(FLevelDocumentTab &Tab)
+{
+    if (!EditorEngine || !Renderer || !Window || !LevelEditor)
+    {
+        return;
+    }
+
+    if (!Tab.Panels)
+    {
+        Tab.Panels = std::make_unique<FLevelDocumentPanels>();
+    }
+
+    FLevelDocumentPanels &Panels = *Tab.Panels;
+    if (!Panels.ViewportLayout)
+    {
+        Panels.ViewportLayout = std::make_unique<FLevelViewportLayout>();
+        Panels.ViewportLayout->Init(EditorEngine, Window, *Renderer, &LevelEditor->GetSelectionManager());
+        Panels.ViewportLayout->LoadFromSettings();
+    }
+    if (!Panels.ConsolePanel)
+    {
+        Panels.ConsolePanel = std::make_unique<FLevelConsolePanel>();
+        Panels.ConsolePanel->Init(EditorEngine);
+    }
+    if (!Panels.DetailsPanel)
+    {
+        Panels.DetailsPanel = std::make_unique<FLevelDetailsPanel>();
+        Panels.DetailsPanel->Init(EditorEngine);
+    }
+    if (!Panels.OutlinerPanel)
+    {
+        Panels.OutlinerPanel = std::make_unique<FLevelOutlinerPanel>();
+        Panels.OutlinerPanel->Init(EditorEngine);
+    }
+    if (!Panels.PlaceActorsPanel)
+    {
+        Panels.PlaceActorsPanel = std::make_unique<FLevelPlaceActorsPanel>();
+        Panels.PlaceActorsPanel->Init(EditorEngine);
+    }
+    if (!Panels.StatPanel)
+    {
+        Panels.StatPanel = std::make_unique<FLevelStatPanel>();
+        Panels.StatPanel->Init(EditorEngine);
+    }
+    if (!Panels.ContentBrowser)
+    {
+        Panels.ContentBrowser = std::make_unique<FContentBrowser>();
+        Panels.ContentBrowser->Init(EditorEngine, Renderer->GetFD3DDevice().GetDevice());
+    }
+    if (!Panels.ShadowMapDebugPanel)
+    {
+        Panels.ShadowMapDebugPanel = std::make_unique<FShadowMapDebugPanel>();
+        Panels.ShadowMapDebugPanel->Init(EditorEngine);
+    }
+}
+
+void FLevelEditorWindow::ShutdownLevelDocumentPanels(FLevelDocumentTab &Tab)
+{
+    if (!Tab.Panels)
+    {
+        return;
+    }
+
+    if (Tab.Panels->ConsolePanel)
+    {
+        Tab.Panels->ConsolePanel->Shutdown();
+    }
+    if (Tab.Panels->ViewportLayout)
+    {
+        Tab.Panels->ViewportLayout->Release();
+    }
+    Tab.Panels.reset();
+}
+
+FLevelEditorWindow::FLevelDocumentPanels *FLevelEditorWindow::GetActiveLevelDocumentPanels()
+{
+    FLevelDocumentTab *Tab = GetActiveLevelDocumentTab();
+    if (!Tab)
+    {
+        return nullptr;
+    }
+    if (!Tab->Panels)
+    {
+        InitializeLevelDocumentPanels(*Tab);
+    }
+    return Tab->Panels.get();
+}
+
+const FLevelEditorWindow::FLevelDocumentPanels *FLevelEditorWindow::GetActiveLevelDocumentPanels() const
+{
+    const FLevelDocumentTab *Tab = GetActiveLevelDocumentTab();
+    return Tab ? Tab->Panels.get() : nullptr;
+}
+
+void FLevelEditorWindow::SetShowEditorOnlyComponents(bool bEnable)
+{
+    if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels())
+    {
+        if (Panels->DetailsPanel)
+        {
+            Panels->DetailsPanel->SetShowEditorOnlyComponents(bEnable);
+        }
+    }
+}
+
+bool FLevelEditorWindow::IsShowingEditorOnlyComponents() const
+{
+    if (const FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels())
+    {
+        return Panels->DetailsPanel && Panels->DetailsPanel->IsShowingEditorOnlyComponents();
+    }
+    return false;
+}
+
+void FLevelEditorWindow::RefreshContentBrowser()
+{
+    if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels())
+    {
+        if (Panels->ContentBrowser)
+        {
+            Panels->ContentBrowser->Refresh();
+        }
+    }
+}
+
+void FLevelEditorWindow::SelectContentBrowserPath(const std::filesystem::path& Path)
+{
+    if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels())
+    {
+        if (Panels->ContentBrowser)
+        {
+            Panels->ContentBrowser->RevealAndSelect(Path);
+        }
+    }
+}
+
+void FLevelEditorWindow::SetContentBrowserIconSize(float Size)
+{
+    if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels())
+    {
+        if (Panels->ContentBrowser)
+        {
+            Panels->ContentBrowser->SetIconSize(Size);
+        }
+    }
+}
+
+float FLevelEditorWindow::GetContentBrowserIconSize() const
+{
+    if (const FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels())
+    {
+        if (Panels->ContentBrowser)
+        {
+            return Panels->ContentBrowser->GetIconSize();
+        }
+    }
+    return 96.0f;
+}
+
+FLevelViewportLayout *FLevelEditorWindow::GetActiveLevelViewportLayout()
+{
+    FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels();
+    return Panels ? Panels->ViewportLayout.get() : nullptr;
+}
+
+const FLevelViewportLayout *FLevelEditorWindow::GetActiveLevelViewportLayout() const
+{
+    const FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels();
+    return Panels ? Panels->ViewportLayout.get() : nullptr;
+}
 
 void FLevelEditorWindow::RequestDefaultDockLayout()
 {
+    if (IsActiveDocumentAssetEditor())
+    {
+        EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().RequestDefaultLayoutForActiveTab();
+        bPendingDefaultDockLayout = true;
+        return;
+    }
+
+    if (FDockPanelLayoutState *LayoutState = GetActiveDocumentLayoutState())
+    {
+        LayoutState->bRequestDefaultLayout = true;
+        LayoutState->bDefaultLayoutBuilt = false;
+        LayoutState->bRestoreCapturedLayoutNextFrame = false;
+        LayoutState->PanelDockIds.clear();
+    }
     bPendingDefaultDockLayout = true;
+}
+
+FLevelEditorWindow::FLevelDocumentTab *FLevelEditorWindow::GetActiveLevelDocumentTab()
+{
+    if (ActiveLevelDocumentTabIndex < 0 || ActiveLevelDocumentTabIndex >= static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        return nullptr;
+    }
+    return &LevelDocumentTabs[ActiveLevelDocumentTabIndex];
+}
+
+const FLevelEditorWindow::FLevelDocumentTab *FLevelEditorWindow::GetActiveLevelDocumentTab() const
+{
+    if (ActiveLevelDocumentTabIndex < 0 || ActiveLevelDocumentTabIndex >= static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        return nullptr;
+    }
+    return &LevelDocumentTabs[ActiveLevelDocumentTabIndex];
+}
+
+bool FLevelEditorWindow::IsActiveDocumentAssetEditor() const
+{
+    return EditorEngine && EditorEngine->IsAssetEditorContextActive() &&
+           EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().HasOpenTabs();
+}
+
+std::string FLevelEditorWindow::GetActiveDocumentLayoutId() const
+{
+    if (IsActiveDocumentAssetEditor())
+    {
+        return EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().GetActiveLayoutId();
+    }
+    if (const FLevelDocumentTab *Tab = GetActiveLevelDocumentTab())
+    {
+        return Tab->LayoutId;
+    }
+    return "LevelEditorDockSpace_Empty";
+}
+
+FDockPanelLayoutState *FLevelEditorWindow::GetActiveDocumentLayoutState()
+{
+    if (IsActiveDocumentAssetEditor())
+    {
+        return EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().GetActiveLayoutState();
+    }
+    if (FLevelDocumentTab *Tab = GetActiveLevelDocumentTab())
+    {
+        return &Tab->LayoutState;
+    }
+    return nullptr;
+}
+
+void FLevelEditorWindow::RequestRestoreForActiveDocument()
+{
+    if (IsActiveDocumentAssetEditor())
+    {
+        EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().RequestRestoreForActiveTab();
+        return;
+    }
+    if (FLevelDocumentTab *Tab = GetActiveLevelDocumentTab())
+    {
+        if (!Tab->LayoutState.PanelDockIds.empty())
+        {
+            Tab->LayoutState.bRestoreCapturedLayoutNextFrame = true;
+        }
+    }
 }
 
 
 void FLevelEditorWindow::OpenLevelDocumentTabFromCurrentScene()
 {
+    bSuppressAutoLevelDocumentTab = false;
     FLevelDocumentTab NewTab;
+    NewTab.LayoutId = std::string("LevelEditorDockSpace_") + std::to_string(NextLevelLayoutId++);
+    NewTab.LayoutState.bRequestDefaultLayout = true;
     if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
     {
         NewTab.ScenePath = std::filesystem::path(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath())).lexically_normal();
@@ -271,13 +545,17 @@ void FLevelEditorWindow::OpenLevelDocumentTabFromCurrentScene()
         NewTab.Title = std::string("Untitled ") + std::to_string(NextUntitledSceneIndex++);
     }
 
+    InitializeLevelDocumentPanels(NewTab);
     LevelDocumentTabs.push_back(std::move(NewTab));
     ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
 }
 
 void FLevelEditorWindow::ReplaceActiveLevelDocumentTabFromCurrentScene()
 {
+    bSuppressAutoLevelDocumentTab = false;
     FLevelDocumentTab NewTab;
+    NewTab.LayoutId = std::string("LevelEditorDockSpace_") + std::to_string(NextLevelLayoutId++);
+    NewTab.LayoutState.bRequestDefaultLayout = true;
     if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
     {
         NewTab.ScenePath = std::filesystem::path(FPaths::ToWide(EditorEngine->GetCurrentLevelFilePath())).lexically_normal();
@@ -290,8 +568,11 @@ void FLevelEditorWindow::ReplaceActiveLevelDocumentTabFromCurrentScene()
 
     NewTab.bDirty = false;
 
+    InitializeLevelDocumentPanels(NewTab);
+
     if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
     {
+        ShutdownLevelDocumentPanels(LevelDocumentTabs[ActiveLevelDocumentTabIndex]);
         LevelDocumentTabs[ActiveLevelDocumentTabIndex] = std::move(NewTab);
         return;
     }
@@ -386,7 +667,10 @@ void FLevelEditorWindow::SyncCurrentLevelDocumentTab()
 
     if (LevelDocumentTabs.empty())
     {
-        OpenLevelDocumentTabFromCurrentScene();
+        if (!bSuppressAutoLevelDocumentTab)
+        {
+            OpenLevelDocumentTabFromCurrentScene();
+        }
         return;
     }
 
@@ -417,8 +701,11 @@ void FLevelEditorWindow::SyncCurrentLevelDocumentTab()
         }
 
         FLevelDocumentTab NewTab;
+        NewTab.LayoutId = std::string("LevelEditorDockSpace_") + std::to_string(NextLevelLayoutId++);
+        NewTab.LayoutState.bRequestDefaultLayout = true;
         NewTab.ScenePath = CurrentPath;
         NewTab.Title = FPaths::ToUtf8(CurrentPath.filename().wstring());
+        InitializeLevelDocumentPanels(NewTab);
         LevelDocumentTabs.push_back(std::move(NewTab));
         ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
         return;
@@ -448,31 +735,51 @@ bool FLevelEditorWindow::SetActiveLevelDocumentTab(int32 NewIndex)
         return true;
     }
 
-    if (!ConfirmCloseActiveLevelDocument())
-    {
-        return false;
-    }
+    const bool bLevelContextActive = EditorEngine && EditorEngine->IsLevelEditorContextActive();
 
-    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    // The tab state/panels stay alive, but the outgoing Level document must lose
+    // live input/gizmo ownership immediately. Otherwise a stale Level gizmo target
+    // can receive input while an Asset tab is active or after returning later.
+    if (bLevelContextActive)
     {
-        LevelDocumentTabs[ActiveLevelDocumentTabIndex].bDirty = false;
+        if (FLevelViewportLayout* OldLayout = GetActiveLevelViewportLayout())
+        {
+            for (FLevelEditorViewportClient* Client : OldLayout->GetLevelViewportClients())
+            {
+                if (Client)
+                {
+                    Client->DeactivateEditorContext();
+                }
+            }
+        }
     }
 
     ActiveLevelDocumentTabIndex = NewIndex;
+    bSuppressAutoLevelDocumentTab = false;
+
     if (!EditorEngine)
     {
         return true;
     }
 
-    const std::filesystem::path &ScenePath = LevelDocumentTabs[NewIndex].ScenePath;
-    if (!ScenePath.empty())
+    if (LevelDocumentTabs[NewIndex].LayoutState.PanelDockIds.size() > 0)
     {
-        EditorEngine->LoadSceneFromPath(FPaths::ToUtf8(ScenePath.wstring()));
+        LevelDocumentTabs[NewIndex].LayoutState.bRestoreCapturedLayoutNextFrame = true;
     }
-    else
+
+    // Tab switching must not rebuild/load the world by default. The document tab owns
+    // its UI/panel/live context; scene load/new-scene is an explicit File action.
+    if (bLevelContextActive)
     {
-        EditorEngine->NewScene();
+        if (FLevelViewportLayout* NewLayout = GetActiveLevelViewportLayout())
+        {
+            if (FLevelEditorViewportClient* ActiveClient = NewLayout->GetActiveViewport())
+            {
+                ActiveClient->ActivateEditorContext();
+            }
+        }
     }
+
     return true;
 }
 
@@ -488,16 +795,13 @@ void FLevelEditorWindow::CloseLevelDocumentTab(int32 TabIndex)
         return;
     }
 
+    ShutdownLevelDocumentPanels(LevelDocumentTabs[TabIndex]);
     LevelDocumentTabs.erase(LevelDocumentTabs.begin() + TabIndex);
 
     if (LevelDocumentTabs.empty())
     {
-        if (EditorEngine)
-        {
-            EditorEngine->NewScene();
-        }
         ActiveLevelDocumentTabIndex = -1;
-        OpenLevelDocumentTabFromCurrentScene();
+        bSuppressAutoLevelDocumentTab = true;
         return;
     }
 
@@ -515,13 +819,17 @@ void FLevelEditorWindow::CloseLevelDocumentTab(int32 TabIndex)
 
 void FLevelEditorWindow::RenderDocumentTabBar()
 {
-    if (!EditorEngine || EditorEngine->IsAssetEditorContextActive())
+    if (!EditorEngine)
     {
         return;
     }
 
     SyncCurrentLevelDocumentTab();
-    if (LevelDocumentTabs.empty())
+
+    FAssetEditorWindow &AssetWindow = EditorEngine->GetAssetEditorManager().GetAssetEditorWindow();
+    const int32 LevelTabCount = static_cast<int32>(LevelDocumentTabs.size());
+    const int32 AssetTabCount = AssetWindow.GetDocumentTabCount();
+    if (LevelTabCount <= 0 && AssetTabCount <= 0)
     {
         return;
     }
@@ -556,10 +864,11 @@ void FLevelEditorWindow::RenderDocumentTabBar()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.035f, 0.040f, 1.0f));
-    if (ImGui::Begin("##LevelEditorDocumentTabBar", nullptr, Flags))
+    if (ImGui::Begin("##EditorDocumentTabBar", nullptr, Flags))
     {
         std::vector<FEditorDocumentTabBar::FTabDesc> TabDescs;
-        TabDescs.reserve(LevelDocumentTabs.size());
+        TabDescs.reserve(static_cast<size_t>(LevelTabCount + AssetTabCount));
+
         for (const FLevelDocumentTab &Tab : LevelDocumentTabs)
         {
             FEditorDocumentTabBar::FTabDesc Desc;
@@ -571,15 +880,72 @@ void FLevelEditorWindow::RenderDocumentTabBar()
             TabDescs.push_back(std::move(Desc));
         }
 
-        FEditorDocumentTabBar::FRenderResult Result =
-            FEditorDocumentTabBar::Render("LevelEditorDocumentTabBar", TabDescs, ActiveLevelDocumentTabIndex);
-        if (Result.SelectedIndex != ActiveLevelDocumentTabIndex)
+        AssetWindow.AppendDocumentTabDescs(TabDescs);
+
+        int32 ActiveUnifiedIndex = -1;
+        if (EditorEngine->IsAssetEditorContextActive() && AssetWindow.GetActiveDocumentTabIndex() >= 0)
         {
-            SetActiveLevelDocumentTab(Result.SelectedIndex);
+            ActiveUnifiedIndex = LevelTabCount + AssetWindow.GetActiveDocumentTabIndex();
         }
+        else
+        {
+            ActiveUnifiedIndex = ActiveLevelDocumentTabIndex;
+        }
+
+        FEditorDocumentTabBar::FRenderResult Result =
+            FEditorDocumentTabBar::Render("EditorDocumentTabBar", TabDescs, ActiveUnifiedIndex);
+
+        const char *ResetLayoutLabel = "Reset Layout";
+        const float ResetButtonWidth = 104.0f;
+        const float AvailableRight = ImGui::GetWindowContentRegionMax().x;
+        const float CursorY = ImGui::GetCursorPosY();
+        const float ResetButtonX = (std::max)(ImGui::GetCursorPosX(), AvailableRight - ResetButtonWidth);
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ResetButtonX);
+        ImGui::SetCursorPosY((std::max)(0.0f, (BarSize.y - 24.0f) * 0.5f));
+        if (ImGui::Button(ResetLayoutLabel, ImVec2(ResetButtonWidth, 24.0f)))
+        {
+            RequestDefaultDockLayout();
+        }
+        ImGui::SetCursorPosY(CursorY);
+
+        if (Result.SelectedIndex >= 0 && Result.SelectedIndex != ActiveUnifiedIndex)
+        {
+            if (Result.SelectedIndex < LevelTabCount)
+            {
+                if (EditorEngine->IsAssetEditorContextActive())
+                {
+                    EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+                }
+                SetActiveLevelDocumentTab(Result.SelectedIndex);
+                RequestRestoreForActiveDocument();
+            }
+            else
+            {
+                const int32 AssetIndex = Result.SelectedIndex - LevelTabCount;
+                if (AssetWindow.ActivateDocumentTab(AssetIndex))
+                {
+                    EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+                    RequestRestoreForActiveDocument();
+                }
+            }
+        }
+
         if (Result.CloseRequestedIndex >= 0)
         {
-            CloseLevelDocumentTab(Result.CloseRequestedIndex);
+            if (Result.CloseRequestedIndex < LevelTabCount)
+            {
+                CloseLevelDocumentTab(Result.CloseRequestedIndex);
+            }
+            else
+            {
+                const int32 AssetIndex = Result.CloseRequestedIndex - LevelTabCount;
+                AssetWindow.CloseDocumentTab(AssetIndex, true);
+                if (!AssetWindow.HasOpenTabs() && EditorEngine->IsAssetEditorContextActive())
+                {
+                    EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+                }
+            }
         }
     }
     ImGui::End();
@@ -603,7 +969,14 @@ void FLevelEditorWindow::RenderLevelFrameToolbar()
     const float OuterPadding = GetWindowOuterPadding();
     const float TitleBarHeight = GetCustomTitleBarHeight();
     const float DocumentTabBarHeight = GetDocumentTabBarHeight();
-    const float ToolbarHeight = EditorEngine->GetViewportLayout().GetFrameToolbarHeight();
+    FLevelDocumentPanels *ActivePanels = GetActiveLevelDocumentPanels();
+    FLevelViewportLayout *ActiveViewportLayout = ActivePanels ? ActivePanels->ViewportLayout.get() : nullptr;
+    if (!ActiveViewportLayout)
+    {
+        return;
+    }
+
+    const float ToolbarHeight = ActiveViewportLayout->GetFrameToolbarHeight();
 
     const ImVec2 ToolbarPos(MainViewport->Pos.x + OuterPadding,
                             MainViewport->Pos.y + OuterPadding + TitleBarHeight + DocumentTabBarHeight);
@@ -629,7 +1002,7 @@ void FLevelEditorWindow::RenderLevelFrameToolbar()
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.050f, 0.050f, 0.055f, 1.0f));
     if (ImGui::Begin("##LevelEditorFrameToolbar", nullptr, Flags))
     {
-        EditorEngine->GetViewportLayout().RenderFrameToolbar(ToolbarSize.x);
+        ActiveViewportLayout->RenderFrameToolbar(ToolbarSize.x);
     }
     ImGui::End();
     ImGui::PopStyleColor();
@@ -638,8 +1011,26 @@ void FLevelEditorWindow::RenderLevelFrameToolbar()
 
 void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
 {
-    if (!bPendingDefaultDockLayout || MainDockspaceId == 0)
+    if (IsActiveDocumentAssetEditor() || MainDockspaceId == 0)
     {
+        return;
+    }
+
+    FLevelDocumentTab *ActiveTab = GetActiveLevelDocumentTab();
+    if (!ActiveTab)
+    {
+        return;
+    }
+
+    FDockPanelLayoutState &LayoutState = ActiveTab->LayoutState;
+    if (!bPendingDefaultDockLayout && !LayoutState.bRequestDefaultLayout && LayoutState.bDefaultLayoutBuilt)
+    {
+        return;
+    }
+
+    if (LayoutState.bDefaultLayoutBuilt && !LayoutState.bRequestDefaultLayout)
+    {
+        bPendingDefaultDockLayout = false;
         return;
     }
 
@@ -657,6 +1048,7 @@ void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
     Settings.Panels.bContentBrowser = true;
     Settings.Panels.bConsole = true;
 
+    FPanel::SetCurrentStableIdPrefix(ActiveTab->LayoutId);
     FLevelEditorDockLayoutDesc LayoutDesc;
     LayoutDesc.LeftWindow = MakeLevelPanelTitle("Place Actors", "LevelPlaceActorsPanel", "Editor.Icon.Panel.PlaceActors");
     LayoutDesc.CenterWindow = MakeLevelPanelTitle("Viewport", "LevelViewport", "Editor.Icon.Panel.Viewport");
@@ -664,8 +1056,12 @@ void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
     LayoutDesc.RightBottomWindow = MakeLevelPanelTitle("Details", "LevelDetailsPanel", "Editor.Icon.Panel.Details");
     LayoutDesc.BottomWindow = MakeLevelPanelTitle("Content Browser", "LevelContentBrowser", "Editor.Icon.Panel.ContentBrowser");
     LayoutDesc.BottomRightWindow = MakeLevelPanelTitle("Console", "LevelConsolePanel", "Editor.Icon.Panel.Console");
+    FPanel::ClearCurrentStableIdPrefix();
 
     FDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
+    LayoutState.bDefaultLayoutBuilt = true;
+    LayoutState.bRequestDefaultLayout = false;
+    LayoutState.bRestoreCapturedLayoutNextFrame = false;
     bPendingDefaultDockLayout = false;
 }
 
@@ -761,9 +1157,9 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.Id = "##LevelEditorMenuBar";
     MenuContext.Window = Window;
     MenuContext.EditorEngine = EditorEngine;
-    MenuContext.MenuProvider = (EditorEngine && EditorEngine->IsAssetEditorContextActive())
-                                  ? static_cast<IEditorMenuProvider *>(&EditorEngine->GetAssetEditorManager().GetAssetEditorWindow())
-                                  : static_cast<IEditorMenuProvider *>(this);
+    // 메뉴 구성은 Level Editor 기준으로 통일한다.
+    // 활성 document가 Asset Editor여도 File/Edit/Window 메뉴 항목의 구조는 바뀌지 않는다.
+    MenuContext.MenuProvider = static_cast<IEditorMenuProvider *>(this);
     MenuContext.TitleBarFont = ImGuiSystem ? ImGuiSystem->GetTitleBarFont() : nullptr;
     MenuContext.WindowControlIconFont = ImGuiSystem ? ImGuiSystem->GetWindowControlIconFont() : nullptr;
     MenuContext.bShowProjectSettingsMenu = true;
@@ -793,10 +1189,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.OnOpenCredits = [this]() { bShowCreditsOverlay = !bShowCreditsOverlay; };
     const bool bAssetEditorContextActiveEarly = EditorEngine && EditorEngine->IsAssetEditorContextActive();
     MenuBar.Render(MenuContext);
-    if (!bAssetEditorContextActiveEarly)
-    {
-        RenderDocumentTabBar();
-    }
+    RenderDocumentTabBar();
     RenderLevelFrameToolbar();
 
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
@@ -806,8 +1199,10 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     const float          DocumentTabBarHeight = GetDocumentTabBarHeight();
     const bool           bAssetEditorContextActive = bAssetEditorContextActiveEarly;
     const bool           bLevelFrameToolbarVisible = !bAssetEditorContextActive;
-    const float          LevelFrameToolbarHeight = (bLevelFrameToolbarVisible && EditorEngine)
-                                                     ? EditorEngine->GetViewportLayout().GetFrameToolbarHeight()
+    FLevelDocumentPanels *ActiveLevelPanelsForFrame = (!bAssetEditorContextActive && EditorEngine) ? GetActiveLevelDocumentPanels() : nullptr;
+    FLevelViewportLayout *ActiveLevelViewportLayoutForFrame = ActiveLevelPanelsForFrame ? ActiveLevelPanelsForFrame->ViewportLayout.get() : nullptr;
+    const float          LevelFrameToolbarHeight = (bLevelFrameToolbarVisible && ActiveLevelViewportLayoutForFrame)
+                                                     ? ActiveLevelViewportLayoutForFrame->GetFrameToolbarHeight()
                                                      : 0.0f;
     const bool           bAssetFrameToolbarVisible = bAssetEditorContextActive &&
                                                      EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().IsOpen();
@@ -847,70 +1242,131 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 6.0f));
     if (ImGui::Begin("##EditorDockSpaceHost", nullptr, DockspaceWindowFlags))
     {
-        MainDockspaceId = ImGui::GetID("##EditorDockSpace");
+        const std::string ActiveLayoutId = GetActiveDocumentLayoutId();
+        MainDockspaceId = ImGui::GetID(ActiveLayoutId.c_str());
         ImGui::DockSpace(MainDockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
+
+        // Keep inactive document DockSpaces alive so ImGui does not discard their dock node tree while the tab is hidden.
+        for (const FLevelDocumentTab &Tab : LevelDocumentTabs)
+        {
+            if (!Tab.LayoutId.empty() && Tab.LayoutId != ActiveLayoutId)
+            {
+                ImGui::DockSpace(ImGui::GetID(Tab.LayoutId.c_str()), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_KeepAliveOnly, &DockspaceWindowClass);
+            }
+        }
+        if (EditorEngine)
+        {
+            std::vector<std::string> AssetLayoutIds;
+            EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().CollectLayoutIds(AssetLayoutIds);
+            for (const std::string &LayoutId : AssetLayoutIds)
+            {
+                if (!LayoutId.empty() && LayoutId != ActiveLayoutId)
+                {
+                    ImGui::DockSpace(ImGui::GetID(LayoutId.c_str()), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_KeepAliveOnly, &DockspaceWindowClass);
+                }
+            }
+        }
+
+        // Keep the saved panel-window ↔ dock-node relationship alive for inactive tabs.
+        // Keeping only DockSpace nodes alive is not enough: when the corresponding panel
+        // windows are not submitted for several frames, ImGui can bring them back as
+        // floating/undocked windows. These invisible no-content windows use the same ###ID
+        // and the last captured DockId, but only for inactive tabs.
+        for (FLevelDocumentTab &Tab : LevelDocumentTabs)
+        {
+            if (!Tab.LayoutId.empty() && Tab.LayoutId != ActiveLayoutId)
+            {
+                FPanel::RenderDockKeepAliveWindows(&Tab.LayoutState);
+            }
+        }
+        if (EditorEngine)
+        {
+            EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().RenderInactiveDockKeepAliveWindows(ActiveLayoutId);
+        }
+
         ApplyPendingDefaultDockLayout();
     }
     ImGui::End();
     ImGui::PopStyleVar(4);
 
-    // 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
     FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    if (EditorEngine && Settings.Panels.bViewport)
+    FDockPanelLayoutState *ActiveLayoutState = GetActiveDocumentLayoutState();
+    if (!bAssetEditorContextActive && ActiveLayoutState)
     {
-        SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
-        EditorEngine->RenderViewportUI(DeltaTime);
+        FPanel::SetCurrentStableIdPrefix(GetActiveDocumentLayoutId());
+        FPanel::SetCurrentDockspaceId(MainDockspaceId);
+        FPanel::SetCurrentLayoutState(ActiveLayoutState);
+    }
 
-        if (FLevelEditorViewportClient *ActiveViewport = EditorEngine->GetActiveViewport())
+    // 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
+    if (!bAssetEditorContextActive && ActiveLayoutState && EditorEngine && Settings.Panels.bViewport)
+    {
+        FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels();
+        FLevelViewportLayout *ViewportLayout = Panels ? Panels->ViewportLayout.get() : nullptr;
+        if (ViewportLayout)
         {
-            EditorEngine->GetOverlayStatSystem().RenderImGui(*EditorEngine, ActiveViewport->GetViewportScreenRect());
+            SCOPE_STAT_CAT("ActiveLevelTabViewportLayout.RenderViewportUI", "5_UI");
+            ViewportLayout->RenderViewportUI(DeltaTime);
+
+            if (FLevelEditorViewportClient *ActiveViewport = ViewportLayout->GetActiveViewport())
+            {
+                EditorEngine->GetOverlayStatSystem().RenderImGui(*EditorEngine, ActiveViewport->GetViewportScreenRect());
+            }
         }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bImGuiSettings)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bImGuiSettings)
     {
         FEditorImGuiStyleSettings::ShowPanel(&Settings.Panels.bImGuiSettings);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bConsole)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bConsole)
     {
         SCOPE_STAT_CAT("ConsolePanel.Render", "5_UI");
-        ConsolePanel.Render(DeltaTime);
+        if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels()) { if (Panels->ConsolePanel) { Panels->ConsolePanel->Render(DeltaTime); } }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bDetails)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bDetails)
     {
         SCOPE_STAT_CAT("DetailsPanel.Render", "5_UI");
-        DetailsPanel.Render(DeltaTime);
+        if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels()) { if (Panels->DetailsPanel) { Panels->DetailsPanel->Render(DeltaTime); } }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bOutliner)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bOutliner)
     {
         SCOPE_STAT_CAT("OutlinerPanel.Render", "5_UI");
-        OutlinerPanel.Render(DeltaTime);
+        if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels()) { if (Panels->OutlinerPanel) { Panels->OutlinerPanel->Render(DeltaTime); } }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bPlaceActors)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bPlaceActors)
     {
         SCOPE_STAT_CAT("PlaceActorsPanel.Render", "5_UI");
-        PlaceActorsPanel.Render(DeltaTime);
+        if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels()) { if (Panels->PlaceActorsPanel) { Panels->PlaceActorsPanel->Render(DeltaTime); } }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bStats)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bStats)
     {
         SCOPE_STAT_CAT("StatPanel.Render", "5_UI");
-        StatPanel.Render(DeltaTime);
+        if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels()) { if (Panels->StatPanel) { Panels->StatPanel->Render(DeltaTime); } }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bContentBrowser)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bContentBrowser)
     {
         SCOPE_STAT_CAT("ContentBrowser.Render", "5_UI");
-        ContentBrowser.Render(DeltaTime);
+        if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels()) { if (Panels->ContentBrowser) { Panels->ContentBrowser->Render(DeltaTime); } }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bShadowMapDebug)
+    if (!bAssetEditorContextActive && ActiveLayoutState && !bHideEditorWindows && Settings.Panels.bShadowMapDebug)
     {
-        ShadowMapDebugPanel.Render(DeltaTime);
+        if (FLevelDocumentPanels *Panels = GetActiveLevelDocumentPanels()) { if (Panels->ShadowMapDebugPanel) { Panels->ShadowMapDebugPanel->Render(DeltaTime); } }
+    }
+
+    if (!bAssetEditorContextActive && ActiveLayoutState)
+    {
+        ActiveLayoutState->bRestoreCapturedLayoutNextFrame = false;
+        FPanel::ClearCurrentLayoutState();
+        FPanel::ClearCurrentDockspaceId();
+        FPanel::ClearCurrentStableIdPrefix();
     }
 
     if (EditorEngine)
@@ -1174,11 +1630,29 @@ void FLevelEditorWindow::BuildCustomMenus()
 
 FString FLevelEditorWindow::GetFrameTitle() const
 {
-    return FString("Level Editor | ") + GetSceneTitleLabel(EditorEngine);
+    if (IsActiveDocumentAssetEditor())
+    {
+        return EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().GetFrameTitle();
+    }
+
+    FString Title = FString("Level Editor | ") + GetSceneTitleLabel(EditorEngine);
+    if (const FLevelDocumentTab *Tab = GetActiveLevelDocumentTab())
+    {
+        if (Tab->bDirty)
+        {
+            Title += "*";
+        }
+    }
+    return Title;
 }
 
 FString FLevelEditorWindow::GetFrameTitleTooltip() const
 {
+    if (IsActiveDocumentAssetEditor())
+    {
+        return EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().GetFrameTitleTooltip();
+    }
+
     if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
     {
         return EditorEngine->GetCurrentLevelFilePath();
@@ -1298,37 +1772,27 @@ void FLevelEditorWindow::HideEditorWindows()
 
 void FLevelEditorWindow::HideLevelEditorUIForAssetEditor()
 {
-    // FBX / SkeletalMesh Viewer 집중 모드.
-    //
-    // 기존 HideEditorWindows()는 PIE 흐름과도 공유되므로 Level Viewport는 남겨둔다.
-    // 하지만 FBX Viewer 작업에서는 Level Viewport까지 가리면 Preview Viewport / Skeleton Tree / Details만
-    // 보이게 할 수 있으므로, 이 함수는 별도 경로로 Level Editor UI 전체를 숨긴다.
-    FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-
-    if (!bHasSavedPanelVisibility)
-    {
-        SavedPanelVisibility = Settings.Panels;
-        bSavedShowPanelList = bShowPanelList;
-        bHasSavedPanelVisibility = true;
-    }
-
-    bHideEditorWindows = true;
-    bShowPanelList = false;
-
-    Settings.Panels.bViewport = false;
-    Settings.Panels.bConsole = false;
-    Settings.Panels.bDetails = false;
-    Settings.Panels.bOutliner = false;
-    Settings.Panels.bPlaceActors = false;
-    Settings.Panels.bStats = false;
-    Settings.Panels.bContentBrowser = false;
-    Settings.Panels.bImGuiSettings = false;
-    Settings.Panels.bShadowMapDebug = false;
+    // 다중 document tab 구조에서는 Asset 탭으로 전환해도 Level Editor 패널 표시 설정을 변경하지 않는다.
+    // 실제 렌더링 여부는 active document context가 결정한다.
 }
 
 void FLevelEditorWindow::RestoreLevelEditorUIAfterAssetEditor()
 {
-    ShowEditorWindows();
+    // Level 패널 표시 설정은 탭 전환 중에 건드리지 않는다.
+    // 다만 Asset 탭에서 Level 탭으로 돌아오는 첫 프레임에는 마지막으로 캡처한
+    // panel -> dock node 관계를 한 번 재적용해야 Viewport/Details가 floating으로
+    // 떨어지거나 사라지지 않는다.
+    if (FLevelDocumentTab *Tab = GetActiveLevelDocumentTab())
+    {
+        if (!Tab->Panels)
+        {
+            InitializeLevelDocumentPanels(*Tab);
+        }
+        if (!Tab->LayoutState.PanelDockIds.empty())
+        {
+            Tab->LayoutState.bRestoreCapturedLayoutNextFrame = true;
+        }
+    }
 }
 
 void FLevelEditorWindow::ShowEditorWindows()
