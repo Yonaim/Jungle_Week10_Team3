@@ -27,6 +27,11 @@ class ContentBrowserElement : public std::enable_shared_from_this<ContentBrowser
         return ContentItem.Path.filename();
     }
 
+    const std::filesystem::path& GetPath() const
+    {
+        return ContentItem.Path;
+    }
+
   protected:
     virtual ImU32 GetIconTint() const
     {

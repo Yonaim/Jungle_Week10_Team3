@@ -26,4 +26,5 @@ class FAssetDetailsPanel
                         FSkeletalMeshSelectionManager &SelectionManager);
     void RenderViewerActions(FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);
     void RenderBoneSelectionSummary(FSkeletalMeshEditorState &State, FSkeletalMeshSelectionManager &SelectionManager);
+    void RenderPoseAssetTools(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent, const std::filesystem::path &AssetPath);
 };

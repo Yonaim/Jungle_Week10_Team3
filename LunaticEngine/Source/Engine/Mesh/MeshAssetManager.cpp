@@ -2,6 +2,7 @@
 #include "Mesh/MeshAssetManager.h"
 
 #include "Engine/Asset/AssetFileSerializer.h"
+#include "Core/Log.h"
 #include "Engine/Platform/Paths.h"
 #include "Materials/MaterialManager.h"
 #include "Mesh/FbxCommon.h"
@@ -13,6 +14,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <cwctype>
 
 TMap<FString, UStaticMesh*> FMeshAssetManager::StaticMeshCache;
 TMap<FString, USkeletalMesh*> FMeshAssetManager::SkeletalMeshCache;
@@ -56,6 +58,40 @@ namespace
         return PrefixString + Stem;
     }
 
+    std::filesystem::path ResolvePathAgainstProjectRoot(const FString& Path)
+    {
+        std::filesystem::path FsPath(FPaths::ToWide(Path));
+        if (!FsPath.is_absolute())
+        {
+            FsPath = std::filesystem::path(FPaths::RootDir()) / FsPath;
+        }
+        return FsPath.lexically_normal();
+    }
+
+    bool IsUnderDirectory(const std::filesystem::path& Parent, const std::filesystem::path& Child)
+    {
+        const std::filesystem::path Rel = Child.lexically_normal().lexically_relative(Parent.lexically_normal());
+        return !Rel.empty() && Rel.native().find(L"..") != 0;
+    }
+
+    std::wstring ToTitleStem(std::wstring Stem)
+    {
+        bool bCapitalizeNext = true;
+        for (wchar_t& Character : Stem)
+        {
+            if (bCapitalizeNext && Character != L'_' && Character != L'-')
+            {
+                Character = static_cast<wchar_t>(std::towupper(Character));
+                bCapitalizeNext = false;
+            }
+            else
+            {
+                bCapitalizeNext = (Character == L'_' || Character == L'-');
+            }
+        }
+        return Stem;
+    }
+
     FString MakeMeshAssetPath(const FString& SourceOrAssetPath, const wchar_t* Prefix)
     {
         if (IsUAssetPath(SourceOrAssetPath))
@@ -63,8 +99,19 @@ namespace
             return SourceOrAssetPath;
         }
 
-        const std::filesystem::path SourcePath(FPaths::ToWide(SourceOrAssetPath));
-        const std::wstring Stem = SourcePath.stem().wstring();
+        const std::filesystem::path SourcePath = ResolvePathAgainstProjectRoot(SourceOrAssetPath);
+        const std::filesystem::path EngineSourceRoot = std::filesystem::path(FPaths::EngineSourceDir()).lexically_normal();
+        const std::wstring Stem = ToTitleStem(SourcePath.stem().wstring());
+
+        if (IsUnderDirectory(EngineSourceRoot, SourcePath))
+        {
+            const std::filesystem::path RelativeSource = SourcePath.lexically_relative(EngineSourceRoot);
+            const std::filesystem::path RelativeParent = RelativeSource.parent_path();
+            std::filesystem::path AssetPath = std::filesystem::path(FPaths::EngineContentDir()) / RelativeParent / Stem / AddPrefixIfNeeded(Stem, Prefix);
+            AssetPath += L".uasset";
+            return FPaths::ToUtf8(AssetPath.lexically_normal().generic_wstring());
+        }
+
         std::filesystem::path AssetPath = std::filesystem::path(FPaths::ContentDir()) / L"Meshes" / Stem / AddPrefixIfNeeded(Stem, Prefix);
         AssetPath += L".uasset";
         return FPaths::ToUtf8(AssetPath.lexically_normal().generic_wstring());
@@ -178,14 +225,31 @@ void FMeshAssetManager::ScanMeshAssets()
 
     for (const std::filesystem::path& ContentRoot : ScanRoots)
     {
-        if (!std::filesystem::exists(ContentRoot))
+        std::error_code ErrorCode;
+        if (!std::filesystem::exists(ContentRoot, ErrorCode) || !std::filesystem::is_directory(ContentRoot, ErrorCode))
         {
             continue;
         }
 
-        for (const auto& Entry : std::filesystem::recursive_directory_iterator(ContentRoot))
+        std::filesystem::recursive_directory_iterator It(
+            ContentRoot,
+            std::filesystem::directory_options::skip_permission_denied,
+            ErrorCode);
+        const std::filesystem::recursive_directory_iterator End;
+        for (; It != End; It.increment(ErrorCode))
         {
-            if (!Entry.is_regular_file()) continue;
+            if (ErrorCode)
+            {
+                ErrorCode.clear();
+                continue;
+            }
+
+            const std::filesystem::directory_entry& Entry = *It;
+            if (!Entry.is_regular_file(ErrorCode))
+            {
+                ErrorCode.clear();
+                continue;
+            }
 
             const std::filesystem::path& Path = Entry.path();
             if (Path.extension() != L".uasset") continue;
@@ -207,26 +271,49 @@ void FMeshAssetManager::ScanMeshSourceFiles()
 {
     AvailableMeshSourceFiles.clear();
 
-    const std::filesystem::path DataRoot = FPaths::SourceAssetsDir();
-    if (!std::filesystem::exists(DataRoot))
+    const std::filesystem::path ScanRoots[] = {
+        std::filesystem::path(FPaths::EngineSourceDir())
+    };
+
+    for (const std::filesystem::path& DataRoot : ScanRoots)
     {
-        return;
-    }
+        std::error_code ErrorCode;
+        if (!std::filesystem::exists(DataRoot, ErrorCode) || !std::filesystem::is_directory(DataRoot, ErrorCode))
+        {
+            continue;
+        }
 
-    for (const auto& Entry : std::filesystem::recursive_directory_iterator(DataRoot))
-    {
-        if (!Entry.is_regular_file()) continue;
+        std::filesystem::recursive_directory_iterator It(
+            DataRoot,
+            std::filesystem::directory_options::skip_permission_denied,
+            ErrorCode);
+        const std::filesystem::recursive_directory_iterator End;
+        for (; It != End; It.increment(ErrorCode))
+        {
+            if (ErrorCode)
+            {
+                ErrorCode.clear();
+                continue;
+            }
 
-        const std::filesystem::path& Path = Entry.path();
-        std::wstring Ext = Path.extension().wstring();
-        std::transform(Ext.begin(), Ext.end(), Ext.begin(), ::towlower);
-        if (Ext != L".obj" && Ext != L".fbx") continue;
+            const std::filesystem::directory_entry& Entry = *It;
+            if (!Entry.is_regular_file(ErrorCode))
+            {
+                ErrorCode.clear();
+                continue;
+            }
 
-        FMeshAssetListItem Item;
-        Item.DisplayName = FPaths::ToUtf8(Path.filename().wstring());
-        Item.FullPath = ToProjectRelativePath(Path);
-        Item.AssetClassId = EAssetClassId::Unknown;
-        AvailableMeshSourceFiles.push_back(std::move(Item));
+            const std::filesystem::path& Path = Entry.path();
+            std::wstring Ext = Path.extension().wstring();
+            std::transform(Ext.begin(), Ext.end(), Ext.begin(), ::towlower);
+            if (Ext != L".obj" && Ext != L".fbx") continue;
+
+            FMeshAssetListItem Item;
+            Item.DisplayName = FPaths::ToUtf8(Path.filename().wstring());
+            Item.FullPath = ToProjectRelativePath(Path);
+            Item.AssetClassId = EAssetClassId::Unknown;
+            AvailableMeshSourceFiles.push_back(std::move(Item));
+        }
     }
 }
 
@@ -252,6 +339,7 @@ UStaticMesh* FMeshAssetManager::LoadStaticMeshAssetFile(const FString& AssetPath
         }
     }
 
+    UE_LOG_CATEGORY(MeshAssetManager, Info, "[AssetLoad] StaticMesh .uasset load begin: path=%s", CacheKey.c_str());
     FString Error;
     UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(AssetPath, &Error);
     UStaticMesh* StaticMesh = Cast<UStaticMesh>(LoadedObject);
@@ -261,8 +349,11 @@ UStaticMesh* FMeshAssetManager::LoadStaticMeshAssetFile(const FString& AssetPath
         {
             UObjectManager::Get().DestroyObject(LoadedObject);
         }
+        UE_LOG_CATEGORY(MeshAssetManager, Error, "[AssetLoad] StaticMesh .uasset load failed: path=%s error=%s", CacheKey.c_str(), Error.c_str());
         return nullptr;
     }
+
+    UE_LOG_CATEGORY(MeshAssetManager, Info, "[AssetLoad] StaticMesh .uasset loaded: path=%s", CacheKey.c_str());
 
     if (FStaticMesh *MeshAsset = StaticMesh->GetStaticMeshAsset())
     {
@@ -292,6 +383,7 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMeshAssetFile(const FString& Asset
         }
     }
 
+    UE_LOG_CATEGORY(MeshAssetManager, Info, "[AssetLoad] SkeletalMesh .uasset load begin: path=%s", CacheKey.c_str());
     FString Error;
     UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(AssetPath, &Error);
     USkeletalMesh* SkeletalMesh = Cast<USkeletalMesh>(LoadedObject);
@@ -301,8 +393,11 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMeshAssetFile(const FString& Asset
         {
             UObjectManager::Get().DestroyObject(LoadedObject);
         }
+        UE_LOG_CATEGORY(MeshAssetManager, Error, "[AssetLoad] SkeletalMesh .uasset load failed: path=%s error=%s", CacheKey.c_str(), Error.c_str());
         return nullptr;
     }
+
+    UE_LOG_CATEGORY(MeshAssetManager, Info, "[AssetLoad] SkeletalMesh .uasset loaded: path=%s", CacheKey.c_str());
 
     if (FSkeletalMesh* MeshAsset = SkeletalMesh->GetSkeletalMeshAsset())
     {
@@ -357,7 +452,14 @@ UStaticMesh* FMeshAssetManager::LoadStaticMesh(const FString& PathFileName, cons
 
     EnsureParentDirectoryExists(AssetPath);
     FString Error;
-    FAssetFileSerializer::SaveObjectToAssetFile(AssetPath, StaticMesh, &Error);
+    if (!FAssetFileSerializer::SaveObjectToAssetFile(AssetPath, StaticMesh, &Error))
+    {
+        UE_LOG_CATEGORY(MeshAssetManager, Error, "[AssetSave] StaticMesh .uasset save failed: source=%s target=%s error=%s", PathFileName.c_str(), NormalizeMeshAssetCacheKey(AssetPath).c_str(), Error.c_str());
+    }
+    else
+    {
+        UE_LOG_CATEGORY(MeshAssetManager, Info, "[AssetSave] StaticMesh .uasset saved: source=%s target=%s", PathFileName.c_str(), NormalizeMeshAssetCacheKey(AssetPath).c_str());
+    }
 
     StaticMesh->InitResources(InDevice);
     StaticMeshCache[NormalizeMeshAssetCacheKey(AssetPath)] = StaticMesh;
@@ -435,7 +537,14 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMesh(const FString& PathFileName, 
 
     EnsureParentDirectoryExists(AssetPath);
     FString Error;
-    FAssetFileSerializer::SaveObjectToAssetFile(AssetPath, SkeletalMesh, &Error);
+    if (!FAssetFileSerializer::SaveObjectToAssetFile(AssetPath, SkeletalMesh, &Error))
+    {
+        UE_LOG_CATEGORY(MeshAssetManager, Error, "[AssetSave] SkeletalMesh .uasset save failed: source=%s target=%s error=%s", PathFileName.c_str(), NormalizeMeshAssetCacheKey(AssetPath).c_str(), Error.c_str());
+    }
+    else
+    {
+        UE_LOG_CATEGORY(MeshAssetManager, Info, "[AssetSave] SkeletalMesh .uasset saved: source=%s target=%s", PathFileName.c_str(), NormalizeMeshAssetCacheKey(AssetPath).c_str());
+    }
 
     SkeletalMeshCache[NormalizeMeshAssetCacheKey(AssetPath)] = SkeletalMesh;
 

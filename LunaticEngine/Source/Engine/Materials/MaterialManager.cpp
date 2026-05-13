@@ -26,14 +26,31 @@ void FMaterialManager::ScanMaterialAssets()
 
 	for (const std::filesystem::path& MaterialRoot : MaterialRoots)
 	{
-		if (!std::filesystem::exists(MaterialRoot))
+		std::error_code ErrorCode;
+		if (!std::filesystem::exists(MaterialRoot, ErrorCode) || !std::filesystem::is_directory(MaterialRoot, ErrorCode))
 		{
 			continue;
 		}
 
-		for (const auto& Entry : std::filesystem::recursive_directory_iterator(MaterialRoot))
+		std::filesystem::recursive_directory_iterator It(
+			MaterialRoot,
+			std::filesystem::directory_options::skip_permission_denied,
+			ErrorCode);
+		const std::filesystem::recursive_directory_iterator End;
+		for (; It != End; It.increment(ErrorCode))
 		{
-			if (!Entry.is_regular_file()) continue;
+			if (ErrorCode)
+			{
+				ErrorCode.clear();
+				continue;
+			}
+
+			const std::filesystem::directory_entry& Entry = *It;
+			if (!Entry.is_regular_file(ErrorCode))
+			{
+				ErrorCode.clear();
+				continue;
+			}
 
 			const std::filesystem::path& Path = Entry.path();
 

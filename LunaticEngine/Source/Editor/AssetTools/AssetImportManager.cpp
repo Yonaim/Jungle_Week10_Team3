@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <cwctype>
 #include <fstream>
 #include <sstream>
 
@@ -94,27 +95,6 @@ namespace
         } while (std::filesystem::exists(InOutPath));
     }
 
-    bool CopySourceFileToProject(const FString& SourcePath, const std::filesystem::path& DestinationDirectory, FString& OutProjectRelativePath)
-    {
-        const std::filesystem::path SourceAbsolute = ResolveSourcePathOnDisk(SourcePath);
-        if (!std::filesystem::exists(SourceAbsolute))
-        {
-            UE_LOG_CATEGORY(AssetImport, Error, "[Import] Source copy failed. Missing source: %s", SourcePath.c_str());
-            return false;
-        }
-
-        std::filesystem::create_directories(DestinationDirectory);
-        std::filesystem::path DestinationPath = DestinationDirectory / SourceAbsolute.filename();
-        EnsureUniquePath(DestinationPath);
-
-        std::filesystem::copy_file(SourceAbsolute, DestinationPath, std::filesystem::copy_options::overwrite_existing);
-
-        const std::filesystem::path ProjectRoot(FPaths::RootDir());
-        OutProjectRelativePath = FPaths::ToUtf8(DestinationPath.lexically_relative(ProjectRoot).generic_wstring());
-        UE_LOG_CATEGORY(AssetImport, Info, "[Import] Source archived: %s -> %s", SourcePath.c_str(), OutProjectRelativePath.c_str());
-        return true;
-    }
-
     json::JSON ReadJsonFile(const FString& FilePath)
     {
         std::ifstream File(FPaths::ToWide(FilePath));
@@ -136,6 +116,7 @@ namespace
         case EAssetClassId::SkeletalMesh: return "USkeletalMesh";
         case EAssetClassId::Material:     return "UMaterial";
         case EAssetClassId::Texture:      return "UTexture2D";
+        case EAssetClassId::PoseAsset:    return "USkeletonPoseAsset";
         default:                          return "UObject";
         }
     }
@@ -161,7 +142,7 @@ bool FAssetImportManager::ImportAssetWithDialog()
     const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
         .Filter = L"Importable Source Assets (*.fbx;*.obj;*.mtl;*.mat;*.png;*.jpg;*.jpeg;*.bmp;*.tga;*.dds;*.uasset)\0*.fbx;*.obj;*.mtl;*.mat;*.png;*.jpg;*.jpeg;*.bmp;*.tga;*.dds;*.uasset\0All Files (*.*)\0*.*\0",
         .Title = L"Import Source Asset",
-        .InitialDirectory = FPaths::SourceAssetsDir().c_str(),
+        .InitialDirectory = FPaths::AssetDir().c_str(),
         .OwnerWindowHandle = EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr,
         .bFileMustExist = true,
         .bPathMustExist = true,
@@ -237,20 +218,21 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
     }
 
     const FString ImportedPath = OutImportedAssetPath ? *OutImportedAssetPath : FString();
+    const FString SourceFileName = FPaths::ToUtf8(SourceAbsolute.filename().wstring());
+    const FString ImportedFileName = !ImportedPath.empty()
+        ? FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(ImportedPath)).filename().wstring())
+        : FString("asset");
     const FString Message = !ImportedPath.empty()
-        ? "Imported asset: " + ImportedPath
-        : "Imported asset.";
+        ? "Imported " + SourceFileName + " as " + ImportedFileName
+        : "Imported " + SourceFileName;
     FNotificationManager::Get().AddNotification(Message, ENotificationType::Success, 3.0f);
-    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Success: source=%s target=%s", ToUtf8GenericPath(SourceAbsolute).c_str(), ImportedPath.c_str());
+    UE_LOG_CATEGORY(AssetImport, Info, "[Import] %s | source=%s target=%s", Message.c_str(), ToUtf8GenericPath(SourceAbsolute).c_str(), ImportedPath.c_str());
 
     if (EditorEngine && !ImportedPath.empty())
     {
-        const bool bOpened = EditorEngine->OpenAssetFromPath(std::filesystem::path(FPaths::ToWide(ImportedPath)));
-        if (!bOpened)
-        {
-            UE_LOG_CATEGORY(AssetImport, Warning, "[Import] Imported .uasset has no registered editor or failed to open: %s", ImportedPath.c_str());
-            EditorEngine->GetAssetEditorManager().ShowAssetEditorWindow();
-        }
+        // Import는 .uasset 생성 및 Content Browser 선택까지만 수행한다.
+        // Asset Editor는 사용자가 생성된 .uasset을 직접 열 때만 열린다.
+        EditorEngine->SelectContentBrowserPath(ImportedPath);
     }
 
     return true;
@@ -276,7 +258,9 @@ bool FAssetImportManager::ImportMeshSource(const FString& SourcePath, FString* O
     std::filesystem::path DestinationPath = MakeDestinationAssetPath(SourceDiskPathString, L"Meshes", Prefix);
     EnsureUniquePath(DestinationPath);
 
-    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Source classified as %s: %s", bSkeletalMesh ? "USkeletalMesh" : "UStaticMesh", SourceDiskPathString.c_str());
+    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Source classified as %s: source=%s target=%s",
+                    bSkeletalMesh ? "USkeletalMesh" : "UStaticMesh",
+                    SourceDiskPathString.c_str(), ToUtf8GenericPath(DestinationPath).c_str());
 
     if (bSkeletalMesh)
     {
@@ -381,19 +365,11 @@ bool FAssetImportManager::ImportTextureSource(const FString& SourcePath, FString
     const std::filesystem::path SourceDiskPath = ResolveSourcePathOnDisk(SourcePath);
     const FString SourceDiskPathString = ToUtf8GenericPath(SourceDiskPath);
     const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(SourceDiskPath.stem().wstring()));
-    const std::filesystem::path SourceArchiveDirectory = std::filesystem::path(FPaths::SourceAssetsDir()) / L"Texture" / FPaths::ToWide(SourceStem);
     const std::filesystem::path TextureAssetDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Textures" / FPaths::ToWide(SourceStem);
-
-    FString CopiedTexturePath;
-    if (!CopySourceFileToProject(SourceDiskPathString, SourceArchiveDirectory, CopiedTexturePath))
-    {
-        FNotificationManager::Get().AddNotification("Import failed: texture source copy failed.", ENotificationType::Error, 5.0f);
-        return false;
-    }
 
     UTexture2D* Texture = UObjectManager::Get().CreateObject<UTexture2D>();
     Texture->SetFName(FName(FString("T_") + SourceStem));
-    Texture->SetSourcePathForAsset(CopiedTexturePath);
+    Texture->SetSourcePathForAsset(SourceDiskPathString);
 
     std::filesystem::path DestinationPath = TextureAssetDirectory / (L"T_" + FPaths::ToWide(SourceStem) + L".uasset");
     EnsureUniquePath(DestinationPath);
@@ -424,6 +400,9 @@ bool FAssetImportManager::ImportExistingUAsset(const FString& SourcePath, FStrin
         break;
     case EAssetClassId::Texture:
         Category = L"Textures";
+        break;
+    case EAssetClassId::PoseAsset:
+        Category = L"Poses";
         break;
     default:
         Category = L"Imported";
@@ -478,7 +457,7 @@ bool FAssetImportManager::SaveImportedObject(const std::filesystem::path& Destin
     {
         ClassName = GetAssetClassIdName(Header.ClassId);
     }
-    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Saved %s .uasset: %s", ClassName, RelativePath.c_str());
+    UE_LOG_CATEGORY(AssetImport, Info, "[AssetSave] Saved %s .uasset: %s", ClassName, RelativePath.c_str());
     return true;
 }
 

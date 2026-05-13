@@ -95,12 +95,15 @@ std::wstring ResolveContentBrowserSettingsPath(const FString &SavedPath)
     }
 
     Path = Path.lexically_normal();
-    if (std::filesystem::exists(Path) && std::filesystem::is_directory(Path))
+    const std::filesystem::path VirtualRoot = GetContentBrowserVirtualRoot();
+    const std::filesystem::path RelativeToRoot = Path.lexically_relative(VirtualRoot);
+    const bool bInsideAssetRoot = Path == VirtualRoot || (!RelativeToRoot.empty() && !IsParentDirectoryReference(RelativeToRoot));
+    if (bInsideAssetRoot && std::filesystem::exists(Path) && std::filesystem::is_directory(Path))
     {
         return Path.wstring();
     }
 
-    return GetContentBrowserVirtualRoot().wstring();
+    return VirtualRoot.wstring();
 }
 
 bool IsSubPath(const std::filesystem::path &parent, const std::filesystem::path &child)
@@ -121,7 +124,7 @@ bool IsSubPath(const std::filesystem::path &parent, const std::filesystem::path 
 }
 std::filesystem::path GetContentBrowserVirtualRoot()
 {
-    return std::filesystem::path(FPaths::RootDir()).lexically_normal();
+    return std::filesystem::path(FPaths::AssetDir()).lexically_normal();
 }
 
 std::filesystem::path GetPrimaryContentRoot()
@@ -136,7 +139,7 @@ std::filesystem::path GetEngineContentRoot()
 
 std::filesystem::path GetScriptRoot()
 {
-    return (std::filesystem::path(FPaths::RootDir()).parent_path() / L"Scripts").lexically_normal();
+    return std::filesystem::path(FPaths::ScriptsDir()).lexically_normal();
 }
 
 bool IsContentBrowserTopLevelPath(const std::filesystem::path &Path)
@@ -347,6 +350,7 @@ void FContentBrowser::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
     ICons[".uasset.Texture"] = ICons["Default"];
     ICons[".uasset.Mesh"] = ICons[".obj"];
     ICons[".uasset.SkeletalMesh"] = ICons[".fbx"];
+    ICons[".uasset.PoseAsset"] = ICons[".fbx"];
     ICons[".mtl"] =
         FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Material"));
 
@@ -444,6 +448,12 @@ void FContentBrowser::Render(float DeltaTime)
         BrowserContext.SelectedElement->RenderDetail();
 
     ImGui::EndTable();
+
+    // Process file operations after every ContentBrowser element has finished rendering.
+    // This prevents import/open callbacks from rebuilding CachedBrowserElements in the
+    // middle of DrawContents(), which can invalidate the vector being iterated.
+    ProcessPendingActions();
+
     FPanel::End();
 }
 
@@ -456,11 +466,41 @@ void FContentBrowser::Refresh()
         BrowserContext.CurrentPath = GetContentBrowserVirtualRoot().wstring();
     }
 
-    BrowserContext.PendingRevealPath = BrowserContext.CurrentPath;
+    if (BrowserContext.PendingRevealPath.empty())
+    {
+        BrowserContext.PendingRevealPath = BrowserContext.CurrentPath;
+    }
     RootNode = BuildDirectoryTree(GetContentBrowserVirtualRoot());
     RefreshContent();
 
     BrowserContext.bIsNeedRefresh = false;
+}
+
+
+void FContentBrowser::RevealAndSelect(const std::filesystem::path& Path)
+{
+    std::filesystem::path Normalized = Path;
+    if (Normalized.is_relative())
+    {
+        Normalized = std::filesystem::path(FPaths::RootDir()) / Normalized;
+    }
+    Normalized = Normalized.lexically_normal();
+
+    const bool bTargetIsDirectory = std::filesystem::exists(Normalized) && std::filesystem::is_directory(Normalized);
+    BrowserContext.CurrentPath = bTargetIsDirectory ? Normalized : Normalized.parent_path();
+    BrowserContext.PendingRevealPath = Normalized;
+    Refresh();
+
+    BrowserContext.SelectedElement.reset();
+    for (const std::shared_ptr<ContentBrowserElement>& Element : CachedBrowserElements)
+    {
+        if (Element && Element->GetPath().lexically_normal() == Normalized)
+        {
+            BrowserContext.SelectedElement = Element;
+            break;
+        }
+    }
+    SaveToSettings();
 }
 
 void FContentBrowser::SetIconSize(float Size)
@@ -535,6 +575,11 @@ void FContentBrowser::RefreshContent()
                 ID3D11ShaderResourceView *PreviewSRV = GetTextureAssetPreviewSRV(Content.Path);
                 element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".uasset.Texture"].Get());
             }
+            else if (AssetClassId == EAssetClassId::PoseAsset)
+            {
+                element = std::make_shared<UAssetElement>();
+                element.get()->SetIcon(ICons[".uasset.PoseAsset"].Get());
+            }
             else
             {
                 element = std::make_shared<UAssetElement>();
@@ -560,6 +605,10 @@ void FContentBrowser::RefreshContent()
         }
 
         element.get()->SetContent(Content);
+        if (!BrowserContext.PendingRevealPath.empty() && Content.Path.lexically_normal() == std::filesystem::path(BrowserContext.PendingRevealPath).lexically_normal())
+        {
+            BrowserContext.SelectedElement = element;
+        }
         CachedBrowserElements.push_back(std::move(element));
     }
 }
@@ -622,7 +671,12 @@ void FContentBrowser::DrawDirNode(FDirNode InNode)
 
 void FContentBrowser::DrawContents()
 {
-    int elementCount = static_cast<int>(CachedBrowserElements.size());
+    // Take a snapshot for this frame.
+    // Import/open/delete actions can request a refresh and rebuild CachedBrowserElements.
+    // Rendering the snapshot avoids std::vector out-of-range assertions if the live cache
+    // is cleared while this grid is still drawing.
+    const TArray<std::shared_ptr<ContentBrowserElement>> ElementsToRender = CachedBrowserElements;
+    const int elementCount = static_cast<int>(ElementsToRender.size());
 
     const float contentWidth = ImGui::GetContentRegionAvail().x;
     const float itemWidth = BrowserContext.ContentSize.x;
@@ -651,6 +705,12 @@ void FContentBrowser::DrawContents()
 
     for (int i = 0; i < elementCount; ++i)
     {
+        const std::shared_ptr<ContentBrowserElement>& Element = ElementsToRender[i];
+        if (!Element)
+        {
+            continue;
+        }
+
         int column = i % safeColumnCount;
         int row = i / safeColumnCount;
 
@@ -658,7 +718,7 @@ void FContentBrowser::DrawContents()
         float y = startPos.y + row * (itemHeight + gapSize);
 
         ImGui::SetCursorPos(ImVec2(x, y));
-        CachedBrowserElements[i]->Render(BrowserContext);
+        Element->Render(BrowserContext);
     }
 
     if (BrowserContext.bIsNeedRefresh)
@@ -673,37 +733,60 @@ void FContentBrowser::DrawContents()
     ImGui::Dummy(ImVec2((std::max)(itemWidth, contentWidth), TotalHeight));
 }
 
+void FContentBrowser::ProcessPendingActions()
+{
+    if (BrowserContext.PendingImportSourcePath.empty())
+    {
+        return;
+    }
+
+    const std::filesystem::path SourcePath = BrowserContext.PendingImportSourcePath;
+    BrowserContext.PendingImportSourcePath.clear();
+
+    if (!EditorEngine)
+    {
+        return;
+    }
+
+    FString ImportedAssetPath;
+    if (EditorEngine->ImportAssetFromPath(FPaths::ToUtf8(SourcePath.wstring()), &ImportedAssetPath))
+    {
+        BrowserContext.bIsNeedRefresh = true;
+    }
+}
+
 TArray<FContentItem> FContentBrowser::ReadDirectory(std::wstring Path)
 {
     TArray<FContentItem> Items;
     const std::filesystem::path CurrentPath = std::filesystem::path(Path).lexically_normal();
 
-    if (IsContentBrowserTopLevelPath(CurrentPath))
-    {
-        for (const std::filesystem::path &Root : {GetPrimaryContentRoot(), GetEngineContentRoot(), GetScriptRoot()})
-        {
-            if (!std::filesystem::exists(Root) || !std::filesystem::is_directory(Root))
-            {
-                continue;
-            }
+    std::error_code ErrorCode;
+    if (!std::filesystem::exists(CurrentPath, ErrorCode) || !std::filesystem::is_directory(CurrentPath, ErrorCode))
+        return Items;
 
-            FContentItem Item;
-            Item.Path = Root;
-            Item.Name = Root.filename().wstring();
-            Item.bIsDirectory = true;
-            Items.push_back(Item);
+    std::filesystem::directory_iterator It(
+        CurrentPath,
+        std::filesystem::directory_options::skip_permission_denied,
+        ErrorCode);
+    const std::filesystem::directory_iterator End;
+    for (; It != End; It.increment(ErrorCode))
+    {
+        if (ErrorCode)
+        {
+            ErrorCode.clear();
+            continue;
         }
 
-        return Items;
-    }
-
-    if (!std::filesystem::exists(CurrentPath) || !std::filesystem::is_directory(CurrentPath))
-        return Items;
-
-    for (const auto &Entry : std::filesystem::directory_iterator(CurrentPath))
-    {
+        const std::filesystem::directory_entry &Entry = *It;
         std::wstring Name = Entry.path().filename().wstring();
-        if (Entry.is_directory())
+        const bool bIsDirectory = Entry.is_directory(ErrorCode);
+        if (ErrorCode)
+        {
+            ErrorCode.clear();
+            continue;
+        }
+
+        if (bIsDirectory)
         {
             if (Name == L"Bin" || Name == L"Build" || Name == L".git" || Name == L".vs")
                 continue;
@@ -712,7 +795,7 @@ TArray<FContentItem> FContentBrowser::ReadDirectory(std::wstring Path)
         FContentItem Item;
         Item.Path = Entry.path();
         Item.Name = Name;
-        Item.bIsDirectory = Entry.is_directory();
+        Item.bIsDirectory = bIsDirectory;
 
         Items.push_back(Item);
     }
@@ -735,23 +818,26 @@ FContentBrowser::FDirNode FContentBrowser::BuildDirectoryTree(
     Node.Self.Name = DirPath.filename().wstring();
     Node.Self.bIsDirectory = true;
 
-    if (IsContentBrowserTopLevelPath(DirPath))
+    std::error_code ErrorCode;
+    std::filesystem::directory_iterator It(
+        DirPath,
+        std::filesystem::directory_options::skip_permission_denied,
+        ErrorCode);
+    const std::filesystem::directory_iterator End;
+    for (; It != End; It.increment(ErrorCode))
     {
-        Node.Self.Name = L"All";
-        for (const std::filesystem::path &Root : {GetPrimaryContentRoot(), GetEngineContentRoot(), GetScriptRoot()})
+        if (ErrorCode)
         {
-            if (std::filesystem::exists(Root) && std::filesystem::is_directory(Root))
-            {
-                Node.Children.push_back(BuildDirectoryTree(Root));
-            }
-        }
-        return Node;
-    }
-
-    for (const auto &Entry : std::filesystem::directory_iterator(DirPath))
-    {
-        if (!Entry.is_directory())
+            ErrorCode.clear();
             continue;
+        }
+
+        const std::filesystem::directory_entry &Entry = *It;
+        if (!Entry.is_directory(ErrorCode))
+        {
+            ErrorCode.clear();
+            continue;
+        }
 
         std::wstring DirName = Entry.path().filename().wstring();
         if (DirName == L"Bin" || DirName == L"Build" || DirName == L".git" || DirName == L".vs")
@@ -761,7 +847,7 @@ FContentBrowser::FDirNode FContentBrowser::BuildDirectoryTree(
     }
 
     if (Node.Self.Name.empty())
-        Node.Self.Name = FPaths::ToWide("All");
+        Node.Self.Name = L"Asset";
 
     return Node;
 }

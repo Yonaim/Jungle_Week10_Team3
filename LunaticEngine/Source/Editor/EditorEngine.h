@@ -2,6 +2,7 @@
 
 #include "AssetEditor/AssetEditorManager.h"
 #include "Engine/Runtime/Engine.h"
+#include "Engine/Platform/Paths.h"
 #include "Engine/Serialization/SceneSaveManager.h"
 
 #include "AssetTools/AssetImportManager.h"
@@ -16,6 +17,8 @@
 #if STATS
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #endif
+
+#include <filesystem>
 
 class UGizmoVisualComponent;
 class FLevelEditorViewportClient;
@@ -82,6 +85,8 @@ class UEditorEngine : public UEngine
     bool           HasCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().HasCurrentLevelFilePath(); }
     const FString &GetCurrentLevelFilePath() const { return LevelEditor.GetSceneManager().GetCurrentLevelFilePath(); }
     void           RefreshContentBrowser() { LevelEditorWindow.RefreshContentBrowser(); }
+    void           SelectContentBrowserPath(const std::filesystem::path& Path) { LevelEditorWindow.SelectContentBrowserPath(Path); }
+    void           SelectContentBrowserPath(const FString& Path) { LevelEditorWindow.SelectContentBrowserPath(std::filesystem::path(FPaths::ToWide(Path))); }
     void           SetContentBrowserIconSize(float Size) { LevelEditorWindow.SetContentBrowserIconSize(Size); }
     float          GetContentBrowserIconSize() const { return LevelEditorWindow.GetContentBrowserIconSize(); }
     void           HideEditorWindows() { LevelEditorWindow.HideEditorWindows(); }

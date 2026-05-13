@@ -10,11 +10,22 @@
 #include "Engine/Platform/Paths.h"
 
 #include <filesystem>
+#include <algorithm>
+#include <cctype>
 
 IMPLEMENT_CLASS(AStaticMeshActor, AActor)
 
 namespace
 {
+	FString ToLowerAsciiCopy(FString Value)
+	{
+		std::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char Character)
+		{
+			return static_cast<char>(std::tolower(Character));
+		});
+		return Value;
+	}
+
 	bool DoesProjectRelativePathExist(const FString& Path)
 	{
 		if (Path.empty())
@@ -39,22 +50,24 @@ namespace
 		};
 
 		static constexpr FShapeFallback ShapeFallbacks[] = {
-			{ "SM_cone", "cone.obj" },
-			{ "SM_cube", "cube.obj" },
-			{ "SM_cylinder", "cylinder.obj" },
-			{ "SM_plane", "plane.obj" },
-			{ "SM_sphere_lowpoly", "sphere_lowpoly.obj" },
-			{ "SM_sphere", "sphere.obj" },
+			{ "sm_cone", "cone.obj" },
+			{ "sm_cube", "cube.obj" },
+			{ "sm_cylinder", "cylinder.obj" },
+			{ "sm_plane", "plane.obj" },
+			{ "sm_sphere_lowpoly", "sphere_lowpoly.obj" },
+			{ "sm_sphere", "sphere.obj" },
 		};
+
+		const FString LowerMeshPath = ToLowerAsciiCopy(MeshPath);
 
 		for (const FShapeFallback& Fallback : ShapeFallbacks)
 		{
-			if (MeshPath.find(Fallback.AssetStem) == FString::npos && MeshPath.find(Fallback.ObjName) == FString::npos)
+			if (LowerMeshPath.find(Fallback.AssetStem) == FString::npos && LowerMeshPath.find(Fallback.ObjName) == FString::npos)
 			{
 				continue;
 			}
 
-			const FString Candidate = FString("Asset/SourceAssets/Meshes/BasicShape/") + Fallback.ObjName;
+			const FString Candidate = FPaths::ToUtf8((std::filesystem::path(FPaths::EngineBasicShapeSourceDir()) / Fallback.ObjName).generic_wstring());
 			if (DoesProjectRelativePathExist(Candidate))
 			{
 				return Candidate;
@@ -129,8 +142,8 @@ bool AStaticMeshActor::IsBasicShapeAssetPath(const FString& Path) {
 		}
 	}
 
-	if (NormalizedPath.find("Asset/EngineContent/BasicShape/") != FString::npos ||
-		NormalizedPath.find("Asset/SourceAssets/Meshes/BasicShape/") != FString::npos ||
+	if (NormalizedPath.find("Asset/Engine/Content/BasicShape/") != FString::npos ||
+		NormalizedPath.find("Asset/Engine/Source/BasicShape/") != FString::npos ||
 		NormalizedPath.find("/BasicShape/") != FString::npos)
 	{
 		return true;

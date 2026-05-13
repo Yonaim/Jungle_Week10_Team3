@@ -15,13 +15,14 @@ public:
 	static std::wstring ShaderDir();      // Shaders/
 	static std::wstring AssetDir();             // Asset/
 	static std::wstring ContentDir();           // Asset/Content/ (.uasset/.umap only, project-owned)
-	static std::wstring EngineContentDir();     // Asset/EngineContent/ (.uasset only, built-in/read-mostly)
-	static std::wstring SourceAssetsDir();      // Asset/SourceAssets/ (fbx/obj/png/font/editor raw files)
-	static std::wstring DerivedDataCacheDir();  // Asset/DerivedDataCache/ (regeneratable cache)
-	static std::wstring ShaderCacheDir();       // Asset/DerivedDataCache/Shaders/
-	static std::wstring BasicShapeDir();        // Asset/EngineContent/BasicShape/
+	static std::wstring EngineDir();            // Asset/Engine/
+	static std::wstring EngineContentDir();     // Asset/Engine/Content/ (.uasset only, built-in/read-mostly)
+	static std::wstring EngineSourceDir();      // Asset/Engine/Source/ (built-in raw/editor resources)
+	static std::wstring ShaderCacheDir();       // Shaders/Cache/
+	static std::wstring BasicShapeDir();        // Asset/Engine/Content/BasicShape/
+	static std::wstring EngineBasicShapeSourceDir(); // Asset/Engine/Source/BasicShape/
 	static std::wstring SceneDir();             // Asset/Content/Scene/
-	static std::wstring DataDir();              // Legacy alias of Asset/SourceAssets/Data/
+	static std::wstring DataDir();              // Asset/Content/Data/
 	static std::wstring SaveDir();        // Saves/
 	static std::wstring DumpDir();        // Saves/Dump/
 	static std::wstring LogDir();         // Saves/Logs/

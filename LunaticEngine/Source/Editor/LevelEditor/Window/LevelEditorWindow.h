@@ -66,6 +66,7 @@ class FLevelEditorWindow : public IEditorMenuProvider
     void  HideEditorWindowsForPIE();
     void  RestoreEditorWindowsAfterPIE();
     void  RefreshContentBrowser() { ContentBrowser.Refresh(); }
+    void  SelectContentBrowserPath(const std::filesystem::path& Path) { ContentBrowser.RevealAndSelect(Path); }
     ImGuiID GetMainDockspaceId() const { return MainDockspaceId; }
     void  SetContentBrowserIconSize(float Size) { ContentBrowser.SetIconSize(Size); }
     float GetContentBrowserIconSize() const { return ContentBrowser.GetIconSize(); }

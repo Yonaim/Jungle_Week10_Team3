@@ -28,6 +28,8 @@
 #include "Viewport/Viewport.h"
 #include "Component/CameraComponent.h"
 
+#include <filesystem>
+
 DEFINE_CLASS(UEngine, UObject)
 
 UEngine* GEngine = nullptr;
@@ -37,6 +39,43 @@ bool GIsEditor = false;
 
 namespace
 {
+
+	void EnsureBuiltinEngineContent(ID3D11Device* Device)
+	{
+		if (!Device)
+		{
+			UE_LOG_CATEGORY(Engine, Warning, "[INIT][Asset] Skip Engine/Content generation: invalid D3D device");
+			return;
+		}
+
+		const wchar_t* BasicShapeSources[] = {
+			L"cone.obj",
+			L"cube.obj",
+			L"cylinder.obj",
+			L"plane.obj",
+			L"sphere.obj",
+			L"sphere_lowpoly.obj",
+		};
+
+		const std::filesystem::path SourceRoot = std::filesystem::path(FPaths::EngineBasicShapeSourceDir()).lexically_normal();
+		for (const wchar_t* SourceFileName : BasicShapeSources)
+		{
+			const std::filesystem::path SourcePath = (SourceRoot / SourceFileName).lexically_normal();
+			if (!std::filesystem::exists(SourcePath))
+			{
+				UE_LOG_CATEGORY(Engine, Warning, "[INIT][Asset] Missing built-in mesh source: %s", FPaths::ToUtf8(SourcePath.generic_wstring()).c_str());
+				continue;
+			}
+
+			const FString SourcePathUtf8 = FPaths::ToUtf8(SourcePath.generic_wstring());
+			UE_LOG_CATEGORY(Engine, Info, "[INIT][Asset] Ensure built-in mesh: source=%s", SourcePathUtf8.c_str());
+			if (!FMeshAssetManager::LoadStaticMesh(SourcePathUtf8, Device))
+			{
+				UE_LOG_CATEGORY(Engine, Error, "[INIT][Asset] Failed to generate/load built-in mesh from source: %s", SourcePathUtf8.c_str());
+			}
+		}
+	}
+
 	ELevelTick ToLevelTickType(EWorldType WorldType)
 	{
 		switch (WorldType)
@@ -99,6 +138,13 @@ void UEngine::Init(FWindowsWindow* InWindow)
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] MeshBufferManager::Init complete");
 	}
 
+
+	{
+		SCOPE_STARTUP_STAT("EngineContent::EnsureGenerated");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Ensuring built-in Engine/Content assets");
+		EnsureBuiltinEngineContent(Device);
+	}
+
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadDefaultResources");
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading default resources");
@@ -122,11 +168,10 @@ void UEngine::Init(FWindowsWindow* InWindow)
 		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading asset catalog");
 		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::AssetCatalogFilePath()), Device);
 	}
-
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadFromDir");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning source asset directory: %s", FPaths::ToUtf8(FPaths::SourceAssetsDir()).c_str());
-		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::SourceAssetsDir()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadFromEngineSourceDir");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Scanning engine source asset directory: %s", FPaths::ToUtf8(FPaths::EngineSourceDir()).c_str());
+		FResourceManager::Get().LoadFromDirectory(FPaths::ToUtf8(FPaths::EngineSourceDir()), Device);
 	}
 
 	{

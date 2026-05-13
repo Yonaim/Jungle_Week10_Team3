@@ -11,7 +11,7 @@ ACrashDumpItemActor::ACrashDumpItemActor()
 	SetItemScript("Scripts/Game/Items/CrashDumpItem.lua");
 
 	// 생성자에서는 texture 경로만 지정
-	SetItemTexturePath("Asset/SourceAssets/Texture/item_crash_dump.png");
+	SetItemTexturePath("Asset/Engine/Source/Sample/Texture/metal.png");
 
 	InteractionConfig.ScoreValue = 0;
 	InteractionConfig.RequiredInteractorTag = "Player";

@@ -75,6 +75,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     void RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId);
     void BuildDefaultDockLayout(ImGuiID DockspaceId);
+    void RenderPreviewerSettingsPanel(const FPanelDesc& Desc);
 
     FHistoryState CaptureHistoryState() const;
     void ApplyHistoryState(const FHistoryState &HistoryState);
@@ -115,6 +116,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     bool bSkeletonTreePanelOpen = true;
     bool bDetailsPanelOpen = true;
     bool bBoneDetailsPanelOpen = true;
+    bool bPreviewerSettingsPanelOpen = true;
 
     // 동일 타입 에디터를 여러 개 열었을 때 ImGui ID 충돌을 피하기 위한 인스턴스 ID.
     uint32 EditorInstanceId = 0;

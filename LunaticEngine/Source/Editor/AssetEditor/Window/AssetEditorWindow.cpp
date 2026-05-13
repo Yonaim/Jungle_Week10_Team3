@@ -9,6 +9,8 @@
 #include "ImGui/imgui.h"
 #include "Common/UI/Panels/PanelTitleUtils.h"
 #include "Common/UI/Style/EditorUIStyle.h"
+#include "Common/UI/Toolbar/EditorPlayToolbar.h"
+#include "Resource/ResourceManager.h"
 #include "Common/UI/Tabs/EditorDocumentTabBar.h"
 
 #include <algorithm>
@@ -190,8 +192,11 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
         // Asset Editor도 Level Editor와 같은 panel chrome / surface 색을 사용한다.
         // 개별 패널의 body 색은 FPanel::Begin()에서 공통으로 적용한다.
         ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::ColorConvertU32ToFloat4(PanelTitleUtils::GetDockTabBarGapColor()));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, PanelTitleUtils::GetPanelSurfaceColor());
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, PanelTitleUtils::GetPanelSurfaceColor());
+        ImGui::PushStyleColor(ImGuiCol_DockingEmptyBg, ImGui::ColorConvertU32ToFloat4(PanelTitleUtils::GetDockTabBarGapColor()));
         TabManager.Render(DeltaTime, DockspaceId);
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(4);
 
         if (!TabManager.HasOpenTabs())
         {
@@ -297,61 +302,24 @@ void FAssetEditorWindow::RenderAssetFrameToolbar()
 
     if (ImGui::Begin("##AssetEditorFrameToolbar", nullptr, Flags))
     {
-        auto DrawTextButton = [](const char *Label, const ImVec2 &Size, bool bEnabled, const char *Tooltip, auto &&OnClick)
+        auto ResolveToolbarIcon = [](const char* Key) -> ID3D11ShaderResourceView*
         {
-            if (!bEnabled)
-            {
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.35f);
-                ImGui::BeginDisabled(true);
-            }
-
-            const bool bClicked = ImGui::Button(Label, Size);
-            if (bClicked && bEnabled)
-            {
-                OnClick();
-            }
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && Tooltip && Tooltip[0] != '\0')
-            {
-                ImGui::SetTooltip("%s", Tooltip);
-            }
-
-            if (!bEnabled)
-            {
-                ImGui::EndDisabled();
-                ImGui::PopStyleVar();
-            }
+            const FString Path = FResourceManager::Get().ResolvePath(FName(Key));
+            return FResourceManager::Get().FindLoadedTexture(Path).Get();
         };
-
-        const ImVec2 ButtonSize(72.0f, 28.0f);
-        DrawTextButton("Play", ButtonSize, false, "Asset Editor preview playback is not available yet.", [](){});
-        ImGui::SameLine();
-        DrawTextButton("Pause", ButtonSize, false, "Asset Editor preview playback is not available yet.", [](){});
-        ImGui::SameLine();
-        DrawTextButton("Stop", ButtonSize, false, "Asset Editor preview playback is not available yet.", [](){});
-
-        ImGui::SameLine();
-        ImGui::Dummy(ImVec2(10.0f, 1.0f));
-        ImGui::SameLine();
 
         const bool bCanUndo = CanUndoActiveTab();
         const bool bCanRedo = CanRedoActiveTab();
-        DrawTextButton("Undo", ButtonSize, bCanUndo, "Undo asset edit (Ctrl+Z)", [this]() { UndoActiveTab(); });
-        ImGui::SameLine();
-        DrawTextButton("Redo", ButtonSize, bCanRedo, "Redo asset edit (Ctrl+Y / Ctrl+Shift+Z)", [this]() { RedoActiveTab(); });
-
-        if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
-        {
-            const std::filesystem::path &AssetPath = ActiveEditor->GetAssetPath();
-            if (!AssetPath.empty())
-            {
-                ImGui::SameLine();
-                ImGui::SetCursorPosX((std::max)(ImGui::GetCursorPosX(), ImGui::GetWindowWidth() - 360.0f));
-                ImGui::TextDisabled("UAsset: %s%s",
-                                    FPaths::ToUtf8(AssetPath.filename().wstring()).c_str(),
-                                    ActiveEditor->IsDirty() ? "*" : "");
-            }
-        }
+        std::vector<FEditorPlayToolbarButtonDesc> PlayButtons = {
+            {"##AssetPreview_Play", ResolveToolbarIcon("Editor.Icon.Play"), "Play", true, ImVec4(0.30f, 0.90f, 0.35f, 1.0f), "Asset Editor preview playback is not available yet.", [](){}},
+            {"##AssetPreview_Pause", ResolveToolbarIcon("Editor.Icon.Pause"), "Pause", true, ImVec4(1.0f, 1.0f, 1.0f, 0.7f), "Asset Editor preview playback is not available yet.", [](){}},
+            {"##AssetPreview_Stop", ResolveToolbarIcon("Editor.Icon.Stop"), "Stop", true, ImVec4(0.95f, 0.28f, 0.25f, 1.0f), "Asset Editor preview playback is not available yet.", [](){}},
+        };
+        std::vector<FEditorPlayToolbarButtonDesc> HistoryButtons = {
+            {"##AssetUndo", ResolveToolbarIcon("Editor.Icon.Undo"), "Undo", !bCanUndo, ImVec4(1.0f, 1.0f, 1.0f, bCanUndo ? 0.9f : 0.35f), "Undo asset edit (Ctrl+Z)", [this]() { UndoActiveTab(); }},
+            {"##AssetRedo", ResolveToolbarIcon("Editor.Icon.Redo"), "Redo", !bCanRedo, ImVec4(1.0f, 1.0f, 1.0f, bCanRedo ? 0.9f : 0.35f), "Redo asset edit (Ctrl+Y / Ctrl+Shift+Z)", [this]() { RedoActiveTab(); }},
+        };
+        FEditorPlayToolbar::Render("##AssetEditorPlayToolbar", BarSize.x, PlayButtons, HistoryButtons, AssetFrameToolbarHeight);
     }
 
     ImGui::End();
@@ -447,7 +415,6 @@ void FAssetEditorWindow::BuildFileMenu()
         }
     }
 
-    FEditorUIStyle::DrawPopupSeparator();
     FEditorUIStyle::DrawPopupSectionHeader("UASSET");
 
     if (ImGui::MenuItem("Open UAsset...", "Ctrl+Alt+O") && OwnerManager)
@@ -469,7 +436,6 @@ void FAssetEditorWindow::BuildFileMenu()
         ImGui::EndDisabled();
     }
 
-    FEditorUIStyle::DrawPopupSeparator();
     FEditorUIStyle::DrawPopupSectionHeader("SOURCE IMPORT");
 
     if (ImGui::MenuItem("Import Source Asset...", "Ctrl+Alt+I") && EditorEngine)
@@ -478,7 +444,6 @@ void FAssetEditorWindow::BuildFileMenu()
     }
     ImGui::TextDisabled("Creates a .uasset in Content. Open the .uasset to edit it.");
 
-    FEditorUIStyle::DrawPopupSeparator();
     FEditorUIStyle::DrawPopupSectionHeader("TAB");
 
     if (!bHasActiveEditor)
@@ -533,7 +498,6 @@ void FAssetEditorWindow::BuildEditMenu()
 
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
     {
-        ImGui::Separator();
         ActiveEditor->BuildEditMenu();
     }
 }
@@ -548,7 +512,6 @@ void FAssetEditorWindow::BuildWindowMenu()
 
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())
     {
-        FEditorUIStyle::DrawPopupSeparator();
         FEditorUIStyle::DrawPopupSectionHeader("ACTIVE ASSET EDITOR");
         ActiveEditor->BuildWindowMenu();
     }

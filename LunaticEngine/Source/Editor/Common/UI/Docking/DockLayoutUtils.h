@@ -42,10 +42,12 @@ struct FAssetPreviewDockLayoutDesc
     std::string RightTopWindow;
     std::string RightBottomWindow;
     std::string RightBottomSecondWindow;
+    std::string RightBottomSideWindow;
 
     float LeftToolbarRatio = 0.12f;
-    float RightColumnRatio = 0.28f;
+    float RightColumnRatio = 0.36f;
     float RightBottomRatio = 0.48f;
+    float RightBottomSideRatio = 0.42f;
 };
 
 /**
@@ -59,6 +61,7 @@ struct FLevelEditorDockLayoutDesc
     std::string CenterWindow;
     std::string RightTopWindow;
     std::string RightBottomWindow;
+    std::string RightBottomSideWindow;
     std::string BottomWindow;
     std::string BottomRightWindow;
 
@@ -66,6 +69,7 @@ struct FLevelEditorDockLayoutDesc
     float LeftRatio = 0.20f;
     float RightRatio = 0.24f;
     float RightBottomRatio = 0.52f;
+    float RightBottomSideRatio = 0.42f;
     float BottomRightRatio = 0.42f;
 };
 
@@ -134,6 +138,11 @@ class FDockLayoutUtils
         }
         ImGuiID RightColumnId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Right, Desc.RightColumnRatio, nullptr, &MainId);
         ImGuiID RightBottomId = ImGui::DockBuilderSplitNode(RightColumnId, ImGuiDir_Down, Desc.RightBottomRatio, nullptr, &RightColumnId);
+        ImGuiID RightBottomSideId = 0;
+        if (!Desc.RightBottomSideWindow.empty())
+        {
+            RightBottomSideId = ImGui::DockBuilderSplitNode(RightBottomId, ImGuiDir_Right, Desc.RightBottomSideRatio, nullptr, &RightBottomId);
+        }
         ImGuiID CenterId = MainId;
         ImGuiID RightTopId = RightColumnId;
 
@@ -156,6 +165,10 @@ class FDockLayoutUtils
         if (!Desc.RightBottomSecondWindow.empty())
         {
             ImGui::DockBuilderDockWindow(Desc.RightBottomSecondWindow.c_str(), RightBottomId);
+        }
+        if (RightBottomSideId != 0 && !Desc.RightBottomSideWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.RightBottomSideWindow.c_str(), RightBottomSideId);
         }
 
         ImGui::DockBuilderFinish(DockspaceId);
@@ -180,6 +193,11 @@ class FDockLayoutUtils
         ImGuiID LeftId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Left, Desc.LeftRatio, nullptr, &MainId);
         ImGuiID RightColumnId = ImGui::DockBuilderSplitNode(MainId, ImGuiDir_Right, Desc.RightRatio, nullptr, &MainId);
         ImGuiID RightBottomId = ImGui::DockBuilderSplitNode(RightColumnId, ImGuiDir_Down, Desc.RightBottomRatio, nullptr, &RightColumnId);
+        ImGuiID RightBottomSideId = 0;
+        if (!Desc.RightBottomSideWindow.empty())
+        {
+            RightBottomSideId = ImGui::DockBuilderSplitNode(RightBottomId, ImGuiDir_Right, Desc.RightBottomSideRatio, nullptr, &RightBottomId);
+        }
         ImGuiID CenterId = MainId;
         ImGuiID RightTopId = RightColumnId;
 
@@ -202,6 +220,10 @@ class FDockLayoutUtils
         if (!Desc.BottomWindow.empty())
         {
             ImGui::DockBuilderDockWindow(Desc.BottomWindow.c_str(), BottomId);
+        }
+        if (RightBottomSideId != 0 && !Desc.RightBottomSideWindow.empty())
+        {
+            ImGui::DockBuilderDockWindow(Desc.RightBottomSideWindow.c_str(), RightBottomSideId);
         }
         if (BottomRightId != 0 && !Desc.BottomRightWindow.empty())
         {

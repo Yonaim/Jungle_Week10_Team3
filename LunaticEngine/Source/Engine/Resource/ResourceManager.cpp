@@ -454,7 +454,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 		}
 	}
 
-	DiscoverBitmapFonts("Asset/SourceAssets/Font");
+	DiscoverBitmapFonts("Asset/Engine/Source/Font");
 
 	UE_LOG_CATEGORY(
 		ResourceManager,
@@ -501,17 +501,35 @@ void FResourceManager::DiscoverBitmapFonts(const FString& DirectoryPath)
 {
 	const std::filesystem::path RootPath(FPaths::RootDir());
 	const std::filesystem::path FontRoot = RootPath / FPaths::ToWide(DirectoryPath);
-	if (!std::filesystem::exists(FontRoot))
+	std::error_code ErrorCode;
+	if (!std::filesystem::exists(FontRoot, ErrorCode) || !std::filesystem::is_directory(FontRoot, ErrorCode))
 	{
 		UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Bitmap font directory not found: %s", DirectoryPath.c_str());
 		return;
 	}
 
 	size_t DiscoveredFontCount = 0;
-	for (const auto& Entry : std::filesystem::recursive_directory_iterator(FontRoot))
+	std::filesystem::recursive_directory_iterator It(
+		FontRoot,
+		std::filesystem::directory_options::skip_permission_denied,
+		ErrorCode);
+	const std::filesystem::recursive_directory_iterator End;
+	for (; It != End; It.increment(ErrorCode))
 	{
-		if (!Entry.is_regular_file())
+		if (ErrorCode)
 		{
+			UE_LOG_CATEGORY(ResourceManager, Warning,
+				"[INIT] Bitmap font scan skipped entry. Directory: %s, Error: %s",
+				DirectoryPath.c_str(),
+				ErrorCode.message().c_str());
+			ErrorCode.clear();
+			continue;
+		}
+
+		const std::filesystem::directory_entry& Entry = *It;
+		if (!Entry.is_regular_file(ErrorCode))
+		{
+			ErrorCode.clear();
 			continue;
 		}
 
@@ -642,21 +660,104 @@ bool FResourceManager::LoadBitmapFontMetadata(const FString& JsonPath, FFontReso
 
 void FResourceManager::LoadFromDirectory(const FString& Path, ID3D11Device* InDevice)
 {
-	const std::filesystem::path RootPath(FPaths::RootDir());
+	namespace fs = std::filesystem;
+
+	const fs::path ProjectRoot(FPaths::RootDir());
+	const fs::path ScanRoot(FPaths::ToWide(Path));
 	UE_LOG_CATEGORY(ResourceManager, Info, "[INIT] Directory texture scan begin: %s", Path.c_str());
+
+	std::error_code ErrorCode;
+	if (Path.empty())
+	{
+		UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Directory texture scan skipped. Empty path.");
+		return;
+	}
+
+	if (!fs::exists(ScanRoot, ErrorCode))
+	{
+		UE_LOG_CATEGORY(ResourceManager, Warning,
+			"[INIT] Directory texture scan skipped. Directory does not exist: %s",
+			Path.c_str());
+		return;
+	}
+
+	if (ErrorCode)
+	{
+		UE_LOG_CATEGORY(ResourceManager, Error,
+			"[INIT] Directory texture scan exists() failed. Directory: %s, Error: %s",
+			Path.c_str(),
+			ErrorCode.message().c_str());
+		return;
+	}
+
+	if (!fs::is_directory(ScanRoot, ErrorCode))
+	{
+		UE_LOG_CATEGORY(ResourceManager, Warning,
+			"[INIT] Directory texture scan skipped. Path is not a directory: %s",
+			Path.c_str());
+		return;
+	}
+
+	if (ErrorCode)
+	{
+		UE_LOG_CATEGORY(ResourceManager, Error,
+			"[INIT] Directory texture scan is_directory() failed. Directory: %s, Error: %s",
+			Path.c_str(),
+			ErrorCode.message().c_str());
+		return;
+	}
 
 	size_t ScannedPngCount = 0;
 	size_t LoadedTextureCount = 0;
 
-	for (const auto& Entry : std::filesystem::recursive_directory_iterator(FPaths::ToWide(Path)))
+	fs::recursive_directory_iterator It(
+		ScanRoot,
+		fs::directory_options::skip_permission_denied,
+		ErrorCode);
+	const fs::recursive_directory_iterator End;
+
+	if (ErrorCode)
 	{
+		UE_LOG_CATEGORY(ResourceManager, Error,
+			"[INIT] Directory texture scan iterator failed. Directory: %s, Error: %s",
+			Path.c_str(),
+			ErrorCode.message().c_str());
+		return;
+	}
+
+	for (; It != End; It.increment(ErrorCode))
+	{
+		if (ErrorCode)
+		{
+			UE_LOG_CATEGORY(ResourceManager, Warning,
+				"[INIT] Directory texture scan skipped entry. Directory: %s, Error: %s",
+				Path.c_str(),
+				ErrorCode.message().c_str());
+			ErrorCode.clear();
+			continue;
+		}
+
+		const fs::directory_entry& Entry = *It;
+		if (!Entry.is_regular_file(ErrorCode))
+		{
+			if (ErrorCode)
+			{
+				UE_LOG_CATEGORY(ResourceManager, Warning,
+					"[INIT] Directory texture scan skipped non-readable entry. Directory: %s, Error: %s",
+					Path.c_str(),
+					ErrorCode.message().c_str());
+				ErrorCode.clear();
+			}
+			continue;
+		}
+
 		FString Extension = Entry.path().extension().string();
 		AsciiUtils::ToLowerInPlace(Extension);
 		if (Extension != ".png")
 			continue;
 
 		++ScannedPngCount;
-		const FString RelativePath = FPaths::ToUtf8(Entry.path().lexically_normal().lexically_relative(RootPath).generic_wstring());
+		const FString RelativePath = FPaths::ToUtf8(Entry.path().lexically_normal().lexically_relative(ProjectRoot).generic_wstring());
 		if (UTexture2D* Texture = UTexture2D::LoadFromFile(RelativePath, InDevice))
 		{
 			LoadedResource[RelativePath] = Texture->GetSRV();
@@ -736,7 +837,9 @@ void FResourceManager::LoadFromScanFile(const FString& Path, ID3D11Device* InDev
 
 			const FString DirectoryUtf8 = Rule["Directory"].ToString();
 			const std::filesystem::path RuleRootPath = RootPath / ToLexicalPath(DirectoryUtf8);
-			if (!std::filesystem::exists(RuleRootPath) || !std::filesystem::is_directory(RuleRootPath))
+			std::error_code RuleDirectoryErrorCode;
+			if (!std::filesystem::exists(RuleRootPath, RuleDirectoryErrorCode) ||
+				!std::filesystem::is_directory(RuleRootPath, RuleDirectoryErrorCode))
 			{
 				UE_LOG_CATEGORY(ResourceManager, Warning, "[INIT] Resource scan directory missing: type=%s rule=%s dir=%s",
 					ResourceType.c_str(),
@@ -776,164 +879,136 @@ void FResourceManager::LoadFromScanFile(const FString& Path, ID3D11Device* InDev
 			}
 
 			std::filesystem::directory_options IteratorOptions = std::filesystem::directory_options::skip_permission_denied;
-			if (bRecursive)
+			auto ProcessResourceEntry = [&](const std::filesystem::directory_entry& Entry)
 			{
-				for (const auto& Entry : std::filesystem::recursive_directory_iterator(RuleRootPath, IteratorOptions))
+				std::error_code EntryErrorCode;
+				if (!Entry.is_regular_file(EntryErrorCode))
 				{
-					if (!Entry.is_regular_file())
-					{
-						continue;
-					}
+					return;
+				}
 
-					FString Extension = Entry.path().extension().string();
-					if (bNormalizeExtensionToLower)
-					{
-						Extension = ToLowerCopy(Extension);
-					}
-					if (AllowedExtensions.find(Extension) == AllowedExtensions.end())
-					{
-						continue;
-					}
+				FString Extension = Entry.path().extension().string();
+				if (bNormalizeExtensionToLower)
+				{
+					Extension = ToLowerCopy(Extension);
+				}
+				if (AllowedExtensions.find(Extension) == AllowedExtensions.end())
+				{
+					return;
+				}
 
-					const std::filesystem::path RelativeToRule = Entry.path().lexically_normal().lexically_relative(RuleRootPath);
-					const std::filesystem::path RelativeNoExtension = RelativeToRule.parent_path() / RelativeToRule.stem();
-					const FString RelativeAliasKey = NormalizeGenericPath(RelativeNoExtension.generic_string());
-					const FString RelativePathUtf8 = bUseRelativePathFromRoot
-						? MakeRelativeUtf8Path(Entry.path(), RootPath)
-						: FPaths::ToUtf8(Entry.path().lexically_normal().generic_wstring());
+				const std::filesystem::path RelativeToRule = Entry.path().lexically_normal().lexically_relative(RuleRootPath);
+				const std::filesystem::path RelativeNoExtension = RelativeToRule.parent_path() / RelativeToRule.stem();
+				const FString RelativeAliasKey = NormalizeGenericPath(RelativeNoExtension.generic_string());
+				const FString RelativePathUtf8 = bUseRelativePathFromRoot
+					? MakeRelativeUtf8Path(Entry.path(), RootPath)
+					: FPaths::ToUtf8(Entry.path().lexically_normal().generic_wstring());
 
-					FString ResourceName;
-					if (const auto AliasIt = Aliases.find(RelativeAliasKey); AliasIt != Aliases.end())
-					{
-						ResourceName = AliasIt->second;
-					}
-					else
-					{
-						ResourceName = MakeGeneratedResourceName(ResourceType, RuleName, RelativeNoExtension.generic_string());
-					}
+				FString ResourceName;
+				if (const auto AliasIt = Aliases.find(RelativeAliasKey); AliasIt != Aliases.end())
+				{
+					ResourceName = AliasIt->second;
+				}
+				else
+				{
+					ResourceName = MakeGeneratedResourceName(ResourceType, RuleName, RelativeNoExtension.generic_string());
+				}
 
-					if (ResourceType == ResourceKey::Font)
+				if (ResourceType == ResourceKey::Font)
+				{
+					if (Extension == ".json")
 					{
-						if (Extension == ".json")
+						FFontResource Resource;
+						if (!LoadBitmapFontMetadata(FPaths::ToUtf8(Entry.path().lexically_normal().wstring()), Resource))
 						{
-							FFontResource Resource;
-							if (!LoadBitmapFontMetadata(FPaths::ToUtf8(Entry.path().lexically_normal().wstring()), Resource))
-							{
-								continue;
-							}
-							if (!ResourceName.empty())
-							{
-								Resource.Name = FName(ResourceName);
-							}
-							FontResources[Resource.Name.ToString()] = std::move(Resource);
+							return;
 						}
-						else
+						if (!ResourceName.empty())
 						{
-							RegisterPath(FName(ResourceName), RelativePathUtf8);
+							Resource.Name = FName(ResourceName);
 						}
-					}
-					else if (ResourceType == ResourceKey::Particle)
-					{
-						RegisterParticle(FName(ResourceName), RelativePathUtf8);
-					}
-					else if (ResourceType == ResourceKey::Texture)
-					{
-						RegisterTexture(FName(ResourceName), RelativePathUtf8);
-					}
-					else if (ResourceType == ResourceKey::Mesh)
-					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Unknown);
-					}
-					else if (ResourceType == ResourceKey::StaticMesh)
-					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Static);
-					}
-					else if (ResourceType == ResourceKey::SkeletalMesh)
-					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Skeletal);
-					}
-					else if (ResourceType == ResourceKey::Sound)
-					{
-						RegisterSound(FName(ResourceName), RelativePathUtf8, SoundCategory);
-					}
-					else if (ResourceType == ResourceKey::Material)
-					{
-						RegisterMaterial(FName(ResourceName), RelativePathUtf8);
+						FontResources[Resource.Name.ToString()] = std::move(Resource);
 					}
 					else
 					{
 						RegisterPath(FName(ResourceName), RelativePathUtf8);
 					}
 				}
+				else if (ResourceType == ResourceKey::Particle)
+				{
+					RegisterParticle(FName(ResourceName), RelativePathUtf8);
+				}
+				else if (ResourceType == ResourceKey::Texture)
+				{
+					RegisterTexture(FName(ResourceName), RelativePathUtf8);
+				}
+				else if (ResourceType == ResourceKey::Mesh)
+				{
+					RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Unknown);
+				}
+				else if (ResourceType == ResourceKey::StaticMesh)
+				{
+					RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Static);
+				}
+				else if (ResourceType == ResourceKey::SkeletalMesh)
+				{
+					RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Skeletal);
+				}
+				else if (ResourceType == ResourceKey::Sound)
+				{
+					RegisterSound(FName(ResourceName), RelativePathUtf8, SoundCategory);
+				}
+				else if (ResourceType == ResourceKey::Material)
+				{
+					RegisterMaterial(FName(ResourceName), RelativePathUtf8);
+				}
+				else
+				{
+					RegisterPath(FName(ResourceName), RelativePathUtf8);
+				}
+			};
+
+			std::error_code IteratorErrorCode;
+			if (bRecursive)
+			{
+				std::filesystem::recursive_directory_iterator It(RuleRootPath, IteratorOptions, IteratorErrorCode);
+				const std::filesystem::recursive_directory_iterator End;
+				for (; It != End; It.increment(IteratorErrorCode))
+				{
+					if (IteratorErrorCode)
+					{
+						UE_LOG_CATEGORY(ResourceManager, Warning,
+							"[INIT] Resource scan skipped entry: type=%s rule=%s dir=%s error=%s",
+							ResourceType.c_str(),
+							RuleName.c_str(),
+							DirectoryUtf8.c_str(),
+							IteratorErrorCode.message().c_str());
+						IteratorErrorCode.clear();
+						continue;
+					}
+
+					ProcessResourceEntry(*It);
+				}
 			}
 			else
 			{
-				for (const auto& Entry : std::filesystem::directory_iterator(RuleRootPath, IteratorOptions))
+				std::filesystem::directory_iterator It(RuleRootPath, IteratorOptions, IteratorErrorCode);
+				const std::filesystem::directory_iterator End;
+				for (; It != End; It.increment(IteratorErrorCode))
 				{
-					if (!Entry.is_regular_file())
+					if (IteratorErrorCode)
 					{
+						UE_LOG_CATEGORY(ResourceManager, Warning,
+							"[INIT] Resource scan skipped entry: type=%s rule=%s dir=%s error=%s",
+							ResourceType.c_str(),
+							RuleName.c_str(),
+							DirectoryUtf8.c_str(),
+							IteratorErrorCode.message().c_str());
+						IteratorErrorCode.clear();
 						continue;
 					}
 
-					FString Extension = Entry.path().extension().string();
-					if (bNormalizeExtensionToLower)
-					{
-						Extension = ToLowerCopy(Extension);
-					}
-					if (AllowedExtensions.find(Extension) == AllowedExtensions.end())
-					{
-						continue;
-					}
-
-					const std::filesystem::path RelativeToRule = Entry.path().lexically_normal().lexically_relative(RuleRootPath);
-					const std::filesystem::path RelativeNoExtension = RelativeToRule.parent_path() / RelativeToRule.stem();
-					const FString RelativeAliasKey = NormalizeGenericPath(RelativeNoExtension.generic_string());
-					const FString RelativePathUtf8 = bUseRelativePathFromRoot
-						? MakeRelativeUtf8Path(Entry.path(), RootPath)
-						: FPaths::ToUtf8(Entry.path().lexically_normal().generic_wstring());
-
-					FString ResourceName;
-					if (const auto AliasIt = Aliases.find(RelativeAliasKey); AliasIt != Aliases.end())
-					{
-						ResourceName = AliasIt->second;
-					}
-					else
-					{
-						ResourceName = MakeGeneratedResourceName(ResourceType, RuleName, RelativeNoExtension.generic_string());
-					}
-
-					if (ResourceType == ResourceKey::Particle)
-					{
-						RegisterParticle(FName(ResourceName), RelativePathUtf8);
-					}
-					else if (ResourceType == ResourceKey::Texture)
-					{
-						RegisterTexture(FName(ResourceName), RelativePathUtf8);
-					}
-					else if (ResourceType == ResourceKey::Mesh)
-					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Unknown);
-					}
-					else if (ResourceType == ResourceKey::StaticMesh)
-					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Static);
-					}
-					else if (ResourceType == ResourceKey::SkeletalMesh)
-					{
-						RegisterMesh(FName(ResourceName), RelativePathUtf8, EMeshResourceType::Skeletal);
-					}
-					else if (ResourceType == ResourceKey::Sound)
-					{
-						RegisterSound(FName(ResourceName), RelativePathUtf8, SoundCategory);
-					}
-					else if (ResourceType == ResourceKey::Material)
-					{
-						RegisterMaterial(FName(ResourceName), RelativePathUtf8);
-					}
-					else
-					{
-						RegisterPath(FName(ResourceName), RelativePathUtf8);
-					}
+					ProcessResourceEntry(*It);
 				}
 			}
 		}

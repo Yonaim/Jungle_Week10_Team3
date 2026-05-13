@@ -150,17 +150,31 @@ bool IsNineSliceStyleProperty(const UActorComponent *Component, const FPropertyD
 TArray<FString> CollectNineSliceStyleJsonPaths()
 {
     TArray<FString> Result;
-    const std::filesystem::path ContentRoot = FPaths::SourceAssetsDir();
+    const std::filesystem::path ContentRoot = FPaths::AssetDir();
     std::error_code ErrorCode;
-    if (!std::filesystem::exists(ContentRoot, ErrorCode))
+    if (!std::filesystem::exists(ContentRoot, ErrorCode) || !std::filesystem::is_directory(ContentRoot, ErrorCode))
     {
         return Result;
     }
 
-    for (const auto &Entry : std::filesystem::recursive_directory_iterator(ContentRoot, ErrorCode))
+    std::filesystem::recursive_directory_iterator It(
+        ContentRoot,
+        std::filesystem::directory_options::skip_permission_denied,
+        ErrorCode);
+    const std::filesystem::recursive_directory_iterator End;
+
+    for (; It != End; It.increment(ErrorCode))
     {
-        if (ErrorCode || !Entry.is_regular_file())
+        if (ErrorCode)
         {
+            ErrorCode.clear();
+            continue;
+        }
+
+        const std::filesystem::directory_entry &Entry = *It;
+        if (!Entry.is_regular_file(ErrorCode))
+        {
+            ErrorCode.clear();
             continue;
         }
 
@@ -183,15 +197,29 @@ TArray<FString> CollectLuaScriptPaths()
     TArray<FString> Result;
     const std::filesystem::path ScriptsRoot = FPaths::ScriptsDir();
     std::error_code ErrorCode;
-    if (!std::filesystem::exists(ScriptsRoot, ErrorCode))
+    if (!std::filesystem::exists(ScriptsRoot, ErrorCode) || !std::filesystem::is_directory(ScriptsRoot, ErrorCode))
     {
         return Result;
     }
 
-    for (const auto &Entry : std::filesystem::recursive_directory_iterator(ScriptsRoot, ErrorCode))
+    std::filesystem::recursive_directory_iterator It(
+        ScriptsRoot,
+        std::filesystem::directory_options::skip_permission_denied,
+        ErrorCode);
+    const std::filesystem::recursive_directory_iterator End;
+
+    for (; It != End; It.increment(ErrorCode))
     {
-        if (ErrorCode || !Entry.is_regular_file())
+        if (ErrorCode)
         {
+            ErrorCode.clear();
+            continue;
+        }
+
+        const std::filesystem::directory_entry &Entry = *It;
+        if (!Entry.is_regular_file(ErrorCode))
+        {
+            ErrorCode.clear();
             continue;
         }
 
@@ -3254,7 +3282,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
                     if (StylePaths.empty())
                     {
                         ImGui::Separator();
-                        ImGui::TextDisabled("No nineslice.json found under Asset/SourceAssets");
+                        ImGui::TextDisabled("No nineslice.json found under Asset");
                     }
 
                     ImGui::EndCombo();

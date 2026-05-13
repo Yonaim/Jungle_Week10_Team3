@@ -2,6 +2,7 @@
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditor.h"
 
 #include "Common/UI/Docking/DockLayoutUtils.h"
+#include "Common/UI/Style/EditorUIStyle.h"
 #include "Core/Notification.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "EditorEngine.h"
@@ -68,6 +69,7 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
     bSkeletonTreePanelOpen = true;
     bDetailsPanelOpen = true;
     bBoneDetailsPanelOpen = true;
+    bPreviewerSettingsPanelOpen = true;
 
     bOpen = true;
     bDirty = false;
@@ -96,6 +98,7 @@ void FSkeletalMeshEditor::Close()
     bSkeletonTreePanelOpen = true;
     bDetailsPanelOpen = true;
     bBoneDetailsPanelOpen = true;
+    bPreviewerSettingsPanelOpen = true;
 
     bOpen = false;
     bDirty = false;
@@ -204,14 +207,16 @@ void FSkeletalMeshEditor::BuildWindowMenu()
         bDetailsPanelOpen = !bDetailsPanelOpen;
     if (ImGui::MenuItem("Details", nullptr, bBoneDetailsPanelOpen))
         bBoneDetailsPanelOpen = !bBoneDetailsPanelOpen;
+    if (ImGui::MenuItem("Previewer Settings", nullptr, bPreviewerSettingsPanelOpen))
+        bPreviewerSettingsPanelOpen = !bPreviewerSettingsPanelOpen;
 
-    ImGui::Separator();
     if (ImGui::MenuItem("Reset Skeletal Mesh Editor Layout"))
     {
         bPreviewPanelOpen = true;
         bSkeletonTreePanelOpen = true;
         bDetailsPanelOpen = true;
         bBoneDetailsPanelOpen = true;
+        bPreviewerSettingsPanelOpen = true;
         BuiltDockspaceId = 0;
     }
 }
@@ -228,7 +233,6 @@ void FSkeletalMeshEditor::BuildCustomMenus()
     if (ImGui::BeginMenu("Skeleton"))
     {
         ImGui::MenuItem("Show Bones", nullptr, &State.bShowBones, EditingAsset != nullptr);
-        ImGui::Separator();
         ImGui::MenuItem("Pose Edit Mode", nullptr, &State.bEnablePoseEditMode, EditingAsset != nullptr);
         ImGui::MenuItem("Bone Gizmo", nullptr, false, false);
         ImGui::EndMenu();
@@ -391,6 +395,7 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
     const std::string DetailsId = MakePanelStableId("AssetDetails");
     const std::string BoneDetailsId = MakePanelStableId("Details");
+    const std::string PreviewerSettingsId = MakePanelStableId("PreviewerSettings");
 
     FPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.SkeletonTree");
     SkeletonDesc.StableId = SkeletonId.c_str();
@@ -406,11 +411,15 @@ void FSkeletalMeshEditor::BuildDefaultDockLayout(ImGuiID DockspaceId)
     FPanelDesc BoneDetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
     BoneDetailsDesc.StableId = BoneDetailsId.c_str();
 
+    FPanelDesc PreviewerSettingsDesc = MakePanelDesc("Previewer Settings", "PreviewerSettings", "Editor.Icon.Panel.PreviewerSettings");
+    PreviewerSettingsDesc.StableId = PreviewerSettingsId.c_str();
+
     FAssetPreviewDockLayoutDesc LayoutDesc;
     LayoutDesc.CenterWindow = FPanel::MakeTitle(PreviewDesc);
     LayoutDesc.RightTopWindow = FPanel::MakeTitle(SkeletonDesc);
     LayoutDesc.RightBottomWindow = FPanel::MakeTitle(DetailsDesc);
     LayoutDesc.RightBottomSecondWindow = FPanel::MakeTitle(BoneDetailsDesc);
+    LayoutDesc.RightBottomSideWindow = FPanel::MakeTitle(PreviewerSettingsDesc);
 
     FDockLayoutUtils::DockAssetPreviewLayout(DockspaceId, LayoutDesc);
 }
@@ -423,6 +432,7 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     const std::string PreviewId = MakePanelStableId("PreviewViewport");
     const std::string DetailsId = MakePanelStableId("AssetDetails");
     const std::string BoneDetailsId = MakePanelStableId("Details");
+    const std::string PreviewerSettingsId = MakePanelStableId("PreviewerSettings");
 
     FPanelDesc SkeletonDesc = MakePanelDesc("Skeleton Tree", "SkeletonTree", "Editor.Icon.Panel.SkeletonTree");
     SkeletonDesc.StableId = SkeletonId.c_str();
@@ -444,6 +454,10 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     FPanelDesc BoneDetailsDesc = MakePanelDesc("Details", "Details", "Editor.Icon.Panel.Details");
     BoneDetailsDesc.StableId = BoneDetailsId.c_str();
     BoneDetailsDesc.bOpen = &bBoneDetailsPanelOpen;
+
+    FPanelDesc PreviewerSettingsDesc = MakePanelDesc("Previewer Settings", "PreviewerSettings", "Editor.Icon.Panel.PreviewerSettings");
+    PreviewerSettingsDesc.StableId = PreviewerSettingsId.c_str();
+    PreviewerSettingsDesc.bOpen = &bPreviewerSettingsPanelOpen;
 
     if (bPreviewPanelOpen)
     {
@@ -469,4 +483,52 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
         USkeletalMeshComponent *PreviewComponent = GetPreviewComponent();
         DetailsPanel.Render(EditingAsset, PreviewComponent, State, SelectionManager, BoneDetailsDesc);
     }
+    if (bPreviewerSettingsPanelOpen)
+    {
+        RenderPreviewerSettingsPanel(PreviewerSettingsDesc);
+    }
+}
+
+void FSkeletalMeshEditor::RenderPreviewerSettingsPanel(const FPanelDesc& Desc)
+{
+    if (!FPanel::Begin(Desc))
+    {
+        FPanel::End();
+        return;
+    }
+
+    ImGui::TextDisabled("Lighting");
+    ImGui::Spacing();
+    ImGui::Checkbox("Enable Preview Lighting", &State.bPreviewLighting);
+    ImGui::BeginDisabled(!State.bPreviewLighting);
+
+    if (FEditorUIStyle::BeginDetailsSection("Ambient Light"))
+    {
+        ImGui::SliderFloat("Ambient Intensity", &State.PreviewAmbientLightIntensity, 0.0f, 2.0f, "%.2f");
+        ImGui::ColorEdit3("Ambient Color", &State.PreviewAmbientLightColor.X);
+    }
+
+    if (FEditorUIStyle::BeginDetailsSection("Directional Light"))
+    {
+        ImGui::SliderFloat("Directional Intensity", &State.PreviewDirectionalLightIntensity, 0.0f, 8.0f, "%.2f");
+        ImGui::ColorEdit3("Directional Color", &State.PreviewDirectionalLightColor.X);
+        ImGui::SliderFloat("Light Yaw", &State.PreviewLightYaw, -180.0f, 180.0f, "%.1f deg");
+        ImGui::SliderFloat("Light Pitch", &State.PreviewLightPitch, -89.0f, 89.0f, "%.1f deg");
+        ImGui::TextDisabled("Direction is applied to the preview scene every frame.");
+    }
+
+    ImGui::EndDisabled();
+    ImGui::Spacing();
+    if (ImGui::Button("Reset Lighting"))
+    {
+        State.bPreviewLighting = true;
+        State.PreviewDirectionalLightIntensity = 1.0f;
+        State.PreviewAmbientLightIntensity = 0.25f;
+        State.PreviewDirectionalLightColor = FVector4(1.0f, 0.96f, 0.88f, 1.0f);
+        State.PreviewAmbientLightColor = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+        State.PreviewLightYaw = 45.0f;
+        State.PreviewLightPitch = -35.0f;
+    }
+
+    FPanel::End();
 }

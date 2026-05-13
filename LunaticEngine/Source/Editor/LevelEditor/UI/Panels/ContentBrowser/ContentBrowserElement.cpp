@@ -90,7 +90,7 @@ namespace
 
     std::filesystem::path GetProtectedScriptsRoot()
     {
-        return (std::filesystem::path(FPaths::RootDir()).parent_path() / L"Scripts").lexically_normal();
+        return std::filesystem::path(FPaths::ScriptsDir()).lexically_normal();
     }
 
     bool IsProtectedContentBrowserPath(const std::filesystem::path &InPath)
@@ -292,20 +292,17 @@ namespace
 {
     void ImportSourceFileFromContentBrowser(ContentBrowserContext &Context, const std::filesystem::path& SourcePath, const FString& DisplayName)
     {
+        (void)DisplayName;
+
         if (!Context.EditorEngine)
         {
             return;
         }
 
-        FString ImportedAssetPath;
-        if (Context.EditorEngine->ImportAssetFromPath(FPaths::ToUtf8(SourcePath.wstring()), &ImportedAssetPath))
-        {
-            Context.bIsNeedRefresh = true;
-        }
-        else
-        {
-            FNotificationManager::Get().AddNotification("Failed to import source asset: " + DisplayName, ENotificationType::Error, 5.0f);
-        }
+        // Queue the import instead of executing it from the item render callback.
+        // ImportAssetFromPath refreshes/selects Content Browser entries, and doing that
+        // while DrawContents() is iterating CachedBrowserElements can invalidate the vector.
+        Context.PendingImportSourcePath = SourcePath;
     }
 }
 

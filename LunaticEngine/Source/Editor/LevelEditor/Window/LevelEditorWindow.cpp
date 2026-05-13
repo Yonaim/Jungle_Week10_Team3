@@ -791,8 +791,12 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.OnOpenProjectSettings = [this]() { bShowProjectSettings = true; };
     MenuContext.OnToggleShortcutOverlay = [this]() { bShowShortcutOverlay = !bShowShortcutOverlay; };
     MenuContext.OnOpenCredits = [this]() { bShowCreditsOverlay = !bShowCreditsOverlay; };
+    const bool bAssetEditorContextActiveEarly = EditorEngine && EditorEngine->IsAssetEditorContextActive();
     MenuBar.Render(MenuContext);
-    RenderDocumentTabBar();
+    if (!bAssetEditorContextActiveEarly)
+    {
+        RenderDocumentTabBar();
+    }
     RenderLevelFrameToolbar();
 
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
@@ -800,7 +804,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     const float          TopFrameInset = GetWindowTopContentInset(Window);
     const float          OuterPadding = GetWindowOuterPadding();
     const float          DocumentTabBarHeight = GetDocumentTabBarHeight();
-    const bool           bAssetEditorContextActive = EditorEngine && EditorEngine->IsAssetEditorContextActive();
+    const bool           bAssetEditorContextActive = bAssetEditorContextActiveEarly;
     const bool           bLevelFrameToolbarVisible = !bAssetEditorContextActive;
     const float          LevelFrameToolbarHeight = (bLevelFrameToolbarVisible && EditorEngine)
                                                      ? EditorEngine->GetViewportLayout().GetFrameToolbarHeight()
@@ -918,8 +922,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     // 그래야 FBX/SkeletalMesh 패널도 Level Editor 패널과 같은 dock tab fill / selected accent line을 적용받는다.
     RenderCommonOverlays();
 
-    // 토스트 알림 (항상 최상위에 표시)
-    FNotificationToast::Render();
+    // 토스트 알림은 UEditorEngine::RenderUI()에서 Level/Asset Editor 렌더 이후 한 번만 그린다.
 
 }
 
@@ -1677,7 +1680,7 @@ void FLevelEditorWindow::RenderCreditsOverlay()
         return;
     }
 
-    ID3D11ShaderResourceView *CreditsTexture = FResourceManager::Get().FindLoadedTexture("Asset/SourceAssets/Editor/Icons/App/lunatic_icon.png").Get();
+    ID3D11ShaderResourceView *CreditsTexture = FResourceManager::Get().FindLoadedTexture("Asset/Engine/Source/Editor/Icons/App/lunatic_icon.png").Get();
     if (!CreditsTexture)
     {
         CreditsTexture = FResourceManager::Get().FindLoadedTexture(FResourceManager::Get().ResolvePath(FName("Editor.Icon.AppLogo"))).Get();

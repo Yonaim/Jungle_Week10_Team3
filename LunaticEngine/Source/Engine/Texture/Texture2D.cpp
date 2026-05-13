@@ -105,7 +105,7 @@ namespace
 			|| Name == L"Bin"
 			|| Name == L"Build"
 			|| Name == L"Intermediate"
-			|| Name == L"DerivedDataCache";
+			|| Name == L"Cache";
 	}
 
 	bool ShouldIncludeInTextureAssetList(const std::filesystem::path& ProjectRelativePath)
@@ -128,15 +128,9 @@ namespace
 			return true;
 		}
 
-		if (*It == L"Editor" || *It == L"DerivedDataCache")
+		if (*It == L"Editor")
 		{
 			return false;
-		}
-
-		if (*It == L"SourceAssets")
-		{
-			++It;
-			return It == NormalizedPath.end() || *It != L"Editor";
 		}
 
 		if (*It != L"Content")

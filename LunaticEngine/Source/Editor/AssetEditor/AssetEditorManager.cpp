@@ -1,5 +1,5 @@
-#include "PCH/LunaticPCH.h"
 #include "AssetEditor/AssetEditorManager.h"
+#include "PCH/LunaticPCH.h"
 
 #include "AssetEditor/CameraModifierStack/CameraModifierStackEditor.h"
 #include "AssetEditor/IAssetEditor.h"
@@ -7,53 +7,76 @@
 #include "AssetEditor/Window/AssetEditorWindow.h"
 #include "Common/File/EditorFileUtils.h"
 #include "Core/Notification.h"
+#include "EditorEngine.h"
 #include "Engine/Asset/AssetData.h"
 #include "Engine/Asset/AssetFileSerializer.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Mesh/MeshAssetManager.h"
 #include "Mesh/StaticMesh.h"
-#include "Render/Pipeline/Renderer.h"
-#include "EditorEngine.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
+#include "Render/Pipeline/Renderer.h"
 #include "Serialization/WindowsArchive.h"
 
 #include <algorithm>
 #include <cwctype>
 
-
 namespace
 {
-std::wstring ToLowerExtension(const std::filesystem::path &Path)
-{
-    std::wstring Extension = Path.extension().wstring();
-    std::transform(Extension.begin(), Extension.end(), Extension.begin(), [](wchar_t Ch) {
-        return static_cast<wchar_t>(std::towlower(Ch));
-    });
-    return Extension;
-}
-
-bool IsUnderDirectory(const std::filesystem::path &ChildPath, const std::filesystem::path &ParentPath)
-{
-    const std::filesystem::path Child = ChildPath.lexically_normal();
-    const std::filesystem::path Parent = ParentPath.lexically_normal();
-    std::filesystem::path Relative = Child.lexically_relative(Parent);
-    if (Relative.empty())
+    std::wstring ToLowerExtension(const std::filesystem::path &Path)
     {
-        return Child == Parent;
+        std::wstring Extension = Path.extension().wstring();
+        std::transform(Extension.begin(), Extension.end(), Extension.begin(),
+                       [](wchar_t Ch) { return static_cast<wchar_t>(std::towlower(Ch)); });
+        return Extension;
     }
-    const std::wstring Native = Relative.native();
-    return Native.rfind(L"..", 0) != 0 && !Relative.is_absolute();
-}
 
-std::filesystem::path MakeAbsoluteProjectPath(const std::filesystem::path &Path)
-{
-    if (Path.is_absolute())
+    bool IsUnderDirectory(const std::filesystem::path &ChildPath, const std::filesystem::path &ParentPath)
     {
-        return Path.lexically_normal();
+        const std::filesystem::path Child = ChildPath.lexically_normal();
+        const std::filesystem::path Parent = ParentPath.lexically_normal();
+        std::filesystem::path       Relative = Child.lexically_relative(Parent);
+        if (Relative.empty())
+        {
+            return Child == Parent;
+        }
+        const std::wstring Native = Relative.native();
+        return Native.rfind(L"..", 0) != 0 && !Relative.is_absolute();
     }
-    return (std::filesystem::path(FPaths::RootDir()) / Path).lexically_normal();
-}
+
+    std::filesystem::path MakeAbsoluteProjectPath(const std::filesystem::path &Path)
+    {
+        if (Path.is_absolute())
+        {
+            return Path.lexically_normal();
+        }
+        return (std::filesystem::path(FPaths::RootDir()) / Path).lexically_normal();
+    }
+
+    void ShowUnsupportedAssetEditorAlert(UEditorEngine *EditorEngine, const std::filesystem::path &AssetPath)
+    {
+        const std::wstring AssetName = AssetPath.empty() ? L"Unknown asset" : AssetPath.filename().wstring();
+        const std::wstring Message = L"No editor is currently implemented for this asset type.\n\n" + AssetName;
+        void              *OwnerWindowHandle = nullptr;
+        if (EditorEngine && EditorEngine->GetWindow())
+        {
+            OwnerWindowHandle = EditorEngine->GetWindow()->GetHWND();
+        }
+        MessageBoxW(static_cast<HWND>(OwnerWindowHandle), Message.c_str(), L"Unsupported Asset Type", MB_OK | MB_ICONINFORMATION);
+    }
+
+    bool IsSupportedAssetEditorClassId(EAssetClassId ClassId)
+    {
+        return ClassId == EAssetClassId::SkeletalMesh || ClassId == EAssetClassId::CameraModifierStack;
+    }
+
+    void NotifyUnsupportedAssetEditor(UEditorEngine *EditorEngine, const std::filesystem::path &AssetPath)
+    {
+        const FString AssetPathUtf8 = FPaths::ToUtf8(AssetPath.generic_wstring());
+        UE_LOG_CATEGORY(AssetEditor, Info, "[AssetEditor] Unsupported asset editor type: %s", AssetPathUtf8.c_str());
+        FNotificationManager::Get().AddNotification("This asset type is not supported by the editor yet", ENotificationType::Info, 4.0f);
+        ShowUnsupportedAssetEditorAlert(EditorEngine, AssetPath);
+    }
 
 } // namespace
 
@@ -70,22 +93,17 @@ void FAssetEditorManager::Shutdown()
     EditorEngine = nullptr;
 }
 
-void FAssetEditorManager::Tick(float DeltaTime)
-{
-    AssetEditorWindow.Tick(DeltaTime);
-}
+void FAssetEditorManager::Tick(float DeltaTime) { AssetEditorWindow.Tick(DeltaTime); }
 
-void FAssetEditorManager::RenderContent(float DeltaTime, ImGuiID DockspaceId)
-{
-    AssetEditorWindow.RenderContent(DeltaTime, DockspaceId);
-}
+void FAssetEditorManager::RenderContent(float DeltaTime, ImGuiID DockspaceId) { AssetEditorWindow.RenderContent(DeltaTime, DockspaceId); }
 
 bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPath)
 {
     const std::wstring Extension = ToLowerExtension(AssetPath);
     if (Extension != L".uasset")
     {
-        FNotificationManager::Get().AddNotification("Asset Editor can only open .uasset files. Use Import Asset first.", ENotificationType::Info, 4.0f);
+        FNotificationManager::Get().AddNotification("Asset Editor can only open .uasset files. Use Import Asset first.",
+                                                    ENotificationType::Info, 4.0f);
         return false;
     }
 
@@ -93,7 +111,8 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
     const std::filesystem::path ContentRoot = std::filesystem::path(FPaths::ContentDir()).lexically_normal();
     if (!IsUnderDirectory(NormalizedPath, ContentRoot))
     {
-        FNotificationManager::Get().AddNotification("Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+        FNotificationManager::Get().AddNotification(
+            "Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
         return false;
     }
 
@@ -108,19 +127,21 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
     }
 
     UObject *LoadedAsset = nullptr;
-    FString Error;
+    FString  Error;
 
     FAssetFileHeader Header;
     if (FAssetFileSerializer::ReadAssetHeader(NormalizedPath, Header, &Error))
     {
+        if (!IsSupportedAssetEditorClassId(Header.ClassId))
+        {
+            NotifyUnsupportedAssetEditor(EditorEngine, NormalizedPath);
+            return false;
+        }
+
         ID3D11Device *Device = Renderer ? Renderer->GetFD3DDevice().GetDevice() : nullptr;
         const FString AssetPathUtf8 = FPaths::ToUtf8(NormalizedPath.generic_wstring());
 
-        if (Header.ClassId == EAssetClassId::StaticMesh)
-        {
-            LoadedAsset = FMeshAssetManager::LoadStaticMeshAssetFile(AssetPathUtf8, Device, EMeshAssetLoadPurpose::FreshInstance);
-        }
-        else if (Header.ClassId == EAssetClassId::SkeletalMesh)
+        if (Header.ClassId == EAssetClassId::SkeletalMesh)
         {
             LoadedAsset = FMeshAssetManager::LoadSkeletalMeshAssetFile(AssetPathUtf8, Device, EMeshAssetLoadPurpose::FreshInstance);
         }
@@ -157,7 +178,8 @@ bool FAssetEditorManager::OpenOwnedWorkingCopy(UObject *Asset, const std::filesy
     const std::filesystem::path ContentRoot = std::filesystem::path(FPaths::ContentDir()).lexically_normal();
     if (!IsUnderDirectory(NormalizedPath, ContentRoot))
     {
-        FNotificationManager::Get().AddNotification("Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+        FNotificationManager::Get().AddNotification(
+            "Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
         return false;
     }
 
@@ -174,7 +196,7 @@ bool FAssetEditorManager::OpenOwnedWorkingCopy(UObject *Asset, const std::filesy
     std::unique_ptr<IAssetEditor> Editor = CreateEditorForAsset(Asset);
     if (!Editor)
     {
-        FNotificationManager::Get().AddNotification("No editor registered for this asset.", ENotificationType::Info, 3.0f);
+        NotifyUnsupportedAssetEditor(EditorEngine, NormalizedPath);
         return false;
     }
 
@@ -249,10 +271,7 @@ bool FAssetEditorManager::CreateCameraModifierStackAsset()
     return true;
 }
 
-bool FAssetEditorManager::SaveActiveEditor()
-{
-    return AssetEditorWindow.SaveActiveTab();
-}
+bool FAssetEditorManager::SaveActiveEditor() { return AssetEditorWindow.SaveActiveTab(); }
 
 void FAssetEditorManager::CloseActiveEditor()
 {
@@ -273,26 +292,16 @@ bool FAssetEditorManager::CloseAllEditors(bool bPromptForDirty, void *OwnerWindo
     return bClosed;
 }
 
-bool FAssetEditorManager::HasDirtyEditors() const
-{
-    return AssetEditorWindow.HasDirtyTabs();
-}
+bool FAssetEditorManager::HasDirtyEditors() const { return AssetEditorWindow.HasDirtyTabs(); }
 
 bool FAssetEditorManager::ConfirmCloseAllEditors(void *OwnerWindowHandle) const
 {
     return AssetEditorWindow.ConfirmCloseAllTabs(OwnerWindowHandle);
 }
 
-bool FAssetEditorManager::IsCapturingInput() const
-{
-    return AssetEditorWindow.IsCapturingInput();
-}
+bool FAssetEditorManager::IsCapturingInput() const { return AssetEditorWindow.IsCapturingInput(); }
 
-
-FEditorViewportClient *FAssetEditorManager::GetActiveViewportClient() const
-{
-    return AssetEditorWindow.GetActiveViewportClient();
-}
+FEditorViewportClient *FAssetEditorManager::GetActiveViewportClient() const { return AssetEditorWindow.GetActiveViewportClient(); }
 
 void FAssetEditorManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
 {

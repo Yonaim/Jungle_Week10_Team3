@@ -1154,7 +1154,8 @@ int32 FSceneSaveManager::CookAllScenes(const FString &OutputSceneRoot)
 {
     int32              Cooked = 0;
     const std::wstring SceneDir = GetSceneDirectory();
-    if (!std::filesystem::exists(SceneDir))
+    std::error_code ErrorCode;
+    if (!std::filesystem::exists(SceneDir, ErrorCode) || !std::filesystem::is_directory(SceneDir, ErrorCode))
     {
         return 0;
     }
@@ -1162,10 +1163,25 @@ int32 FSceneSaveManager::CookAllScenes(const FString &OutputSceneRoot)
     const std::filesystem::path OutputRoot =
         OutputSceneRoot.empty() ? std::filesystem::path() : std::filesystem::path(FPaths::ToWide(OutputSceneRoot));
 
-    for (auto &Entry : std::filesystem::recursive_directory_iterator(SceneDir))
+    std::filesystem::recursive_directory_iterator It(
+        SceneDir,
+        std::filesystem::directory_options::skip_permission_denied,
+        ErrorCode);
+    const std::filesystem::recursive_directory_iterator End;
+    for (; It != End; It.increment(ErrorCode))
     {
-        if (!Entry.is_regular_file())
+        if (ErrorCode)
+        {
+            ErrorCode.clear();
             continue;
+        }
+
+        const std::filesystem::directory_entry &Entry = *It;
+        if (!Entry.is_regular_file(ErrorCode))
+        {
+            ErrorCode.clear();
+            continue;
+        }
         const std::wstring Ext = Entry.path().extension().wstring();
         if (Ext != SceneExtension)
             continue;
@@ -1489,17 +1505,33 @@ TArray<FString> FSceneSaveManager::GetSceneFileList()
 {
     TArray<FString> Result;
     std::wstring    SceneDir = GetSceneDirectory();
-    if (!std::filesystem::exists(SceneDir))
+    std::error_code ErrorCode;
+    if (!std::filesystem::exists(SceneDir, ErrorCode) || !std::filesystem::is_directory(SceneDir, ErrorCode))
     {
         return Result;
     }
 
     const std::filesystem::path SceneRoot(SceneDir);
     std::unordered_set<FString> Seen;
-    for (auto &Entry : std::filesystem::recursive_directory_iterator(SceneRoot))
+    std::filesystem::recursive_directory_iterator It(
+        SceneRoot,
+        std::filesystem::directory_options::skip_permission_denied,
+        ErrorCode);
+    const std::filesystem::recursive_directory_iterator End;
+    for (; It != End; It.increment(ErrorCode))
     {
-        if (!Entry.is_regular_file())
+        if (ErrorCode)
+        {
+            ErrorCode.clear();
             continue;
+        }
+
+        const std::filesystem::directory_entry &Entry = *It;
+        if (!Entry.is_regular_file(ErrorCode))
+        {
+            ErrorCode.clear();
+            continue;
+        }
 
         auto Ext = Entry.path().extension().wstring();
         if (Ext != SceneExtension && Ext != L".umap" && Ext != L".UMAP")

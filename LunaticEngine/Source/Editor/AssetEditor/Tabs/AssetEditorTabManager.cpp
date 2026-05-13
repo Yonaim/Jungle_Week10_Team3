@@ -177,14 +177,13 @@ bool FAssetEditorTabManager::SaveActiveTab()
 
 void FAssetEditorTabManager::Tick(float DeltaTime)
 {
-    // 비활성 탭은 패널을 렌더링하지 않는다.
-    // 다만 에셋 에디터별 background tick이 필요한 경우를 고려해 Tick은 유지한다.
-    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    // 화면에 보이는 ActiveTab 하나만 tick한다.
+    // 비활성/hidden Asset Editor 탭까지 tick하면 preview scene, skeletal skinning, gizmo/debug draw가
+    // 백그라운드에서 계속 돌아 Level Editor 복귀 후 프레임 저하가 발생할 수 있다.
+    FAssetEditorTab *ActiveTab = GetActiveTab();
+    if (ActiveTab)
     {
-        if (Tab)
-        {
-            Tab->Tick(DeltaTime);
-        }
+        ActiveTab->Tick(DeltaTime);
     }
 }
 

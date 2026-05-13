@@ -2,6 +2,7 @@
 #include "Engine/Asset/AssetFileSerializer.h"
 
 #include "Engine/Asset/AssetData.h"
+#include "Core/Log.h"
 #include "Materials/Material.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/StaticMesh.h"
@@ -67,6 +68,7 @@ namespace FAssetFileSerializer
         if (ClassName == "UMaterial") return EAssetClassId::Material;
         if (ClassName == "UTexture2D") return EAssetClassId::Texture;
         if (ClassName == "UCameraModifierStackAssetData") return EAssetClassId::CameraModifierStack;
+        if (ClassName == "USkeletonPoseAsset") return EAssetClassId::PoseAsset;
         return EAssetClassId::Unknown;
     }
 
@@ -79,6 +81,7 @@ namespace FAssetFileSerializer
         case EAssetClassId::Material: return "UMaterial";
         case EAssetClassId::Texture: return "UTexture2D";
         case EAssetClassId::CameraModifierStack: return "UCameraModifierStackAssetData";
+        case EAssetClassId::PoseAsset: return "USkeletonPoseAsset";
         default: return "";
         }
     }
@@ -128,16 +131,20 @@ namespace FAssetFileSerializer
 
     bool SaveObjectToAssetFile(const std::filesystem::path& FilePath, UObject* RootObject, FString* OutError)
     {
+        const FString AssetPath = ToAssetPathString(FilePath);
         if (!RootObject)
         {
             WriteError(OutError, "Save failed: RootObject is null.");
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetSave] Failed: path=%s error=RootObject is null", AssetPath.c_str());
             return false;
         }
 
-        FWindowsBinWriter Writer(ToAssetPathString(FilePath));
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetSave] Begin: path=%s class=%s", AssetPath.c_str(), RootObject->GetClass()->GetName());
+        FWindowsBinWriter Writer(AssetPath);
         if (!Writer.IsValid())
         {
             WriteError(OutError, "Save failed: Could not open file for writing.");
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetSave] Failed: path=%s error=Could not open file for writing", AssetPath.c_str());
             return false;
         }
 
@@ -155,15 +162,19 @@ namespace FAssetFileSerializer
         GCurrentAssetSerializationVersion = Header.FileVersion;
         RootObject->Serialize(Writer);
         GCurrentAssetSerializationVersion = AssetVersion;
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetSave] Complete: path=%s class=%s", AssetPath.c_str(), Header.ClassName.c_str());
         return true;
     }
 
     UObject* LoadObjectFromAssetFile(const std::filesystem::path& FilePath, FString* OutError)
     {
-        FWindowsBinReader Reader(ToAssetPathString(FilePath));
+        const FString AssetPath = ToAssetPathString(FilePath);
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetLoad] Begin: path=%s", AssetPath.c_str());
+        FWindowsBinReader Reader(AssetPath);
         if (!Reader.IsValid())
         {
             WriteError(OutError, "Load failed: Could not open file.");
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Could not open file", AssetPath.c_str());
             return nullptr;
         }
 
@@ -174,11 +185,13 @@ namespace FAssetFileSerializer
         if (Header.Magic != AssetMagic)
         {
             WriteError(OutError, "Load failed: Unknown .uasset binary format.");
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unknown .uasset binary format", AssetPath.c_str());
             return nullptr;
         }
         if (Header.FileVersion == 0 || Header.FileVersion > AssetVersion)
         {
             WriteError(OutError, "Load failed: Unsupported .uasset version.");
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unsupported .uasset version=%u", AssetPath.c_str(), Header.FileVersion);
             return nullptr;
         }
 
@@ -203,6 +216,7 @@ namespace FAssetFileSerializer
         if (!Object)
         {
             WriteError(OutError, "Load failed: Unknown asset class: " + ClassName);
+            UE_LOG_CATEGORY(AssetFileSerializer, Error, "[AssetLoad] Failed: path=%s error=Unknown asset class=%s", AssetPath.c_str(), ClassName.c_str());
             return nullptr;
         }
 
@@ -214,6 +228,7 @@ namespace FAssetFileSerializer
         GCurrentAssetSerializationVersion = Header.FileVersion;
         Object->Serialize(Reader);
         GCurrentAssetSerializationVersion = AssetVersion;
+        UE_LOG_CATEGORY(AssetFileSerializer, Info, "[AssetLoad] Complete: path=%s class=%s name=%s", AssetPath.c_str(), ClassName.c_str(), Header.AssetName.c_str());
         return Object;
     }
 
