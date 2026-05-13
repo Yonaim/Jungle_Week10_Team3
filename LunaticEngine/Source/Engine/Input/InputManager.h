@@ -149,6 +149,7 @@ private:
 	void ApplyKeyState(int32 Key, bool bDown, bool bIsMouseButton);
 	void SynchronizeModifierKeyStates();
 	void SynchronizeMouseButtonStates();
+	bool IsOwnerWindowForeground() const;
 	static int32 GetSpecificModifierKey(WPARAM WParam, LPARAM LParam);
 	static bool IsMouseButtonKey(int32 Key);
 	

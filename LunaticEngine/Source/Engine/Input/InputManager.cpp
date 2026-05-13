@@ -48,6 +48,8 @@ void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LP
 
 	case WM_SETFOCUS:
 		bWindowFocused = true;
+		ResetMouseDelta();
+		ResetWheelDelta();
 		break;
 
 	case WM_KILLFOCUS:
@@ -72,6 +74,8 @@ void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LP
 		else
 		{
 			bWindowFocused = true;
+			ResetMouseDelta();
+			ResetWheelDelta();
 		}
 		break;
 
@@ -137,6 +141,13 @@ void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LP
 
 	case WM_INPUT:
 	{
+		// RIDEV_INPUTSINK keeps delivering raw mouse deltas while unfocused.
+		// Ignore them so focus regain starts from a clean cursor baseline.
+		if (!IsOwnerWindowForeground())
+		{
+			break;
+		}
+
 		UINT Size = 0;
 		GetRawInputData((HRAWINPUT)LParam, RID_INPUT, NULL, &Size, sizeof(RAWINPUTHEADER));
 		if (Size > 0)
@@ -160,7 +171,7 @@ void FInputManager::ProcessMessage(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LP
 void FInputManager::Tick()
 {
 	// Focus check
-	bool bFocused = !OwnerHWnd || GetForegroundWindow() == OwnerHWnd;
+	bool bFocused = IsOwnerWindowForeground();
 	if (bFocused != bWindowFocused)
 	{
 		bWindowFocused = bFocused;
@@ -169,6 +180,9 @@ void FInputManager::Tick()
 			ResetAllStates();
 			return;
 		}
+
+		ResetMouseDelta();
+		ResetWheelDelta();
 	}
 
 	if (!bWindowFocused) return;
@@ -240,6 +254,11 @@ void FInputManager::Tick()
 	RawMouseDeltaAccumY = 0.0f;
 
 	UpdateDragging();
+}
+
+bool FInputManager::IsOwnerWindowForeground() const
+{
+	return !OwnerHWnd || GetForegroundWindow() == OwnerHWnd;
 }
 
 void FInputManager::ApplyKeyState(int32 Key, bool bDown, bool bIsMouseButton)
