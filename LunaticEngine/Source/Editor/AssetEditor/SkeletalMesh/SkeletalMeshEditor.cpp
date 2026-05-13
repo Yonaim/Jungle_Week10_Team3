@@ -112,6 +112,7 @@ void FSkeletalMeshEditor::Close()
     bOpen = false;
     bDirty = false;
     bCapturingInput = false;
+    bIsActiveTab = false;
 }
 
 bool FSkeletalMeshEditor::Save()
@@ -150,6 +151,12 @@ bool FSkeletalMeshEditor::Save()
 
 void FSkeletalMeshEditor::Tick(float DeltaTime)
 {
+    if (!bOpen || !bIsActiveTab || !bPreviewPanelOpen)
+    {
+        PreviewViewport.DeactivateEditorContext();
+        return;
+    }
+
     PreviewViewport.Tick(DeltaTime);
 }
 
@@ -165,14 +172,19 @@ void FSkeletalMeshEditor::InvalidateDockLayout()
 
 void FSkeletalMeshEditor::OnActivated()
 {
+    bIsActiveTab = true;
     bCapturingInput = false;
-    PreviewViewport.ActivateForTabSwitch(State, &SelectionManager);
+    if (bOpen && bPreviewPanelOpen)
+    {
+        PreviewViewport.BindEditorContext(State, &SelectionManager);
+    }
 }
 
 void FSkeletalMeshEditor::OnDeactivated()
 {
+    bIsActiveTab = false;
     bCapturingInput = false;
-    PreviewViewport.DeactivateForTabSwitch();
+    PreviewViewport.DeactivateEditorContext();
 }
 
 void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
@@ -192,7 +204,7 @@ void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
     RenderPanelsInternal(DeltaTime, DockspaceId);
 
     FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient();
-    bCapturingInput = PreviewClient && (PreviewClient->IsHovered() || PreviewClient->IsActive());
+    bCapturingInput = bIsActiveTab && PreviewClient && (PreviewClient->IsHovered() || PreviewClient->IsActive());
 }
 
 FEditorViewportClient *FSkeletalMeshEditor::GetActiveViewportClient()
@@ -202,16 +214,22 @@ FEditorViewportClient *FSkeletalMeshEditor::GetActiveViewportClient()
         return nullptr;
     }
 
+    if (bIsActiveTab)
+    {
+        PreviewViewport.BindEditorContext(State, &SelectionManager);
+    }
+
     return PreviewViewport.GetViewportClient();
 }
 
 void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients)
 {
-    if (!bOpen)
+    if (!bOpen || !bIsActiveTab || !bPreviewPanelOpen)
     {
         return;
     }
 
+    PreviewViewport.BindEditorContext(State, &SelectionManager);
     if (FSkeletalMeshPreviewViewportClient *Client = PreviewViewport.GetViewportClient())
     {
         OutClients.push_back(Client);

@@ -75,6 +75,14 @@ class FEditorViewportClient : public FViewportClient
     void SetHovered(bool bInHovered) { bIsHovered = bInHovered; }
     bool IsHovered() const { return bIsHovered; }
 
+    // Owner-context lifecycle.
+    // Document tabs / editor contexts should activate exactly the viewport clients they own
+    // and deactivate all hidden clients through this common API.
+    virtual void ActivateEditorContext();
+    virtual void DeactivateEditorContext();
+    bool IsEditorContextActive() const { return bEditorContextActive; }
+    const bool* GetEditorContextActiveFlag() const { return &bEditorContextActive; }
+
     void SetViewportSize(float InWidth, float InHeight);
     void SetViewportScreenRect(const FRect &InRect);
 
@@ -111,6 +119,7 @@ class FEditorViewportClient : public FViewportClient
 
     bool bIsActive = false;
     bool bIsHovered = false;
+    bool bEditorContextActive = false;
 
     FRect ViewportScreenRect;
 

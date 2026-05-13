@@ -41,7 +41,7 @@ public:
 	const TArray<AActor*>& GetSelectedActors() const { return SelectedActors; }
 	bool IsEmpty() const { return SelectedActors.empty(); }
 
-	std::shared_ptr<ITransformGizmoTarget> MakeTransformGizmoTarget() const;
+	std::shared_ptr<ITransformGizmoTarget> MakeTransformGizmoTarget(const bool* OwnerContextActiveFlag = nullptr) const;
 
 	void SetGizmoEnabled(bool bEnabled);
 	void SetWorld(UWorld* InWorld);

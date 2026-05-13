@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Common/Gizmo/GizmoManager.h"
 
 #include "Component/GizmoVisualComponent.h"
@@ -11,9 +11,11 @@
 
 void FGizmoManager::SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget, std::shared_ptr<IGizmoDeltaTarget> InDeltaTarget)
 {
+    // Target replacement is an ownership/selection-context change, not a user commit.
+    // Mouse release is the only path that should commit an active drag through EndDrag().
     if (bDragging)
     {
-        EndDrag();
+        CancelDrag();
     }
 
     Target = InTarget;
@@ -34,9 +36,11 @@ bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey,
         return false;
     }
 
+    // A target-key change means the old live target no longer owns the interaction.
+    // Cancel instead of committing, otherwise tab/context switches can apply a stale drag.
     if (bDragging)
     {
-        EndDrag();
+        CancelDrag();
     }
 
     TargetKey = InKey;
@@ -49,9 +53,11 @@ bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey,
 
 void FGizmoManager::ClearTarget()
 {
+    // Clearing a target usually happens on selection/tab/context loss.
+    // Do not commit a partially dragged transform here. Restore first, then detach.
     if (bDragging)
     {
-        EndDrag();
+        CancelDrag();
     }
 
     Target.reset();
@@ -305,6 +311,11 @@ void FGizmoManager::SetAxisMask(uint32 InAxisMask)
 
 void FGizmoManager::ResetVisualInteractionState()
 {
+    // Reset both the 3D gizmo visual and the screen-space interaction cache.
+    // Tab/context switches must not leave HoveredAxis/ActiveAxis/bDragging alive,
+    // otherwise returning to the tab can apply stale input to the old target.
+    UIScreenInteraction.Reset();
+
     if (VisualComponent)
     {
         VisualComponent->ResetVisualInteractionState();

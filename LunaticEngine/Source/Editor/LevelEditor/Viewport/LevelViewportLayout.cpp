@@ -1949,6 +1949,19 @@ void FLevelViewportLayout::ToggleViewportSplit(int32 SourceSlotIndex)
 void FLevelViewportLayout::RenderViewportUI(float DeltaTime)
 {
     bMouseOverViewport = false;
+
+    if (!Editor || !Editor->IsLevelEditorContextActive())
+    {
+        for (FLevelEditorViewportClient* VC : LevelViewportClients)
+        {
+            if (VC)
+            {
+                VC->SetHovered(false);
+            }
+        }
+        return;
+    }
+
     UpdateLayoutTransition(DeltaTime);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));

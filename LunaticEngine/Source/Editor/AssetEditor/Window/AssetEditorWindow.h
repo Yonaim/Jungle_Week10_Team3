@@ -2,7 +2,12 @@
 
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
 #include "Common/Menu/EditorMenuProvider.h"
+#include "Common/UI/Panels/Panel.h"
+#include "Common/UI/Tabs/EditorDocumentTabBar.h"
 #include "ImGui/imgui.h"
+
+#include <string>
+#include <vector>
 
 class UEditorEngine;
 class FAssetEditorManager;
@@ -35,8 +40,11 @@ class FAssetEditorWindow : public IEditorMenuProvider
 
     void Show();
     void Hide();
+    void EnterEditorContext();
+    void ExitEditorContext();
 
     bool IsOpen() const;
+    bool HasOpenTabs() const;
 
     bool OpenEditorTab(std::unique_ptr<IAssetEditor> Editor);
     bool ActivateTabByAssetPath(const std::filesystem::path &AssetPath);
@@ -47,6 +55,17 @@ class FAssetEditorWindow : public IEditorMenuProvider
     bool CanRedoActiveTab() const;
     bool CloseActiveTab(bool bPromptForDirty = true);
     bool CloseAllTabs(bool bPromptForDirty = true, void *OwnerWindowHandle = nullptr);
+    bool CloseDocumentTab(int32 TabIndex, bool bPromptForDirty = true);
+    bool ActivateDocumentTab(int32 TabIndex);
+    int32 GetDocumentTabCount() const;
+    int32 GetActiveDocumentTabIndex() const;
+    void AppendDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const;
+    const std::string &GetActiveLayoutId() const;
+    void CollectLayoutIds(std::vector<std::string> &OutLayoutIds) const;
+    void RenderInactiveDockKeepAliveWindows(const std::string &ActiveLayoutId);
+    FDockPanelLayoutState *GetActiveLayoutState();
+    void RequestRestoreForActiveTab();
+    void RequestDefaultLayoutForActiveTab();
     bool HasDirtyTabs() const;
     bool ConfirmCloseAllTabs(void *OwnerWindowHandle = nullptr) const;
 

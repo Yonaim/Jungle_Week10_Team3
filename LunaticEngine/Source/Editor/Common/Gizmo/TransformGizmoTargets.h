@@ -8,12 +8,16 @@
 class FSceneComponentTransformGizmoTarget final : public ITransformGizmoTarget
 {
 public:
-    explicit FSceneComponentTransformGizmoTarget(USceneComponent* InComponent)
+    explicit FSceneComponentTransformGizmoTarget(USceneComponent* InComponent, const bool* InOwnerContextActiveFlag = nullptr)
         : Component(InComponent)
+        , OwnerContextActiveFlag(InOwnerContextActiveFlag)
     {
     }
 
-    bool IsValid() const override { return Component != nullptr; }
+    bool IsValid() const override
+    {
+        return Component != nullptr && (!OwnerContextActiveFlag || *OwnerContextActiveFlag);
+    }
 
     FTransform GetWorldTransform() const override
     {
@@ -74,4 +78,5 @@ public:
 
 private:
     USceneComponent* Component = nullptr;
+    const bool* OwnerContextActiveFlag = nullptr;
 };

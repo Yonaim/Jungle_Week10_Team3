@@ -41,21 +41,30 @@ void FSkeletalMeshPreviewViewport::Shutdown()
     Window = nullptr;
 }
 
-void FSkeletalMeshPreviewViewport::ActivateForTabSwitch(FSkeletalMeshEditorState& State,
-                                                        FSkeletalMeshSelectionManager* SelectionManager)
+void FSkeletalMeshPreviewViewport::BindEditorContext(FSkeletalMeshEditorState& State,
+                                                      FSkeletalMeshSelectionManager* SelectionManager)
 {
     EnsureViewportResources();
     if (PreviewViewportClient)
     {
-        PreviewViewportClient->ActivateForTabSwitch(&State, SelectionManager);
+        PreviewViewportClient->BindEditorContext(&State, SelectionManager);
     }
 }
 
-void FSkeletalMeshPreviewViewport::DeactivateForTabSwitch()
+void FSkeletalMeshPreviewViewport::ActivateEditorContext()
+{
+    EnsureViewportResources();
+    if (PreviewViewportClient)
+    {
+        PreviewViewportClient->ActivateEditorContext();
+    }
+}
+
+void FSkeletalMeshPreviewViewport::DeactivateEditorContext()
 {
     if (PreviewViewportClient)
     {
-        PreviewViewportClient->DeactivateForTabSwitch();
+        PreviewViewportClient->DeactivateEditorContext();
     }
 }
 

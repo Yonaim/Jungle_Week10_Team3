@@ -10,6 +10,8 @@ class ITransformGizmoTarget
 public:
     virtual ~ITransformGizmoTarget() = default;
 
+    // Object validity plus owner-context validity.
+    // Editor targets owned by inactive tabs/viewports must return false even if the object pointer still exists.
     virtual bool IsValid() const = 0;
 
     virtual FTransform GetWorldTransform() const = 0;

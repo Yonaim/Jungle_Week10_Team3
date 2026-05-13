@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetEditor/IAssetEditor.h"
+#include "Common/UI/Panels/Panel.h"
 
 #include <filesystem>
 #include <memory>
@@ -24,10 +25,18 @@ class FAssetEditorTab
     IAssetEditor *GetEditor() const;
     std::string GetTitle() const;
     const std::filesystem::path &GetAssetPath() const;
+    const std::string &GetLayoutId() const { return LayoutId; }
+    FDockPanelLayoutState &GetLayoutState() { return LayoutState; }
+    const FDockPanelLayoutState &GetLayoutState() const { return LayoutState; }
+    void RequestDefaultLayout();
+    void RequestRestoreCapturedLayout();
+    void MarkDefaultLayoutBuilt();
 
     void Tick(float DeltaTime);
     void Render(float DeltaTime);
 
   private:
     std::unique_ptr<IAssetEditor> Editor;
+    std::string LayoutId;
+    FDockPanelLayoutState LayoutState;
 };

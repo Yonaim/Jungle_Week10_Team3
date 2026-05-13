@@ -16,7 +16,8 @@ class FBoneTransformGizmoTarget final : public ITransformGizmoTarget, public IGi
 public:
     FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent,
                               std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController,
-                              int32 InBoneIndex);
+                              int32 InBoneIndex,
+                              const bool* InOwnerContextActiveFlag);
 
     bool IsValid() const override;
 
@@ -40,5 +41,6 @@ private:
     USkeletalMeshComponent* Component = nullptr;
     std::shared_ptr<FSkeletalMeshPreviewPoseController> PoseController;
     int32 BoneIndex = -1;
+    const bool* OwnerContextActiveFlag = nullptr;
     bool bTransforming = false;
 };

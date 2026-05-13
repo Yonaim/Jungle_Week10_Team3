@@ -46,24 +46,37 @@ void FAssetEditorWindow::Show()
 {
     bOpen = true;
     bVisible = true;
-    TabManager.ActivateActiveTab();
-
-    // 같은 메인 DockSpace를 Level Editor / Asset Editor가 번갈아 쓰므로,
-    // Level Editor로 돌아갔다가 다시 FBX를 열면 기존 DockBuilder node가 Level layout로 바뀐 상태일 수 있다.
-    // Asset Editor가 다시 보일 때 외부 패널형 에디터(SkeletalMeshEditor 등)의 layout을 강제로 재빌드한다.
-    TabManager.InvalidateEditorLayouts();
 }
 
 void FAssetEditorWindow::Hide()
 {
-    TabManager.DeactivateActiveTab();
+    ExitEditorContext();
     bVisible = false;
+    bCapturingInput = false;
+}
+
+void FAssetEditorWindow::EnterEditorContext()
+{
+    bOpen = true;
+    bVisible = true;
+    TabManager.SetEditorContextActive(true);
+    TabManager.RequestRestoreForActiveTab();
+}
+
+void FAssetEditorWindow::ExitEditorContext()
+{
+    TabManager.SetEditorContextActive(false);
     bCapturingInput = false;
 }
 
 bool FAssetEditorWindow::IsOpen() const
 {
-    return bOpen && bVisible;
+    return bOpen && bVisible && TabManager.HasOpenTabs();
+}
+
+bool FAssetEditorWindow::HasOpenTabs() const
+{
+    return TabManager.HasOpenTabs();
 }
 
 bool FAssetEditorWindow::OpenEditorTab(std::unique_ptr<IAssetEditor> Editor)
@@ -76,7 +89,6 @@ bool FAssetEditorWindow::OpenEditorTab(std::unique_ptr<IAssetEditor> Editor)
     const bool bResult = TabManager.OpenTab(std::move(Editor));
     if (bResult)
     {
-        TabManager.InvalidateEditorLayouts();
         Show();
     }
     return bResult;
@@ -149,6 +161,74 @@ bool FAssetEditorWindow::CloseAllTabs(bool bPromptForDirty, void *OwnerWindowHan
     return bClosed;
 }
 
+bool FAssetEditorWindow::CloseDocumentTab(int32 TabIndex, bool bPromptForDirty)
+{
+    const bool bClosed = TabManager.CloseTab(TabIndex, bPromptForDirty);
+    if (bClosed && !TabManager.HasOpenTabs())
+    {
+        bOpen = false;
+        bVisible = false;
+        bCapturingInput = false;
+    }
+    return bClosed;
+}
+
+bool FAssetEditorWindow::ActivateDocumentTab(int32 TabIndex)
+{
+    const bool bActivated = TabManager.SetActiveTabIndex(TabIndex);
+    if (bActivated)
+    {
+        Show();
+        TabManager.RequestRestoreForActiveTab();
+    }
+    return bActivated;
+}
+
+int32 FAssetEditorWindow::GetDocumentTabCount() const
+{
+    return TabManager.GetTabCount();
+}
+
+int32 FAssetEditorWindow::GetActiveDocumentTabIndex() const
+{
+    return TabManager.GetActiveTabIndex();
+}
+
+void FAssetEditorWindow::AppendDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const
+{
+    TabManager.AppendDocumentTabDescs(OutTabs);
+}
+
+const std::string &FAssetEditorWindow::GetActiveLayoutId() const
+{
+    return TabManager.GetActiveLayoutId();
+}
+
+void FAssetEditorWindow::CollectLayoutIds(std::vector<std::string> &OutLayoutIds) const
+{
+    TabManager.CollectLayoutIds(OutLayoutIds);
+}
+
+void FAssetEditorWindow::RenderInactiveDockKeepAliveWindows(const std::string &ActiveLayoutId)
+{
+    TabManager.RenderInactiveDockKeepAliveWindows(ActiveLayoutId);
+}
+
+FDockPanelLayoutState *FAssetEditorWindow::GetActiveLayoutState()
+{
+    return TabManager.GetActiveLayoutState();
+}
+
+void FAssetEditorWindow::RequestRestoreForActiveTab()
+{
+    TabManager.RequestRestoreForActiveTab();
+}
+
+void FAssetEditorWindow::RequestDefaultLayoutForActiveTab()
+{
+    TabManager.RequestDefaultLayoutForActiveTab();
+}
+
 bool FAssetEditorWindow::HasDirtyTabs() const
 {
     return TabManager.HasDirtyTabs();
@@ -188,7 +268,6 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
 
     if (TabManager.HasOpenTabs())
     {
-        RenderDocumentTabBar();
         RenderAssetFrameToolbar();
 
         // Asset Editor도 Level Editor와 같은 panel chrome / surface 색을 사용한다.
@@ -509,7 +588,7 @@ void FAssetEditorWindow::BuildWindowMenu()
     FEditorUIStyle::DrawPopupSectionHeader("LAYOUT");
     if (ImGui::MenuItem("Reset Asset Editor Layout"))
     {
-        TabManager.InvalidateEditorLayouts();
+        TabManager.RequestDefaultLayoutForActiveTab();
     }
 
     if (IAssetEditor *ActiveEditor = TabManager.GetActiveEditor())

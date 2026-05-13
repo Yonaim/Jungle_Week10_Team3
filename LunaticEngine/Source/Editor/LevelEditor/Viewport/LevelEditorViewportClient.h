@@ -35,6 +35,8 @@ class FLevelEditorViewportClient : public FEditorViewportClient
 
     void Init(FWindowsWindow *InWindow) override;
     void Shutdown() override;
+    void ActivateEditorContext() override;
+    void DeactivateEditorContext() override;
     void Tick(float DeltaTime) override;
 
     // World/FScene 교체 전에 viewport가 들고 있는 editor-only scene resource를 먼저 해제한다.
@@ -118,6 +120,7 @@ class FLevelEditorViewportClient : public FEditorViewportClient
     int32                  PointLightFaceIndex = 0;
 
     bool    bIsMarqueeSelecting = false;
+    bool    bNeedsDeferredTargetSync = false;
     FVector MarqueeStartPos;
     FVector MarqueeCurrentPos;
 

@@ -4,7 +4,19 @@
 #include "AssetEditor/IAssetEditor.h"
 #include "Platform/Paths.h"
 
-FAssetEditorTab::FAssetEditorTab(std::unique_ptr<IAssetEditor> InEditor) : Editor(std::move(InEditor)) {}
+#include <atomic>
+
+namespace
+{
+    std::atomic<uint32> GNextAssetEditorTabLayoutId{1};
+}
+
+FAssetEditorTab::FAssetEditorTab(std::unique_ptr<IAssetEditor> InEditor) : Editor(std::move(InEditor))
+{
+    LayoutId = std::string("AssetEditorDockSpace_") + std::to_string(GNextAssetEditorTabLayoutId.fetch_add(1));
+    LayoutState.bRequestDefaultLayout = true;
+}
+
 
 IAssetEditor *FAssetEditorTab::GetEditor() const { return Editor.get(); }
 
@@ -44,4 +56,30 @@ void FAssetEditorTab::Render(float DeltaTime)
     {
         Editor->RenderContent(DeltaTime);
     }
+}
+
+void FAssetEditorTab::RequestDefaultLayout()
+{
+    LayoutState.bRequestDefaultLayout = true;
+    LayoutState.bDefaultLayoutBuilt = false;
+    LayoutState.bRestoreCapturedLayoutNextFrame = false;
+    LayoutState.PanelDockIds.clear();
+    if (Editor)
+    {
+        Editor->InvalidateDockLayout();
+    }
+}
+
+void FAssetEditorTab::RequestRestoreCapturedLayout()
+{
+    if (!LayoutState.PanelDockIds.empty())
+    {
+        LayoutState.bRestoreCapturedLayoutNextFrame = true;
+    }
+}
+
+void FAssetEditorTab::MarkDefaultLayoutBuilt()
+{
+    LayoutState.bDefaultLayoutBuilt = true;
+    LayoutState.bRequestDefaultLayout = false;
 }

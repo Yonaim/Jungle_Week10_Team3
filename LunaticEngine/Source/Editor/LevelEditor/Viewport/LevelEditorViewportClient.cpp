@@ -577,6 +577,19 @@ AActor *FindScreenSpacePrimitiveAt(UWorld *World, const FEditorViewportCamera *C
 }
 } // namespace
 
+namespace
+{
+bool IsAnyEditorMouseButtonDownForContextSwitchGuard()
+{
+    FInputManager& Input = FInputManager::Get();
+    return Input.IsMouseButtonDown(FInputManager::MOUSE_LEFT) ||
+           Input.IsMouseButtonDown(FInputManager::MOUSE_RIGHT) ||
+           ImGui::IsMouseDown(ImGuiMouseButton_Left) ||
+           ImGui::IsMouseDown(ImGuiMouseButton_Right) ||
+           ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+}
+}
+
 FLevelEditorViewportClient::FLevelEditorViewportClient()
 {
     SetupInput();
@@ -621,9 +634,34 @@ void FLevelEditorViewportClient::Init(FWindowsWindow *InWindow)
 void FLevelEditorViewportClient::Shutdown()
 {
     bIsMarqueeSelecting = false;
+    bNeedsDeferredTargetSync = false;
+    CommonInput.InputState.ResetFrame();
     GizmoManager.GetUIScreenInteractionState().Reset();
     ReleaseEditorGizmo();
     FEditorViewportClient::Shutdown();
+}
+
+void FLevelEditorViewportClient::ActivateEditorContext()
+{
+    FEditorViewportClient::ActivateEditorContext();
+    EnsureEditorGizmo();
+
+    // Do not reconnect a transform target in the same frame as a tab/context switch.
+    // The next live tick will sync selection -> gizmo after mouse capture has settled.
+    bNeedsDeferredTargetSync = true;
+    bIsMarqueeSelecting = false;
+    CommonInput.InputState.ResetFrame();
+    GizmoManager.ResetVisualInteractionState();
+}
+
+void FLevelEditorViewportClient::DeactivateEditorContext()
+{
+    // Keep selection/camera/viewport state, but detach every live interaction.
+    bNeedsDeferredTargetSync = false;
+    bIsMarqueeSelecting = false;
+    CommonInput.InputState.ResetFrame();
+    CurrentGizmoTargetComponent = nullptr;
+    FEditorViewportClient::DeactivateEditorContext();
 }
 
 void FLevelEditorViewportClient::EnsureEditorGizmo()
@@ -1224,7 +1262,7 @@ void FLevelEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
 
 void FLevelEditorViewportClient::Tick(float DeltaTime)
 {
-    if (!bIsActive)
+    if (!IsEditorContextActive() || !bIsActive)
         return;
     if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
     {
@@ -1269,12 +1307,38 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
         GetCameraController().ApplySmoothedLocation(DeltaTime, SmoothLocationSpeed);
     }
     TickInput(DeltaTime);
-    SyncGizmoTargetFromSelection();
+
+    if (bNeedsDeferredTargetSync)
+    {
+        // If the user switches tabs while a mouse button is still held, do not
+        // resurrect the previous selection as a live gizmo target yet.
+        if (IsAnyEditorMouseButtonDownForContextSwitchGuard())
+        {
+            GizmoManager.ResetVisualInteractionState();
+            return;
+        }
+
+        bNeedsDeferredTargetSync = false;
+        SyncGizmoTargetFromSelection();
+    }
+    else
+    {
+        SyncGizmoTargetFromSelection();
+    }
+
     TickInteraction(DeltaTime);
 }
 
 void FLevelEditorViewportClient::SyncGizmoTargetFromSelection()
 {
+    if (!IsEditorContextActive())
+    {
+        CurrentGizmoTargetComponent = nullptr;
+        GizmoManager.CancelDrag();
+        GizmoManager.ClearTarget();
+        return;
+    }
+
     if (!SelectionManager)
     {
         CurrentGizmoTargetComponent = nullptr;
@@ -1283,7 +1347,7 @@ void FLevelEditorViewportClient::SyncGizmoTargetFromSelection()
     }
 
     USceneComponent *SelectedComponent = SelectionManager->GetSelectedComponent();
-    auto Target = SelectionManager->MakeTransformGizmoTarget();
+    auto Target = SelectionManager->MakeTransformGizmoTarget(GetEditorContextActiveFlag());
     if (!Target)
     {
         CurrentGizmoTargetComponent = nullptr;
@@ -1298,6 +1362,10 @@ void FLevelEditorViewportClient::SyncGizmoTargetFromSelection()
 
 bool FLevelEditorViewportClient::BuildRenderRequest(FEditorViewportRenderRequest &OutRequest)
 {
+    // Render eligibility is decided by UEditorEngine::ShouldRenderViewportClient().
+    // Do not use the live input/gizmo context flag here: during startup the Level editor
+    // is already the active editor context, but individual viewport clients may not have
+    // received ActivateEditorContext() yet. Blocking here makes the first Level viewport black.
     UWorld *World = GetWorld();
     if (!Viewport || !World || !GetCamera())
     {
@@ -1404,13 +1472,15 @@ void FLevelEditorViewportClient::TickEditorShortcuts()
 
 void FLevelEditorViewportClient::TickInput(float DeltaTime)
 {
+    if (!IsEditorContextActive())
+        return;
     if (!GetCamera())
         return;
     if (IsViewingFromLight())
         return;
     FInputManager &Input = FInputManager::Get();
     CommonInput.InputState.ResetFrame();
-    bool bForceInput = bIsHovered || bIsActive || Input.IsMouseButtonDown(VK_RBUTTON);
+    bool bForceInput = IsEditorContextActive() && (bIsHovered || bIsActive || Input.IsMouseButtonDown(VK_RBUTTON));
     EnhancedInputManager.ProcessInput(&Input, DeltaTime, bForceInput);
     const FMinimalViewInfo &CameraState = GetCamera()->GetCameraState();
     const bool bIsOrtho = CameraState.bIsOrthogonal;
@@ -1501,6 +1571,8 @@ static FVector FindClosestVertex(UWorld *World, const FRay &Ray, float MaxDistan
 void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
 {
     (void)DeltaTime;
+    if (!IsEditorContextActive())
+        return;
     if (!GetCamera() || !GetWorld())
         return;
     EnsureEditorGizmo();
