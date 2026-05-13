@@ -198,16 +198,8 @@ void FAssetEditorTabManager::InvalidateEditorLayouts()
     }
 }
 
-bool FAssetEditorTabManager::RenderDocumentTabBar()
+void FAssetEditorTabManager::BuildDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const
 {
-    CompactInvalidTabs();
-    if (Tabs.empty())
-    {
-        return false;
-    }
-
-    std::vector<FEditorDocumentTabBar::FTabDesc> TabDescs;
-    TabDescs.reserve(Tabs.size());
     for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
     {
         if (!Tab || !Tab->GetEditor())
@@ -221,8 +213,21 @@ bool FAssetEditorTabManager::RenderDocumentTabBar()
         Desc.bDirty = Tab->GetEditor()->IsDirty();
         Desc.IconKey = Tab->GetEditor()->GetDocumentTabIconKey();
         Desc.IconTint = Tab->GetEditor()->GetDocumentTabIconTint();
-        TabDescs.push_back(std::move(Desc));
+        OutTabs.push_back(std::move(Desc));
     }
+}
+
+bool FAssetEditorTabManager::RenderDocumentTabBar()
+{
+    CompactInvalidTabs();
+    if (Tabs.empty())
+    {
+        return false;
+    }
+
+    std::vector<FEditorDocumentTabBar::FTabDesc> TabDescs;
+    TabDescs.reserve(Tabs.size());
+    BuildDocumentTabDescs(TabDescs);
 
     FEditorDocumentTabBar::FRenderResult Result =
         FEditorDocumentTabBar::Render("AssetEditorDocumentTabBar", TabDescs, ActiveTabIndex);
@@ -337,13 +342,15 @@ bool FAssetEditorTabManager::SetActiveTabIndex(int32 NewIndex)
     }
 
     ActiveTabIndex = NewIndex;
-    if (Tabs[ActiveTabIndex] && Tabs[ActiveTabIndex]->GetEditor())
-    {
-        // DockspaceId는 그대로인데 ActiveEditor만 바뀌는 경우가 있으므로,
-        // 새로 활성화된 에디터가 자기 기본 layout을 다시 보장하게 한다.
-        Tabs[ActiveTabIndex]->GetEditor()->InvalidateDockLayout();
-    }
     return true;
+}
+
+
+const std::string &FAssetEditorTabManager::GetActiveLayoutId() const
+{
+    static const std::string EmptyLayoutId = "AssetEditorDockSpace_Empty";
+    FAssetEditorTab *Tab = GetActiveTab();
+    return Tab ? Tab->GetLayoutId() : EmptyLayoutId;
 }
 
 bool FAssetEditorTabManager::HasOpenTabs() const

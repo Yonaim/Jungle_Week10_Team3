@@ -186,6 +186,10 @@ void FEditorImGuiSystem::ApplyEditorColorTheme()
     Style.Colors[ImGuiCol_SeparatorHovered] = ImVec4(12.0f / 255.0f, 12.0f / 255.0f, 12.0f / 255.0f, 1.0f);
     Style.Colors[ImGuiCol_SeparatorActive] = ImVec4(18.0f / 255.0f, 18.0f / 255.0f, 18.0f / 255.0f, 1.0f);
     Style.Colors[ImGuiCol_Border] = UnrealBorder;
+    Style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.13f, 0.13f, 0.15f, 1.0f);
+    Style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.58f, 0.58f, 0.62f, 1.0f);
+    Style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.70f, 0.70f, 0.74f, 1.0f);
+    Style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.82f, 0.82f, 0.86f, 1.0f);
     Style.Colors[ImGuiCol_DockingEmptyBg] = UnrealDockEmpty;
 }
 

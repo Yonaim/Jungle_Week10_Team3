@@ -24,10 +24,12 @@ class FAssetEditorTab
     IAssetEditor *GetEditor() const;
     std::string GetTitle() const;
     const std::filesystem::path &GetAssetPath() const;
+    const std::string &GetLayoutId() const { return LayoutId; }
 
     void Tick(float DeltaTime);
     void Render(float DeltaTime);
 
   private:
     std::unique_ptr<IAssetEditor> Editor;
+    std::string LayoutId;
 };

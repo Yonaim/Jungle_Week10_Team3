@@ -16,6 +16,7 @@
 #include "Render/Pipeline/Renderer.h"
 
 #include "ImGui/imgui.h"
+#include <cfloat>
 #include <imm.h>
 #include <windows.h>
 
@@ -55,15 +56,18 @@ namespace
     {
         SetNextPopupWindowPosition(ImGuiCond_Appearing);
         ImGui::SetNextWindowSize(InitialSize, SizeCondition);
+        ImGui::SetNextWindowSizeConstraints(ImVec2((std::max)(InitialSize.x, 360.0f), (std::max)(InitialSize.y, 220.0f)),
+                                            ImVec2(FLT_MAX, FLT_MAX));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 14.0f));
         ImGui::PushStyleColor(ImGuiCol_TitleBg, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_Border, UnrealBorder);
         const bool bVisible = ImGui::Begin(Title, bOpen, Flags);
         ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(3);
         return bVisible;
     }
 

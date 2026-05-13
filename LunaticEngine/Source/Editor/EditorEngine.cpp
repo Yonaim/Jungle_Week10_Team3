@@ -197,43 +197,23 @@ bool UEditorEngine::FocusActorInViewport(AActor *Actor)
 
 void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
 {
-    if (ActiveEditorContextType == InContextType)
-    {
-        if (InContextType == EEditorContextType::AssetEditor)
-        {
-            HideLevelEditorUIForAssetEditor();
-        }
-        else
-        {
-            AssetEditorManager.GetAssetEditorWindow().Hide();
-            RestoreLevelEditorUIAfterAssetEditor();
-            LevelEditorWindow.RequestDefaultDockLayout();
-        }
-        return;
-    }
-
+    // Context는 더 이상 Level/Asset workspace를 숨기거나 layout을 재생성하지 않는다.
+    // 이제 context는 "현재 active document tab이 어떤 종류인가"와 기본 layout reset 대상만 결정한다.
     ActiveEditorContextType = InContextType;
 
     if (IsAssetEditorContextActive())
     {
-        HideLevelEditorUIForAssetEditor();
+        AssetEditorManager.GetAssetEditorWindow().Show();
         if (FEditorViewportClient *ViewportClient = AssetEditorManager.GetActiveViewportClient())
         {
             ViewportClient->SetActive(true);
         }
+        return;
     }
-    else
-    {
-        // Asset Editor 탭은 닫지 않고 workspace만 숨긴다.
-        // 숨김 상태에서는 FAssetEditorWindow::IsOpen()이 false가 되어 preview tick/render/viewport 수집이 멈춘다.
-        AssetEditorManager.GetAssetEditorWindow().Hide();
 
-        RestoreLevelEditorUIAfterAssetEditor();
-        LevelEditorWindow.RequestDefaultDockLayout();
-        if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
-        {
-            LevelViewportClient->SetActive(true);
-        }
+    if (FLevelEditorViewportClient *LevelViewportClient = GetActiveViewport())
+    {
+        LevelViewportClient->SetActive(true);
     }
 }
 

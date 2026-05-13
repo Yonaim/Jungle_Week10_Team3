@@ -118,6 +118,8 @@ class FLevelEditorWindow : public IEditorMenuProvider
     void CookCurrentScene();
     void RenderDocumentTabBar();
     void RenderLevelFrameToolbar();
+    std::string GetActiveWorkspaceDockspaceLabel() const;
+    bool HasOpenLevelDocumentTabs() const { return !LevelDocumentTabs.empty(); }
     void RenderCommonOverlays();
     void RenderProjectSettingsWindow();
     void RenderShortcutOverlay();
@@ -142,6 +144,7 @@ class FLevelEditorWindow : public IEditorMenuProvider
     {
         std::filesystem::path ScenePath;
         std::string Title;
+        std::string LayoutId;
         bool bDirty = false;
     };
 
@@ -157,6 +160,7 @@ class FLevelEditorWindow : public IEditorMenuProvider
     bool bShowShortcutOverlay = false;
     bool bShowCreditsOverlay = false;
     bool bPendingDefaultDockLayout = true;
+    bool bSuppressAutoLevelDocumentTab = false;
 
     ImGuiID MainDockspaceId = 0;
 

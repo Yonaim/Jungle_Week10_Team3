@@ -157,15 +157,29 @@ inline FRenderResult Render(const char *Id, const std::vector<FTabDesc> &Tabs, i
         const ImVec2 TabMin(X, TabTop);
         const ImVec2 TabMax(X + CurrentTabWidth, TabTop + TabHeight);
 
+        const ImVec2 CloseMin(TabMax.x - CloseButtonSize - 8.0f, TabMin.y + (TabHeight - CloseButtonSize) * 0.5f);
+        const ImVec2 CloseMax(CloseMin.x + CloseButtonSize, CloseMin.y + CloseButtonSize);
+        const float SelectWidth = (std::max)(1.0f, CloseMin.x - TabMin.x - 4.0f);
+
         ImGui::PushID(Index);
         ImGui::SetCursorScreenPos(TabMin);
-        ImGui::InvisibleButton("##DocumentTab", ImVec2(CurrentTabWidth, TabHeight));
-        const bool bHovered = ImGui::IsItemHovered();
-        Result.bAnyHovered |= bHovered;
+        ImGui::InvisibleButton("##DocumentTabSelect", ImVec2(SelectWidth, TabHeight));
+        const bool bSelectHovered = ImGui::IsItemHovered();
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
         {
             Result.SelectedIndex = Index;
         }
+
+        ImGui::SetCursorScreenPos(CloseMin);
+        ImGui::InvisibleButton("##CloseDocumentTab", ImVec2(CloseButtonSize, CloseButtonSize));
+        const bool bCloseHovered = ImGui::IsItemHovered();
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+        {
+            Result.CloseRequestedIndex = Index;
+        }
+
+        const bool bHovered = bSelectHovered || bCloseHovered;
+        Result.bAnyHovered |= bHovered;
 
         const bool bSelected = Index == ActiveTabIndex;
         const ImU32 FillColor = bSelected ? TabActiveColor : (bHovered ? TabHoverColor : TabInactiveColor);
@@ -200,19 +214,11 @@ inline FRenderResult Render(const char *Id, const std::vector<FTabDesc> &Tabs, i
         }
         DrawList->PopClipRect();
 
-        const ImVec2 CloseMin(TabMax.x - CloseButtonSize - 8.0f, TabMin.y + (TabHeight - CloseButtonSize) * 0.5f);
-        ImGui::SetCursorScreenPos(CloseMin);
-        ImGui::InvisibleButton("##CloseDocumentTab", ImVec2(CloseButtonSize, CloseButtonSize));
-        const bool bCloseHovered = ImGui::IsItemHovered();
         if (bCloseHovered)
         {
-            DrawList->AddRectFilled(CloseMin, ImVec2(CloseMin.x + CloseButtonSize, CloseMin.y + CloseButtonSize), CloseHoverColor, Style.Rounding * 0.5f);
+            DrawList->AddRectFilled(CloseMin, CloseMax, CloseHoverColor, Style.Rounding * 0.5f);
         }
         DrawList->AddText(ImVec2(CloseMin.x + 4.0f, CloseMin.y - 1.0f), CloseTextColor, "x");
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-        {
-            Result.CloseRequestedIndex = Index;
-        }
 
         if (bHovered && !bCloseHovered)
         {

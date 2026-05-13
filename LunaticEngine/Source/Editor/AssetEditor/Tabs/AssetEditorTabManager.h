@@ -6,9 +6,11 @@
 
 #include <filesystem>
 #include <memory>
+#include <vector>
 
 class IAssetEditor;
 class FEditorViewportClient;
+namespace FEditorDocumentTabBar { struct FTabDesc; }
 
 /**
  * 열린 Asset Editor 문서들을 관리하는 관리자.
@@ -45,8 +47,14 @@ class FAssetEditorTabManager
     /** 현재 ImGui window 안에 Unreal식 asset document tab bar를 그린다. */
     bool RenderDocumentTabBar();
 
+    // MainFrame/LevelEditorWindow의 통합 document tab strip에서 Asset 탭도 같이 그리기 위한 API.
+    void BuildDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const;
+    int32 GetActiveTabIndex() const { return ActiveTabIndex; }
+    bool SetActiveTabIndex(int32 NewIndex);
+
     bool HasOpenTabs() const;
     int32 GetTabCount() const;
+    const std::string &GetActiveLayoutId() const;
     bool IsCapturingInput() const;
     IAssetEditor *GetActiveEditor() const;
     FEditorViewportClient *GetActiveViewportClient() const;
@@ -54,7 +62,6 @@ class FAssetEditorTabManager
 
   private:
     FAssetEditorTab *GetActiveTab() const;
-    bool SetActiveTabIndex(int32 NewIndex);
     void RenderActiveTab(float DeltaTime, ImGuiID DockspaceId);
     void CompactInvalidTabs();
     bool ConfirmCloseTab(const FAssetEditorTab *Tab) const;

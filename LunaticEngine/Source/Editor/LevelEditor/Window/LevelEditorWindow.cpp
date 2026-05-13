@@ -42,6 +42,8 @@
 #include "Resource/ResourceManager.h"
 
 #include <filesystem>
+#include <cctype>
+#include <cfloat>
 #include <imm.h>
 #include <windows.h>
 
@@ -101,15 +103,18 @@ namespace
     {
         SetNextPopupWindowPosition(ImGuiCond_Appearing);
         ImGui::SetNextWindowSize(InitialSize, SizeCondition);
+        ImGui::SetNextWindowSizeConstraints(ImVec2((std::max)(InitialSize.x, 360.0f), (std::max)(InitialSize.y, 220.0f)),
+                                            ImVec2(FLT_MAX, FLT_MAX));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 14.0f));
         ImGui::PushStyleColor(ImGuiCol_TitleBg, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_TitleBgCollapsed, UnrealPanelSurfaceHover);
         ImGui::PushStyleColor(ImGuiCol_Border, UnrealBorder);
         const bool bVisible = ImGui::Begin(Title, bOpen, Flags);
         ImGui::PopStyleColor(4);
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(3);
         return bVisible;
     }
 
@@ -177,6 +182,10 @@ namespace
         Style.Colors[ImGuiCol_SeparatorHovered] = ImVec4(12.0f / 255.0f, 12.0f / 255.0f, 12.0f / 255.0f, 1.0f);
         Style.Colors[ImGuiCol_SeparatorActive] = ImVec4(18.0f / 255.0f, 18.0f / 255.0f, 18.0f / 255.0f, 1.0f);
         Style.Colors[ImGuiCol_Border] = UnrealBorder;
+        Style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.10f, 0.11f, 1.0f);
+        Style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.42f, 0.42f, 0.45f, 1.0f);
+        Style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.54f, 0.54f, 0.58f, 1.0f);
+        Style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.66f, 0.66f, 0.70f, 1.0f);
         Style.Colors[ImGuiCol_DockingEmptyBg] = UnrealDockEmpty;
     }
 
@@ -223,6 +232,24 @@ namespace
         return FPanel::MakeTitle(Desc);
     }
 
+    std::string SanitizeDockLayoutId(std::string Value)
+    {
+        if (Value.empty())
+        {
+            return "UntitledLevel";
+        }
+
+        for (char &Ch : Value)
+        {
+            const unsigned char C = static_cast<unsigned char>(Ch);
+            if (!std::isalnum(C))
+            {
+                Ch = '_';
+            }
+        }
+        return Value;
+    }
+
 } // namespace
 
 void FLevelEditorWindow::Create(FWindowsWindow *InWindow, FRenderer &InRenderer, UEditorEngine *InEditorEngine, FLevelEditor *InLevelEditor)
@@ -260,6 +287,7 @@ void FLevelEditorWindow::RequestDefaultDockLayout()
 
 void FLevelEditorWindow::OpenLevelDocumentTabFromCurrentScene()
 {
+    bSuppressAutoLevelDocumentTab = false;
     FLevelDocumentTab NewTab;
     if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
     {
@@ -270,6 +298,7 @@ void FLevelEditorWindow::OpenLevelDocumentTabFromCurrentScene()
     {
         NewTab.Title = std::string("Untitled ") + std::to_string(NextUntitledSceneIndex++);
     }
+    NewTab.LayoutId = std::string("LevelEditorDockSpace_") + SanitizeDockLayoutId(NewTab.ScenePath.empty() ? NewTab.Title : FPaths::ToUtf8(NewTab.ScenePath.generic_wstring()));
 
     LevelDocumentTabs.push_back(std::move(NewTab));
     ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
@@ -277,6 +306,7 @@ void FLevelEditorWindow::OpenLevelDocumentTabFromCurrentScene()
 
 void FLevelEditorWindow::ReplaceActiveLevelDocumentTabFromCurrentScene()
 {
+    bSuppressAutoLevelDocumentTab = false;
     FLevelDocumentTab NewTab;
     if (EditorEngine && EditorEngine->HasCurrentLevelFilePath())
     {
@@ -287,6 +317,7 @@ void FLevelEditorWindow::ReplaceActiveLevelDocumentTabFromCurrentScene()
     {
         NewTab.Title = std::string("Untitled ") + std::to_string(NextUntitledSceneIndex++);
     }
+    NewTab.LayoutId = std::string("LevelEditorDockSpace_") + SanitizeDockLayoutId(NewTab.ScenePath.empty() ? NewTab.Title : FPaths::ToUtf8(NewTab.ScenePath.generic_wstring()));
 
     NewTab.bDirty = false;
 
@@ -386,7 +417,10 @@ void FLevelEditorWindow::SyncCurrentLevelDocumentTab()
 
     if (LevelDocumentTabs.empty())
     {
-        OpenLevelDocumentTabFromCurrentScene();
+        if (!bSuppressAutoLevelDocumentTab)
+        {
+            OpenLevelDocumentTabFromCurrentScene();
+        }
         return;
     }
 
@@ -419,6 +453,7 @@ void FLevelEditorWindow::SyncCurrentLevelDocumentTab()
         FLevelDocumentTab NewTab;
         NewTab.ScenePath = CurrentPath;
         NewTab.Title = FPaths::ToUtf8(CurrentPath.filename().wstring());
+        NewTab.LayoutId = std::string("LevelEditorDockSpace_") + SanitizeDockLayoutId(FPaths::ToUtf8(CurrentPath.generic_wstring()));
         LevelDocumentTabs.push_back(std::move(NewTab));
         ActiveLevelDocumentTabIndex = static_cast<int32>(LevelDocumentTabs.size()) - 1;
         return;
@@ -434,6 +469,35 @@ void FLevelEditorWindow::SyncCurrentLevelDocumentTab()
     {
         ActiveTab.Title = std::string("Untitled ") + std::to_string(NextUntitledSceneIndex++);
     }
+    if (ActiveTab.LayoutId.empty())
+    {
+        ActiveTab.LayoutId = std::string("LevelEditorDockSpace_") + SanitizeDockLayoutId(ActiveTab.ScenePath.empty() ? ActiveTab.Title : FPaths::ToUtf8(ActiveTab.ScenePath.generic_wstring()));
+    }
+}
+
+std::string FLevelEditorWindow::GetActiveWorkspaceDockspaceLabel() const
+{
+    if (EditorEngine && EditorEngine->IsAssetEditorContextActive())
+    {
+        const FAssetEditorWindow &AssetWindow = EditorEngine->GetAssetEditorManager().GetAssetEditorWindow();
+        const std::string &AssetLayoutId = AssetWindow.GetActiveDocumentLayoutId();
+        if (!AssetLayoutId.empty())
+        {
+            return AssetLayoutId;
+        }
+        return "AssetEditorDockSpace_Empty";
+    }
+
+    if (ActiveLevelDocumentTabIndex >= 0 && ActiveLevelDocumentTabIndex < static_cast<int32>(LevelDocumentTabs.size()))
+    {
+        const FLevelDocumentTab &Tab = LevelDocumentTabs[ActiveLevelDocumentTabIndex];
+        if (!Tab.LayoutId.empty())
+        {
+            return Tab.LayoutId;
+        }
+    }
+
+    return "LevelEditorDockSpace_Empty";
 }
 
 bool FLevelEditorWindow::SetActiveLevelDocumentTab(int32 NewIndex)
@@ -492,12 +556,8 @@ void FLevelEditorWindow::CloseLevelDocumentTab(int32 TabIndex)
 
     if (LevelDocumentTabs.empty())
     {
-        if (EditorEngine)
-        {
-            EditorEngine->NewScene();
-        }
         ActiveLevelDocumentTabIndex = -1;
-        OpenLevelDocumentTabFromCurrentScene();
+        bSuppressAutoLevelDocumentTab = true;
         return;
     }
 
@@ -515,13 +575,17 @@ void FLevelEditorWindow::CloseLevelDocumentTab(int32 TabIndex)
 
 void FLevelEditorWindow::RenderDocumentTabBar()
 {
-    if (!EditorEngine || EditorEngine->IsAssetEditorContextActive())
+    if (!EditorEngine)
     {
         return;
     }
 
     SyncCurrentLevelDocumentTab();
-    if (LevelDocumentTabs.empty())
+
+    FAssetEditorWindow &AssetWindow = EditorEngine->GetAssetEditorManager().GetAssetEditorWindow();
+    const int32 LevelTabCount = static_cast<int32>(LevelDocumentTabs.size());
+    const int32 AssetTabCount = AssetWindow.GetDocumentTabCount();
+    if (LevelTabCount <= 0 && AssetTabCount <= 0)
     {
         return;
     }
@@ -556,10 +620,10 @@ void FLevelEditorWindow::RenderDocumentTabBar()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.035f, 0.040f, 1.0f));
-    if (ImGui::Begin("##LevelEditorDocumentTabBar", nullptr, Flags))
+    if (ImGui::Begin("##UnifiedEditorDocumentTabBar", nullptr, Flags))
     {
         std::vector<FEditorDocumentTabBar::FTabDesc> TabDescs;
-        TabDescs.reserve(LevelDocumentTabs.size());
+        TabDescs.reserve(LevelDocumentTabs.size() + AssetTabCount);
         for (const FLevelDocumentTab &Tab : LevelDocumentTabs)
         {
             FEditorDocumentTabBar::FTabDesc Desc;
@@ -570,16 +634,49 @@ void FLevelEditorWindow::RenderDocumentTabBar()
             Desc.bDirty = Tab.bDirty;
             TabDescs.push_back(std::move(Desc));
         }
+        AssetWindow.BuildDocumentTabDescs(TabDescs);
+
+        int32 ActiveCombinedIndex = ActiveLevelDocumentTabIndex;
+        if (EditorEngine->IsAssetEditorContextActive() && AssetWindow.GetActiveDocumentTabIndex() >= 0)
+        {
+            ActiveCombinedIndex = LevelTabCount + AssetWindow.GetActiveDocumentTabIndex();
+        }
 
         FEditorDocumentTabBar::FRenderResult Result =
-            FEditorDocumentTabBar::Render("LevelEditorDocumentTabBar", TabDescs, ActiveLevelDocumentTabIndex);
-        if (Result.SelectedIndex != ActiveLevelDocumentTabIndex)
+            FEditorDocumentTabBar::Render("UnifiedEditorDocumentTabBar", TabDescs, ActiveCombinedIndex);
+        if (Result.SelectedIndex != ActiveCombinedIndex && Result.SelectedIndex >= 0)
         {
-            SetActiveLevelDocumentTab(Result.SelectedIndex);
+            if (Result.SelectedIndex < LevelTabCount)
+            {
+                if (SetActiveLevelDocumentTab(Result.SelectedIndex))
+                {
+                    EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+                }
+            }
+            else
+            {
+                const int32 AssetIndex = Result.SelectedIndex - LevelTabCount;
+                if (AssetWindow.SetActiveDocumentTabIndex(AssetIndex))
+                {
+                    EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+                }
+            }
         }
         if (Result.CloseRequestedIndex >= 0)
         {
-            CloseLevelDocumentTab(Result.CloseRequestedIndex);
+            if (Result.CloseRequestedIndex < LevelTabCount)
+            {
+                CloseLevelDocumentTab(Result.CloseRequestedIndex);
+            }
+            else
+            {
+                const int32 AssetIndex = Result.CloseRequestedIndex - LevelTabCount;
+                AssetWindow.CloseDocumentTab(AssetIndex, true);
+                if (EditorEngine->IsAssetEditorContextActive() && AssetWindow.GetDocumentTabCount() <= 0 && !LevelDocumentTabs.empty())
+                {
+                    EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
+                }
+            }
         }
     }
     ImGui::End();
@@ -589,7 +686,7 @@ void FLevelEditorWindow::RenderDocumentTabBar()
 
 void FLevelEditorWindow::RenderLevelFrameToolbar()
 {
-    if (!EditorEngine || EditorEngine->IsAssetEditorContextActive())
+    if (!EditorEngine)
     {
         return;
     }
@@ -761,9 +858,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.Id = "##LevelEditorMenuBar";
     MenuContext.Window = Window;
     MenuContext.EditorEngine = EditorEngine;
-    MenuContext.MenuProvider = (EditorEngine && EditorEngine->IsAssetEditorContextActive())
-                                  ? static_cast<IEditorMenuProvider *>(&EditorEngine->GetAssetEditorManager().GetAssetEditorWindow())
-                                  : static_cast<IEditorMenuProvider *>(this);
+    MenuContext.MenuProvider = static_cast<IEditorMenuProvider *>(this);
     MenuContext.TitleBarFont = ImGuiSystem ? ImGuiSystem->GetTitleBarFont() : nullptr;
     MenuContext.WindowControlIconFont = ImGuiSystem ? ImGuiSystem->GetWindowControlIconFont() : nullptr;
     MenuContext.bShowProjectSettingsMenu = true;
@@ -793,10 +888,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     MenuContext.OnOpenCredits = [this]() { bShowCreditsOverlay = !bShowCreditsOverlay; };
     const bool bAssetEditorContextActiveEarly = EditorEngine && EditorEngine->IsAssetEditorContextActive();
     MenuBar.Render(MenuContext);
-    if (!bAssetEditorContextActiveEarly)
-    {
-        RenderDocumentTabBar();
-    }
+    RenderDocumentTabBar();
     RenderLevelFrameToolbar();
 
     const ImGuiViewport *MainViewport = ImGui::GetMainViewport();
@@ -805,16 +897,8 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     const float          OuterPadding = GetWindowOuterPadding();
     const float          DocumentTabBarHeight = GetDocumentTabBarHeight();
     const bool           bAssetEditorContextActive = bAssetEditorContextActiveEarly;
-    const bool           bLevelFrameToolbarVisible = !bAssetEditorContextActive;
-    const float          LevelFrameToolbarHeight = (bLevelFrameToolbarVisible && EditorEngine)
-                                                     ? EditorEngine->GetViewportLayout().GetFrameToolbarHeight()
-                                                     : 0.0f;
-    const bool           bAssetFrameToolbarVisible = bAssetEditorContextActive &&
-                                                     EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().IsOpen();
-    const float          AssetFrameToolbarHeight = bAssetFrameToolbarVisible
-                                                     ? FAssetEditorWindow::GetFrameToolbarHeight()
-                                                     : 0.0f;
-    const float          TopEditorStripHeight = DocumentTabBarHeight + LevelFrameToolbarHeight + AssetFrameToolbarHeight;
+    const float          LevelFrameToolbarHeight = EditorEngine ? EditorEngine->GetViewportLayout().GetFrameToolbarHeight() : 0.0f;
+    const float          TopEditorStripHeight = DocumentTabBarHeight + LevelFrameToolbarHeight;
     const float          CornerRadius = GetWindowCornerRadius();
     const ImVec2         ViewportMin = MainViewport->Pos;
     const ImVec2         ViewportMax(MainViewport->Pos.x + MainViewport->Size.x, MainViewport->Pos.y + MainViewport->Size.y);
@@ -847,16 +931,22 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, ImGui::GetStyle().FramePadding.y + 6.0f));
     if (ImGui::Begin("##EditorDockSpaceHost", nullptr, DockspaceWindowFlags))
     {
-        MainDockspaceId = ImGui::GetID("##EditorDockSpace");
+        const std::string DockspaceLabel = GetActiveWorkspaceDockspaceLabel();
+        MainDockspaceId = ImGui::GetID(DockspaceLabel.c_str());
         ImGui::DockSpace(MainDockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None, &DockspaceWindowClass);
-        ApplyPendingDefaultDockLayout();
+        if (!bAssetEditorContextActive)
+        {
+            ApplyPendingDefaultDockLayout();
+        }
     }
     ImGui::End();
     ImGui::PopStyleVar(4);
 
+    const bool bRenderLevelWorkspace = !bAssetEditorContextActive && !LevelDocumentTabs.empty();
+
     // 뷰포트 렌더링은 EditorEngine이 담당 (SSplitter 레이아웃 + ImGui::Image)
     FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
-    if (EditorEngine && Settings.Panels.bViewport)
+    if (bRenderLevelWorkspace && EditorEngine && Settings.Panels.bViewport)
     {
         SCOPE_STAT_CAT("EditorEngine->RenderViewportUI", "5_UI");
         EditorEngine->RenderViewportUI(DeltaTime);
@@ -867,48 +957,48 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
         }
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bImGuiSettings)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bImGuiSettings)
     {
         FEditorImGuiStyleSettings::ShowPanel(&Settings.Panels.bImGuiSettings);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bConsole)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bConsole)
     {
         SCOPE_STAT_CAT("ConsolePanel.Render", "5_UI");
         ConsolePanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bDetails)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bDetails)
     {
         SCOPE_STAT_CAT("DetailsPanel.Render", "5_UI");
         DetailsPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bOutliner)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bOutliner)
     {
         SCOPE_STAT_CAT("OutlinerPanel.Render", "5_UI");
         OutlinerPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bPlaceActors)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bPlaceActors)
     {
         SCOPE_STAT_CAT("PlaceActorsPanel.Render", "5_UI");
         PlaceActorsPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bStats)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bStats)
     {
         SCOPE_STAT_CAT("StatPanel.Render", "5_UI");
         StatPanel.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bContentBrowser)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bContentBrowser)
     {
         SCOPE_STAT_CAT("ContentBrowser.Render", "5_UI");
         ContentBrowser.Render(DeltaTime);
     }
 
-    if (!bHideEditorWindows && Settings.Panels.bShadowMapDebug)
+    if (bRenderLevelWorkspace && !bHideEditorWindows && Settings.Panels.bShadowMapDebug)
     {
         ShadowMapDebugPanel.Render(DeltaTime);
     }
@@ -951,6 +1041,35 @@ void FLevelEditorWindow::BuildFileMenu()
     }
 
     DrawPopupSectionHeader("ASSET");
+    FAssetEditorWindow *AssetWindow = EditorEngine ? &EditorEngine->GetAssetEditorManager().GetAssetEditorWindow() : nullptr;
+    const bool bHasActiveAssetTab = AssetWindow && AssetWindow->GetActiveDocumentTabIndex() >= 0;
+    if (!bHasActiveAssetTab)
+    {
+        ImGui::BeginDisabled(true);
+    }
+    if (ImGui::MenuItem("Save Active UAsset", "Ctrl+S") && AssetWindow)
+    {
+        AssetWindow->SaveActiveTab();
+        if (!bHasActiveAssetTab)
+        {
+            ImGui::EndDisabled();
+        }
+        return;
+    }
+    if (ImGui::MenuItem("Close Active Asset Tab", "Ctrl+W") && AssetWindow)
+    {
+        AssetWindow->CloseActiveTab(true);
+        if (!bHasActiveAssetTab)
+        {
+            ImGui::EndDisabled();
+        }
+        return;
+    }
+    if (!bHasActiveAssetTab)
+    {
+        ImGui::EndDisabled();
+    }
+
     if (ImGui::MenuItem("Open Asset Editor") && EditorEngine)
     {
         PendingMenuAction = EPendingMenuAction::NewUAsset;
@@ -989,19 +1108,37 @@ void FLevelEditorWindow::BuildFileMenu()
 
 void FLevelEditorWindow::BuildEditMenu()
 {
+    DrawPopupSectionHeader("LEVEL EDITOR");
     const bool bCanUndo = EditorEngine && EditorEngine->CanUndoTransformChange();
     const bool bCanRedo = EditorEngine && EditorEngine->CanRedoTransformChange();
     if (!bCanUndo)
         ImGui::BeginDisabled();
-    if (ImGui::MenuItem("Undo", "Ctrl+Z") && EditorEngine)
+    if (ImGui::MenuItem("Undo Scene Edit", "Ctrl+Z") && EditorEngine)
         EditorEngine->UndoTrackedTransformChange();
     if (!bCanUndo)
         ImGui::EndDisabled();
     if (!bCanRedo)
         ImGui::BeginDisabled();
-    if (ImGui::MenuItem("Redo", "Ctrl+Y") && EditorEngine)
+    if (ImGui::MenuItem("Redo Scene Edit", "Ctrl+Y") && EditorEngine)
         EditorEngine->RedoTrackedTransformChange();
     if (!bCanRedo)
+        ImGui::EndDisabled();
+
+    DrawPopupSectionHeader("ASSET EDITOR");
+    FAssetEditorWindow *AssetWindow = EditorEngine ? &EditorEngine->GetAssetEditorManager().GetAssetEditorWindow() : nullptr;
+    const bool bCanAssetUndo = AssetWindow && AssetWindow->CanUndoActiveTab();
+    const bool bCanAssetRedo = AssetWindow && AssetWindow->CanRedoActiveTab();
+    if (!bCanAssetUndo)
+        ImGui::BeginDisabled(true);
+    if (ImGui::MenuItem("Undo Asset Edit", "Ctrl+Alt+Z") && AssetWindow)
+        AssetWindow->UndoActiveTab();
+    if (!bCanAssetUndo)
+        ImGui::EndDisabled();
+    if (!bCanAssetRedo)
+        ImGui::BeginDisabled(true);
+    if (ImGui::MenuItem("Redo Asset Edit", "Ctrl+Alt+Y") && AssetWindow)
+        AssetWindow->RedoActiveTab();
+    if (!bCanAssetRedo)
         ImGui::EndDisabled();
 }
 
@@ -1042,6 +1179,22 @@ void FLevelEditorWindow::BuildWindowMenu()
     if (ImGui::MenuItem("Reset Default Layout"))
     {
         RequestDefaultDockLayout();
+    }
+
+    FEditorUIStyle::DrawPopupSectionHeader("ASSET EDITOR");
+    FAssetEditorWindow *AssetWindow = EditorEngine ? &EditorEngine->GetAssetEditorManager().GetAssetEditorWindow() : nullptr;
+    const bool bHasActiveAssetTab = AssetWindow && AssetWindow->GetActiveDocumentTabIndex() >= 0;
+    if (!bHasActiveAssetTab)
+    {
+        ImGui::BeginDisabled(true);
+    }
+    if (ImGui::MenuItem("Reset Asset Editor Layout") && AssetWindow)
+    {
+        AssetWindow->ResetActiveEditorLayout();
+    }
+    if (!bHasActiveAssetTab)
+    {
+        ImGui::EndDisabled();
     }
 }
 

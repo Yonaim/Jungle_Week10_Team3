@@ -158,13 +158,18 @@ bool FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, USkeletalMeshC
         const FStaticMaterial &StaticSlot = Materials[Index];
         FMaterialSlot Slot;
         Slot.Path = StaticSlot.MaterialInterface ? StaticSlot.MaterialInterface->GetAssetPathFileName() : "None";
+        const FString ResetPath = Slot.Path.empty() ? FString("None") : Slot.Path;
 
         ImGui::PushID(Index);
+        if (Index > 0)
+        {
+            ImGui::Separator();
+        }
         const bool bChanged = FEditorDetailsWidgets::DrawMaterialSlotRow({
             Index,
             StaticSlot.MaterialSlotName.empty() ? "None" : StaticSlot.MaterialSlotName.c_str(),
             &Slot,
-            nullptr,
+            ResetPath.c_str(),
             false,
             true,
             120.0f,

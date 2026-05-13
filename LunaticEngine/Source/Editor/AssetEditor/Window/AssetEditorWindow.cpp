@@ -46,11 +46,6 @@ void FAssetEditorWindow::Show()
 {
     bOpen = true;
     bVisible = true;
-
-    // 같은 메인 DockSpace를 Level Editor / Asset Editor가 번갈아 쓰므로,
-    // Level Editor로 돌아갔다가 다시 FBX를 열면 기존 DockBuilder node가 Level layout로 바뀐 상태일 수 있다.
-    // Asset Editor가 다시 보일 때 외부 패널형 에디터(SkeletalMeshEditor 등)의 layout을 강제로 재빌드한다.
-    TabManager.InvalidateEditorLayouts();
 }
 
 void FAssetEditorWindow::Hide()
@@ -74,7 +69,6 @@ bool FAssetEditorWindow::OpenEditorTab(std::unique_ptr<IAssetEditor> Editor)
     const bool bResult = TabManager.OpenTab(std::move(Editor));
     if (bResult)
     {
-        TabManager.InvalidateEditorLayouts();
         Show();
     }
     return bResult;
@@ -147,6 +141,51 @@ bool FAssetEditorWindow::CloseAllTabs(bool bPromptForDirty, void *OwnerWindowHan
     return bClosed;
 }
 
+void FAssetEditorWindow::BuildDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const
+{
+    const_cast<FAssetEditorTabManager&>(TabManager).BuildDocumentTabDescs(OutTabs);
+}
+
+int32 FAssetEditorWindow::GetDocumentTabCount() const
+{
+    return TabManager.GetTabCount();
+}
+
+int32 FAssetEditorWindow::GetActiveDocumentTabIndex() const
+{
+    return TabManager.GetActiveTabIndex();
+}
+
+const std::string &FAssetEditorWindow::GetActiveDocumentLayoutId() const
+{
+    return TabManager.GetActiveLayoutId();
+}
+
+bool FAssetEditorWindow::SetActiveDocumentTabIndex(int32 NewIndex)
+{
+    const bool bResult = TabManager.SetActiveTabIndex(NewIndex);
+    if (bResult)
+    {
+        Show();
+    }
+    return bResult;
+}
+
+bool FAssetEditorWindow::CloseDocumentTab(int32 TabIndex, bool bPromptForDirty)
+{
+    const bool bClosed = TabManager.CloseTab(TabIndex, bPromptForDirty);
+    if (bClosed && !TabManager.HasOpenTabs())
+    {
+        Hide();
+    }
+    return bClosed;
+}
+
+void FAssetEditorWindow::ResetActiveEditorLayout()
+{
+    TabManager.InvalidateEditorLayouts();
+}
+
 bool FAssetEditorWindow::HasDirtyTabs() const
 {
     return TabManager.HasDirtyTabs();
@@ -186,8 +225,8 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
 
     if (TabManager.HasOpenTabs())
     {
-        RenderDocumentTabBar();
-        RenderAssetFrameToolbar();
+        // Document tab strip / frame toolbar는 FLevelEditorWindow가 통합해서 그린다.
+        // Asset Editor는 현재 active asset tab의 dockable panel만 렌더링한다.
 
         // Asset Editor도 Level Editor와 같은 panel chrome / surface 색을 사용한다.
         // 개별 패널의 body 색은 FPanel::Begin()에서 공통으로 적용한다.
@@ -201,10 +240,6 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
         if (!TabManager.HasOpenTabs())
         {
             Hide();
-            if (EditorEngine)
-            {
-                EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
-            }
             return;
         }
 

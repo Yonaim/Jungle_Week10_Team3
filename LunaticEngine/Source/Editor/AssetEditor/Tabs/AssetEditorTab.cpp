@@ -4,7 +4,39 @@
 #include "AssetEditor/IAssetEditor.h"
 #include "Platform/Paths.h"
 
-FAssetEditorTab::FAssetEditorTab(std::unique_ptr<IAssetEditor> InEditor) : Editor(std::move(InEditor)) {}
+#include <cctype>
+
+namespace
+{
+    std::string SanitizeDockLayoutId(std::string Value)
+    {
+        if (Value.empty())
+        {
+            return "UntitledAsset";
+        }
+
+        for (char &Ch : Value)
+        {
+            const unsigned char C = static_cast<unsigned char>(Ch);
+            if (!std::isalnum(C))
+            {
+                Ch = '_';
+            }
+        }
+        return Value;
+    }
+}
+
+FAssetEditorTab::FAssetEditorTab(std::unique_ptr<IAssetEditor> InEditor) : Editor(std::move(InEditor))
+{
+    std::string SourceId = "Asset";
+    if (Editor)
+    {
+        const std::filesystem::path &AssetPath = Editor->GetAssetPath();
+        SourceId = AssetPath.empty() ? Editor->GetEditorName() : FPaths::ToUtf8(AssetPath.generic_wstring());
+    }
+    LayoutId = std::string("AssetEditorDockSpace_") + SanitizeDockLayoutId(SourceId);
+}
 
 IAssetEditor *FAssetEditorTab::GetEditor() const { return Editor.get(); }
 

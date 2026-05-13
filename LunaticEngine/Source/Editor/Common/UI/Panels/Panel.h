@@ -51,6 +51,7 @@ class FPanel
     {
         bool bDidBeginWindow = false;
         bool bPushedStyle = false;
+        bool bPushedContentClip = false;
     };
 
     static std::vector<FBeginState> &GetBeginStateStack()
@@ -112,6 +113,18 @@ class FPanel
             if (Desc.bApplyContentTopInset)
             {
                 PanelTitleUtils::ApplyPanelContentTopInset(Desc.bApplySideInset, Desc.bApplyBottomInset);
+
+                // Dock 탭/고정 헤더 위쪽은 스크롤 가능한 body가 침범하면 안 된다.
+                // 일부 패널이 스크롤 중 cursor/drawlist를 직접 조정하면 title/body 경계 위로 그려질 수 있으므로
+                // 공통 Panel wrapper에서 content clip을 명시적으로 건다.
+                ImGuiWindow *CurrentWindow = ImGui::GetCurrentWindow();
+                if (CurrentWindow)
+                {
+                    const ImVec2 ClipMin(CurrentWindow->WorkRect.Min.x, CurrentWindow->DC.CursorPos.y);
+                    const ImVec2 ClipMax(CurrentWindow->WorkRect.Max.x, CurrentWindow->WorkRect.Max.y);
+                    ImGui::PushClipRect(ClipMin, ClipMax, true);
+                    GetBeginStateStack().back().bPushedContentClip = true;
+                }
             }
         }
 
@@ -134,6 +147,10 @@ class FPanel
             return;
         }
 
+        if (BeginState.bPushedContentClip)
+        {
+            ImGui::PopClipRect();
+        }
         if (BeginState.bPushedStyle)
         {
             PanelTitleUtils::PopPanelStyle();

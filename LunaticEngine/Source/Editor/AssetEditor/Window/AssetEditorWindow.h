@@ -3,6 +3,9 @@
 #include "AssetEditor/Tabs/AssetEditorTabManager.h"
 #include "Common/Menu/EditorMenuProvider.h"
 #include "ImGui/imgui.h"
+#include <string>
+#include <vector>
+#include "Common/UI/Tabs/EditorDocumentTabBar.h"
 
 class UEditorEngine;
 class FAssetEditorManager;
@@ -47,6 +50,13 @@ class FAssetEditorWindow : public IEditorMenuProvider
     bool CanRedoActiveTab() const;
     bool CloseActiveTab(bool bPromptForDirty = true);
     bool CloseAllTabs(bool bPromptForDirty = true, void *OwnerWindowHandle = nullptr);
+    void BuildDocumentTabDescs(std::vector<FEditorDocumentTabBar::FTabDesc> &OutTabs) const;
+    int32 GetDocumentTabCount() const;
+    int32 GetActiveDocumentTabIndex() const;
+    const std::string &GetActiveDocumentLayoutId() const;
+    bool SetActiveDocumentTabIndex(int32 NewIndex);
+    bool CloseDocumentTab(int32 TabIndex, bool bPromptForDirty = true);
+    void ResetActiveEditorLayout();
     bool HasDirtyTabs() const;
     bool ConfirmCloseAllTabs(void *OwnerWindowHandle = nullptr) const;
 

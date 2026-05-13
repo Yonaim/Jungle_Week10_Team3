@@ -2,6 +2,7 @@
 #include "AssetTools/AssetImportManager.h"
 
 #include "Common/File/EditorFileUtils.h"
+#include "Common/UI/Notifications/NotificationToast.h"
 #include "Core/Log.h"
 #include "Core/Notification.h"
 #include "EditorEngine.h"
@@ -155,6 +156,9 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
         return false;
     }
 
+    const FString SourceFileNameForProgress = FPaths::ToUtf8(SourceAbsolute.filename().wstring());
+    FNotificationToast::BeginProgress("Import to UAsset", "0%: preparing " + SourceFileNameForProgress, 0.0f);
+    FNotificationManager::Get().AddNotification("Import started: " + SourceFileNameForProgress, ENotificationType::Info, 2.5f);
     UE_LOG_CATEGORY(AssetImport, Info, "[Import] Begin: source=%s", ToUtf8GenericPath(SourceAbsolute).c_str());
 
     const std::wstring Ext = ToLowerExtension(SourceAbsolute);
@@ -162,23 +166,32 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
 
     if (Ext == L".fbx" || Ext == L".obj")
     {
+        FNotificationToast::UpdateProgress("25%: converting mesh source", 0.25f);
+        FNotificationManager::Get().AddNotification("Import 25%: converting mesh source", ENotificationType::Info, 2.5f);
         bResult = ImportMeshSource(SourcePath, OutImportedAssetPath);
     }
     else if (Ext == L".mtl")
     {
+        FNotificationToast::UpdateProgress("25%: converting material source", 0.25f);
+        FNotificationManager::Get().AddNotification("Import 25%: converting material source", ENotificationType::Info, 2.5f);
         bResult = ImportMtlSource(SourcePath, OutImportedAssetPath);
     }
     else if (Ext == L".uasset")
     {
+        FNotificationToast::UpdateProgress("25%: copying uasset", 0.25f);
+        FNotificationManager::Get().AddNotification("Import 25%: copying uasset", ENotificationType::Info, 2.5f);
         bResult = ImportExistingUAsset(SourcePath, OutImportedAssetPath);
     }
     else if (UTexture2D::IsSupportedTextureExtension(SourceAbsolute))
     {
+        FNotificationToast::UpdateProgress("25%: converting texture source", 0.25f);
+        FNotificationManager::Get().AddNotification("Import 25%: converting texture source", ENotificationType::Info, 2.5f);
         bResult = ImportTextureSource(SourcePath, OutImportedAssetPath);
     }
     else
     {
         UE_LOG_CATEGORY(AssetImport, Warning, "[Import] Unsupported source type: %s", ToUtf8GenericPath(SourceAbsolute).c_str());
+        FNotificationToast::FinishProgress("Import failed: unsupported source file type", false, 5.0f);
         FNotificationManager::Get().AddNotification("Import failed: unsupported source file type.", ENotificationType::Error, 5.0f);
         return false;
     }
@@ -186,9 +199,12 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
     if (!bResult)
     {
         UE_LOG_CATEGORY(AssetImport, Error, "[Import] Failed: source=%s", ToUtf8GenericPath(SourceAbsolute).c_str());
+        FNotificationToast::FinishProgress("Import failed: see log for details", false, 5.0f);
         return false;
     }
 
+    FNotificationToast::UpdateProgress("80%: refreshing asset registry", 0.80f);
+    FNotificationManager::Get().AddNotification("Import 80%: refreshing asset registry", ENotificationType::Info, 2.0f);
     FMeshAssetManager::ScanMeshAssets();
     FMeshAssetManager::ScanMeshSourceFiles();
     FMaterialManager::Get().ScanMaterialAssets();
@@ -206,6 +222,7 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
     const FString Message = !ImportedPath.empty()
         ? "Imported " + SourceFileName + " as " + ImportedFileName
         : "Imported " + SourceFileName;
+    FNotificationToast::FinishProgress("100%: " + Message, true, 4.5f);
     FNotificationManager::Get().AddNotification(Message, ENotificationType::Success, 3.0f);
     UE_LOG_CATEGORY(AssetImport, Info, "[Import] %s | source=%s target=%s", Message.c_str(), ToUtf8GenericPath(SourceAbsolute).c_str(), ImportedPath.c_str());
 
@@ -363,6 +380,8 @@ bool FAssetImportManager::ImportExistingUAsset(const FString& SourcePath, FStrin
     std::filesystem::path DestinationPath = DestinationDirectory / SourceAbsolute.filename();
     EnsureUniquePath(DestinationPath);
 
+    FNotificationToast::UpdateProgress("60%: copying .uasset", 0.60f);
+    FNotificationManager::Get().AddNotification("Import 60%: copying .uasset", ENotificationType::Info, 2.0f);
     std::filesystem::copy_file(SourceAbsolute, DestinationPath, std::filesystem::copy_options::overwrite_existing);
 
     if (OutImportedAssetPath)
@@ -383,6 +402,8 @@ bool FAssetImportManager::SaveImportedObject(const std::filesystem::path& Destin
 
     std::filesystem::create_directories(DestinationPath.parent_path());
 
+    FNotificationToast::UpdateProgress("60%: saving .uasset", 0.60f);
+    FNotificationManager::Get().AddNotification("Import 60%: saving .uasset", ENotificationType::Info, 2.0f);
     FString Error;
     const bool bSaved = FAssetFileSerializer::SaveObjectToAssetFile(DestinationPath, Object, &Error);
     if (!bSaved)
