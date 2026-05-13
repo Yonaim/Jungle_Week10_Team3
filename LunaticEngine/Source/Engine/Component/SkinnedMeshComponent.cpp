@@ -4,6 +4,7 @@
 #include "Mesh/MeshAssetManager.h"
 #include "Engine/Runtime/Engine.h"
 #include "Serialization/Archive.h"
+#include "Collision/RayUtils.h"
 #include <algorithm>
 #include <cctype>
 
@@ -261,6 +262,31 @@ void USkinnedMeshComponent::UpdateWorldAABB() const
 	WorldAABBMaxLocation = WorldCenter + FVector(Ex, Ey, Ez);
 	bWorldAABBDirty = false;
 	bHasValidWorldAABB = true;
+}
+
+bool USkinnedMeshComponent::LineTraceComponent(const FRay& Ray, FRayHitResult& OutHitResult)
+{
+	TArray<FNormalVertex>* Verts = GetCPUSkinnedVertices();
+	if (!Verts || Verts->empty())
+		return false;
+
+	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
+		return false;
+
+	const TArray<uint32>& Indices = SkeletalMesh->GetSkeletalMeshAsset()->Indices;
+	if (Indices.empty())
+		return false;
+
+	bool bHit = FRayUtils::RaycastTriangles(
+		Ray, GetWorldMatrix(), GetWorldInverseMatrix(),
+		Verts->data(), sizeof(FNormalVertex),
+		Indices,
+		OutHitResult);
+
+	if (bHit)
+		OutHitResult.HitComponent = this;
+
+	return bHit;
 }
 
 void USkinnedMeshComponent::InitBoneTransform()
