@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "RotatingMovementComponent.h"
 
 #include "Object/ObjectFactory.h"
@@ -27,7 +27,7 @@ void URotatingMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
 	const FQuat DeltaQuat = DeltaRotation.ToQuaternion();
 	const FVector OldWorldLocation = UpdatedSceneComponent->GetWorldLocation();
-	const FQuat OldWorldQuat = UpdatedSceneComponent->GetWorldMatrix().ToQuat().GetNormalized();
+	const FQuat OldWorldQuat = UpdatedSceneComponent->GetWorldQuat();
 	const bool bHasPivotTranslation = PivotTranslation.Length() > 0.0f;
 
 	if (bRotationInLocalSpace)
@@ -41,7 +41,7 @@ void URotatingMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
 		// AddLocalRotation은 내부에서 quat 합성으로 누적하므로 짐벌락에 안전.
 		UpdatedSceneComponent->AddLocalRotation(DeltaQuat);
-		const FQuat NewWorldQuat = UpdatedSceneComponent->GetWorldMatrix().ToQuat().GetNormalized();
+		const FQuat NewWorldQuat = UpdatedSceneComponent->GetWorldQuat();
 		if (bHasPivotTranslation)
 		{
 			const FVector NewPivotOffsetWorld = NewWorldQuat.RotateVector(PivotTranslation);

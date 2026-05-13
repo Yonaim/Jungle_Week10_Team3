@@ -391,13 +391,12 @@ void UGizmoVisualComponent::ApplyGizmoWorldTransform(const FTransform& InWorldTr
 	}
 
 	const FVector DesiredLocation = InWorldTransform.GetLocation();
-	
+		
 	FQuat DesiredRotation = FQuat::Identity;
-	if (CurMode == EGizmoMode::Scale || !bIsWorldSpace)
+	if (!bIsWorldSpace)
 	{
 		// 회전 표시에는 scale이 섞인 Transform matrix를 쓰지 않는다.
-		// 또 Rotator 왕복을 거치면 90도 근처에서 짐벌락/축 뒤집힘이
-		// 다시 들어오므로 visual rotation도 quaternion 그대로 유지한다.
+		// Non-uniform/negative scale이 있는 대상에서 한 축이 뒤집히는 원인이 된다.
 		DesiredRotation = InWorldTransform.Rotation.GetNormalized();
 	}
 
@@ -497,8 +496,8 @@ FQuat UGizmoVisualComponent::GetVisualRotationQuat() const
         return FQuat::Identity;
     }
 
-    // Translate/Rotate의 World space는 월드 축 정렬, Local space와 Scale은 대상 로컬 축 정렬.
-    if (CurMode == EGizmoMode::Scale || !bIsWorldSpace)
+    // World space는 T/R/S 모두 월드 축 정렬, Local space는 대상 로컬 축 정렬.
+    if (!bIsWorldSpace)
     {
         return VisualWorldTransform.Rotation.GetNormalized();
     }

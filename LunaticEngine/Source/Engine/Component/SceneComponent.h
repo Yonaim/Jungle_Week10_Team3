@@ -55,6 +55,7 @@ public:
 	void SetWorldRotation(const FRotator& NewWorldRotation);
 	void SetWorldRotation(const FQuat& NewWorldRotation);
 	FVector GetWorldLocation() const;
+	FQuat GetWorldQuat() const;
 	FVector GetWorldRotation() const;
 	FRotator GetComponentRotation() const;
 	FVector GetWorldScale() const;

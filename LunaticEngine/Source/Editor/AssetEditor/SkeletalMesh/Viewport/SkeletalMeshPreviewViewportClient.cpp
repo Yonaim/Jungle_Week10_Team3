@@ -14,7 +14,6 @@
 #include "Render/Proxy/PrimitiveSceneProxy.h"
 #include "Viewport/Viewport.h"
 #include "Math/Rotator.h"
-#include "Math/MathUtils.h"
 
 #include "ImGui/imgui.h"
 
@@ -25,17 +24,6 @@
 
 namespace
 {
-ImVec2 ClampMouseToViewportRect(ImVec2 MousePos, const FRect& Rect)
-{
-    const float MinX = Rect.X;
-    const float MinY = Rect.Y;
-    const float MaxX = Rect.X + (std::max)(0.0f, Rect.Width - 1.0f);
-    const float MaxY = Rect.Y + (std::max)(0.0f, Rect.Height - 1.0f);
-    MousePos.x = Clamp(MousePos.x, MinX, MaxX);
-    MousePos.y = Clamp(MousePos.y, MinY, MaxY);
-    return MousePos;
-}
-
 const char *PreviewModeToText(ESkeletalMeshPreviewMode Mode)
 {
     switch (Mode)
@@ -596,15 +584,6 @@ void FSkeletalMeshPreviewViewportClient::ApplyEditorStateToViewport()
 
     if (State)
     {
-        if (State->GizmoMode == EGizmoMode::Scale)
-        {
-            // FTransform cannot represent arbitrary world-axis non-uniform scale
-            // without shear, so scale gizmo is intentionally local like Unreal.
-            // Keep the UI/state honest instead of showing World while the visual
-            // and drag math are necessarily Local.
-            State->GizmoSpace = EGizmoSpace::Local;
-        }
-
         State->GizmoSharedState.Mode = State->GizmoMode;
         State->GizmoSharedState.Space = State->GizmoSpace;
         State->GizmoSharedState.bTranslationSnapEnabled = State->bEnableTranslationSnap;
@@ -974,27 +953,17 @@ void FSkeletalMeshPreviewViewportClient::TickGizmoInteraction()
         return;
     }
 
-    const float VPWidth = ViewportScreenRect.Width > 0.0f
-        ? ViewportScreenRect.Width
-        : (Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth);
-    const float VPHeight = ViewportScreenRect.Height > 0.0f
-        ? ViewportScreenRect.Height
-        : (Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight);
+    const float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
+    const float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
 
-    if (VPWidth <= 0.0f || VPHeight <= 0.0f)
+    if (VPWidth <= 0.0f || VPHeight <= 0.0f || ViewportScreenRect.Width <= 0.0f || ViewportScreenRect.Height <= 0.0f)
     {
         return;
     }
 
-    // Use a clamped ray while dragging.  The actual mouse can leave the pane,
-    // but deprojecting far-outside coordinates makes axis/plane intersections
-    // unstable and causes sudden transform jumps.
-    const ImVec2 RayMousePos = GizmoManager.IsDragging()
-        ? ClampMouseToViewportRect(IO.MousePos, ViewportScreenRect)
-        : IO.MousePos;
-
-    const float LocalMouseX = RayMousePos.x - ViewportScreenRect.X;
-    const float LocalMouseY = RayMousePos.y - ViewportScreenRect.Y;
+    // Drag 중 뷰포트 밖으로 나가도 같은 screen-rect -> render-target 변환식을 유지한다.
+    const float LocalMouseX = (IO.MousePos.x - ViewportScreenRect.X) * (VPWidth / ViewportScreenRect.Width);
+    const float LocalMouseY = (IO.MousePos.y - ViewportScreenRect.Y) * (VPHeight / ViewportScreenRect.Height);
     const FRay Ray = ViewCamera.DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
 
     FGizmoHitProxyContext HitContext{};

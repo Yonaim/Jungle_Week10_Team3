@@ -15,6 +15,11 @@ public:
     virtual FTransform GetWorldTransform() const = 0;
     virtual void SetWorldTransform(const FTransform& NewWorldTransform) = 0;
 
+    // Scale World는 FTransform::Scale만으로는 표현이 부족하므로 matrix 경로를 함께 제공한다.
+    // 기본 구현은 matrix를 determinant 보정 포함 FTransform으로 분해해 기존 경로로 보낸다.
+    virtual FMatrix GetWorldMatrix() const { return GetWorldTransform().ToMatrix(); }
+    virtual void SetWorldMatrix(const FMatrix& NewWorldMatrix) { SetWorldTransform(FTransform::FromMatrix(NewWorldMatrix)); }
+
     virtual FTransform GetLocalTransform() const = 0;
     virtual void SetLocalTransform(const FTransform& NewLocalTransform) = 0;
 

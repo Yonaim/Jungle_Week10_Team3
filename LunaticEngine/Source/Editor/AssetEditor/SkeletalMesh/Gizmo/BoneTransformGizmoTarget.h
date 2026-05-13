@@ -16,6 +16,8 @@ public:
 
     FTransform GetWorldTransform() const override;
     void SetWorldTransform(const FTransform& NewWorldTransform) override;
+    FMatrix GetWorldMatrix() const override;
+    void SetWorldMatrix(const FMatrix& NewWorldMatrix) override;
 
     FTransform GetLocalTransform() const override;
     void SetLocalTransform(const FTransform& NewLocalTransform) override;

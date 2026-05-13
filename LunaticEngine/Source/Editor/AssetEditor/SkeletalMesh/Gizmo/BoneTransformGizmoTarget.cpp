@@ -4,43 +4,6 @@
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 
-namespace
-{
-    FTransform MakeTransformFromMatrix(const FMatrix& Matrix)
-    {
-        FVector AxisX(Matrix.M[0][0], Matrix.M[0][1], Matrix.M[0][2]);
-        FVector AxisY(Matrix.M[1][0], Matrix.M[1][1], Matrix.M[1][2]);
-        FVector AxisZ(Matrix.M[2][0], Matrix.M[2][1], Matrix.M[2][2]);
-
-        FVector Scale(AxisX.Length(), AxisY.Length(), AxisZ.Length());
-        if (Scale.X > 1e-6f)
-        {
-            AxisX /= Scale.X;
-        }
-        if (Scale.Y > 1e-6f)
-        {
-            AxisY /= Scale.Y;
-        }
-        if (Scale.Z > 1e-6f)
-        {
-            AxisZ /= Scale.Z;
-        }
-
-        FMatrix RotationMatrix = FMatrix::Identity;
-        RotationMatrix.M[0][0] = AxisX.X;
-        RotationMatrix.M[0][1] = AxisX.Y;
-        RotationMatrix.M[0][2] = AxisX.Z;
-        RotationMatrix.M[1][0] = AxisY.X;
-        RotationMatrix.M[1][1] = AxisY.Y;
-        RotationMatrix.M[1][2] = AxisY.Z;
-        RotationMatrix.M[2][0] = AxisZ.X;
-        RotationMatrix.M[2][1] = AxisZ.Y;
-        RotationMatrix.M[2][2] = AxisZ.Z;
-
-        return FTransform(Matrix.GetLocation(), FQuat::FromMatrix(RotationMatrix), Scale);
-    }
-}
-
 FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent, int32 InBoneIndex)
     : Component(InComponent)
     , BoneIndex(InBoneIndex)
@@ -67,34 +30,49 @@ FTransform FBoneTransformGizmoTarget::GetWorldTransform() const
     }
 
     const FSkeletonPose& Pose = Component->GetCurrentPose();
-    return MakeTransformFromMatrix(Pose.ComponentTransforms[BoneIndex]);
+    return FTransform::FromMatrix(Pose.ComponentTransforms[BoneIndex]);
 }
 
 void FBoneTransformGizmoTarget::SetWorldTransform(const FTransform& NewWorldTransform)
+{
+    SetWorldMatrix(NewWorldTransform.ToMatrix());
+}
+
+FMatrix FBoneTransformGizmoTarget::GetWorldMatrix() const
+{
+    if (!IsValid())
+    {
+        return FMatrix::Identity;
+    }
+
+    const FSkeletonPose& Pose = Component->GetCurrentPose();
+    return Pose.ComponentTransforms[BoneIndex];
+}
+
+void FBoneTransformGizmoTarget::SetWorldMatrix(const FMatrix& NewWorldMatrix)
 {
     if (!IsValid() || !Component || !Component->GetSkeletalMesh() || !Component->GetSkeletalMesh()->GetSkeletalMeshAsset())
     {
         return;
     }
 
-    // Bone gizmo의 WorldTransform은 현재 preview component space transform이다.
-    // 이를 그대로 LocalTransforms[BoneIndex]에 넣으면 parent가 있는 본에서 회전/이동이
-    // 부모 기준으로 한 번 더 누적되어 기즈모 회전이 크게 틀어진다.
+    // Bone gizmo의 WorldMatrix는 현재 preview component-space transform이다.
+    // parent가 있는 bone은 component-space 행렬을 parent component-space의 inverse로 되돌린 뒤
+    // local transform으로 저장해야 부모 기준으로 한 번 더 누적되는 문제를 피할 수 있다.
     const FSkeletalMesh* MeshAsset = Component->GetSkeletalMesh()->GetSkeletalMeshAsset();
     const FSkeletonPose& Pose = Component->GetCurrentPose();
     const int32 ParentIndex = MeshAsset->Bones[BoneIndex].ParentIndex;
 
-    FMatrix NewComponentMatrix = NewWorldTransform.ToMatrix();
-    FTransform NewLocalTransform = NewWorldTransform;
+    FMatrix NewLocalMatrix = NewWorldMatrix;
     if (ParentIndex != InvalidBoneIndex &&
         ParentIndex >= 0 &&
         ParentIndex < static_cast<int32>(Pose.ComponentTransforms.size()))
     {
         const FMatrix ParentComponentInverse = Pose.ComponentTransforms[ParentIndex].GetInverse();
-        NewLocalTransform = MakeTransformFromMatrix(NewComponentMatrix * ParentComponentInverse);
+        NewLocalMatrix = NewWorldMatrix * ParentComponentInverse;
     }
 
-    SetLocalTransform(NewLocalTransform);
+    SetLocalTransform(FTransform::FromMatrix(NewLocalMatrix));
 }
 
 FTransform FBoneTransformGizmoTarget::GetLocalTransform() const

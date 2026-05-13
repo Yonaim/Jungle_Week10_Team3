@@ -411,7 +411,7 @@ void USceneComponent::SetWorldRotation(const FQuat& NewWorldRotation)
 	{
 		// Row-major 엔진 컨벤션: World = Local * ParentWorld 이므로
 		// Local = World * ParentWorld^-1.
-		FQuat ParentWorldQuat = ParentComponent->GetWorldMatrix().ToQuat().GetNormalized();
+		FQuat ParentWorldQuat = ParentComponent->GetWorldQuat();
 		FQuat NewRelativeQuat = (NewWorldQuat * ParentWorldQuat.Inverse()).GetNormalized();
 		SetRelativeRotation(NewRelativeQuat);
 	}
@@ -421,25 +421,24 @@ void USceneComponent::SetWorldRotation(const FQuat& NewWorldRotation)
 	}
 }
 
+FQuat USceneComponent::GetWorldQuat() const
+{
+	return FTransform::FromMatrix(GetWorldMatrix()).Rotation.GetNormalized();
+}
+
 FVector USceneComponent::GetWorldRotation() const
 {
-	return GetRotationTranslationWithoutScale(GetWorldMatrix()).GetEuler();
+	return GetWorldQuat().ToRotator().ToVector();
 }
 
 FRotator USceneComponent::GetComponentRotation() const
 {
-	return GetWorldMatrix().ToRotator();
+	return GetWorldQuat().ToRotator();
 }
 
 FVector USceneComponent::GetWorldScale() const
 {
-	const FMatrix& WorldMatrix = GetWorldMatrix();
-
-	float ScaleX = FVector(WorldMatrix.M[0][0], WorldMatrix.M[0][1], WorldMatrix.M[0][2]).Length();
-	float ScaleY = FVector(WorldMatrix.M[1][0], WorldMatrix.M[1][1], WorldMatrix.M[1][2]).Length();
-	float ScaleZ = FVector(WorldMatrix.M[2][0], WorldMatrix.M[2][1], WorldMatrix.M[2][2]).Length();
-
-	return FVector(ScaleX, ScaleY, ScaleZ);
+	return FTransform::FromMatrix(GetWorldMatrix()).Scale;
 }
 
 FVector USceneComponent::GetForwardVector() const

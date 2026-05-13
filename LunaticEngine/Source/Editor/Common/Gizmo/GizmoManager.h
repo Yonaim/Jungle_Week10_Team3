@@ -117,15 +117,16 @@ public:
 
 private:
     FVector GetAxisVector(int32 Axis) const;
-    FVector GetAxisVectorFromTransform(const FTransform& Transform, int32 Axis) const;
     FVector GetAxisVectorFromTransform(const FTransform& Transform, int32 Axis, EGizmoMode InMode, EGizmoSpace InSpace) const;
     bool ComputeLinearIntersection(const FRay& Ray, FVector& OutPoint);
     bool ComputePlanarIntersection(const FRay& Ray, FVector& OutPoint);
     bool ComputeAngularIntersection(const FRay& Ray, FVector& OutPoint);
     float ApplySnapToDragAmount(float DragAmount);
+    float ApplySnapToTotalDragAmount(float RawTotalAmount) const;
     void ResetSnapAccumulation();
     void ApplyLinearDrag(const FRay& Ray);
     void ApplyAngularDrag(const FRay& Ray);
+    void ApplyWorldScaleDrag(float ScaleDelta);
 
 private:
     std::shared_ptr<ITransformGizmoTarget> Target;
@@ -142,10 +143,12 @@ private:
     bool bDragging = false;
     bool bFirstDragUpdate = true;
     int32 ActiveAxis = -1;
+    EGizmoMode DragStartMode = EGizmoMode::Translate;
+    EGizmoSpace DragStartSpace = EGizmoSpace::Local;
     FTransform DragStartTransform;
-    EGizmoMode DragMode = EGizmoMode::Translate;
-    EGizmoSpace DragSpace = EGizmoSpace::Local;
-    FVector DragOriginLocation = FVector::ZeroVector;
+    FMatrix DragStartWorldMatrix = FMatrix::Identity;
+    FVector DragStartCenter = FVector::ZeroVector;
+    FVector DragStartIntersectionLocation = FVector::ZeroVector;
     FVector LastIntersectionLocation;
     FVector DragAxisVector = FVector(1.0f, 0.0f, 0.0f);
     FVector DragPlaneNormal = FVector(0.0f, 0.0f, 1.0f);
