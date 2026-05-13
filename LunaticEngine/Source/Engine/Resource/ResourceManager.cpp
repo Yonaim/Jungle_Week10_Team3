@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Resource/ResourceManager.h"
 #include "Platform/Paths.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
@@ -16,7 +16,8 @@
 #include "Profiling/MemoryStats.h"
 #include "Engine/Texture/Texture2D.h"
 #include "Materials/MaterialManager.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
+#include "Engine/Asset/AssetFileSerializer.h"
 
 
 // SEH-guarded WIC 호출 (C++ 객체 unwind가 없는 별도 함수여야 __try/__except 사용 가능).
@@ -197,20 +198,18 @@ namespace
 		return ESoundCategory::SFX;
 	}
 
-	bool IsSkeletalMeshCachePath(const FString& Path)
+	bool IsSkeletalMeshAssetPath(const FString& Path)
 	{
 		const std::filesystem::path PathW(FPaths::ToWide(Path));
 		std::wstring Extension = PathW.extension().wstring();
 		std::transform(Extension.begin(), Extension.end(), Extension.begin(), ::towlower);
-		if (Extension != L".bin")
+		if (Extension != L".uasset")
 		{
 			return false;
 		}
 
-		const std::wstring Stem = PathW.stem().wstring();
-		constexpr wchar_t SkeletalSuffix[] = L"_Skeletal";
-		constexpr size_t SuffixLength = (sizeof(SkeletalSuffix) / sizeof(wchar_t)) - 1;
-		return Stem.size() >= SuffixLength && Stem.compare(Stem.size() - SuffixLength, SuffixLength, SkeletalSuffix) == 0;
+		FAssetFileHeader Header;
+		return FAssetFileSerializer::ReadAssetHeader(PathW, Header) && Header.ClassId == EAssetClassId::SkeletalMesh;
 	}
 
 	void PreloadRegisteredMeshes(const TMap<FString, FMeshResource>& MeshResources, ID3D11Device* Device, const char* SourceLabel)
@@ -251,13 +250,13 @@ namespace
 			const bool bTreatAsSkeletal =
 				Resource.MeshType == EMeshResourceType::Skeletal
 				|| (Resource.MeshType == EMeshResourceType::Unknown
-					&& (IsSkeletalMeshCachePath(RelativePath)
-						|| (Extension == L".fbx" && FObjManager::IsFbxSkeletalMesh(RelativePath))));
+					&& (IsSkeletalMeshAssetPath(FPaths::ToUtf8(FullPath.generic_wstring()))
+						|| (Extension == L".fbx" && FMeshAssetManager::IsFbxSkeletalMesh(RelativePath))));
 
 			bool bLoaded = false;
 			if (bTreatAsSkeletal)
 			{
-				bLoaded = (FObjManager::LoadObjSkeletalMesh(RelativePath, Device) != nullptr);
+				bLoaded = (FMeshAssetManager::LoadSkeletalMesh(RelativePath, Device) != nullptr);
 				if (bLoaded)
 				{
 					++PreloadedSkeletalMeshCount;
@@ -265,7 +264,7 @@ namespace
 			}
 			else
 			{
-				bLoaded = (FObjManager::LoadObjStaticMesh(RelativePath, Device) != nullptr);
+				bLoaded = (FMeshAssetManager::LoadStaticMesh(RelativePath, Device) != nullptr);
 				if (bLoaded)
 				{
 					++PreloadedStaticMeshCount;

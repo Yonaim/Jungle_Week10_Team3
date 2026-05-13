@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Core/CoreTypes.h"
+#include <filesystem>
 
+class UObject;
 class UEditorEngine;
 
 class FAssetImportManager
@@ -10,11 +12,25 @@ public:
     void Init(UEditorEngine* InEditorEngine);
     void Shutdown();
 
+    // Unreal식 단일 Import 진입점.
+    // Source 파일(.fbx/.obj/.mtl/.mat/texture/.uasset)을 받아 프로젝트 Content 아래 정식 .uasset으로 만든다.
+    bool ImportAssetWithDialog();
+    bool ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath = nullptr);
+
+    // 기존 호출부 호환용 wrapper. 내부적으로는 ImportAssetWithDialog()만 사용한다.
     bool ImportMaterialWithDialog();
     bool ImportTextureWithDialog();
 
 private:
-    bool ImportAssetFile(const FString& SourcePath, const std::wstring& RelativeDestinationDir, FString& OutImportedRelativePath);
+    bool ImportMeshSource(const FString& SourcePath, FString* OutImportedAssetPath);
+    bool ImportMtlSource(const FString& SourcePath, FString* OutImportedAssetPath);
+    bool ImportLegacyMaterialJson(const FString& SourcePath, FString* OutImportedAssetPath);
+    bool ImportTextureSource(const FString& SourcePath, FString* OutImportedAssetPath);
+    bool ImportExistingUAsset(const FString& SourcePath, FString* OutImportedAssetPath);
+
+    bool SaveImportedObject(const std::filesystem::path& DestinationPath, UObject* Object, FString* OutImportedAssetPath);
+    std::filesystem::path MakeDestinationAssetPath(const FString& SourcePath, const wchar_t* CategoryDir, const wchar_t* Prefix) const;
+    FString MakeProjectRelativePath(const std::filesystem::path& Path) const;
 
 private:
     UEditorEngine* EditorEngine = nullptr;

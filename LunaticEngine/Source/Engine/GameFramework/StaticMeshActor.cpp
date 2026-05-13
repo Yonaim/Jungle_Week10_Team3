@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "GameFramework/StaticMeshActor.h"
 #include "Object/ObjectFactory.h"
 #include "Engine/Runtime/Engine.h"
@@ -19,7 +19,7 @@ void AStaticMeshActor::InitDefaultComponents(const FString& UStaticMeshFileName)
 	if (!UStaticMeshFileName.empty() && UStaticMeshFileName != "None")
 	{
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-		UStaticMesh* Asset = FObjManager::LoadObjStaticMesh(UStaticMeshFileName, Device);
+		UStaticMesh* Asset = FMeshAssetManager::LoadStaticMesh(UStaticMeshFileName, Device);
 		StaticMeshComponent->SetStaticMesh(Asset);
 
 		if (Asset && IsBasicShapeAssetPath(UStaticMeshFileName))

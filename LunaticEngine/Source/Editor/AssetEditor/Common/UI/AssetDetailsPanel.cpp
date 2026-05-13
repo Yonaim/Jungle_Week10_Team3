@@ -3,6 +3,7 @@
 
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 
+#include "Component/SkeletalMeshComponent.h"
 #include "Common/UI/Details/EditorDetailsWidgets.h"
 #include "Common/UI/Style/EditorUIStyle.h"
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -54,15 +55,15 @@ void DrawSmallIconButton(const char *Id, const char *Label, const char *Tooltip)
 }
 } // namespace
 
-void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,
-                                            FSkeletalMeshEditorState &State,
+bool FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                            const std::filesystem::path &AssetPath, FSkeletalMeshEditorState &State,
                                             FSkeletalMeshSelectionManager &SelectionManager,
                                             const FPanelDesc &PanelDesc)
 {
     if (!FPanel::Begin(PanelDesc))
     {
         FPanel::End();
-        return;
+        return false;
     }
 
     RenderSearchToolbar();
@@ -71,10 +72,11 @@ void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::file
     {
         ImGui::TextDisabled("No SkeletalMesh asset selected.");
         FPanel::End();
-        return;
+        return false;
     }
 
-    RenderMaterialSlots(Mesh, State);
+    bool bChanged = false;
+    bChanged |= RenderMaterialSlots(Mesh, PreviewComponent, State);
     ImGui::Spacing();
     RenderMeshInfo(Mesh, AssetPath, State, SelectionManager);
     ImGui::Spacing();
@@ -83,6 +85,7 @@ void FAssetDetailsPanel::RenderSkeletalMesh(USkeletalMesh *Mesh, const std::file
     RenderBoneSelectionSummary(State, SelectionManager);
 
     FPanel::End();
+    return bChanged;
 }
 
 void FAssetDetailsPanel::RenderSearchToolbar()
@@ -91,15 +94,17 @@ void FAssetDetailsPanel::RenderSearchToolbar()
     FEditorDetailsWidgets::DrawDetailsSearchToolbar("##AssetDetailsSearch", SearchBuffer, sizeof(SearchBuffer));
 }
 
-void FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, FSkeletalMeshEditorState &State)
+bool FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, USkeletalMeshComponent *PreviewComponent,
+                                             FSkeletalMeshEditorState &State)
 {
     if (!FEditorDetailsWidgets::BeginSection("Material Slots"))
     {
-        return;
+        return false;
     }
 
-    const TArray<FStaticMaterial> &Materials = Mesh->GetStaticMaterials();
+    TArray<FStaticMaterial> &Materials = Mesh->GetStaticMaterialsMutable();
     const int32 MaterialCount = static_cast<int32>(Materials.size());
+    bool bChangedAnySlot = false;
 
     if (FEditorDetailsWidgets::BeginReadOnlyTable("##AssetDetailsMaterialSlotSummary"))
     {
@@ -110,7 +115,7 @@ void FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, FSkeletalMeshE
     if (MaterialCount <= 0)
     {
         ImGui::TextDisabled("No material slots.");
-        return;
+        return false;
     }
 
     ImGui::Spacing();
@@ -125,11 +130,22 @@ void FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, FSkeletalMeshE
             Index,
             StaticSlot.MaterialSlotName.empty() ? "None" : StaticSlot.MaterialSlotName.c_str(),
             &Slot,
-            true,
+            nullptr,
             false,
+            true,
             120.0f,
         });
-        (void)bChanged;
+        if (bChanged)
+        {
+            UMaterial *NewMaterial =
+                (Slot.Path.empty() || Slot.Path == "None") ? nullptr : FMaterialManager::Get().GetOrCreateMaterial(Slot.Path);
+            StaticSlot.MaterialInterface = NewMaterial;
+            if (PreviewComponent)
+            {
+                PreviewComponent->SetMaterial(Index, NewMaterial);
+            }
+            bChangedAnySlot = true;
+        }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
@@ -142,6 +158,8 @@ void FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, FSkeletalMeshE
         }
         ImGui::PopID();
     }
+
+    return bChangedAnySlot;
 }
 
 void FAssetDetailsPanel::RenderMeshInfo(USkeletalMesh *Mesh, const std::filesystem::path &AssetPath,

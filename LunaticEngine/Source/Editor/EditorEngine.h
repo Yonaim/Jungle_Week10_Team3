@@ -71,6 +71,8 @@ class UEditorEngine : public UEngine
     void           NewScene();
     bool           LoadSceneWithDialog();
     bool           LoadSceneFromPath(const FString &InScenePath);
+    bool           ImportAssetWithDialog();
+    bool           ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath = nullptr);
     bool           ImportMaterialWithDialog();
     bool           ImportTextureWithDialog();
     bool           SaveScene();
@@ -178,10 +180,6 @@ class UEditorEngine : public UEngine
         return AssetEditorManager.OpenAssetFromPath(AssetPath);
     }
 
-    bool OpenSourceFileFromPath(const std::filesystem::path &SourcePath)
-    {
-        return AssetEditorManager.OpenSourceFileFromPath(SourcePath);
-    }
 
     FEditorImGuiSystem &GetImGuiSystem() { return ImGuiSystem; }
     const FEditorImGuiSystem &GetImGuiSystem() const { return ImGuiSystem; }

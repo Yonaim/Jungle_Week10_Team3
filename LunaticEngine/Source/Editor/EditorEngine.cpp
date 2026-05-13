@@ -17,7 +17,7 @@
 #include "LevelEditor/Render/EditorRenderPipeline.h"
 #include "LevelEditor/Viewport/LevelEditorViewportClient.h"
 #include "Materials/MaterialManager.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Object/Object.h"
 #include "Object/ObjectFactory.h"
 #include "Profiling/StartupProfiler.h"
@@ -46,9 +46,9 @@ void UEditorEngine::Init(FWindowsWindow *InWindow)
     }
 
     {
-        SCOPE_STARTUP_STAT("ObjManager::ScanMeshAssets");
-        FObjManager::ScanMeshAssets();
-        FObjManager::ScanObjSourceFiles();
+        SCOPE_STARTUP_STAT("MeshAssetManager::ScanMeshAssets");
+        FMeshAssetManager::ScanMeshAssets();
+        FMeshAssetManager::ScanMeshSourceFiles();
     }
 
     {
@@ -513,6 +513,10 @@ bool UEditorEngine::SaveSceneAsWithDialog() { return LevelEditor.GetSceneManager
 bool UEditorEngine::LoadSceneFromPath(const FString &InScenePath) { return LevelEditor.GetSceneManager().LoadSceneFromPath(InScenePath); }
 
 bool UEditorEngine::LoadSceneWithDialog() { return LevelEditor.GetSceneManager().LoadSceneWithDialog(); }
+
+bool UEditorEngine::ImportAssetWithDialog() { return AssetImportManager.ImportAssetWithDialog(); }
+
+bool UEditorEngine::ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath) { return AssetImportManager.ImportAssetFromPath(SourcePath, OutImportedAssetPath); }
 
 bool UEditorEngine::ImportMaterialWithDialog() { return AssetImportManager.ImportMaterialWithDialog(); }
 

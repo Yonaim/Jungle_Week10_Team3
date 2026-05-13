@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "LevelEditor/UI/Panels/LevelDetailsPanel.h"
 
 #include "Common/UI/Style/AccentColor.h"
@@ -37,10 +37,11 @@
 #include "Core/PropertyTypes.h"
 #include "Engine/Runtime/Engine.h"
 #include "Engine/Runtime/WindowsWindow.h"
+#include "Engine/Asset/AssetFileSerializer.h"
 #include "GameFramework/World.h"
 #include "ImGui/imgui.h"
 #include "Materials/Material.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/StaticMesh.h"
 #include "Object/FName.h"
@@ -3406,11 +3407,10 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             if (bSelectedNone)
                 ImGui::SetItemDefaultFocus();
 
-            const TArray<FMeshAssetListItem> &MeshFiles = FObjManager::GetAvailableMeshFiles();
+            const TArray<FMeshAssetListItem> &MeshFiles = FMeshAssetManager::GetAvailableMeshFiles();
             for (const FMeshAssetListItem &Item : MeshFiles)
             {
-                const FString &DisplayName = Item.DisplayName;
-                if (DisplayName.size() >= 9 && DisplayName.substr(DisplayName.size() - 9) == "_Skeletal")
+                if (Item.AssetClassId != EAssetClassId::StaticMesh)
                 {
                     continue;
                 }
@@ -3433,14 +3433,18 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
         if (ImGui::Button("Import"))
         {
             FString MeshPath = OpenStaticMeshFileDialog();
-            if (!MeshPath.empty())
+            if (!MeshPath.empty() && EditorEngine)
             {
-                ID3D11Device *Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-                UStaticMesh *Loaded = FObjManager::LoadObjStaticMesh(MeshPath, Device);
-                if (Loaded)
+                FString ImportedAssetPath;
+                if (EditorEngine->ImportAssetFromPath(MeshPath, &ImportedAssetPath))
                 {
-                    *Val = FObjManager::GetBinaryFilePath(MeshPath);
-                    bChanged = true;
+                    FAssetFileHeader Header;
+                    if (FAssetFileSerializer::ReadAssetHeader((std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(ImportedAssetPath)), Header)
+                        && Header.ClassId == EAssetClassId::StaticMesh)
+                    {
+                        *Val = ImportedAssetPath;
+                        bChanged = true;
+                    }
                 }
             }
         }
@@ -3469,15 +3473,11 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             if (bSelectedNone)
                 ImGui::SetItemDefaultFocus();
 
-            const TArray<FMeshAssetListItem> &MeshFiles = FObjManager::GetAvailableMeshFiles();
+            const TArray<FMeshAssetListItem> &MeshFiles = FMeshAssetManager::GetAvailableMeshFiles();
             for (const FMeshAssetListItem &Item : MeshFiles)
             {
                 const FString &Path = Item.FullPath;
-                if (Path.size() < 4 || Path.substr(Path.size() - 4) != ".bin")
-                    continue;
-
-                const FString DisplayName = Item.DisplayName;
-                if (DisplayName.size() < 9 || DisplayName.substr(DisplayName.size() - 9) != "_Skeletal")
+                if (Item.AssetClassId != EAssetClassId::SkeletalMesh)
                     continue;
 
                 bool bSelected = (*Val == Path);
@@ -3497,22 +3497,30 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
         if (ImGui::Button("Import FBX"))
         {
             FString FbxPath = OpenFbxFileDialog();
-            if (!FbxPath.empty())
+            if (!FbxPath.empty() && EditorEngine)
             {
-                ID3D11Device *Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-                if (FObjManager::IsFbxSkeletalMesh(FbxPath))
+                FString ImportedAssetPath;
+                if (!EditorEngine->ImportAssetFromPath(FbxPath, &ImportedAssetPath))
                 {
-                    USkeletalMesh *Loaded = FObjManager::LoadObjSkeletalMesh(FbxPath, Device);
+                    break;
+                }
+
+                FAssetFileHeader Header;
+                FAssetFileSerializer::ReadAssetHeader((std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(ImportedAssetPath)), Header);
+                ID3D11Device *Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+                if (Header.ClassId == EAssetClassId::SkeletalMesh)
+                {
+                    USkeletalMesh *Loaded = FMeshAssetManager::LoadSkeletalMesh(ImportedAssetPath, Device);
                     if (Loaded)
                     {
-                        *Val = FObjManager::GetSkeletalBinaryFilePath(FbxPath);
+                        *Val = ImportedAssetPath;
                         bChanged = true;
-                        FObjManager::ScanMeshAssets();
+                        FMeshAssetManager::ScanMeshAssets();
                     }
                 }
-                else
+                else if (Header.ClassId == EAssetClassId::StaticMesh)
                 {
-                    UStaticMesh *Loaded = FObjManager::LoadObjStaticMesh(FbxPath, Device);
+                    UStaticMesh *Loaded = FMeshAssetManager::LoadStaticMesh(ImportedAssetPath, Device);
                     USkinnedMeshComponent *OldSkinnedComponent = Cast<USkinnedMeshComponent>(SelectedComponent);
                     AActor *OwnerActor = OldSkinnedComponent ? OldSkinnedComponent->GetOwner() : nullptr;
                     if (Loaded && OwnerActor)
@@ -3550,7 +3558,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
                         EditorEngine->GetSelectionManager().SelectComponent(NewStaticComponent);
                         OwnerActor->RemoveComponent(OldSkinnedComponent);
                         bActorSelected = false;
-                        FObjManager::ScanObjSourceFiles();
+                        FMeshAssetManager::ScanMeshAssets();
                     }
                 }
             }
@@ -3562,12 +3570,41 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
         const int32 ElemIdx = (strncmp(Prop.Name.c_str(), "Element ", 8) == 0) ? atoi(&Prop.Name[8]) : -1;
 
         FString SlotName = "None";
+        FString ResetPath;
         if (ElemIdx != -1 && SelectedComponent && SelectedComponent->IsA<UStaticMeshComponent>())
         {
             UStaticMeshComponent *SMC = static_cast<UStaticMeshComponent *>(SelectedComponent);
             if (SMC->GetStaticMesh() && ElemIdx < static_cast<int32>(SMC->GetStaticMesh()->GetStaticMaterials().size()))
             {
                 SlotName = SMC->GetStaticMesh()->GetStaticMaterials()[ElemIdx].MaterialSlotName;
+                if (UMaterial *DefaultMaterial = SMC->GetStaticMesh()->GetStaticMaterials()[ElemIdx].MaterialInterface)
+                {
+                    ResetPath = DefaultMaterial->GetAssetPathFileName();
+                }
+                else
+                {
+                    ResetPath = "None";
+                }
+            }
+        }
+        else if (ElemIdx != -1 && SelectedComponent && SelectedComponent->IsA<USkinnedMeshComponent>())
+        {
+            USkinnedMeshComponent *SkinnedComponent = static_cast<USkinnedMeshComponent *>(SelectedComponent);
+            if (USkeletalMesh *SkeletalMesh = SkinnedComponent->GetSkeletalMesh())
+            {
+                const TArray<FStaticMaterial> &StaticMaterials = SkeletalMesh->GetStaticMaterials();
+                if (ElemIdx < static_cast<int32>(StaticMaterials.size()))
+                {
+                    SlotName = StaticMaterials[ElemIdx].MaterialSlotName;
+                    if (UMaterial *DefaultMaterial = StaticMaterials[ElemIdx].MaterialInterface)
+                    {
+                        ResetPath = DefaultMaterial->GetAssetPathFileName();
+                    }
+                    else
+                    {
+                        ResetPath = "None";
+                    }
+                }
             }
         }
 
@@ -3575,6 +3612,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             ElemIdx,
             SlotName.c_str(),
             Slot,
+            ResetPath.empty() ? nullptr : ResetPath.c_str(),
             false,
             true,
             120.0f,

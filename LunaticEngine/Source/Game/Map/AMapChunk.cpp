@@ -14,6 +14,7 @@
 #include "Game/GameActors/Items/LogFragmentItemActor.h"
 #include "Game/Map/MapRandom.h"
 #include "Materials/MaterialManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Resource/ResourceManager.h"
 
 IMPLEMENT_CLASS(AMapChunk, AActor)
@@ -258,7 +259,7 @@ static void ApplyCubeMesh(UStaticMeshComponent* MeshComponent, const FString& Ma
 	}
 
 	ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-	UStaticMesh* Mesh = FObjManager::LoadObjStaticMesh(MeshPath, Device);
+	UStaticMesh* Mesh = FMeshAssetManager::LoadStaticMesh(MeshPath, Device);
 	MeshComponent->SetStaticMesh(Mesh);
 	ApplyBasicShapeMaterial(MeshComponent, Mesh, MaterialPath);
 }

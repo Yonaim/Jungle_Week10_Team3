@@ -11,7 +11,7 @@
  *
  * 예:
  * - FLevelEditorWindow: Level 저장/로드, PIE, 패널 표시 메뉴 제공
- * - FAssetEditorWindow: Open Asset, Open FBX, Save Active Tab 메뉴 제공
+ * - FAssetEditorWindow: Open Asset, Save Active Tab 메뉴 제공
  */
 class IEditorMenuProvider
 {

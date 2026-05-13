@@ -592,22 +592,10 @@ void FLevelEditorWindow::FlushPendingMenuAction()
             EditorEngine->GetAssetEditorManager().OpenAssetWithDialog(Window ? Window->GetHWND() : nullptr);
         }
         return;
-    case EPendingMenuAction::OpenFBX:
+    case EPendingMenuAction::ImportAsset:
         if (EditorEngine)
         {
-            EditorEngine->GetAssetEditorManager().OpenFbxWithDialog(Window ? Window->GetHWND() : nullptr);
-        }
-        return;
-    case EPendingMenuAction::ImportMaterial:
-        if (EditorEngine)
-        {
-            EditorEngine->ImportMaterialWithDialog();
-        }
-        return;
-    case EPendingMenuAction::ImportTexture:
-        if (EditorEngine)
-        {
-            EditorEngine->ImportTextureWithDialog();
+            EditorEngine->ImportAssetWithDialog();
         }
         return;
     case EPendingMenuAction::CookCurrentScene:
@@ -831,33 +819,11 @@ void FLevelEditorWindow::BuildFileMenu()
         PendingMenuAction = EPendingMenuAction::OpenUAsset;
         return;
     }
-    if (ImGui::MenuItem("Open FBX...", "Ctrl+Alt+F") && EditorEngine)
-    {
-        PendingMenuAction = EPendingMenuAction::OpenFBX;
-        return;
-    }
 
     DrawPopupSectionHeader("IMPORT");
-    if (ImGui::MenuItem("Import Material...") && EditorEngine)
+    if (ImGui::MenuItem("Import Asset...", "Ctrl+Alt+I") && EditorEngine)
     {
-        PendingMenuAction = EPendingMenuAction::ImportMaterial;
-        return;
-    }
-    if (ImGui::MenuItem("Import Texture...") && EditorEngine)
-    {
-        PendingMenuAction = EPendingMenuAction::ImportTexture;
-        return;
-    }
-
-    DrawPopupSectionHeader("COOK");
-    if (ImGui::MenuItem("Cook Current Scene") && EditorEngine)
-    {
-        PendingMenuAction = EPendingMenuAction::CookCurrentScene;
-        return;
-    }
-    if (ImGui::MenuItem("Cook All Scenes"))
-    {
-        PendingMenuAction = EPendingMenuAction::CookAllScenes;
+        PendingMenuAction = EPendingMenuAction::ImportAsset;
         return;
     }
 
@@ -1600,4 +1566,3 @@ void FLevelEditorWindow::RenderCreditsOverlay()
 
     ImGui::End();
 }
-

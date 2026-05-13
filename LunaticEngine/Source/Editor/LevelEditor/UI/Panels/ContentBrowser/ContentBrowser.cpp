@@ -8,9 +8,11 @@
 #include "Common/UI/Panels/Panel.h"
 #include "LevelEditor/Settings/LevelEditorSettings.h"
 #include "Engine/Runtime/Engine.h"
+#include "EditorEngine.h"
 #include "Materials/MaterialManager.h"
 #include "Resource/ResourceManager.h"
 #include "Texture/Texture2D.h"
+#include "Engine/Asset/AssetFileSerializer.h"
 #include "WICTextureLoader.h"
 
 
@@ -145,18 +147,14 @@ std::string ToLowerUtf8(std::string Value)
     return Value;
 }
 
-bool IsSkeletalMeshCacheFile(const std::filesystem::path &Path)
+EAssetClassId GetUAssetClassId(const std::filesystem::path &Path)
 {
-    const std::string Extension = ToLowerUtf8(FPaths::ToUtf8(Path.extension()));
-    if (Extension != ".bin")
+    FAssetFileHeader Header;
+    if (!FAssetFileSerializer::ReadAssetHeader(Path, Header))
     {
-        return false;
+        return EAssetClassId::Unknown;
     }
-
-    const std::wstring Stem = Path.stem().wstring();
-    constexpr wchar_t SkeletalSuffix[] = L"_Skeletal";
-    constexpr size_t  SuffixLength = (sizeof(SkeletalSuffix) / sizeof(wchar_t)) - 1;
-    return Stem.size() >= SuffixLength && Stem.compare(Stem.size() - SuffixLength, SuffixLength, SkeletalSuffix) == 0;
+    return Header.ClassId;
 }
 
 ID3D11ShaderResourceView *GetTexturePreviewSRV(const std::filesystem::path &Path)
@@ -179,6 +177,28 @@ ID3D11ShaderResourceView *GetTexturePreviewSRV(const std::filesystem::path &Path
     }
 
     if (UTexture2D *Texture = UTexture2D::LoadFromFile(RelativePath, Device))
+    {
+        return Texture->GetSRV();
+    }
+
+    return nullptr;
+}
+
+ID3D11ShaderResourceView *GetTextureAssetPreviewSRV(const std::filesystem::path &Path)
+{
+    if (!GEngine)
+    {
+        return nullptr;
+    }
+
+    ID3D11Device *Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
+    if (!Device)
+    {
+        return nullptr;
+    }
+
+    const FString RelativePath = FPaths::ToUtf8(Path.lexically_relative(FPaths::RootDir()).generic_wstring());
+    if (UTexture2D *Texture = UTexture2D::LoadFromAssetFile(RelativePath, Device))
     {
         return Texture->GetSRV();
     }
@@ -316,8 +336,11 @@ void FContentBrowser::Init(UEditorEngine *InEditor, ID3D11Device *InDevice)
     ICons[".UMAP"] = ICons[".Scene"];
     ICons[".obj"] = FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Mesh"));
     ICons[".fbx"] = FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.SkeletalMesh"));
-    ICons[".mat"] =
+    ICons[".uasset.Material"] =
         FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Material"));
+    ICons[".uasset.Texture"] = ICons["Default"];
+    ICons[".uasset.Mesh"] = ICons[".obj"];
+    ICons[".uasset.SkeletalMesh"] = ICons[".fbx"];
     ICons[".mtl"] =
         FResourceManager::Get().FindLoadedTexture(GetIconResourcePath("Editor.Icon.ContentBrowser.Material"));
 
@@ -364,6 +387,16 @@ void FContentBrowser::Render(float DeltaTime)
     {
         Refresh();
         SaveToSettings();
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Import...##ContentBrowser"))
+    {
+        if (EditorEngine && EditorEngine->ImportAssetWithDialog())
+        {
+            Refresh();
+            SaveToSettings();
+        }
     }
     ImGui::PopStyleColor(4);
     ImGui::PopStyleVar(3);
@@ -471,27 +504,42 @@ void FContentBrowser::RefreshContent()
             element = std::make_shared<FbxElement>();
             element.get()->SetIcon(ICons[".fbx"].Get());
         }
-        else if (IsSkeletalMeshCacheFile(Content.Path))
+        else if (Extension == ".uasset")
         {
-            element = std::make_shared<SkeletalMeshElement>();
-            element.get()->SetIcon(ICons[".fbx"].Get());
-        }
-        else if (Extension == ".mat")
-        {
-            element = std::make_shared<MaterialElement>();
-            ID3D11ShaderResourceView *PreviewSRV = GetMaterialPreviewSRV(Content.Path);
-            element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".mat"].Get());
+            const EAssetClassId AssetClassId = GetUAssetClassId(Content.Path);
+            if (AssetClassId == EAssetClassId::SkeletalMesh)
+            {
+                element = std::make_shared<SkeletalMeshElement>();
+                element.get()->SetIcon(ICons[".uasset.SkeletalMesh"].Get());
+            }
+            else if (AssetClassId == EAssetClassId::StaticMesh)
+            {
+                element = std::make_shared<UAssetElement>();
+                element.get()->SetIcon(ICons[".uasset.Mesh"].Get());
+            }
+            else if (AssetClassId == EAssetClassId::Material)
+            {
+                element = std::make_shared<MaterialElement>();
+                ID3D11ShaderResourceView *PreviewSRV = GetMaterialPreviewSRV(Content.Path);
+                element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".uasset.Material"].Get());
+            }
+            else if (AssetClassId == EAssetClassId::Texture)
+            {
+                element = std::make_shared<UAssetElement>();
+                ID3D11ShaderResourceView *PreviewSRV = GetTextureAssetPreviewSRV(Content.Path);
+                element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".uasset.Texture"].Get());
+            }
+            else
+            {
+                element = std::make_shared<UAssetElement>();
+                element.get()->SetIcon(ICons["Default"].Get());
+            }
         }
         else if (Extension == ".mtl")
         {
             element = std::make_shared<MtlElement>();
             ID3D11ShaderResourceView *PreviewSRV = GetMtlPreviewSRV(Content.Path);
             element.get()->SetIcon(PreviewSRV ? PreviewSRV : ICons[".mtl"].Get());
-        }
-        else if (Extension == ".uasset")
-        {
-            element = std::make_shared<UAssetElement>();
-            element.get()->SetIcon(ICons["Default"].Get());
         }
         else if (UTexture2D::IsSupportedTextureExtension(Content.Path))
         {

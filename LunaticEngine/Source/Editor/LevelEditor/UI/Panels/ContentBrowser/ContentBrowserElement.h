@@ -84,10 +84,14 @@ class SceneElement final : public ContentBrowserElement
 class ObjectElement final : public ContentBrowserElement
 {
   public:
+    void OnDoubleLeftClicked(ContentBrowserContext &Context) override;
     virtual const char *GetDragItemType() override
     {
         return "ObjectContentItem";
     }
+
+  protected:
+    void DrawContextMenu(ContentBrowserContext &Context) override;
 };
 
 class FbxElement final : public ContentBrowserElement
@@ -111,6 +115,7 @@ class SkeletalMeshElement final : public ContentBrowserElement
 class PNGElement final : public ContentBrowserElement
 {
   public:
+    void OnDoubleLeftClicked(ContentBrowserContext &Context) override;
     virtual const char *GetDragItemType() override
     {
         return "PNGElement";
@@ -119,6 +124,9 @@ class PNGElement final : public ContentBrowserElement
     {
         return true;
     }
+
+  protected:
+    void DrawContextMenu(ContentBrowserContext &Context) override;
 };
 
 #include "LevelEditor/UI/Panels/LevelMaterialInspectorPanel.h"

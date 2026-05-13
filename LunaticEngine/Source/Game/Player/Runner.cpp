@@ -11,7 +11,7 @@
 #include "Engine/Runtime/Engine.h"
 #include "Texture/Texture2D.h"
 
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include <Core/Log.h>
 #include "Collision/OverlapInfo.h"
 #include "Math/Vector.h"
@@ -115,7 +115,7 @@ void ARunner::ApplyDefaultVisual()
 			"Asset/Content/Model/POD/Spaceship.obj"
 		);
 
-		UStaticMesh* Mesh = FObjManager::LoadObjStaticMesh(MeshPath, Device);
+		UStaticMesh* Mesh = FMeshAssetManager::LoadStaticMesh(MeshPath, Device);
 		if (Mesh)
 		{
 			MeshComponent->SetStaticMesh(Mesh);

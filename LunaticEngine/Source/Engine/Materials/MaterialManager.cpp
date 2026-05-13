@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "MaterialManager.h"
 #include <filesystem>
 #include <fstream>
@@ -7,6 +7,8 @@
 #include "Render/Shader/ShaderManager.h"
 #include "Render/Resource/Buffer.h"
 #include "Texture/Texture2D.h"
+#include "Engine/Asset/AssetFileSerializer.h"
+#include "Object/ObjectFactory.h"
 #include "Render/Pipeline/Renderer.h"
 
 #include <algorithm>
@@ -30,7 +32,11 @@ void FMaterialManager::ScanMaterialAssets()
 
 		const std::filesystem::path& Path = Entry.path();
 
-		if (Path.extension() != L".mat") continue;
+		if (Path.extension() != L".uasset") continue;
+
+		FAssetFileHeader Header;
+		if (!FAssetFileSerializer::ReadAssetHeader(Path, Header)) continue;
+		if (Header.ClassId != EAssetClassId::Material) continue;
 		if (Path.stem() == L"None") continue; // Fallback 머티리얼은 목록에서 제외
 
 		FMaterialAssetListItem Item;
@@ -94,39 +100,72 @@ UTexture2D* FMaterialManager::GetMaterialPreviewTexture(const FString& MaterialP
 	return GetMaterialPreviewTexture(GetOrCreateMaterial(MaterialPath));
 }
 
-UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MatFilePath)
+UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 {
-	std::filesystem::path Path(FPaths::ToWide(MatFilePath));
+	std::filesystem::path Path(FPaths::ToWide(MaterialPath));
 	FString GenericPath = FPaths::ToUtf8(Path.generic_wstring());
-	// 1. 캐시 반환
+
+	if (MaterialPath == "None" || MaterialPath.empty())
+	{
+		GenericPath = "None";
+	}
+
 	auto It = MaterialCache.find(GenericPath);
 	if (It != MaterialCache.end())
 	{
 		return It->second;
 	}
 
-	// 2. 캐시에 없다면 JSON에서 읽기 
-	json::JSON JsonData = ReadJsonFile(GenericPath);
-	if (JsonData.IsNull())
+	if (Path.extension() == L".uasset")
 	{
-		// 기본 머티리얼 생성
-		UMaterial* DefaultMaterial = UObjectManager::Get().CreateObject<UMaterial>();
-		FMaterialTemplate* Template = GetOrCreateTemplate(DefaultShaderPath);
-		TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> Buffers = CreateConstantBuffers(Template);
-		DefaultMaterial->Create(GenericPath, Template, ERenderPass::Opaque, EBlendState::Opaque, EDepthStencilState::Default, ERasterizerState::SolidBackCull, std::move(Buffers));
-		// 폴백: 핑크색으로 미지정 머티리얼임을 표시
-		DefaultMaterial->SetVector4Parameter("SectionColor", FVector4(1.0f, 0.0f, 1.0f, 1.0f));
-		MaterialCache.emplace(GenericPath, DefaultMaterial);
-		return DefaultMaterial;
+		FString Error;
+		UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(Path, &Error);
+		UMaterial* LoadedMaterial = Cast<UMaterial>(LoadedObject);
+		if (LoadedMaterial)
+		{
+			LoadedMaterial->RebuildCachedSRVs();
+			MaterialCache.emplace(GenericPath, LoadedMaterial);
+			return LoadedMaterial;
+		}
+
+		if (LoadedObject)
+		{
+			UObjectManager::Get().DestroyObject(LoadedObject);
+		}
 	}
 
-	// 3. JSON에서 기본 정보 추출
+	// .uasset이 없거나 None인 경우 기본 머티리얼 생성.
+	UMaterial* DefaultMaterial = UObjectManager::Get().CreateObject<UMaterial>();
+	FMaterialTemplate* Template = GetOrCreateTemplate(DefaultShaderPath);
+	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> Buffers = CreateConstantBuffers(Template);
+	DefaultMaterial->Create(GenericPath, Template, ERenderPass::Opaque, EBlendState::Opaque,
+		EDepthStencilState::Default, ERasterizerState::SolidBackCull, std::move(Buffers), DefaultShaderPath);
+	DefaultMaterial->SetVector4Parameter("SectionColor", FVector4(1.0f, 0.0f, 1.0f, 1.0f));
+	MaterialCache.emplace(GenericPath, DefaultMaterial);
+	return DefaultMaterial;
+}
+
+UMaterial* FMaterialManager::CreateMaterialAssetFromJson(const FString& AssetPath, json::JSON& JsonData)
+{
+	std::filesystem::path Path(FPaths::ToWide(AssetPath));
+	FString GenericPath = FPaths::ToUtf8(Path.generic_wstring());
+
+	auto It = MaterialCache.find(GenericPath);
+	if (It != MaterialCache.end())
+	{
+		return It->second;
+	}
+
 	FString PathFileName = JsonData[MatKeys::PathFileName].ToString().c_str();
 	FString ShaderPath = JsonData[MatKeys::ShaderPath].ToString().c_str();
+	if (ShaderPath.empty())
+	{
+		ShaderPath = DefaultShaderPath;
+	}
+
 	FString RenderPassStr = JsonData[MatKeys::RenderPass].ToString().c_str();
 	ERenderPass RenderPass = StringToRenderPass(RenderPassStr);
 
-	// 새로운 렌더 상태 추출 (JSON에 없으면 패스 기반 기본값)
 	FString BlendStr = JsonData.hasKey(MatKeys::BlendState) ? JsonData[MatKeys::BlendState].ToString().c_str() : "";
 	FString DepthStr = JsonData.hasKey(MatKeys::DepthStencilState) ? JsonData[MatKeys::DepthStencilState].ToString().c_str() : "";
 	FString RasterStr = JsonData.hasKey(MatKeys::RasterizerState) ? JsonData[MatKeys::RasterizerState].ToString().c_str() : "";
@@ -135,40 +174,25 @@ UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MatFilePath)
 	EDepthStencilState DepthState = StringToDepthStencilState(DepthStr, RenderPass);
 	ERasterizerState RasterState = StringToRasterizerState(RasterStr, RenderPass);
 
-	// 4. 템플릿 확보 (없으면 리플렉션을 통해 생성됨)
 	FMaterialTemplate* Template = GetOrCreateTemplate(ShaderPath);
 	if (!Template) return nullptr;
 
-	// 5. D3D 상수 버퍼 생성
 	auto InjectedBuffers = CreateConstantBuffers(Template);
 
-	// 6. UMaterial 인스턴스 생성 및 초기화 (RenderPass는 인스턴스별)
 	UMaterial* Material = UObjectManager::Get().CreateObject<UMaterial>();
-	Material->Create(PathFileName, Template, RenderPass, BlendState, DepthState, RasterState, std::move(InjectedBuffers));
+	Material->SetFName(FName(FPaths::ToUtf8(Path.stem().wstring())));
+	Material->Create(PathFileName.empty() ? GenericPath : PathFileName, Template, RenderPass, BlendState, DepthState, RasterState, std::move(InjectedBuffers), ShaderPath);
 	MaterialCache.emplace(GenericPath, Material);
 
-	//템플릿을 통해 material에 넣기
-	bool bInjected = InjectDefaultParameters(JsonData, Template, Material);
-
-	// 이전 셰이더의 찌꺼기 파라미터 정리
-	bool bPurged = PurgeStaleParameters(JsonData, Template);
-
-	// 5. 파라미터 및 텍스처 적용
+	InjectDefaultParameters(JsonData, Template, Material);
+	PurgeStaleParameters(JsonData, Template);
 	ApplyParameters(Material, JsonData);
 	ApplyTextures(Material, JsonData);
 	Material->RebuildCachedSRVs();
 
-	// JSON 데이터에도 현재 상태를 기록 (나중에 저장 시 유지되도록)
-	JsonData[MatKeys::BlendState] = BlendStr.empty() ? "" : BlendStr.c_str();
-	JsonData[MatKeys::DepthStencilState] = DepthStr.empty() ? "" : DepthStr.c_str();
-	JsonData[MatKeys::RasterizerState] = RasterStr.empty() ? "" : RasterStr.c_str();
-
-	//최종적으로 material 저장
-	if (bInjected || bPurged)
-	{
-		SaveToJSON(JsonData, GenericPath);
-	}
-
+	std::filesystem::create_directories(Path.parent_path());
+	FString Error;
+	FAssetFileSerializer::SaveObjectToAssetFile(Path, Material, &Error);
 	return Material;
 }
 
@@ -444,7 +468,7 @@ FMaterialTemplate* FMaterialManager::GetOrCreateTemplate(const FString& ShaderPa
 	}
 
 	FMaterialTemplate* NewTemplate = new FMaterialTemplate();
-	NewTemplate->Create(Shader);
+	NewTemplate->Create(Shader, ShaderPath);
 	TemplateCache.emplace(ShaderPath, NewTemplate);
 	return NewTemplate;
 }

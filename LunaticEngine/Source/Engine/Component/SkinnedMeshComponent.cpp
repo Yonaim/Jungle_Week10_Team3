@@ -1,7 +1,7 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "SkinnedMeshComponent.h"
 #include "Render/Proxy/SkeletalMeshProxy.h"
-#include "Mesh/ObjManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Engine/Runtime/Engine.h"
 #include "Serialization/Archive.h"
 #include <algorithm>
@@ -286,7 +286,7 @@ void USkinnedMeshComponent::PostEditProperty(const char* PropertyName)
 		{
 			const FString RequestedMeshPath = SkeletalMeshPath;
 			ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-			USkeletalMesh* Loaded = FObjManager::LoadObjSkeletalMesh(SkeletalMeshPath, Device);
+			USkeletalMesh* Loaded = FMeshAssetManager::LoadSkeletalMesh(SkeletalMeshPath, Device);
 			SetSkeletalMesh(Loaded);
 			if (Loaded)
 			{
@@ -344,7 +344,7 @@ void USkinnedMeshComponent::PostDuplicate()
 	{
 		const FString RequestedMeshPath = SkeletalMeshPath;
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-		USkeletalMesh* Loaded = FObjManager::LoadObjSkeletalMesh(SkeletalMeshPath, Device);
+		USkeletalMesh* Loaded = FMeshAssetManager::LoadSkeletalMesh(SkeletalMeshPath, Device);
 		if (Loaded)
 		{
 			// SetSkeletalMesh는 MaterialSlots를 덮어쓰므로, 직렬화된 슬롯 정보를 백업·복원한다.

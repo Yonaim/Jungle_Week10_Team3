@@ -145,3 +145,27 @@ const TArray<FStaticMaterial>& USkeletalMesh::GetStaticMaterials() const
 {
 	return StaticMaterials;
 }
+
+TArray<FStaticMaterial>& USkeletalMesh::GetStaticMaterialsMutable()
+{
+	return StaticMaterials;
+}
+
+FStaticMaterial* USkeletalMesh::GetStaticMaterial(int32 MaterialIndex)
+{
+	return (MaterialIndex >= 0 && MaterialIndex < static_cast<int32>(StaticMaterials.size()))
+		? &StaticMaterials[MaterialIndex]
+		: nullptr;
+}
+
+bool USkeletalMesh::SetStaticMaterialInterface(int32 MaterialIndex, UMaterial* InMaterial)
+{
+	FStaticMaterial* MaterialSlot = GetStaticMaterial(MaterialIndex);
+	if (!MaterialSlot)
+	{
+		return false;
+	}
+
+	MaterialSlot->MaterialInterface = InMaterial;
+	return true;
+}

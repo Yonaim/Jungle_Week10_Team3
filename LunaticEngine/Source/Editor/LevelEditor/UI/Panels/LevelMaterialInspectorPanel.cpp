@@ -30,7 +30,7 @@ void FEditorMaterialInspector::Render()
     PanelDesc.IconKey = "Editor.Icon.Panel.Details";
     bool bIsValid = FPanel::Begin(PanelDesc);
     bIsValid &= std::filesystem::exists(MaterialPath);
-    bIsValid &= MaterialPath.extension() == ".mat";
+    bIsValid &= MaterialPath.extension() == ".uasset";
     bIsValid &= (CachedMaterial != nullptr);
 
     if (!bIsValid)
@@ -39,21 +39,10 @@ void FEditorMaterialInspector::Render()
         return;
     }
 
-    if (CachedJson.IsNull())
-    {
-        std::ifstream File(MaterialPath);
-
-        std::stringstream Buffer;
-        Buffer << File.rdbuf();
-        CachedJson = json::JSON::Load(Buffer.str());
-    }
-
-    json::JSON JsonData = CachedJson;
-
-    TMap<const char *, FString> MatMap;
-    MatMap[MatKeys::PathFileName] =
-        JsonData.hasKey(MatKeys::PathFileName) ? JsonData[MatKeys::PathFileName].ToString().c_str() : "";
-    ImGui::Selectable(MatMap[MatKeys::PathFileName].c_str());
+    ImGui::TextUnformatted("Material Asset");
+    ImGui::Text("Path: %s", FPaths::ToUtf8(MaterialPath.lexically_relative(FPaths::RootDir()).generic_wstring()).c_str());
+    ImGui::Text("Shader: %s", CachedMaterial->GetShaderPath().c_str());
+    ImGui::Separator();
 
     RenderPreview();
     RenderShaderParameter();

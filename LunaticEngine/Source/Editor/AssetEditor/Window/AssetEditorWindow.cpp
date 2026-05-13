@@ -147,7 +147,7 @@ void FAssetEditorWindow::RenderContent(float DeltaTime, ImGuiID DockspaceId)
 
     // 탭이 없으면 아무 panel도 띄우지 않는다.
     // 사용자는 Level Editor의 Content Browser에서 .fbx / .uasset을 열거나,
-    // File 메뉴의 Open UAsset / Open FBX 진입점으로 에셋 패널을 추가한다.
+    // File 메뉴의 Open UAsset 진입점으로 에셋 패널을 추가한다.
     bCapturingInput = false;
 }
 
@@ -239,11 +239,6 @@ void FAssetEditorWindow::BuildFileMenu()
     if (ImGui::MenuItem("Open Asset...") && OwnerManager)
     {
         OwnerManager->OpenAssetWithDialog(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
-    }
-
-    if (ImGui::MenuItem("Open FBX...") && OwnerManager)
-    {
-        OwnerManager->OpenFbxWithDialog(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
     }
 
     ImGui::Separator();

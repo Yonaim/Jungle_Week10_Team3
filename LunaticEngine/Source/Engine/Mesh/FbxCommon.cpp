@@ -1,13 +1,13 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Mesh/FbxCommon.h"
+#include "Materials/MaterialManager.h"
 
 #include "Core/Log.h"
 #include "Engine/Platform/Paths.h"
-#include "Materials/MaterialManager.h"
-#include "Resource/ResourceManager.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 
 #include <fstream>
+#include <filesystem>
 
 #if defined(_WIN64)
 size_t FFbxVertexKeyHash::operator()(const FFbxVertexKey& Key) const noexcept
@@ -125,26 +125,31 @@ int32 FFbxCommon::FindOrAddMaterial(const FString& FbxFilePath, FbxNode* Node, i
 	return MaterialIndex;
 }
 
-FString FFbxCommon::ConvertMaterialInfoToMat(const FFbxMaterialInfo& MaterialInfo)
+FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePath, const FFbxMaterialInfo& MaterialInfo)
 {
 	if (!MaterialInfo.SourceMaterial)
 	{
 		return "None";
 	}
 
-	const FString AutoMaterialDirectory = FResourceManager::Get().ResolvePath(FName("Default.Directory.MaterialAuto"));
-	const FString MatPath = AutoMaterialDirectory + "/" + MaterialInfo.MaterialSlotName + ".mat";
+	const FString SourceAssetName = SanitizeName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(FbxFilePath)).stem().wstring()));
+	const FString SlotAssetName = SanitizeName(MaterialInfo.MaterialSlotName.empty() ? FString("None") : MaterialInfo.MaterialSlotName);
 
-	if (std::filesystem::exists(FPaths::ToWide(MatPath)))
+	std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials" / FPaths::ToWide(SourceAssetName);
+	std::filesystem::path MaterialAssetPathW = MaterialDirectory / (L"M_" + FPaths::ToWide(SlotAssetName) + L".uasset");
+	const FString MaterialAssetPath = MakeProjectRelativePath(MaterialAssetPathW);
+
+	if (std::filesystem::exists(MaterialAssetPathW))
 	{
-		return MatPath;
+		return MaterialAssetPath;
 	}
 
-	std::filesystem::create_directories(FPaths::ToWide(AutoMaterialDirectory));
+	std::filesystem::create_directories(MaterialDirectory);
 
 	json::JSON JsonData;
-	JsonData["PathFileName"] = MatPath;
+	JsonData["PathFileName"] = MaterialAssetPath;
 	JsonData["Origin"] = "FbxImport";
+	JsonData["SourceFilePath"] = MakeProjectRelativePath(std::filesystem::path(FPaths::ToWide(FbxFilePath)));
 	JsonData["ShaderPath"] = "Shaders/Geometry/UberLit.hlsl";
 	JsonData["RenderPass"] = "Opaque";
 
@@ -164,9 +169,8 @@ FString FFbxCommon::ConvertMaterialInfoToMat(const FFbxMaterialInfo& MaterialInf
 		JsonData["Parameters"]["SectionColor"][3] = 1.0f;
 	}
 
-	std::ofstream File(FPaths::ToWide(MatPath));
-	File << JsonData.dump();
-	return MatPath;
+	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);
+	return MaterialAssetPath;
 }
 
 FString FFbxCommon::SanitizeName(FString Name)

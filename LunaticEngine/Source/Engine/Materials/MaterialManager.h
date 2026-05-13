@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/Singleton.h"
 #include "Core/CoreTypes.h"
@@ -50,7 +50,8 @@ public:
 	void LoadAllMaterials(ID3D11Device* Device);
 
     // UMaterial 생성
-	UMaterial* GetOrCreateMaterial(const FString& MatFilePath);
+	UMaterial* GetOrCreateMaterial(const FString& MaterialPath);
+	UMaterial* CreateMaterialAssetFromJson(const FString& AssetPath, json::JSON& JsonData);
 
 	void ScanMaterialAssets();
 	const TArray<FMaterialAssetListItem>& GetAvailableMaterialFiles() const { return AvailableMaterialFiles; }
@@ -58,13 +59,14 @@ public:
 	UTexture2D* GetMaterialPreviewTexture(const FString& MaterialPath);
 
 	void Release();
-private:
-	// 셰이더로 Template 생성 또는 캐시에서 반환
-	FMaterialTemplate* GetOrCreateTemplate(const FString& ShaderPath);
 
+	// .uasset 로딩 중 UMaterial::Serialize가 Template/CB를 재구성할 때도 사용한다.
+	FMaterialTemplate* GetOrCreateTemplate(const FString& ShaderPath);
+	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> CreateConstantBuffers(FMaterialTemplate* Template);
+
+private:
 	json::JSON ReadJsonFile(const FString& FilePath) const;
 
-	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> CreateConstantBuffers(FMaterialTemplate* Template);
 
 	void ApplyParameters(UMaterial* Material, json::JSON& JsonData);
 	void ApplyTextures(UMaterial* Material, json::JSON& JsonData);

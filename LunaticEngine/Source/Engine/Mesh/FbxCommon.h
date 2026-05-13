@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
@@ -56,7 +56,7 @@ struct FFbxCommon
 
 	static int32 GetPolygonMaterialIndex(FbxMesh* Mesh, int32 PolygonIndex);
 	static int32 FindOrAddMaterial(const FString& FbxFilePath, FbxNode* Node, int32 LocalMaterialIndex, FFbxInfo& Context);
-	static FString ConvertMaterialInfoToMat(const FFbxMaterialInfo& MaterialInfo);
+	static FString ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePath, const FFbxMaterialInfo& MaterialInfo);
 
 	static FString SanitizeName(FString Name);
 	static FVector GetDiffuseColor(FbxSurfaceMaterial* FbxMaterial);

@@ -36,6 +36,9 @@ public:
 
 	void SetStaticMaterials(TArray<FStaticMaterial>&& InMaterials);
 	const TArray<FStaticMaterial>& GetStaticMaterials() const;
+	TArray<FStaticMaterial>& GetStaticMaterialsMutable();
+	FStaticMaterial* GetStaticMaterial(int32 MaterialIndex);
+	bool SetStaticMaterialInterface(int32 MaterialIndex, UMaterial* InMaterial);
 
 private:
 	// 애셋 본체 소유 포인터. 컴포넌트는 이 데이터를 참조만 한다.

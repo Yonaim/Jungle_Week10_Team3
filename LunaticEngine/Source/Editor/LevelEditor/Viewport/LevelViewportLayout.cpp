@@ -975,7 +975,7 @@ namespace
         }
 
         // Last-resort scan. This keeps Place Actors working even when the resource scan
-        // file only registered cached .bin files and the original BasicShape .obj files
+        // file only registered cooked .uasset files and the original BasicShape .obj files
         // live in a slightly different content subdirectory.
         const std::filesystem::path ScanRoots[] = { ContentPath, AssetPath };
         for (const std::filesystem::path& ScanRoot : ScanRoots)
@@ -1018,7 +1018,7 @@ namespace
     FString GetRegisteredMeshPath(const char *MeshKey)
     {
         // BasicShape place actors should be sourced from the authoring .obj files when
-        // they exist. FObjManager can still use/rebuild the Cache/*.bin internally, but
+        // they exist. FMeshAssetManager can still import/rebuild the corresponding mesh .uasset, but
         // passing the source path lets timestamp invalidation and material sidecar lookup work.
         if (FString BasicShapeObjPath = FindBasicShapeObjPath(MeshKey); !BasicShapeObjPath.empty())
         {

@@ -7,6 +7,7 @@
 #include "Runtime/Engine.h"
 
 #include "Materials/MaterialManager.h"
+#include "Mesh/MeshAssetManager.h"
 #include "Resource/ResourceManager.h"
 
 #include <random>
@@ -76,7 +77,7 @@ void AObstacleActorBase::InitDefaultComponents(const FString& UStaticMeshFileNam
 	if (!UStaticMeshFileName.empty() && UStaticMeshFileName != "None")
 	{
 		ID3D11Device* Device = GEngine->GetRenderer().GetFD3DDevice().GetDevice();
-		UStaticMesh* Asset = FObjManager::LoadObjStaticMesh(UStaticMeshFileName, Device);
+		UStaticMesh* Asset = FMeshAssetManager::LoadStaticMesh(UStaticMeshFileName, Device);
 		StaticMeshComponent->SetStaticMesh(Asset);
 
 		if (Asset)

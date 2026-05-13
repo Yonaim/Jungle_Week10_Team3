@@ -4,6 +4,7 @@
 #include "Common/UI/Docking/DockLayoutUtils.h"
 #include "Core/Notification.h"
 #include "EditorEngine.h"
+#include "Engine/Asset/AssetFileSerializer.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 #include "Object/Object.h"
 #include "Platform/Paths.h"
@@ -86,7 +87,33 @@ void FSkeletalMeshEditor::Close()
 
 bool FSkeletalMeshEditor::Save()
 {
-    FNotificationManager::Get().AddNotification("Skeletal Mesh Viewer is read-only for now.", ENotificationType::Info, 3.0f);
+    if (!EditingAsset)
+    {
+        FNotificationManager::Get().AddNotification("No Skeletal Mesh asset is open.", ENotificationType::Info, 3.0f);
+        return false;
+    }
+
+    if (EditingAssetPath.empty())
+    {
+        FNotificationManager::Get().AddNotification("Cannot save Skeletal Mesh: asset path is empty.", ENotificationType::Error, 4.0f);
+        return false;
+    }
+
+    FString Error;
+    if (!FAssetFileSerializer::SaveObjectToAssetFile(EditingAssetPath, EditingAsset, &Error))
+    {
+        FNotificationManager::Get().AddNotification(
+            Error.empty() ? "Failed to save Skeletal Mesh asset." : Error,
+            ENotificationType::Error,
+            4.0f);
+        return false;
+    }
+
+    bDirty = false;
+    FNotificationManager::Get().AddNotification(
+        "Saved asset: " + FPaths::ToUtf8(EditingAssetPath.filename().wstring()),
+        ENotificationType::Success,
+        3.0f);
     return true;
 }
 
@@ -285,7 +312,17 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     }
     if (bDetailsPanelOpen)
     {
-        AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, EditingAssetPath, State, SelectionManager, DetailsDesc);
+        USkeletalMeshComponent *PreviewComponent = nullptr;
+        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        {
+            PreviewComponent = PreviewClient->GetPreviewComponent();
+        }
+
+        if (AssetDetailsPanel.RenderSkeletalMesh(EditingAsset, PreviewComponent, EditingAssetPath, State,
+                                                 SelectionManager, DetailsDesc))
+        {
+            bDirty = true;
+        }
     }
     if (bBoneDetailsPanelOpen)
     {
