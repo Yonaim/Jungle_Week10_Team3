@@ -554,6 +554,9 @@
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.cpp">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.cpp">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh\Gizmo</Filter>
     </ClCompile>
@@ -1436,6 +1439,9 @@
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.h">
+      <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h">
       <Filter>Source\Editor\AssetEditor\SkeletalMesh</Filter>
     </ClInclude>
@@ -1791,6 +1797,9 @@
       <Filter>Source\Engine\Component\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Gizmo\TransformGizmoTarget.h">
+      <Filter>Source\Engine\Component\Gizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoDeltaTarget.h">
       <Filter>Source\Engine\Component\Gizmo</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h">

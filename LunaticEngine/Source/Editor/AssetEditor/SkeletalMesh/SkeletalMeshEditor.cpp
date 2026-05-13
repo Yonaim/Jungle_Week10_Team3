@@ -1,6 +1,7 @@
 #include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/SkeletalMeshEditor.h"
 
+#include "AssetEditor/SkeletalMesh/SkeletalMeshPreviewPoseController.h"
 #include "Common/UI/Docking/DockLayoutUtils.h"
 #include "Core/Notification.h"
 #include "EditorEngine.h"
@@ -30,6 +31,14 @@ void FSkeletalMeshEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *I
     }
 
     PreviewViewport.Initialize(EditorEngine ? EditorEngine->GetWindow() : nullptr, Renderer);
+    if (!PoseController)
+    {
+        PoseController = std::make_shared<FSkeletalMeshPreviewPoseController>();
+    }
+    if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+    {
+        PreviewClient->SetPoseController(PoseController);
+    }
 }
 
 bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path &AssetPath)
@@ -277,6 +286,10 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
 
     if (bPreviewPanelOpen)
     {
+        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        {
+            PreviewClient->SetPoseController(PoseController);
+        }
         PreviewViewport.Render(EditingAsset, State, &SelectionManager, &Toolbar, DeltaTime, PreviewDesc);
     }
     if (bSkeletonTreePanelOpen)
@@ -294,6 +307,6 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
         {
             PreviewComponent = PreviewClient->GetPreviewComponent();
         }
-        DetailsPanel.Render(EditingAsset, PreviewComponent, State, SelectionManager, BoneDetailsDesc);
+        DetailsPanel.Render(EditingAsset, PreviewComponent, PoseController.get(), State, SelectionManager, BoneDetailsDesc);
     }
 }

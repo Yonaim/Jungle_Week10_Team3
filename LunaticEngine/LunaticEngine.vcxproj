@@ -348,6 +348,7 @@
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.cpp" />
+    <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.cpp" />
     <ClCompile Include="Source\Editor\AssetEditor\SkeletalMesh\UI\SkeletalMeshDetailsPanel.cpp" />
@@ -671,6 +672,7 @@
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\AssetDetailsPanel.h" />
     <ClInclude Include="Source\Editor\AssetEditor\Common\UI\BezierCurveEditor.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditor.h" />
+    <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshPreviewPoseController.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\SkeletalMeshEditorTypes.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Gizmo\BoneTransformGizmoTarget.h" />
     <ClInclude Include="Source\Editor\AssetEditor\SkeletalMesh\Selection\SkeletalMeshSelectionManager.h" />
@@ -790,6 +792,7 @@
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoHitProxyTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\GizmoTypes.h" />
     <ClInclude Include="Source\Engine\Component\Gizmo\TransformGizmoTarget.h" />
+    <ClInclude Include="Source\Engine\Component\Gizmo\GizmoDeltaTarget.h" />
     <ClInclude Include="Source\Engine\Component\Light\AmbientLightComponent.h" />
     <ClInclude Include="Source\Engine\Component\Light\DirectionalLightComponent.h" />
     <ClInclude Include="Source\Engine\Component\Light\LightComponent.h" />

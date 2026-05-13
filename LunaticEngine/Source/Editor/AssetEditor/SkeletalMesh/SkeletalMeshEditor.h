@@ -11,6 +11,7 @@
 #include "Common/UI/Panels/Panel.h"
 
 #include <filesystem>
+#include <memory>
 #include <string>
 
 #include "ImGui/imgui.h"
@@ -19,6 +20,7 @@ class UObject;
 class UEditorEngine;
 class FRenderer;
 class USkeletalMesh;
+class FSkeletalMeshPreviewPoseController;
 
 /**
  * SkeletalMesh Viewer / Asset Editor.
@@ -83,6 +85,7 @@ class FSkeletalMeshEditor final : public IAssetEditor
     FSkeletonTreePanel SkeletonTreePanel;
     FAssetDetailsPanel AssetDetailsPanel;
     FSkeletalMeshDetailsPanel DetailsPanel;
+    std::shared_ptr<FSkeletalMeshPreviewPoseController> PoseController;
 
     // Skeleton Tree / Asset Details / Preview Viewport가 공유하는 Bone 선택 관리자.
     FSkeletalMeshSelectionManager SelectionManager;

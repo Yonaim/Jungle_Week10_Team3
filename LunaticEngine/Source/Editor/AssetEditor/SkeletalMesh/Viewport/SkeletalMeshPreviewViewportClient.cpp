@@ -2,6 +2,7 @@
 #include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
+#include "AssetEditor/SkeletalMesh/SkeletalMeshPreviewPoseController.h"
 #include "AssetEditor/SkeletalMesh/Selection/SkeletalMeshSelectionManager.h"
 
 #include "Component/GizmoVisualComponent.h"
@@ -21,6 +22,7 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <utility>
 
 namespace
 {
@@ -485,6 +487,15 @@ void FSkeletalMeshPreviewViewportClient::Shutdown()
     FEditorViewportClient::Shutdown();
 }
 
+void FSkeletalMeshPreviewViewportClient::SetPoseController(std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController)
+{
+    PoseController = std::move(InPoseController);
+    if (PoseController)
+    {
+        PoseController->BindPreviewComponent(PreviewComponent);
+    }
+}
+
 void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
 {
     if (bPreviewObjectsInitialized)
@@ -493,6 +504,10 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
     }
 
     PreviewComponent = UObjectManager::Get().CreateObject<USkeletalMeshComponent>();
+    if (PoseController)
+    {
+        PoseController->BindPreviewComponent(PreviewComponent);
+    }
     GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::VisualOnly);
     GizmoManager.EnsureVisualComponent();
     GizmoManager.RegisterVisualToScene(&PreviewScene.GetScene());
@@ -526,6 +541,11 @@ void FSkeletalMeshPreviewViewportClient::ReleasePreviewObjects()
     GizmoManager.ClearTarget();
     GizmoManager.ReleaseVisualComponent();
 
+    if (PoseController)
+    {
+        PoseController->BindPreviewComponent(nullptr);
+    }
+
     if (PreviewComponent)
     {
         UObjectManager::Get().DestroyObject(PreviewComponent);
@@ -552,6 +572,11 @@ void FSkeletalMeshPreviewViewportClient::SetPreviewMesh(USkeletalMesh *InMesh)
     if (PreviewComponent)
     {
         PreviewComponent->SetSkeletalMesh(PreviewMesh);
+        if (PoseController)
+        {
+            PoseController->BindPreviewComponent(PreviewComponent);
+            PoseController->InitializeFromComponentPose();
+        }
     }
 
     RebuildPreviewProxy();
@@ -756,7 +781,15 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 
     if (PreviewComponent)
     {
-        PreviewComponent->RefreshSkinningForEditor(DeltaTime);
+        const bool bPoseEditSessionActive = PoseController && PoseController->HasActiveBoneGizmoSession();
+        if (!bPoseEditSessionActive)
+        {
+            PreviewComponent->RefreshSkinningForEditor(DeltaTime);
+            if (PoseController)
+            {
+                PoseController->InitializeFromComponentPose();
+            }
+        }
     }
 
     GizmoManager.ApplyScreenSpaceScaling(
@@ -1363,10 +1396,14 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
 
     GizmoTargetBoneIndex = SelectedBoneIndex;
 
-    // 김형도 담당 예정:
-    // 이 target은 현재 "선택 bone 위치에 기즈모를 렌더하기 위한 transform source"로만 사용한다.
-    // 실제 SetWorldTransform 기반 pose edit / drag 적용은 Bone Gizmo 담당 파트에서 연결한다.
+    std::shared_ptr<FBoneTransformGizmoTarget> BoneTarget =
+        std::make_shared<FBoneTransformGizmoTarget>(PreviewComponent, PoseController, SelectedBoneIndex);
+    std::shared_ptr<IGizmoDeltaTarget> BoneDeltaTarget = PoseController
+        ? std::static_pointer_cast<IGizmoDeltaTarget>(BoneTarget)
+        : nullptr;
+
     GizmoManager.SetTargetIfChanged(
         FGizmoTargetKey{PreviewComponent, SelectedBoneIndex},
-        std::make_shared<FBoneTransformGizmoTarget>(PreviewComponent, SelectedBoneIndex));
+        BoneTarget,
+        BoneDeltaTarget);
 }
