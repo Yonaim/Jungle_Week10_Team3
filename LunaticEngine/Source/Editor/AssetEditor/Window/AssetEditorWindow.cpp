@@ -28,10 +28,7 @@ void FAssetEditorWindow::Initialize(UEditorEngine *InEditorEngine, FAssetEditorM
 
 void FAssetEditorWindow::Shutdown()
 {
-    while (TabManager.HasOpenTabs())
-    {
-        TabManager.CloseActiveTab();
-    }
+    TabManager.CloseAllTabs(false);
 
     bOpen = false;
     bVisible = false;
@@ -88,13 +85,36 @@ bool FAssetEditorWindow::SaveActiveTab()
     return TabManager.SaveActiveTab();
 }
 
-void FAssetEditorWindow::CloseActiveTab()
+bool FAssetEditorWindow::CloseActiveTab(bool bPromptForDirty)
 {
-    TabManager.CloseActiveTab();
-    if (!TabManager.HasOpenTabs())
+    const bool bClosed = TabManager.CloseActiveTab(bPromptForDirty);
+    if (bClosed && !TabManager.HasOpenTabs())
     {
         Hide();
     }
+    return bClosed;
+}
+
+bool FAssetEditorWindow::CloseAllTabs(bool bPromptForDirty, void *OwnerWindowHandle)
+{
+    TabManager.SetClosePromptOwnerWindowHandle(OwnerWindowHandle);
+    const bool bClosed = TabManager.CloseAllTabs(bPromptForDirty);
+    if (bClosed)
+    {
+        Hide();
+    }
+    return bClosed;
+}
+
+bool FAssetEditorWindow::HasDirtyTabs() const
+{
+    return TabManager.HasDirtyTabs();
+}
+
+bool FAssetEditorWindow::ConfirmCloseAllTabs(void *OwnerWindowHandle) const
+{
+    const_cast<FAssetEditorTabManager &>(TabManager).SetClosePromptOwnerWindowHandle(OwnerWindowHandle);
+    return TabManager.ConfirmCloseAllTabs();
 }
 
 void FAssetEditorWindow::Tick(float DeltaTime)
@@ -188,6 +208,7 @@ void FAssetEditorWindow::RenderDocumentTabBar()
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.035f, 0.040f, 1.0f));
     if (ImGui::Begin("##AssetEditorDocumentTabBar", nullptr, Flags))
     {
+        TabManager.SetClosePromptOwnerWindowHandle(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
         TabManager.RenderDocumentTabBar();
     }
     ImGui::End();
@@ -250,15 +271,14 @@ void FAssetEditorWindow::BuildFileMenu()
 
     if (ImGui::MenuItem("Close Active Tab", "Ctrl+W"))
     {
-        CloseActiveTab();
+        CloseActiveTab(true);
     }
 
     ImGui::Separator();
 
     if (ImGui::MenuItem("Close Window"))
     {
-        Hide();
-        if (EditorEngine)
+        if (CloseAllTabs(true, EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr) && EditorEngine)
         {
             EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
         }

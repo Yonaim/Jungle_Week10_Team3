@@ -41,7 +41,10 @@ class FAssetEditorWindow : public IEditorMenuProvider
     bool OpenEditorTab(std::unique_ptr<IAssetEditor> Editor);
     bool ActivateTabByAssetPath(const std::filesystem::path &AssetPath);
     bool SaveActiveTab();
-    void CloseActiveTab();
+    bool CloseActiveTab(bool bPromptForDirty = true);
+    bool CloseAllTabs(bool bPromptForDirty = true, void *OwnerWindowHandle = nullptr);
+    bool HasDirtyTabs() const;
+    bool ConfirmCloseAllTabs(void *OwnerWindowHandle = nullptr) const;
 
     void Tick(float DeltaTime);
 

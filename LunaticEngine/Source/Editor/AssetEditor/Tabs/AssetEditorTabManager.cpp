@@ -12,12 +12,28 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <windows.h>
 
 namespace
 {
     std::filesystem::path NormalizeAssetPath(const std::filesystem::path &Path)
     {
         return Path.empty() ? Path : Path.lexically_normal();
+    }
+
+    std::wstring MakeAssetClosePromptMessage(const FAssetEditorTab *Tab)
+    {
+        std::wstring AssetName = L"This asset";
+        if (Tab)
+        {
+            const std::filesystem::path &AssetPath = Tab->GetAssetPath();
+            if (!AssetPath.empty())
+            {
+                AssetName = AssetPath.filename().wstring();
+            }
+        }
+
+        return AssetName + L" has unsaved changes.\n\nClose without saving?";
     }
 }
 
@@ -59,16 +75,22 @@ bool FAssetEditorTabManager::ActivateTabByAssetPath(const std::filesystem::path 
     return false;
 }
 
-void FAssetEditorTabManager::CloseTab(int32 TabIndex)
+bool FAssetEditorTabManager::CloseTab(int32 TabIndex, bool bPromptForDirty)
 {
     if (TabIndex < 0 || TabIndex >= static_cast<int32>(Tabs.size()))
     {
-        return;
+        return false;
     }
 
-    if (Tabs[TabIndex] && Tabs[TabIndex]->GetEditor())
+    FAssetEditorTab *Tab = Tabs[TabIndex].get();
+    if (bPromptForDirty && !ConfirmCloseTab(Tab))
     {
-        Tabs[TabIndex]->GetEditor()->Close();
+        return false;
+    }
+
+    if (Tab && Tab->GetEditor())
+    {
+        Tab->GetEditor()->Close();
     }
 
     Tabs.erase(Tabs.begin() + TabIndex);
@@ -76,7 +98,7 @@ void FAssetEditorTabManager::CloseTab(int32 TabIndex)
     if (Tabs.empty())
     {
         ActiveTabIndex = -1;
-        return;
+        return true;
     }
 
     if (ActiveTabIndex == TabIndex)
@@ -91,11 +113,60 @@ void FAssetEditorTabManager::CloseTab(int32 TabIndex)
     {
         SetActiveTabIndex(static_cast<int32>(Tabs.size()) - 1);
     }
+
+    return true;
 }
 
-void FAssetEditorTabManager::CloseActiveTab()
+bool FAssetEditorTabManager::CloseActiveTab(bool bPromptForDirty)
 {
-    CloseTab(ActiveTabIndex);
+    return CloseTab(ActiveTabIndex, bPromptForDirty);
+}
+
+bool FAssetEditorTabManager::CloseAllTabs(bool bPromptForDirty)
+{
+    if (bPromptForDirty && !ConfirmCloseAllTabs())
+    {
+        return false;
+    }
+
+    while (!Tabs.empty())
+    {
+        CloseTab(static_cast<int32>(Tabs.size()) - 1, false);
+    }
+    return true;
+}
+
+bool FAssetEditorTabManager::ConfirmCloseAllTabs() const
+{
+    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    {
+        if (Tab && Tab->GetEditor() && Tab->GetEditor()->IsDirty())
+        {
+            const int32 Result = MessageBoxW(static_cast<HWND>(ClosePromptOwnerWindowHandle),
+                                            L"One or more asset tabs have unsaved changes.\n\nClose without saving?",
+                                            L"Unsaved Asset",
+                                            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+            return Result == IDYES;
+        }
+    }
+    return true;
+}
+
+bool FAssetEditorTabManager::HasDirtyTabs() const
+{
+    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    {
+        if (Tab && Tab->GetEditor() && Tab->GetEditor()->IsDirty())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void FAssetEditorTabManager::SetClosePromptOwnerWindowHandle(void *OwnerWindowHandle)
+{
+    ClosePromptOwnerWindowHandle = OwnerWindowHandle;
 }
 
 bool FAssetEditorTabManager::SaveActiveTab()
@@ -223,11 +294,26 @@ void FAssetEditorTabManager::CompactInvalidTabs()
     {
         if (!Tabs[Index] || !Tabs[Index]->GetEditor())
         {
-            CloseTab(Index);
+            CloseTab(Index, false);
             continue;
         }
         ++Index;
     }
+}
+
+bool FAssetEditorTabManager::ConfirmCloseTab(const FAssetEditorTab *Tab) const
+{
+    if (!Tab || !Tab->GetEditor() || !Tab->GetEditor()->IsDirty())
+    {
+        return true;
+    }
+
+    const std::wstring Message = MakeAssetClosePromptMessage(Tab);
+    const int32 Result = MessageBoxW(static_cast<HWND>(ClosePromptOwnerWindowHandle),
+                                    Message.c_str(),
+                                    L"Unsaved Asset",
+                                    MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+    return Result == IDYES;
 }
 
 FAssetEditorTab *FAssetEditorTabManager::GetActiveTab() const
