@@ -167,6 +167,14 @@ void FSkeletalMeshEditor::RenderContent(float DeltaTime)
 
 void FSkeletalMeshEditor::InvalidateDockLayout()
 {
+    // Returning to an Asset Editor tab should always show the canonical default
+    // Skeletal Mesh Editor layout. Re-open every default panel and force the
+    // DockBuilder layout to be rebuilt on the next render.
+    bPreviewPanelOpen = true;
+    bSkeletonTreePanelOpen = true;
+    bDetailsPanelOpen = true;
+    bBoneDetailsPanelOpen = true;
+    bPreviewerSettingsPanelOpen = true;
     BuiltDockspaceId = 0;
 }
 
@@ -182,9 +190,16 @@ void FSkeletalMeshEditor::OnActivated()
 
 void FSkeletalMeshEditor::OnDeactivated()
 {
+    if (FSkeletalMeshPreviewViewportClient* PreviewClient = PreviewViewport.GetViewportClient())
+    {
+        if (PreviewClient->IsEditorContextActive())
+        {
+            PreviewViewport.DeactivateEditorContext();
+        }
+    }
+
     bIsActiveTab = false;
     bCapturingInput = false;
-    PreviewViewport.DeactivateEditorContext();
 }
 
 void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
@@ -224,12 +239,18 @@ FEditorViewportClient *FSkeletalMeshEditor::GetActiveViewportClient()
 
 void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients)
 {
-    if (!bOpen || !bIsActiveTab || !bPreviewPanelOpen)
+    if (!bOpen || !bPreviewPanelOpen)
     {
         return;
     }
 
-    PreviewViewport.BindEditorContext(State, &SelectionManager);
+    // Deactivation must still be able to find the preview viewport after the tab has
+    // already been marked inactive. Only re-bind editor state while it is still active.
+    if (bIsActiveTab)
+    {
+        PreviewViewport.BindEditorContext(State, &SelectionManager);
+    }
+
     if (FSkeletalMeshPreviewViewportClient *Client = PreviewViewport.GetViewportClient())
     {
         OutClients.push_back(Client);

@@ -8,6 +8,7 @@
 
 class USkeletalMeshComponent;
 class FSkeletalMeshPreviewPoseController;
+class FEditorViewportClient;
 
 // SkeletalMeshEditor 전용 Bone Transform Gizmo Target.
 // Bone은 SceneComponent가 아니므로 BoneIndex를 통해 USkeletalMeshComponent의 Pose를 수정한다.
@@ -17,6 +18,7 @@ public:
     FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent,
                               std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController,
                               int32 InBoneIndex,
+                              const FEditorViewportClient* InOwnerViewportClient,
                               const bool* InOwnerContextActiveFlag);
 
     bool IsValid() const override;
@@ -28,7 +30,6 @@ public:
 
     FTransform GetLocalTransform() const override;
     void SetLocalTransform(const FTransform& NewLocalTransform) override;
-    float GetScaleDeltaSensitivity(EGizmoSpace InSpace) const override;
 
     void BeginTransform() override;
     void EndTransform() override;
@@ -42,6 +43,7 @@ private:
     USkeletalMeshComponent* Component = nullptr;
     std::shared_ptr<FSkeletalMeshPreviewPoseController> PoseController;
     int32 BoneIndex = -1;
+    const FEditorViewportClient* OwnerViewportClient = nullptr;
     const bool* OwnerContextActiveFlag = nullptr;
     bool bTransforming = false;
 };

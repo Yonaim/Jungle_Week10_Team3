@@ -308,6 +308,11 @@ void FAssetEditorManager::CollectViewportClients(TArray<FEditorViewportClient *>
     AssetEditorWindow.CollectViewportClients(OutClients);
 }
 
+void FAssetEditorManager::ForceDeactivateAllViewportClients()
+{
+    AssetEditorWindow.ForceDeactivateAllViewportClients();
+}
+
 std::unique_ptr<IAssetEditor> FAssetEditorManager::CreateEditorForAsset(UObject *Asset) const
 {
     if (Cast<UCameraModifierStackAssetData>(Asset))

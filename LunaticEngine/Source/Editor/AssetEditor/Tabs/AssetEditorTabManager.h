@@ -72,12 +72,13 @@ class FAssetEditorTabManager
     IAssetEditor *GetActiveEditor() const;
     FEditorViewportClient *GetActiveViewportClient() const;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
+    void ForceDeactivateAllViewportClients();
 
   private:
     FAssetEditorTab *GetActiveTab() const;
     void RenderActiveTab(float DeltaTime, ImGuiID DockspaceId);
     void CompactInvalidTabs();
-    bool ConfirmCloseTab(const FAssetEditorTab *Tab) const;
+    bool ConfirmCloseTab(FAssetEditorTab *Tab);
 
   private:
     TArray<std::unique_ptr<FAssetEditorTab>> Tabs;

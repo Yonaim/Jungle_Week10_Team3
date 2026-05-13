@@ -456,7 +456,7 @@ void FLevelEditorWindow::RequestDefaultDockLayout()
     {
         LayoutState->bRequestDefaultLayout = true;
         LayoutState->bDefaultLayoutBuilt = false;
-        LayoutState->bRestoreCapturedLayoutNextFrame = false;
+        FPanel::ClearCapturedLayoutRestore(LayoutState);
         LayoutState->PanelDockIds.clear();
     }
     bPendingDefaultDockLayout = true;
@@ -521,10 +521,7 @@ void FLevelEditorWindow::RequestRestoreForActiveDocument()
     }
     if (FLevelDocumentTab *Tab = GetActiveLevelDocumentTab())
     {
-        if (!Tab->LayoutState.PanelDockIds.empty())
-        {
-            Tab->LayoutState.bRestoreCapturedLayoutNextFrame = true;
-        }
+        FPanel::RequestCapturedLayoutRestore(&Tab->LayoutState);
     }
 }
 
@@ -762,10 +759,7 @@ bool FLevelEditorWindow::SetActiveLevelDocumentTab(int32 NewIndex)
         return true;
     }
 
-    if (LevelDocumentTabs[NewIndex].LayoutState.PanelDockIds.size() > 0)
-    {
-        LevelDocumentTabs[NewIndex].LayoutState.bRestoreCapturedLayoutNextFrame = true;
-    }
+    FPanel::RequestCapturedLayoutRestore(&LevelDocumentTabs[NewIndex].LayoutState);
 
     // Tab switching must not rebuild/load the world by default. The document tab owns
     // its UI/panel/live context; scene load/new-scene is an explicit File action.
@@ -913,19 +907,29 @@ void FLevelEditorWindow::RenderDocumentTabBar()
         {
             if (Result.SelectedIndex < LevelTabCount)
             {
+                // Select the target document first while Level context may still be inactive.
+                // Then entering Level context activates only the selected tab's active viewport.
+                SetActiveLevelDocumentTab(Result.SelectedIndex);
                 if (EditorEngine->IsAssetEditorContextActive())
                 {
                     EditorEngine->SetActiveEditorContext(EEditorContextType::LevelEditor);
                 }
-                SetActiveLevelDocumentTab(Result.SelectedIndex);
                 RequestRestoreForActiveDocument();
             }
             else
             {
                 const int32 AssetIndex = Result.SelectedIndex - LevelTabCount;
-                if (AssetWindow.ActivateDocumentTab(AssetIndex))
+                const bool bSwitchedTab = AssetWindow.ActivateDocumentTab(AssetIndex);
+                if (bSwitchedTab)
                 {
-                    EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+                    // Pick the destination asset tab before entering the Asset context.
+                    // Otherwise EnterEditorContext() briefly reactivates whichever asset tab
+                    // used to be active, which can resurrect stale gizmo/input state and
+                    // disturb the returning dock layout.
+                    if (!EditorEngine->IsAssetEditorContextActive())
+                    {
+                        EditorEngine->SetActiveEditorContext(EEditorContextType::AssetEditor);
+                    }
                     RequestRestoreForActiveDocument();
                 }
             }
@@ -1061,7 +1065,7 @@ void FLevelEditorWindow::ApplyPendingDefaultDockLayout()
     FDockLayoutUtils::DockLevelEditorLayout(MainDockspaceId, LayoutDesc);
     LayoutState.bDefaultLayoutBuilt = true;
     LayoutState.bRequestDefaultLayout = false;
-    LayoutState.bRestoreCapturedLayoutNextFrame = false;
+    FPanel::ClearCapturedLayoutRestore(&LayoutState);
     bPendingDefaultDockLayout = false;
 }
 
@@ -1363,7 +1367,7 @@ void FLevelEditorWindow::RenderContent(float DeltaTime)
 
     if (!bAssetEditorContextActive && ActiveLayoutState)
     {
-        ActiveLayoutState->bRestoreCapturedLayoutNextFrame = false;
+        FPanel::ConsumeCapturedLayoutRestoreFrame(ActiveLayoutState);
         FPanel::ClearCurrentLayoutState();
         FPanel::ClearCurrentDockspaceId();
         FPanel::ClearCurrentStableIdPrefix();
@@ -1790,7 +1794,7 @@ void FLevelEditorWindow::RestoreLevelEditorUIAfterAssetEditor()
         }
         if (!Tab->LayoutState.PanelDockIds.empty())
         {
-            Tab->LayoutState.bRestoreCapturedLayoutNextFrame = true;
+            FPanel::RequestCapturedLayoutRestore(&Tab->LayoutState);
         }
     }
 }

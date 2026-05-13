@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Component/Gizmo/GizmoTypes.h"
 #include "Component/Gizmo/GizmoHitProxyTypes.h"
@@ -112,6 +112,12 @@ public:
     void UpdateDrag(const FRay& Ray);
     void EndDrag();
     void CancelDrag();
+
+    // Used when a document tab/editor context loses live ownership.
+    // This must only detach the live drag/target session; it must not write
+    // DragStartWorldMatrix back to the target because stale or uninitialized
+    // drag-start data can move actors/components to the origin on tab return.
+    void AbortLiveInteractionWithoutApplying();
 
     void SetTargetWorldLocation(const FVector& NewLocation);
 

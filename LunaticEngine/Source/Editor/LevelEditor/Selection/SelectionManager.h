@@ -8,6 +8,7 @@ class AActor;
 class USceneComponent;
 class UWorld;
 class ITransformGizmoTarget;
+class FEditorViewportClient;
 
 class FSelectionManager
 {
@@ -41,7 +42,9 @@ public:
 	const TArray<AActor*>& GetSelectedActors() const { return SelectedActors; }
 	bool IsEmpty() const { return SelectedActors.empty(); }
 
-	std::shared_ptr<ITransformGizmoTarget> MakeTransformGizmoTarget(const bool* OwnerContextActiveFlag = nullptr) const;
+	std::shared_ptr<ITransformGizmoTarget> MakeTransformGizmoTarget(
+        const FEditorViewportClient* OwnerViewportClient = nullptr,
+        const bool* OwnerContextActiveFlag = nullptr) const;
 
 	void SetGizmoEnabled(bool bEnabled);
 	void SetWorld(UWorld* InWorld);

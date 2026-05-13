@@ -47,6 +47,7 @@ struct FDockPanelLayoutState
     bool bRequestDefaultLayout = true;
     bool bRestoreCapturedLayoutNextFrame = false;
     bool bApplyingRestore = false;
+    int32 RestoreCapturedLayoutFramesRemaining = 0;
     std::unordered_map<std::string, ImGuiID> PanelDockIds;
 };
 
@@ -138,6 +139,47 @@ class FPanel
         return LayoutState && !LayoutState->PanelDockIds.empty();
     }
 
+    static void RequestCapturedLayoutRestore(FDockPanelLayoutState *LayoutState, int32 FrameCount = 2)
+    {
+        if (!LayoutState || LayoutState->PanelDockIds.empty())
+        {
+            return;
+        }
+
+        LayoutState->bRestoreCapturedLayoutNextFrame = true;
+        LayoutState->RestoreCapturedLayoutFramesRemaining =
+            (std::max)(LayoutState->RestoreCapturedLayoutFramesRemaining, FrameCount);
+    }
+
+    static void ClearCapturedLayoutRestore(FDockPanelLayoutState *LayoutState)
+    {
+        if (!LayoutState)
+        {
+            return;
+        }
+
+        LayoutState->bRestoreCapturedLayoutNextFrame = false;
+        LayoutState->RestoreCapturedLayoutFramesRemaining = 0;
+    }
+
+    static void ConsumeCapturedLayoutRestoreFrame(FDockPanelLayoutState *LayoutState)
+    {
+        if (!LayoutState || !LayoutState->bRestoreCapturedLayoutNextFrame)
+        {
+            return;
+        }
+
+        if (LayoutState->RestoreCapturedLayoutFramesRemaining > 0)
+        {
+            --LayoutState->RestoreCapturedLayoutFramesRemaining;
+        }
+
+        if (LayoutState->RestoreCapturedLayoutFramesRemaining <= 0)
+        {
+            ClearCapturedLayoutRestore(LayoutState);
+        }
+    }
+
     static std::string MakeTitle(const FPanelDesc &Desc)
     {
         const char *StableId = (Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName;
@@ -162,7 +204,8 @@ class FPanel
         const std::string EffectiveStableId = MakeEffectiveStableId((Desc.StableId && Desc.StableId[0] != '\0') ? Desc.StableId : Desc.DisplayName);
         FDockPanelLayoutState *LayoutState = GetCurrentLayoutStateStorage();
         bool bAppliedCapturedDock = false;
-        if (LayoutState && LayoutState->bRestoreCapturedLayoutNextFrame && !LayoutState->bApplyingRestore)
+        if (LayoutState && LayoutState->bRestoreCapturedLayoutNextFrame &&
+            LayoutState->RestoreCapturedLayoutFramesRemaining > 0 && !LayoutState->bApplyingRestore)
         {
             const auto It = LayoutState->PanelDockIds.find(EffectiveStableId);
             if (It != LayoutState->PanelDockIds.end() && It->second != 0)

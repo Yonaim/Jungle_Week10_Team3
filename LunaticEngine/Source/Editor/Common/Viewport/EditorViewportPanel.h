@@ -81,6 +81,7 @@ class FEditorViewportPanel
         Client.SetViewportScreenRect(Rect);
         Client.SetViewportSize(Rect.Width, Rect.Height);
         Client.RenderViewportImage(Client.IsActive());
+        Client.NotifyViewportPresented();
 
         ImGui::PopID();
         return Rect;

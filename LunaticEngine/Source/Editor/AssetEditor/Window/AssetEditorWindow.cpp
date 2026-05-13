@@ -477,6 +477,11 @@ void FAssetEditorWindow::CollectViewportClients(TArray<FEditorViewportClient *> 
     TabManager.CollectViewportClients(OutClients);
 }
 
+void FAssetEditorWindow::ForceDeactivateAllViewportClients()
+{
+    TabManager.ForceDeactivateAllViewportClients();
+}
+
 
 void FAssetEditorWindow::BuildFileMenu()
 {

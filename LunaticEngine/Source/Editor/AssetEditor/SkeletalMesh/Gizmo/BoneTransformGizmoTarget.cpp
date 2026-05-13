@@ -2,6 +2,7 @@
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
 
 #include "AssetEditor/SkeletalMesh/SkeletalMeshPreviewPoseController.h"
+#include "Common/Viewport/EditorViewportClient.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "Engine/Mesh/SkeletalMesh.h"
 
@@ -10,17 +11,24 @@
 FBoneTransformGizmoTarget::FBoneTransformGizmoTarget(USkeletalMeshComponent* InComponent,
                                                      std::shared_ptr<FSkeletalMeshPreviewPoseController> InPoseController,
                                                      int32 InBoneIndex,
+                                                     const FEditorViewportClient* InOwnerViewportClient,
                                                      const bool* InOwnerContextActiveFlag)
     : Component(InComponent)
     , PoseController(std::move(InPoseController))
     , BoneIndex(InBoneIndex)
+    , OwnerViewportClient(InOwnerViewportClient)
     , OwnerContextActiveFlag(InOwnerContextActiveFlag)
 {
 }
 
 bool FBoneTransformGizmoTarget::IsValid() const
 {
-    if (!OwnerContextActiveFlag || !(*OwnerContextActiveFlag))
+    if (OwnerViewportClient && !OwnerViewportClient->CanProcessLiveContextWork())
+    {
+        return false;
+    }
+
+    if (OwnerContextActiveFlag && !(*OwnerContextActiveFlag))
     {
         return false;
     }
@@ -42,22 +50,16 @@ bool FBoneTransformGizmoTarget::IsValid() const
 
 FTransform FBoneTransformGizmoTarget::GetWorldTransform() const
 {
-    if (!IsValid())
-    {
-        return FTransform();
-    }
-
-    if (PoseController)
-    {
-        return PoseController->GetBoneComponentTransform(BoneIndex);
-    }
-
-    const FSkeletonPose& Pose = Component->GetCurrentPose();
-    return FTransform::FromMatrix(Pose.ComponentTransforms[BoneIndex]);
+    return FTransform::FromMatrix(GetWorldMatrix());
 }
 
 void FBoneTransformGizmoTarget::SetWorldTransform(const FTransform& NewWorldTransform)
 {
+    // Hard isolation guard: stale targets from inactive asset tabs must never write.
+    if (!IsValid())
+    {
+        return;
+    }
     SetWorldMatrix(NewWorldTransform.ToMatrix());
 }
 
@@ -68,13 +70,21 @@ FMatrix FBoneTransformGizmoTarget::GetWorldMatrix() const
         return FMatrix::Identity;
     }
 
+    FMatrix BoneComponentMatrix = FMatrix::Identity;
     if (PoseController)
     {
-        return PoseController->GetBoneComponentMatrix(BoneIndex);
+        BoneComponentMatrix = PoseController->GetBoneComponentMatrix(BoneIndex);
+    }
+    else
+    {
+        const FSkeletonPose& Pose = Component->GetCurrentPose();
+        BoneComponentMatrix = Pose.ComponentTransforms[BoneIndex];
     }
 
-    const FSkeletonPose& Pose = Component->GetCurrentPose();
-    return Pose.ComponentTransforms[BoneIndex];
+    // Bone pose matrices are component-space. The gizmo manager works in world-space.
+    // Keep this boundary explicit so rotate/scale never writes a component-space matrix
+    // as if it were world-space.
+    return Component ? BoneComponentMatrix * Component->GetWorldMatrix() : BoneComponentMatrix;
 }
 
 void FBoneTransformGizmoTarget::SetWorldMatrix(const FMatrix& NewWorldMatrix)
@@ -87,7 +97,12 @@ void FBoneTransformGizmoTarget::SetWorldMatrix(const FMatrix& NewWorldMatrix)
     const FSkeletalMesh* MeshAsset = Component->GetSkeletalMesh()->GetSkeletalMeshAsset();
     const int32 ParentIndex = MeshAsset->Bones[BoneIndex].ParentIndex;
 
-    FMatrix NewLocalMatrix = NewWorldMatrix;
+    // Convert gizmo world-space back into bone component-space first.
+    // Row-major convention in this codebase: World = Local * ParentWorld.
+    const FMatrix ComponentWorldMatrix = Component->GetWorldMatrix();
+    const FMatrix NewBoneComponentMatrix = NewWorldMatrix * ComponentWorldMatrix.GetInverse();
+
+    FMatrix NewLocalMatrix = NewBoneComponentMatrix;
     if (ParentIndex != InvalidBoneIndex)
     {
         FMatrix ParentComponentMatrix = FMatrix::Identity;
@@ -104,8 +119,9 @@ void FBoneTransformGizmoTarget::SetWorldMatrix(const FMatrix& NewWorldMatrix)
             }
         }
 
-        NewLocalMatrix = NewWorldMatrix * ParentComponentMatrix.GetInverse();
+        NewLocalMatrix = NewBoneComponentMatrix * ParentComponentMatrix.GetInverse();
     }
+
     SetLocalTransform(FTransform::FromMatrix(NewLocalMatrix));
 }
 
@@ -142,12 +158,6 @@ void FBoneTransformGizmoTarget::SetLocalTransform(const FTransform& NewLocalTran
     Component->RefreshSkinningNow();
 }
 
-float FBoneTransformGizmoTarget::GetScaleDeltaSensitivity(EGizmoSpace InSpace) const
-{
-    (void)InSpace;
-    return 0.1f;
-}
-
 void FBoneTransformGizmoTarget::BeginTransform()
 {
     bTransforming = IsValid();
@@ -155,7 +165,12 @@ void FBoneTransformGizmoTarget::BeginTransform()
 
 void FBoneTransformGizmoTarget::EndTransform()
 {
-    if (!PoseController && bTransforming && Component)
+    if (!bTransforming)
+    {
+        return;
+    }
+
+    if (!PoseController && IsValid() && Component)
     {
         Component->RefreshSkinningForEditor(0.0f);
     }
@@ -185,10 +200,12 @@ bool FBoneTransformGizmoTarget::ApplyGizmoDelta(const FGizmoDelta& Delta)
 
 void FBoneTransformGizmoTarget::EndGizmoDrag(bool bCancelled)
 {
-    if (!PoseController)
+    if (!PoseController || !bTransforming)
     {
         return;
     }
 
+    // End only the session that this live target actually opened.  A hidden tab can
+    // still own an old target object, but it must not cancel/commit another tab's pose.
     PoseController->EndBoneGizmoSession(BoneIndex, bCancelled);
 }

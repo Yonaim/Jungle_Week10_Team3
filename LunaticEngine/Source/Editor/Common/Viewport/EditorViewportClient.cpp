@@ -3,6 +3,7 @@
 
 #include "Engine/Runtime/WindowsWindow.h"
 #include "Viewport/Viewport.h"
+#include "EditorEngine.h"
 
 #include "ImGui/imgui.h"
 
@@ -58,20 +59,40 @@ void FEditorViewportClient::Tick(float DeltaTime)
     (void)DeltaTime;
 }
 
+
+bool FEditorViewportClient::IsLiveContextOwner() const
+{
+    const UEditorEngine* EditorEngine = Cast<UEditorEngine>(GEngine);
+    if (!EditorEngine)
+    {
+        return false;
+    }
+
+    return EditorEngine->GetActiveEditorViewportClient() == this;
+}
+
+bool FEditorViewportClient::CanProcessLiveContextWork() const
+{
+    return bEditorContextActive && IsLiveContextOwner();
+}
+
 void FEditorViewportClient::ActivateEditorContext()
 {
     bEditorContextActive = true;
     SetActive(true);
+    // Reactivation starts with a clean input/drag cache.  The derived viewport will
+    // rebuild a target on its next live tick after it has confirmed ownership.
+    GizmoManager.ResetVisualInteractionState();
 }
 
 void FEditorViewportClient::DeactivateEditorContext()
 {
-    // Always cancel before invalidating the owner context.
-    // Some gizmo targets use the owner-context flag in IsValid(), and CancelDrag() needs
-    // the target to remain valid long enough to restore the drag-start transform.
-    GizmoManager.CancelDrag();
-    GizmoManager.ClearTarget();
-    GizmoManager.ResetVisualInteractionState();
+    // A tab/context switch is only a live-session detach. It must not write to the
+    // target transform. CancelDrag() restores DragStartWorldMatrix, which is correct
+    // for an explicit user cancel but dangerous for hidden-tab deactivation because
+    // stale drag data can snap actors/components back to origin.
+    GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::VisualOnly);
+    GizmoManager.AbortLiveInteractionWithoutApplying();
 
     bEditorContextActive = false;
     SetHovered(false);
@@ -220,6 +241,11 @@ void FEditorViewportClient::RenderViewportTooltipBar() const
 bool FEditorViewportClient::GetCursorViewportPosition(uint32 &OutX, uint32 &OutY) const
 {
     const ImVec2 MousePos = ImGui::GetIO().MousePos;
+    if (!CanProcessLiveContextWork())
+    {
+        return false;
+    }
+
     if (!bIsHovered && !bIsActive)
     {
         return false;

@@ -101,7 +101,6 @@ struct FSkeletalMeshEditorState
     float AxisThickness = 2.0f;
     float AxisIntensity = 1.0f;
     float DebugLineThickness = 1.0f;
-    float BoneDebugScale = 1.0f;
     float BillboardIconScale = 1.0f;
 
     // Previewer Settings 패널: 현재 렌더러가 직접 수치 조명을 모두 소비하지 않더라도,

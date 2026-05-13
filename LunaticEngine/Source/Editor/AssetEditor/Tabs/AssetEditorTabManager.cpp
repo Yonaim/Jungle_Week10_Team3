@@ -25,17 +25,31 @@ namespace
 
     std::wstring MakeAssetClosePromptMessage(const FAssetEditorTab *Tab)
     {
-        std::wstring AssetName = L"This asset";
+        std::wstring AssetName = L"This asset file";
         if (Tab)
         {
             const std::filesystem::path &AssetPath = Tab->GetAssetPath();
             if (!AssetPath.empty())
             {
-                AssetName = AssetPath.filename().wstring();
+                AssetName = L"\"" + AssetPath.filename().wstring() + L"\"";
             }
         }
 
-        return AssetName + L" has unsaved changes.\n\nClose without saving?";
+        return AssetName +
+               L" has unsaved changes.\n\n"
+               L"Do you want to save your changes before closing this editor?\n\n"
+               L"Yes: Save and close\n"
+               L"No: Close without saving\n"
+               L"Cancel: Keep editing";
+    }
+
+    std::wstring MakeAssetCloseAllPromptMessage()
+    {
+        return L"One or more asset editor files have unsaved changes.\n\n"
+               L"Do you want to save your changes before closing the Asset Editor workspace?\n\n"
+               L"Yes: Save all and close\n"
+               L"No: Close without saving\n"
+               L"Cancel: Keep editing";
     }
     void DeactivateAssetEditorViewport(IAssetEditor* Editor)
     {
@@ -59,7 +73,10 @@ namespace
 
         if (FEditorViewportClient* ViewportClient = Editor->GetActiveViewportClient())
         {
-            ViewportClient->DeactivateEditorContext();
+            if (std::find(ViewportClients.begin(), ViewportClients.end(), ViewportClient) == ViewportClients.end())
+            {
+                ViewportClient->DeactivateEditorContext();
+            }
         }
 
         Editor->OnDeactivated();
@@ -190,18 +207,53 @@ bool FAssetEditorTabManager::CloseAllTabs(bool bPromptForDirty)
 
 bool FAssetEditorTabManager::ConfirmCloseAllTabs() const
 {
+    bool bHasDirtyTab = false;
     for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
     {
         if (Tab && Tab->GetEditor() && Tab->GetEditor()->IsDirty())
         {
-            const int32 Result = MessageBoxW(static_cast<HWND>(ClosePromptOwnerWindowHandle),
-                                            L"One or more asset tabs have unsaved changes.\n\nClose without saving?",
-                                            L"Unsaved Asset",
-                                            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
-            return Result == IDYES;
+            bHasDirtyTab = true;
+            break;
         }
     }
-    return true;
+
+    if (!bHasDirtyTab)
+    {
+        return true;
+    }
+
+    const int32 Result = MessageBoxW(static_cast<HWND>(ClosePromptOwnerWindowHandle),
+                                    MakeAssetCloseAllPromptMessage().c_str(),
+                                    L"Unsaved Asset Editor Files",
+                                    MB_YESNOCANCEL | MB_ICONWARNING | MB_DEFBUTTON3);
+    if (Result == IDCANCEL)
+    {
+        return false;
+    }
+    if (Result == IDNO)
+    {
+        return true;
+    }
+    if (Result == IDYES)
+    {
+        for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+        {
+            if (Tab && Tab->GetEditor() && Tab->GetEditor()->IsDirty())
+            {
+                if (!Tab->GetEditor()->Save())
+                {
+                    MessageBoxW(static_cast<HWND>(ClosePromptOwnerWindowHandle),
+                                L"Failed to save one or more asset editor files. The workspace will remain open.",
+                                L"Save Failed",
+                                MB_OK | MB_ICONERROR);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    return false;
 }
 
 bool FAssetEditorTabManager::HasDirtyTabs() const
@@ -231,6 +283,16 @@ void FAssetEditorTabManager::SetEditorContextActive(bool bActive)
 {
     if (bEditorContextActive == bActive)
     {
+        // Same-context re-entry is not a no-op in a multi document workspace.
+        // It is used as a hard ownership refresh after Level/Asset tab switches.
+        if (bActive)
+        {
+            ActivateActiveTabContext();
+        }
+        else
+        {
+            DeactivateActiveTabContext();
+        }
         return;
     }
 
@@ -250,7 +312,10 @@ void FAssetEditorTabManager::ActivateActiveTabContext()
     bEditorContextActive = true;
     if (FAssetEditorTab* ActiveTab = GetActiveTab())
     {
-        ActiveTab->RequestRestoreCapturedLayout();
+        // Hard-pin Asset Editor panels to the default layout whenever the Asset
+        // context becomes active again. This avoids restoring stale dock ids from
+        // the Level Editor/previous asset tab after tab/context switches.
+        ActiveTab->RequestDefaultLayout();
         ActivateAssetEditorViewport(ActiveTab->GetEditor());
     }
 }
@@ -348,10 +413,9 @@ FDockPanelLayoutState *FAssetEditorTabManager::GetActiveLayoutState()
 
 void FAssetEditorTabManager::RequestRestoreForActiveTab()
 {
-    if (FAssetEditorTab *Tab = GetActiveTab())
-    {
-        Tab->RequestRestoreCapturedLayout();
-    }
+    // Restore is disabled for Asset Editor tabs. On every return, rebuild the
+    // default layout instead of applying captured dock ids.
+    RequestDefaultLayoutForActiveTab();
 }
 
 bool FAssetEditorTabManager::RenderDocumentTabBar()
@@ -421,7 +485,7 @@ void FAssetEditorTabManager::RenderActiveTab(float DeltaTime, ImGuiID DockspaceI
         // SkeletalMeshEditor처럼 에디터 내부 영역이 실제 패널 단위로 나뉘는 경우.
         // 다중 문서 탭 구조에서는 반드시 ActiveTab 하나만 외부 패널을 렌더링해야 한다.
         Editor->RenderPanels(DeltaTime, DockspaceId);
-        LayoutState.bRestoreCapturedLayoutNextFrame = false;
+        FPanel::ConsumeCapturedLayoutRestoreFrame(&LayoutState);
         FPanel::ClearCurrentLayoutState();
         FPanel::ClearCurrentDockspaceId();
         FPanel::ClearCurrentStableIdPrefix();
@@ -446,7 +510,7 @@ void FAssetEditorTabManager::RenderActiveTab(float DeltaTime, ImGuiID DockspaceI
     }
     FPanel::End();
 
-    LayoutState.bRestoreCapturedLayoutNextFrame = false;
+    FPanel::ConsumeCapturedLayoutRestoreFrame(&LayoutState);
     FPanel::ClearCurrentLayoutState();
     FPanel::ClearCurrentDockspaceId();
     FPanel::ClearCurrentStableIdPrefix();
@@ -470,7 +534,7 @@ void FAssetEditorTabManager::CompactInvalidTabs()
     }
 }
 
-bool FAssetEditorTabManager::ConfirmCloseTab(const FAssetEditorTab *Tab) const
+bool FAssetEditorTabManager::ConfirmCloseTab(FAssetEditorTab *Tab)
 {
     if (!Tab || !Tab->GetEditor() || !Tab->GetEditor()->IsDirty())
     {
@@ -480,9 +544,31 @@ bool FAssetEditorTabManager::ConfirmCloseTab(const FAssetEditorTab *Tab) const
     const std::wstring Message = MakeAssetClosePromptMessage(Tab);
     const int32 Result = MessageBoxW(static_cast<HWND>(ClosePromptOwnerWindowHandle),
                                     Message.c_str(),
-                                    L"Unsaved Asset",
-                                    MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
-    return Result == IDYES;
+                                    L"Unsaved Asset Editor File",
+                                    MB_YESNOCANCEL | MB_ICONWARNING | MB_DEFBUTTON3);
+    if (Result == IDCANCEL)
+    {
+        return false;
+    }
+    if (Result == IDNO)
+    {
+        return true;
+    }
+    if (Result == IDYES)
+    {
+        if (Tab->GetEditor()->Save())
+        {
+            return true;
+        }
+
+        MessageBoxW(static_cast<HWND>(ClosePromptOwnerWindowHandle),
+                    L"Failed to save this asset editor file. The editor will remain open.",
+                    L"Save Failed",
+                    MB_OK | MB_ICONERROR);
+        return false;
+    }
+
+    return false;
 }
 
 FAssetEditorTab *FAssetEditorTabManager::GetActiveTab() const
@@ -517,7 +603,7 @@ bool FAssetEditorTabManager::SetActiveTabIndex(int32 NewIndex)
     ActiveTabIndex = NewIndex;
     if (Tabs[ActiveTabIndex] && Tabs[ActiveTabIndex]->GetEditor())
     {
-        Tabs[ActiveTabIndex]->RequestRestoreCapturedLayout();
+        Tabs[ActiveTabIndex]->RequestDefaultLayout();
         if (bEditorContextActive)
         {
             ActivateAssetEditorViewport(Tabs[ActiveTabIndex]->GetEditor());
@@ -576,5 +662,16 @@ void FAssetEditorTabManager::CollectViewportClients(TArray<FEditorViewportClient
     if (Editor)
     {
         Editor->CollectViewportClients(OutClients);
+    }
+}
+
+void FAssetEditorTabManager::ForceDeactivateAllViewportClients()
+{
+    for (const std::unique_ptr<FAssetEditorTab> &Tab : Tabs)
+    {
+        if (Tab && Tab->GetEditor())
+        {
+            DeactivateAssetEditorViewport(Tab->GetEditor());
+        }
     }
 }
