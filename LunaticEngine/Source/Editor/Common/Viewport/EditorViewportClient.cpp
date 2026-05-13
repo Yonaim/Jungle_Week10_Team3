@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "Common/Viewport/EditorViewportClient.h"
 
 #include "Engine/Runtime/WindowsWindow.h"
@@ -21,11 +21,9 @@ bool TryConvertMouseToViewportPixel(const ImVec2 &MousePos, const FRect &Viewpor
 
     const float LocalX = MousePos.x - ViewportScreenRect.X;
     const float LocalY = MousePos.y - ViewportScreenRect.Y;
-    if (LocalX < 0.0f || LocalY < 0.0f || LocalX >= ViewportScreenRect.Width || LocalY >= ViewportScreenRect.Height)
-    {
-        return false;
-    }
 
+    // Drag 중 뷰포트 밖으로 나가도 같은 screen-rect -> render-target 변환식을 유지한다.
+    // 여기서 false를 반환하고 raw local 좌표로 fallback하면 viewport rect와 RT 크기가 다를 때 delta가 튄다.
     const float TargetWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : FallbackWidth;
     const float TargetHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : FallbackHeight;
     if (TargetWidth <= 0.0f || TargetHeight <= 0.0f)
@@ -210,6 +208,13 @@ bool FEditorViewportClient::GetCursorViewportPosition(uint32 &OutX, uint32 &OutY
     float ViewportY = 0.0f;
     if (!TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, ViewportX,
                                         ViewportY))
+    {
+        return false;
+    }
+
+    const float TargetWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
+    const float TargetHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
+    if (ViewportX < 0.0f || ViewportY < 0.0f || ViewportX >= TargetWidth || ViewportY >= TargetHeight)
     {
         return false;
     }

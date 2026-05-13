@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "PendulumMovementComponent.h"
 
 #include "Component/SceneComponent.h"
@@ -55,7 +55,7 @@ void UPendulumMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
 	{
 		bInitialized = true;
 		InitialRelativeRotation = Target->GetRelativeQuat();
-		InitialWorldRotation = Target->GetWorldMatrix().ToQuat().GetNormalized();
+		InitialWorldRotation = Target->GetWorldQuat();
 		const FVector InitialWorldLocation = Target->GetWorldLocation();
 		InitialWorldPivotLocation = InitialWorldLocation + InitialWorldRotation.RotateVector(PivotOffset);
 		InitialWorldOrbitOffset = InitialWorldLocation - InitialWorldPivotLocation;

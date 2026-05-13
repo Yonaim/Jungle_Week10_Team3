@@ -2236,17 +2236,12 @@ void FLevelViewportLayout::RenderMainToolbar(float ToolbarLeft, float ToolbarTop
 
     ImGui::SameLine(0.0f, GroupSpacing);
     const bool bWorldCoord = Settings.CoordSystem == EEditorCoordSystem::World;
-    const bool bScaleToolActive = Editor->GetEditorGizmoMode() == EGizmoMode::Scale;
-    const bool bEffectiveWorldCoord = bWorldCoord && !bScaleToolActive;
-    if (DrawToolbarIconButton("##SharedCoordSystemIcon", bEffectiveWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace,
-                              bEffectiveWorldCoord ? "World" : "Local", ToolbarFallbackIconSize, ToolbarMaxIconSize))
+    if (DrawToolbarIconButton("##SharedCoordSystemIcon", bWorldCoord ? EToolbarIcon::WorldSpace : EToolbarIcon::LocalSpace,
+                              bWorldCoord ? "World" : "Local", ToolbarFallbackIconSize, ToolbarMaxIconSize))
     {
-        if (!bScaleToolActive)
-        {
-            Editor->ToggleCoordSystem();
-        }
+        Editor->ToggleCoordSystem();
     }
-    ShowItemTooltip(bScaleToolActive ? "Scale uses Local Space" : (bWorldCoord ? "World Space" : "Local Space"));
+    ShowItemTooltip(bWorldCoord ? "World Space" : "Local Space");
 
     // 스냅 토글과 수치 변경을 같은 줄에서 처리하고 즉시 Gizmo 설정에 반영합니다.
     auto DrawSnapControl = [&](const char *Id, EToolbarIcon Icon, const char *FallbackLabel, bool &bEnabled, float &Value, float MinValue)
@@ -2323,23 +2318,15 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
     if (SlotIndex < static_cast<int32>(LevelViewportClients.size()))
     {
         FLevelEditorViewportClient *VC = LevelViewportClients[SlotIndex];
-        UEditorEngine *EditorPtr = Editor;
-        if (!VC || !EditorPtr)
-        {
-            ImGui::PopID();
-            FViewportToolbar::End();
-            return;
-        }
-
         FViewportRenderOptions &Opts = VC->GetRenderOptions();
         FEditorViewportCamera *Camera = VC->GetCamera();
-        FLevelEditorSettings &Settings = EditorPtr->GetSettings();
+        FLevelEditorSettings &Settings = Editor->GetSettings();
 
         FEditorViewportToolbar::FDesc Desc;
         Desc.IdPrefix = "LevelViewportToolbar";
         Desc.ToolbarWidth = PaneRect.Width;
         Desc.Renderer = RendererPtr;
-        Desc.bEnabled = true;
+        Desc.bEnabled = Editor != nullptr && VC != nullptr;
         // 각 pane toolbar는 자기 ViewportClient의 gizmo state를 표시한다.
         // ActiveViewportClient를 읽으면 다른 pane의 toolbar 렌더 순서에 따라 선택 표시가 꼬일 수 있다.
         const EGizmoMode CurrentGizmoMode = VC ? VC->GetGizmoManager().GetMode() : EGizmoMode::Translate;
@@ -2348,9 +2335,8 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
                             : (CurrentGizmoMode == EGizmoMode::Scale
                                    ? FEditorViewportToolbar::EToolMode::Scale
                                    : FEditorViewportToolbar::EToolMode::Translate);
-        const bool bEffectiveWorldCoord = CurrentGizmoMode != EGizmoMode::Scale && Settings.CoordSystem == EEditorCoordSystem::World;
-        Desc.CoordSpace = bEffectiveWorldCoord ? FEditorViewportToolbar::ECoordSpace::World
-                                               : FEditorViewportToolbar::ECoordSpace::Local;
+        Desc.CoordSpace = Settings.CoordSystem == EEditorCoordSystem::World ? FEditorViewportToolbar::ECoordSpace::World
+                                                                            : FEditorViewportToolbar::ECoordSpace::Local;
         Desc.bSnapEnabled = Settings.bEnableTranslationSnap || Settings.bEnableRotationSnap || Settings.bEnableScaleSnap;
         Desc.ViewportTypeIcon = FEditorViewportToolbar::GetViewportTypeIconByIndex(static_cast<int32>(Opts.ViewportType));
         Desc.ViewportTypeLabel = FEditorViewportToolbar::GetViewportTypeLabelByIndex(static_cast<int32>(Opts.ViewportType));
@@ -2387,13 +2373,9 @@ void FLevelViewportLayout::RenderViewportToolbar(int32 SlotIndex)
             Editor->SetEditorGizmoMode(NewMode);
         };
 
-        Desc.OnCoordSpaceToggled = [CurrentGizmoMode, EditorPtr]()
+        Desc.OnCoordSpaceToggled = [&]()
         {
-            if (CurrentGizmoMode == EGizmoMode::Scale)
-            {
-                return;
-            }
-            EditorPtr->ToggleCoordSystem();
+            Editor->ToggleCoordSystem();
         };
 
         Desc.DrawSnapPopup = [&]()

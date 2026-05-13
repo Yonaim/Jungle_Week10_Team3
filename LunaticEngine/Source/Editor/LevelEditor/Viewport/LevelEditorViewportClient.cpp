@@ -37,7 +37,6 @@
 #include "Viewport/GameViewportClient.h"
 
 
-#include <algorithm>
 #include <cfloat>
 
 UWorld *FLevelEditorViewportClient::GetWorld() const
@@ -68,17 +67,6 @@ void SyncPIEViewportRect(FViewport *Viewport, const FRect &ViewportScreenRect)
             }
         }
     }
-}
-
-ImVec2 ClampMouseToViewportRect(ImVec2 MousePos, const FRect& Rect)
-{
-    const float MinX = Rect.X;
-    const float MinY = Rect.Y;
-    const float MaxX = Rect.X + (std::max)(0.0f, Rect.Width - 1.0f);
-    const float MaxY = Rect.Y + (std::max)(0.0f, Rect.Height - 1.0f);
-    MousePos.x = Clamp(MousePos.x, MinX, MaxX);
-    MousePos.y = Clamp(MousePos.y, MinY, MaxY);
-    return MousePos;
 }
 
 struct FCameraBookmark
@@ -294,11 +282,9 @@ bool TryConvertMouseToViewportPixel(const ImVec2 &MousePos, const FRect &Viewpor
 
     const float LocalX = MousePos.x - ViewportScreenRect.X;
     const float LocalY = MousePos.y - ViewportScreenRect.Y;
-    if (LocalX < 0.0f || LocalY < 0.0f || LocalX >= ViewportScreenRect.Width || LocalY >= ViewportScreenRect.Height)
-    {
-        return false;
-    }
 
+    // Drag 중 뷰포트 밖으로 나가도 같은 screen-rect -> render-target 변환식을 유지한다.
+    // 여기서 false를 반환하고 raw local 좌표로 fallback하면 viewport rect와 RT 크기가 다를 때 delta가 튄다.
     const float TargetWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : FallbackWidth;
     const float TargetHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : FallbackHeight;
     if (TargetWidth <= 0.0f || TargetHeight <= 0.0f)
@@ -1579,22 +1565,13 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
     GizmoManager.GetUIScreenInteractionState().HoveredAxis = HasUIScreenTranslateGizmo() ? HitTestUIScreenTranslateGizmo(MousePos) : 0;
     float VPWidth = Viewport ? static_cast<float>(Viewport->GetWidth()) : WindowWidth;
     float VPHeight = Viewport ? static_cast<float>(Viewport->GetHeight()) : WindowHeight;
-
-    // While dragging, do not deproject arbitrary coordinates outside the pane.
-    // Off-viewport NDC values can make the drag ray nearly parallel to the active
-    // axis/plane and produce a huge intersection jump.  Clamp only the ray used
-    // for gizmo drag; selection and UI hit tests still use the real mouse position.
-    const ImVec2 RayMousePos = GizmoManager.IsDragging()
-        ? ClampMouseToViewportRect(MousePos, ViewportScreenRect)
-        : MousePos;
-
     float LocalMouseX = 0.0f;
     float LocalMouseY = 0.0f;
-    if (!TryConvertMouseToViewportPixel(RayMousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, LocalMouseX,
+    if (!TryConvertMouseToViewportPixel(MousePos, ViewportScreenRect, Viewport, WindowWidth, WindowHeight, LocalMouseX,
                                         LocalMouseY))
     {
-        LocalMouseX = RayMousePos.x - ViewportScreenRect.X;
-        LocalMouseY = RayMousePos.y - ViewportScreenRect.Y;
+        LocalMouseX = MousePos.x - ViewportScreenRect.X;
+        LocalMouseY = MousePos.y - ViewportScreenRect.Y;
     }
     FRay Ray = GetCamera()->DeprojectScreenToWorld(LocalMouseX, LocalMouseY, VPWidth, VPHeight);
     FGizmoHitProxyContext GizmoPickContext{};

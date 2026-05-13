@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Engine/Math/Matrix.h"
 #include "Engine/Math/Rotator.h"
 #include "Engine/Math/Quat.h"
@@ -47,4 +47,5 @@ struct FTransform
 	void SetRotation(const FQuat& Quat) { Rotation = Quat; }
 
 	FMatrix ToMatrix() const;
+	static FTransform FromMatrix(const FMatrix& Matrix);
 };
