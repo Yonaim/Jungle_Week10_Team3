@@ -152,21 +152,15 @@ void UEngine::Init(FWindowsWindow* InWindow)
 	}
 
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadEditorResources");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading editor resources");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::EditorAssetCatalogFilePath()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadImportAssetSources");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading import asset sources");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::ImportAssetSourcesFilePath()), Device);
 	}
 
 	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadImportSettings");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading import settings");
-		FResourceManager::Get().LoadFromScanFile(FPaths::ToUtf8(FPaths::ImportSettingsFilePath()), Device);
-	}
-
-	{
-		SCOPE_STARTUP_STAT("ResourceManager::LoadAssetCatalog");
-		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading asset catalog");
-		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::AssetCatalogFilePath()), Device);
+		SCOPE_STARTUP_STAT("ResourceManager::LoadGameAssetCatalog");
+		UE_LOG_CATEGORY(Engine, Info, "[INIT] Loading game asset catalog");
+		FResourceManager::Get().LoadFromFile(FPaths::ToUtf8(FPaths::GameAssetCatalogFilePath()), Device);
 	}
 	{
 		SCOPE_STARTUP_STAT("ResourceManager::LoadFromEngineSourceDir");

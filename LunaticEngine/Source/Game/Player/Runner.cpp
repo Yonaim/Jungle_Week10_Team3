@@ -112,7 +112,7 @@ void ARunner::ApplyDefaultVisual()
 
 		FString MeshPath = FResourceManager::Get().ResolvePath(
 			FName("Game.Mesh.Player.Runner"),
-			"Asset/Content/Meshes/Spaceship/SM_Spaceship.uasset"
+			"Asset/Game/Content/Meshes/Spaceship/SM_Spaceship.uasset"
 		);
 
 		UStaticMesh* Mesh = FMeshAssetManager::LoadStaticMesh(MeshPath, Device);

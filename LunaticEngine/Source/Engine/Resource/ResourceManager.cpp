@@ -366,7 +366,9 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			Resource.Columns = 1;
 			Resource.Rows    = 1;
 			Resource.SRV     = nullptr;
-			Resource.bEditorResource = bIsEditorResourceFile;
+			const FString NormalizedTexturePath = NormalizeGenericPath(Resource.Path);
+			Resource.bEditorResource = bIsEditorResourceFile
+				|| NormalizedTexturePath.rfind("asset/engine/source/editor/", 0) == 0;
 			TextureResources[Pair.first] = Resource;
 		}
 	}

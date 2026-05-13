@@ -13,7 +13,7 @@ public:
     void Shutdown();
 
     // Unreal식 단일 Import 진입점.
-    // 외부 원본 파일(.fbx/.obj/.mtl/.mat/texture/.uasset)을 받아 Asset/Content 아래 정식 .uasset으로 만든다.
+    // 외부 원본 파일(.fbx/.obj/.mtl/texture/.uasset)을 받아 Asset/Game/Content 아래 정식 .uasset으로 만든다.
     bool ImportAssetWithDialog();
     bool ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath = nullptr);
 
@@ -24,7 +24,6 @@ public:
 private:
     bool ImportMeshSource(const FString& SourcePath, FString* OutImportedAssetPath);
     bool ImportMtlSource(const FString& SourcePath, FString* OutImportedAssetPath);
-    bool ImportLegacyMaterialJson(const FString& SourcePath, FString* OutImportedAssetPath);
     bool ImportTextureSource(const FString& SourcePath, FString* OutImportedAssetPath);
     bool ImportExistingUAsset(const FString& SourcePath, FString* OutImportedAssetPath);
 

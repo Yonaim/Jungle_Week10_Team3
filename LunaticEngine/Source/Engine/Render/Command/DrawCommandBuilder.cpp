@@ -36,7 +36,7 @@ namespace
 			return MaterialPath;
 		}
 
-		FString ResolvedPath = "Asset/Content/Materials/" + MaterialPath;
+		FString ResolvedPath = "Asset/Game/Content/Materials/" + MaterialPath;
 		if (ResolvedPath.find(".uasset") == FString::npos)
 		{
 			ResolvedPath += ".uasset";

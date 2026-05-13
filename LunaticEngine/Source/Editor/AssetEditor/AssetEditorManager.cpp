@@ -112,7 +112,7 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
     if (!IsUnderDirectory(NormalizedPath, ContentRoot))
     {
         FNotificationManager::Get().AddNotification(
-            "Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+            "Asset Editor opens only .uasset files under Asset/Game/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
         return false;
     }
 
@@ -179,7 +179,7 @@ bool FAssetEditorManager::OpenOwnedWorkingCopy(UObject *Asset, const std::filesy
     if (!IsUnderDirectory(NormalizedPath, ContentRoot))
     {
         FNotificationManager::Get().AddNotification(
-            "Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+            "Asset Editor opens only .uasset files under Asset/Game/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
         return false;
     }
 

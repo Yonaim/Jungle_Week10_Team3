@@ -55,12 +55,20 @@ namespace
 	FString MakeImportedMaterialAssetPath(const FString& SourceFilePath, const FString& MaterialSlotName)
 	{
 		const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(SourceFilePath)).stem().wstring()));
-		const FString SlotName = SanitizeAssetName(MaterialSlotName.empty() ? FString("None") : MaterialSlotName);
+		FString SlotName = SanitizeAssetName(MaterialSlotName.empty() ? FString("None") : MaterialSlotName);
+		const bool bHasMaterialPrefix =
+			SlotName.size() > 2 &&
+			SlotName[0] == 'M' &&
+			SlotName[1] == '_';
 
 		std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials" / FPaths::ToWide(SourceStem);
-		std::filesystem::path MaterialAssetPath = MaterialDirectory / (L"M_" + FPaths::ToWide(SlotName) + L".uasset");
+		const std::wstring FileName = bHasMaterialPrefix
+			? FPaths::ToWide(SlotName) + L".uasset"
+			: L"M_" + FPaths::ToWide(SlotName) + L".uasset";
+		std::filesystem::path MaterialAssetPath = MaterialDirectory / FileName;
 		return MakeProjectRelativePath(MaterialAssetPath);
 	}
+
 }
 
 struct FVertexKey {
@@ -152,6 +160,62 @@ struct FStringParser
 		return result.ec == std::errc();
 	}
 };
+
+namespace
+{
+	FString ParseMtlTextureMapPath(std::string_view Line, const FString& MtlFilePath)
+	{
+		std::string TextureFileName;
+
+		while (!Line.empty())
+		{
+			std::string_view LineBeforeToken = Line;
+			std::string_view Token = FStringParser::GetNextWhitespaceToken(Line);
+			if (Token.empty())
+			{
+				break;
+			}
+
+			if (Token[0] == '-')
+			{
+				int32 ArgsToSkip = 0;
+				if (Token == "-s" || Token == "-o" || Token == "-t")
+				{
+					ArgsToSkip = 3;
+				}
+				else if (Token == "-mm")
+				{
+					ArgsToSkip = 2;
+				}
+				else if (Token == "-bm" || Token == "-boost" || Token == "-texres" ||
+						 Token == "-blendu" || Token == "-blendv" || Token == "-clamp" ||
+						 Token == "-cc" || Token == "-imfchan" || Token == "-type")
+				{
+					ArgsToSkip = 1;
+				}
+
+				for (int32 i = 0; i < ArgsToSkip; ++i)
+				{
+					FStringParser::GetNextWhitespaceToken(Line);
+				}
+			}
+			else
+			{
+				FStringParser::TrimLeft(LineBeforeToken);
+				TextureFileName = FString(LineBeforeToken);
+				break;
+			}
+		}
+
+		size_t LastNonSpace = TextureFileName.find_last_not_of(" \t");
+		if (LastNonSpace != FString::npos)
+		{
+			TextureFileName.erase(LastNonSpace + 1);
+		}
+
+		return TextureFileName.empty() ? FString() : FPaths::ResolveAssetPath(MtlFilePath, TextureFileName);
+	}
+}
 
 struct FRawFaceVertex
 {
@@ -418,6 +482,25 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Kd.Y);
 			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Kd.Z);
 		}
+		else if (Prefix == "Ks")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FObjMaterialInfo& CurrentMaterial = OutMtlInfos.back();
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.X);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.Y);
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), CurrentMaterial.Ks.Z);
+		}
+		else if (Prefix == "Ns")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+			FStringParser::ParseFloat(FStringParser::GetNextWhitespaceToken(Line), OutMtlInfos.back().Ns);
+		}
 		else if (Prefix == "map_Kd")
 		{
 			if (OutMtlInfos.empty())
@@ -488,13 +571,35 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 				OutMtlInfos.back().map_Kd = FPaths::ResolveAssetPath(MtlFilePath, TextureFileName);
 			}
 		}
+		else if (Prefix == "map_Ks" || Prefix == "bump" || Prefix == "map_Bump" || Prefix == "map_bump")
+		{
+			if (OutMtlInfos.empty())
+			{
+				continue;
+			}
+
+			const FString ParsedTexturePath = ParseMtlTextureMapPath(Line, MtlFilePath);
+			if (ParsedTexturePath.empty())
+			{
+				continue;
+			}
+
+			if (Prefix == "map_Ks")
+			{
+				OutMtlInfos.back().map_Ks = ParsedTexturePath;
+			}
+			else
+			{
+				OutMtlInfos.back().bump = ParsedTexturePath;
+			}
+		}
 	}
 
 	return true;
 }
 
 // MTL 정보에서 정식 Material .uasset 파일로 변환한다.
-// 생성 위치는 Content/Materials/<SourceAssetName>/ 이다.
+// 생성 위치는 Asset/Game/Content/Materials/<SourceAssetName>/ 이다.
 FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePath, const FObjMaterialInfo* MtlInfo)
 {
 	if (!MtlInfo)
@@ -536,6 +641,18 @@ FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePat
 		JsonData["Parameters"]["SectionColor"][1] = MtlInfo->Kd.Y;
 		JsonData["Parameters"]["SectionColor"][2] = MtlInfo->Kd.Z;
 		JsonData["Parameters"]["SectionColor"][3] = 1.0f;
+	}
+
+	JsonData["Parameters"]["HasNormalMap"] = MtlInfo->bump.empty() ? 0.0f : 1.0f;
+
+	if (!MtlInfo->bump.empty())
+	{
+		JsonData["Textures"]["NormalTexture"] = MtlInfo->bump;
+	}
+
+	if (!MtlInfo->map_Ks.empty())
+	{
+		JsonData["Textures"]["SpecularTexture"] = MtlInfo->map_Ks;
 	}
 
 	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);

@@ -30,12 +30,14 @@ struct FObjMaterialInfo
 	FString MaterialSlotName = "None"; // newmtl
 	FVector Kd; // diffuse color
 	FString map_Kd; // diffuse texture file path
+	FString map_Ks; // specular texture file path
+	FString bump;   // normal/bump texture file path
 
 	FVector Ka; // ambient color
 	FVector Ks; // specular color
-	float Ns; // specular exponent
-	float Ni; // optical density
-	int32 illum; // illumination model
+	float Ns = 0.0f; // specular exponent
+	float Ni = 1.0f; // optical density
+	int32 illum = 0; // illumination model
 };
 
 // 블렌더 스타일 Forward 축 선택

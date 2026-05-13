@@ -23,8 +23,6 @@
 #include <algorithm>
 #include <filesystem>
 #include <cwctype>
-#include <fstream>
-#include <sstream>
 
 namespace
 {
@@ -95,19 +93,6 @@ namespace
         } while (std::filesystem::exists(InOutPath));
     }
 
-    json::JSON ReadJsonFile(const FString& FilePath)
-    {
-        std::ifstream File(FPaths::ToWide(FilePath));
-        if (!File.is_open())
-        {
-            return json::JSON();
-        }
-
-        std::stringstream Buffer;
-        Buffer << File.rdbuf();
-        return json::JSON::Load(Buffer.str());
-    }
-
     const char* GetAssetClassIdName(EAssetClassId ClassId)
     {
         switch (ClassId)
@@ -140,7 +125,7 @@ bool FAssetImportManager::ImportAssetWithDialog()
     }
 
     const FString SelectedPath = FEditorFileUtils::OpenFileDialog({
-        .Filter = L"Importable Source Assets (*.fbx;*.obj;*.mtl;*.mat;*.png;*.jpg;*.jpeg;*.bmp;*.tga;*.dds;*.uasset)\0*.fbx;*.obj;*.mtl;*.mat;*.png;*.jpg;*.jpeg;*.bmp;*.tga;*.dds;*.uasset\0All Files (*.*)\0*.*\0",
+        .Filter = L"Importable Source Assets (*.fbx;*.obj;*.mtl;*.png;*.jpg;*.jpeg;*.bmp;*.tga;*.dds;*.uasset)\0*.fbx;*.obj;*.mtl;*.png;*.jpg;*.jpeg;*.bmp;*.tga;*.dds;*.uasset\0All Files (*.*)\0*.*\0",
         .Title = L"Import Source Asset",
         .InitialDirectory = FPaths::AssetDir().c_str(),
         .OwnerWindowHandle = EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr,
@@ -182,10 +167,6 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
     else if (Ext == L".mtl")
     {
         bResult = ImportMtlSource(SourcePath, OutImportedAssetPath);
-    }
-    else if (Ext == L".mat")
-    {
-        bResult = ImportLegacyMaterialJson(SourcePath, OutImportedAssetPath);
     }
     else if (Ext == L".uasset")
     {
@@ -325,38 +306,6 @@ bool FAssetImportManager::ImportMtlSource(const FString& SourcePath, FString* Ou
         *OutImportedAssetPath = GeneratedMaterialAssetPaths.empty() ? FString() : GeneratedMaterialAssetPaths.front();
     }
     UE_LOG_CATEGORY(AssetImport, Info, "[Import] MTL generated %zu material asset(s).", GeneratedMaterialAssetPaths.size());
-    return true;
-}
-
-bool FAssetImportManager::ImportLegacyMaterialJson(const FString& SourcePath, FString* OutImportedAssetPath)
-{
-    const FString SourceDiskPathString = ToUtf8GenericPath(ResolveSourcePathOnDisk(SourcePath));
-    json::JSON JsonData = ReadJsonFile(SourceDiskPathString);
-    if (JsonData.IsNull())
-    {
-        UE_LOG_CATEGORY(AssetImport, Error, "[Import] Material JSON could not be read: %s", SourceDiskPathString.c_str());
-        FNotificationManager::Get().AddNotification("Import failed: material JSON could not be read.", ENotificationType::Error, 5.0f);
-        return false;
-    }
-
-    std::filesystem::path DestinationPath = MakeDestinationAssetPath(SourceDiskPathString, L"Materials", L"M_");
-    EnsureUniquePath(DestinationPath);
-    const FString DestinationRelativePath = MakeProjectRelativePath(DestinationPath);
-    JsonData[MatKeys::PathFileName] = DestinationRelativePath;
-
-    UMaterial* Material = FMaterialManager::Get().CreateMaterialAssetFromJson(DestinationRelativePath, JsonData);
-    if (!Material)
-    {
-        UE_LOG_CATEGORY(AssetImport, Error, "[Import] Material asset creation failed: %s", DestinationRelativePath.c_str());
-        FNotificationManager::Get().AddNotification("Import failed: material asset creation failed.", ENotificationType::Error, 5.0f);
-        return false;
-    }
-
-    if (OutImportedAssetPath)
-    {
-        *OutImportedAssetPath = DestinationRelativePath;
-    }
-    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Material JSON converted to UMaterial: %s", DestinationRelativePath.c_str());
     return true;
 }
 

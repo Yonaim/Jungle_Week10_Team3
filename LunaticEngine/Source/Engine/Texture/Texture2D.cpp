@@ -59,7 +59,7 @@ namespace
 			return Path.lexically_normal().wstring();
 		}
 
-		// 1. Root relative (Asset/Content/...)
+		// 1. Root relative (Asset/Game/Content/...)
 		std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / Path;
 		if (std::filesystem::exists(FullPath))
 		{
