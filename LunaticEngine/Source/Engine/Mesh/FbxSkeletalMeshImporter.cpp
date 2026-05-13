@@ -295,8 +295,8 @@ namespace
 				Vertex.pos = FFbxCommon::RemapVector(GlobalTransform.MultT(Mesh->GetControlPointAt(ControlPointIndex)));
 
 				FbxVector4 FbxNormal(0.0, 0.0, 1.0, 0.0);
-				Mesh->GetPolygonVertexNormal(PolygonIndex, CornerIndex, FbxNormal);
-				Vertex.normal = FFbxCommon::RemapVector(GlobalTransform.MultR(FbxNormal)).Normalized();
+				FFbxCommon::ReadNormal(Mesh, ControlPointIndex, PolygonIndex, CornerIndex, FbxNormal);
+				Vertex.normal = FFbxCommon::TransformNormalByMatrix(GlobalTransform, FbxNormal);
 
 				FbxVector2 FbxUV(0.0, 0.0);
 				bool bUnmapped = false;

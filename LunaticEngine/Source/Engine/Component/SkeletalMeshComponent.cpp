@@ -218,7 +218,14 @@ void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 			const FMatrix SkinningMatrix = Bones[BoneIdx].InverseBindPose * ComponentSpaceTransforms[BoneIdx];
 
 			SkinnedPos += SkinningMatrix.TransformPositionWithW(BindVertex.pos) * W;
-			SkinnedNormal += SkinningMatrix.TransformVector(BindVertex.normal) * W;
+
+			// 노멀은 position/vector와 다르게 inverse-transpose로 변환해야 한다.
+			// 현재 포즈에 non-uniform scale/negative scale이 섞여도 WorldNormal View가 무너지지 않도록
+			// 스키닝 행렬의 선형부 기준 normal matrix를 사용한다.
+			const FMatrix NormalMatrix = std::fabs(SkinningMatrix.GetBasisDeterminant3x3()) > 1.0e-8f
+				? SkinningMatrix.GetInverse().GetTransposed()
+				: SkinningMatrix;
+			SkinnedNormal += NormalMatrix.TransformVector(BindVertex.normal) * W;
 			TotalWeight += W;
 		}
 

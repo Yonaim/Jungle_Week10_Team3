@@ -2,6 +2,7 @@
 
 #include "Core/CoreTypes.h"
 #include "Math/Vector.h"
+#include "Math/Matrix.h"
 #include "FBXSDK/include/fbxsdk.h"
 
 #include <filesystem>
@@ -64,6 +65,10 @@ struct FFbxCommon
 	static FString ResolveFbxTexturePath(const FString& FbxFilePath, FbxFileTexture* Texture);
 	static FString MakeProjectRelativePath(const std::filesystem::path& Path);
 
+	static bool ReadNormal(FbxMesh* Mesh, int32 ControlPointIndex, int32 PolygonIndex, int32 CornerIndex, FbxVector4& OutNormal);
 	static FVector RemapVector(const FbxVector4& Vector);
+	static FbxVector4 UnmapVector(const FVector& Vector);
+	static FMatrix MakeEngineLinearMatrix(const FbxAMatrix& Matrix);
+	static FVector TransformNormalByMatrix(const FbxAMatrix& Matrix, const FbxVector4& Normal);
 	static FVector2 RemapUV(const FbxVector2& UV);
 };
