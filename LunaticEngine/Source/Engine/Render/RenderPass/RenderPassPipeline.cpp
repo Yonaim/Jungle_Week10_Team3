@@ -26,7 +26,6 @@ namespace
 		const bool bUseFullViewport =
 			PassType == ERenderPass::ShadowMap ||
 			PassType == ERenderPass::LightCulling ||
-			PassType == ERenderPass::EditorGrid ||
 			PassType == ERenderPass::PostProcess ||
 			PassType == ERenderPass::FXAA ||
 			PassType == ERenderPass::UI ||
