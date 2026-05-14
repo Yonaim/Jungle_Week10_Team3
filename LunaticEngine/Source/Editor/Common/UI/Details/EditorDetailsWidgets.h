@@ -222,6 +222,7 @@ struct FMaterialSlotWidgetArgs
     const char *ResetPath = nullptr;
     bool bReadOnly = false;
     bool bAllowDragDrop = true;
+    bool bShowPreviewImages = true;
     float LeftColumnWidth = 120.0f;
 };
 
@@ -265,10 +266,15 @@ inline bool DrawMaterialSlotRow(const FMaterialSlotWidgetArgs &Args)
     const bool bShowResetButton = !Args.bReadOnly && !ResetPath.empty();
     const bool bCanReset = bShowResetButton && !AssetPathsMatch(Args.Slot->Path, ResetPath);
 
-    UMaterial *CurrentMaterial = (Args.Slot->Path.empty() || Args.Slot->Path == "None")
-                                     ? nullptr
-                                     : FMaterialManager::Get().GetOrCreateMaterial(Args.Slot->Path);
-    UTexture2D *CurrentPreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(CurrentMaterial);
+    UMaterial *CurrentMaterial = nullptr;
+    UTexture2D *CurrentPreviewTexture = nullptr;
+    if (Args.bShowPreviewImages)
+    {
+        CurrentMaterial = (Args.Slot->Path.empty() || Args.Slot->Path == "None")
+                              ? nullptr
+                              : FMaterialManager::Get().GetOrCreateMaterial(Args.Slot->Path);
+        CurrentPreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(CurrentMaterial);
+    }
     const float ReservedPreviewWidth =
         (CurrentPreviewTexture && CurrentPreviewTexture->GetSRV()) ? (PreviewImageSize + PreviewSpacing) : 0.0f;
     const float ReservedResetWidth = bShowResetButton ? (ResetButtonSize + PreviewSpacing) : 0.0f;
@@ -304,7 +310,9 @@ inline bool DrawMaterialSlotRow(const FMaterialSlotWidgetArgs &Args)
         for (const FMaterialAssetListItem &Item : MatFiles)
         {
             const bool bSelected = (Args.Slot->Path == Item.FullPath);
-            UTexture2D *PreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(Item.FullPath);
+            UTexture2D *PreviewTexture = Args.bShowPreviewImages
+                ? FMaterialManager::Get().GetMaterialPreviewTexture(Item.FullPath)
+                : nullptr;
             if (PreviewTexture && PreviewTexture->GetSRV())
             {
                 ImGui::Image(PreviewTexture->GetSRV(), ImVec2(24.0f, 24.0f));

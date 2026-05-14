@@ -630,6 +630,8 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
         return;
     }
 
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] EnsurePreviewObjects: begin");
+
     PreviewComponent = UObjectManager::Get().CreateObject<USkeletalMeshComponent>();
     if (PoseController)
     {
@@ -653,6 +655,7 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
 
     ResetPreviewCamera();
     bPreviewObjectsInitialized = true;
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] EnsurePreviewObjects: complete");
 }
 
 void FSkeletalMeshPreviewViewportClient::ReleasePreviewObjects()
@@ -692,6 +695,9 @@ void FSkeletalMeshPreviewViewportClient::SetPreviewMesh(USkeletalMesh *InMesh)
         return;
     }
 
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] SetPreviewMesh: mesh=%s",
+        InMesh ? InMesh->GetFName().ToString().c_str() : "None");
+
     PreviewMesh = InMesh;
     PreviewScene.GetScene().GetDebugDrawQueue().Clear();
     GizmoManager.ClearTarget();
@@ -708,10 +714,12 @@ void FSkeletalMeshPreviewViewportClient::SetPreviewMesh(USkeletalMesh *InMesh)
 
     RebuildPreviewProxy();
     FramePreviewMesh();
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] SetPreviewMesh: complete");
 }
 
 void FSkeletalMeshPreviewViewportClient::RebuildPreviewProxy()
 {
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] RebuildPreviewProxy: begin");
     if (PreviewProxy)
     {
         PreviewScene.RemovePrimitive(PreviewProxy);
@@ -726,6 +734,7 @@ void FSkeletalMeshPreviewViewportClient::RebuildPreviewProxy()
     // PreviewComponent는 Level World에 등록하지 않는다.
     // 대신 PreviewScene에 직접 PrimitiveSceneProxy를 등록해 renderer가 같은 DrawCommand 경로를 타게 한다.
     PreviewProxy = PreviewScene.AddPrimitive(PreviewComponent);
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] RebuildPreviewProxy: complete proxy=%p", PreviewProxy);
 }
 
 
@@ -1426,6 +1435,9 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
     {
         return false;
     }
+
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] BuildRenderRequest: mesh=%s proxy=%p",
+        PreviewMesh->GetFName().ToString().c_str(), PreviewProxy);
 
     ApplyEditorStateToViewport();
     // NOTE: SyncGizmoTargetFromSelection()은 여기서 호출하지 않는다.

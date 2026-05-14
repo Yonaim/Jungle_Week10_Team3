@@ -92,14 +92,22 @@ void USkeletalMeshComponent::SetPreviewPoseForEditor(const FSkeletonPose& InPose
 // 메시 할당 시 즉시 초기화 — 에디터에서 BeginPlay 없이도 렌더링되도록
 void USkeletalMeshComponent::SetSkeletalMesh(USkeletalMesh* Mesh)
 {
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] SetSkeletalMesh begin: mesh=%s",
+		Mesh ? Mesh->GetFName().ToString().c_str() : "None");
 	USkinnedMeshComponent::SetSkeletalMesh(Mesh);
 	InitializeSkeleton();
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] SetSkeletalMesh complete");
 }
 
 void USkeletalMeshComponent::InitializeSkeleton()
 {
 	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
 		return;
+
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] InitializeSkeleton: bones=%d vertices=%d indices=%d",
+		SkeletalMesh->GetBoneCount(),
+		SkeletalMesh->GetVertexCount(),
+		SkeletalMesh->GetIndexCount());
 
 	const FSkeletalMesh* MeshAsset = SkeletalMesh->GetSkeletalMeshAsset();
 	InitBoneTransform();
@@ -145,6 +153,7 @@ void USkeletalMeshComponent::RefreshSkinningForEditor(float DeltaTime)
 
 void USkeletalMeshComponent::RefreshSkinningNow()
 {
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] RefreshSkinningNow");
 	RebuildComponentSpace();
 	PerformCPUSkinning(CurrentPose);
 	FinalizeRenderState();
