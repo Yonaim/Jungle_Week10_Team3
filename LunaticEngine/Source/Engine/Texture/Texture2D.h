@@ -34,6 +34,7 @@ public:
 	static UTexture2D* LoadFromFile(const FString& FilePath, ID3D11Device* Device);
 	static UTexture2D* LoadFromAssetFile(const FString& AssetPath, ID3D11Device* Device);
 	static UTexture2D* LoadFromCached(const FString& FilePath);
+	static FString ImportTextureAsset(const FString& SourcePath);
 
 	// 캐시된 모든 텍스처의 GPU 리소스 해제 (Shutdown 시 Device 해제 전 호출)
 	static void ReleaseAllGPU();
@@ -44,8 +45,10 @@ public:
 	static bool IsSupportedTextureExtension(const std::filesystem::path& Path);
 
 	ID3D11ShaderResourceView* GetSRV() const { return SRV; }
-	const FString& GetSourcePath() const { return SourceFilePath; }
+	const FString& GetSourcePath() const { return AssetFilePath.empty() ? SourceFilePath : AssetFilePath; }
+	const FString& GetReimportSourcePath() const { return SourceFilePath; }
 	void SetSourcePathForAsset(const FString& InSourcePath) { SourceFilePath = InSourcePath; }
+	void SetAssetPathForAsset(const FString& InAssetPath) { AssetFilePath = InAssetPath; }
 	void Serialize(FArchive& Ar);
 	uint32 GetWidth() const { return Width; }
 	uint32 GetHeight() const { return Height; }
@@ -54,9 +57,13 @@ public:
 
 private:
 	bool LoadInternal(const FString& FilePath, ID3D11Device* Device);
+	bool EnsureGPUTexture(ID3D11Device* Device);
+	bool CreateSRVFromStoredPixels(ID3D11Device* Device);
 	bool HasSourceFileChanged() const;
 
 	FString SourceFilePath;
+	FString AssetFilePath;
+	FString CacheKeyPath;
 	ID3D11ShaderResourceView* SRV = nullptr;
 	uint32 Width = 0;
 	uint32 Height = 0;

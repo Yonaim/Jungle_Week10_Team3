@@ -1126,6 +1126,11 @@ void FLevelEditorViewportClient::OnEditorDuplicate(const FInputActionValue &Valu
 
 void FLevelEditorViewportClient::OnEditorToggleGizmoMode(const FInputActionValue &Value)
 {
+    if (!CanProcessLiveContextWork())
+    {
+        return;
+    }
+
     FInputManager &Input = FInputManager::Get();
     if (Input.IsMouseButtonDown(VK_RBUTTON))
     {
@@ -1171,6 +1176,11 @@ void FLevelEditorViewportClient::OnEditorToggleGizmoMode(const FInputActionValue
 
 void FLevelEditorViewportClient::OnEditorToggleCoordSystem(const FInputActionValue &Value)
 {
+    if (!CanProcessLiveContextWork())
+    {
+        return;
+    }
+
     if (!FInputManager::Get().IsKeyDown(VK_CONTROL))
     {
         if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
@@ -1262,7 +1272,7 @@ void FLevelEditorViewportClient::SetViewportSize(float InWidth, float InHeight)
 
 void FLevelEditorViewportClient::Tick(float DeltaTime)
 {
-    if (!IsEditorContextActive() || !bIsActive)
+    if (!CanProcessLiveContextWork() || !bIsActive)
         return;
     if (UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine))
     {
@@ -1331,11 +1341,10 @@ void FLevelEditorViewportClient::Tick(float DeltaTime)
 
 void FLevelEditorViewportClient::SyncGizmoTargetFromSelection()
 {
-    if (!IsEditorContextActive())
+    if (!CanProcessLiveContextWork())
     {
         CurrentGizmoTargetComponent = nullptr;
-        GizmoManager.CancelDrag();
-        GizmoManager.ClearTarget();
+        GizmoManager.AbortLiveInteractionWithoutApplying();
         return;
     }
 
@@ -1347,7 +1356,7 @@ void FLevelEditorViewportClient::SyncGizmoTargetFromSelection()
     }
 
     USceneComponent *SelectedComponent = SelectionManager->GetSelectedComponent();
-    auto Target = SelectionManager->MakeTransformGizmoTarget(GetEditorContextActiveFlag());
+    auto Target = SelectionManager->MakeTransformGizmoTarget(this, GetEditorContextActiveFlag());
     if (!Target)
     {
         CurrentGizmoTargetComponent = nullptr;
@@ -1401,6 +1410,11 @@ void FLevelEditorViewportClient::ApplySmoothedCameraLocation(float DeltaTime)
 
 void FLevelEditorViewportClient::TickEditorShortcuts()
 {
+    if (!CanProcessLiveContextWork())
+    {
+        return;
+    }
+
     UEditorEngine *EditorEngine = Cast<UEditorEngine>(GEngine);
     if (!EditorEngine)
     {
@@ -1472,7 +1486,7 @@ void FLevelEditorViewportClient::TickEditorShortcuts()
 
 void FLevelEditorViewportClient::TickInput(float DeltaTime)
 {
-    if (!IsEditorContextActive())
+    if (!CanProcessLiveContextWork())
         return;
     if (!GetCamera())
         return;
@@ -1480,7 +1494,7 @@ void FLevelEditorViewportClient::TickInput(float DeltaTime)
         return;
     FInputManager &Input = FInputManager::Get();
     CommonInput.InputState.ResetFrame();
-    bool bForceInput = IsEditorContextActive() && (bIsHovered || bIsActive || Input.IsMouseButtonDown(VK_RBUTTON));
+    bool bForceInput = CanProcessLiveContextWork() && (bIsHovered || bIsActive || Input.IsMouseButtonDown(VK_RBUTTON));
     EnhancedInputManager.ProcessInput(&Input, DeltaTime, bForceInput);
     const FMinimalViewInfo &CameraState = GetCamera()->GetCameraState();
     const bool bIsOrtho = CameraState.bIsOrthogonal;
@@ -1571,7 +1585,7 @@ static FVector FindClosestVertex(UWorld *World, const FRay &Ray, float MaxDistan
 void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
 {
     (void)DeltaTime;
-    if (!IsEditorContextActive())
+    if (!CanProcessLiveContextWork())
         return;
     if (!GetCamera() || !GetWorld())
         return;
@@ -1775,7 +1789,7 @@ void FLevelEditorViewportClient::TickInteraction(float DeltaTime)
 void FLevelEditorViewportClient::HandleDragStart(const FRay &Ray, const FGizmoHitProxyResult& GizmoHitResult, bool bHasGizmoHit)
 {
     FInputManager &Input = FInputManager::Get();
-    if (!bIsHovered)
+    if (!CanProcessLiveContextWork() || !bIsHovered)
         return;
     if (BeginUIScreenTranslateDrag(ImGui::GetIO().MousePos))
     {

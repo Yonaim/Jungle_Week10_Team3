@@ -421,7 +421,9 @@ void FSelectionManager::SelectComponent(USceneComponent *Component)
     SyncGizmo();
 }
 
-std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarget(const bool* OwnerContextActiveFlag) const
+std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarget(
+    const FEditorViewportClient* OwnerViewportClient,
+    const bool* OwnerContextActiveFlag) const
 {
     if (!bGizmoEnabled || !SelectedComponent)
     {
@@ -433,16 +435,21 @@ std::shared_ptr<ITransformGizmoTarget> FSelectionManager::MakeTransformGizmoTarg
         return nullptr;
     }
 
-    USceneComponent* TargetComponent = SelectedComponent;
-    if (AActor* SelectedActor = GetPrimarySelection())
+    // The gizmo target must come from the currently selected component itself.
+    // Do not overwrite it with GetPrimarySelection()->RootComponent here: after
+    // tab switches or multi-selection edits, the primary actor can lag behind the
+    // actual current transform target and make the gizmo keep driving an older actor.
+    USceneComponent* TargetComponent = ResolveLevelEditorSelectableComponent(SelectedComponent);
+    if (!TargetComponent)
     {
-        if (USceneComponent* RootComponent = SelectedActor->GetRootComponent())
-        {
-            TargetComponent = RootComponent;
-        }
+        return nullptr;
     }
 
-    return std::make_shared<FSceneComponentTransformGizmoTarget>(TargetComponent, OwnerContextActiveFlag);
+    return std::make_shared<FSceneComponentTransformGizmoTarget>(
+        TargetComponent,
+        OwnerViewportClient,
+        OwnerContextActiveFlag,
+        OwnerViewportClient ? OwnerViewportClient->GetEditorContextEpoch() : 0);
 }
 
 void FSelectionManager::SetActorProxiesSelected(AActor *Actor, bool bSelected)

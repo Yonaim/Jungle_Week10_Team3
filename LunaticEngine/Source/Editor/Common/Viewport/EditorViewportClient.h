@@ -82,6 +82,14 @@ class FEditorViewportClient : public FViewportClient
     virtual void DeactivateEditorContext();
     bool IsEditorContextActive() const { return bEditorContextActive; }
     const bool* GetEditorContextActiveFlag() const { return &bEditorContextActive; }
+    uint64 GetEditorContextEpoch() const { return EditorContextEpoch; }
+
+    // Stronger than bEditorContextActive. The first Level tab and first Asset tab can
+    // both have been activated once during workspace bootstrapping. Before accepting
+    // input/gizmo deltas, verify that the engine currently considers this viewport
+    // the single live owner.
+    bool IsLiveContextOwner() const;
+    bool CanProcessLiveContextWork() const;
 
     void SetViewportSize(float InWidth, float InHeight);
     void SetViewportScreenRect(const FRect &InRect);
@@ -90,6 +98,7 @@ class FEditorViewportClient : public FViewportClient
 
     virtual void UpdateLayoutRect();
     virtual void RenderViewportImage(bool bIsActiveViewport);
+    virtual void NotifyViewportPresented() {}
     virtual const char *GetViewportTooltipBarText() const { return nullptr; }
 
     /**
@@ -120,6 +129,7 @@ class FEditorViewportClient : public FViewportClient
     bool bIsActive = false;
     bool bIsHovered = false;
     bool bEditorContextActive = false;
+    uint64 EditorContextEpoch = 0;
 
     FRect ViewportScreenRect;
 

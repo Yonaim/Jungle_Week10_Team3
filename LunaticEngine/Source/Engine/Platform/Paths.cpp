@@ -1,10 +1,79 @@
 #include "PCH/LunaticPCH.h"
 #include "Engine/Platform/Paths.h"
 
+#include <algorithm>
 #include <filesystem>
+#include <vector>
 
 namespace
 {
+	void ReplaceAll(std::wstring& InOutText, const std::wstring& From, const std::wstring& To)
+	{
+		if (From.empty() || From == To)
+		{
+			return;
+		}
+
+		size_t SearchPos = 0;
+		while ((SearchPos = InOutText.find(From, SearchPos)) != std::wstring::npos)
+		{
+			InOutText.replace(SearchPos, From.length(), To);
+			SearchPos += To.length();
+		}
+	}
+
+	std::wstring RemapLegacyAssetPathString(const std::wstring& InputPath)
+	{
+		std::wstring Result = InputPath;
+		ReplaceAll(Result, L"\\", L"/");
+
+		ReplaceAll(Result, L"/Asset/Game/Content/", L"/Asset/Content/");
+		ReplaceAll(Result, L"/Asset/Engine/Content/", L"/Asset/Content/");
+		ReplaceAll(Result, L"/Asset/Game/Source/", L"/Asset/Source/");
+		ReplaceAll(Result, L"/Asset/Engine/Source/", L"/Asset/Source/");
+
+		ReplaceAll(Result, L"Asset/Game/Content/", L"Asset/Content/");
+		ReplaceAll(Result, L"Asset/Engine/Content/", L"Asset/Content/");
+		ReplaceAll(Result, L"Asset/Game/Source/", L"Asset/Source/");
+		ReplaceAll(Result, L"Asset/Engine/Source/", L"Asset/Source/");
+
+		ReplaceAll(Result, L"/Asset/Content/Sound/", L"/Asset/Content/Sounds/");
+		ReplaceAll(Result, L"Asset/Content/Sound/", L"Asset/Content/Sounds/");
+
+		if (Result == L"Asset/Game/Content")
+		{
+			Result = L"Asset/Content";
+		}
+		else if (Result == L"Asset/Engine/Content")
+		{
+			Result = L"Asset/Content";
+		}
+		else if (Result == L"Asset/Game/Source")
+		{
+			Result = L"Asset/Source";
+		}
+		else if (Result == L"Asset/Engine/Source")
+		{
+			Result = L"Asset/Source";
+		}
+		else if (Result == L"Asset/Content/Sound")
+		{
+			Result = L"Asset/Content/Sounds";
+		}
+
+		return Result;
+	}
+
+	std::filesystem::path RemapLegacyAssetPath(const std::filesystem::path& InputPath)
+	{
+		if (InputPath.empty())
+		{
+			return {};
+		}
+
+		return std::filesystem::path(RemapLegacyAssetPathString(InputPath.generic_wstring())).lexically_normal();
+	}
+
 	bool IsProjectRootCandidate(const std::filesystem::path& Path)
 	{
 		return std::filesystem::exists(Path / L"Shaders")
@@ -71,8 +140,8 @@ std::wstring FPaths::RootDir()
 
 std::wstring FPaths::ShaderDir()   { return RootDir() + L"Shaders\\"; }
 std::wstring FPaths::AssetDir()            { return RootDir() + L"Asset\\"; }
-std::wstring FPaths::ContentDir()          { return RootDir() + L"Asset\\Game\\Content\\"; }
-std::wstring FPaths::EngineDir()           { return RootDir() + L"Asset\\Engine\\"; }
+std::wstring FPaths::ContentDir()          { return RootDir() + L"Asset\\Content\\"; }
+std::wstring FPaths::EngineDir()           { return RootDir() + L"Asset\\"; }
 std::wstring FPaths::EngineContentDir()    { return EngineDir() + L"Content\\"; }
 std::wstring FPaths::EngineSourceDir()     { return EngineDir() + L"Source\\"; }
 std::wstring FPaths::ShaderCacheDir()      { return RootDir() + L"Shaders\\Cache\\"; }
@@ -91,12 +160,12 @@ std::wstring FPaths::ScriptsDir()  { return RootDir() + L"Scripts\\"; }
 std::wstring FPaths::SettingsFilePath() { return RootDir() + L"Settings\\Editor.ini"; }
 std::wstring FPaths::ResourceFilePath() { return BuiltinAssetCatalogFilePath(); }
 std::wstring FPaths::ResourceSettingsDir() { return AssetSettingsDir(); }
-std::wstring FPaths::AssetSettingsDir() { return RootDir() + L"Settings\\Asset\\"; }
-std::wstring FPaths::ImportSettingsDir() { return RootDir() + L"Settings\\Import\\"; }
+std::wstring FPaths::AssetSettingsDir() { return RootDir() + L"Settings\\"; }
+std::wstring FPaths::ImportSettingsDir() { return RootDir() + L"Settings\\"; }
 std::wstring FPaths::AssetSettingsFilePath() { return AssetSettingsDir() + L"AssetSettings.ini"; }
 std::wstring FPaths::AssetCatalogFilePath() { return GameAssetCatalogFilePath(); }
 std::wstring FPaths::BuiltinAssetCatalogFilePath() { return AssetSettingsDir() + L"BuiltinAssetCatalog.ini"; }
-std::wstring FPaths::EditorAssetCatalogFilePath() { return AssetSettingsDir() + L"EditorAssetCatalog.ini"; }
+std::wstring FPaths::EditorAssetCatalogFilePath() { return BuiltinAssetCatalogFilePath(); }
 std::wstring FPaths::GameAssetCatalogFilePath() { return AssetSettingsDir() + L"GameAssetCatalog.ini"; }
 std::wstring FPaths::ImportAssetSourcesFilePath() { return ImportSettingsDir() + L"ImportAssetSources.ini"; }
 std::wstring FPaths::ImportSettingsFilePath() { return ImportAssetSourcesFilePath(); }
@@ -113,19 +182,81 @@ std::wstring FPaths::ProjectSavedDir() { return SaveDir(); }
 
 std::string FPaths::ConvertRelativePathToFull(const std::string& RelativePath)
 {
-	std::filesystem::path Path(ToWide(RelativePath));
-	if (Path.is_absolute())
-	{
-		return NormalizePath(RelativePath);
-	}
-
-	return ToUtf8((std::filesystem::path(RootDir()) / Path).lexically_normal().wstring());
+	return ToUtf8(ResolvePathToDisk(RelativePath));
 }
 
 std::string FPaths::NormalizePath(const std::string& Path)
 {
+	if (Path.empty())
+	{
+		return {};
+	}
+
 	std::filesystem::path FsPath(ToWide(Path));
-	return ToUtf8(FsPath.lexically_normal().generic_wstring());
+	FsPath = RemapLegacyAssetPath(FsPath.lexically_normal());
+	return ToUtf8(FsPath.generic_wstring());
+}
+
+std::wstring FPaths::ResolvePathToDisk(const std::string& Path)
+{
+	if (Path.empty())
+	{
+		return {};
+	}
+
+	std::vector<std::filesystem::path> Candidates;
+	auto AddCandidate = [&Candidates](const std::filesystem::path& CandidatePath)
+	{
+		if (CandidatePath.empty())
+		{
+			return;
+		}
+
+		const std::filesystem::path NormalizedCandidate = CandidatePath.lexically_normal();
+		if (std::find(Candidates.begin(), Candidates.end(), NormalizedCandidate) == Candidates.end())
+		{
+			Candidates.push_back(NormalizedCandidate);
+		}
+	};
+
+	const std::filesystem::path OriginalPath(ToWide(Path));
+	const std::filesystem::path RemappedPath(ToWide(NormalizePath(Path)));
+	const std::filesystem::path ProjectRoot(RootDir());
+
+	if (RemappedPath.is_absolute())
+	{
+		AddCandidate(RemappedPath);
+	}
+	else
+	{
+		AddCandidate(ProjectRoot / RemappedPath);
+	}
+
+	if (OriginalPath.is_absolute())
+	{
+		AddCandidate(OriginalPath);
+	}
+	else
+	{
+		AddCandidate(ProjectRoot / OriginalPath);
+	}
+
+	for (const std::filesystem::path& Candidate : Candidates)
+	{
+		if (std::filesystem::exists(Candidate))
+		{
+			return Candidate.wstring();
+		}
+	}
+
+	if (!Candidates.empty())
+	{
+		return Candidates.front().wstring();
+	}
+
+	return OriginalPath.is_absolute()
+		? OriginalPath.lexically_normal().wstring()
+		: (ProjectRoot / OriginalPath).lexically_normal().wstring();
 }
 
 std::wstring FPaths::Combine(const std::wstring& Base, const std::wstring& Child)
@@ -160,34 +291,29 @@ std::string FPaths::ToUtf8(const std::wstring& WideStr)
 
 std::string FPaths::ResolveAssetPath(const std::string& BaseFilePath, const std::string& TargetPath)
 {
-	// 1. 기준 파일(OBJ 또는 MTL)의 폴더 경로 추출
-	std::filesystem::path FileDir(ToWide(BaseFilePath));
-	FileDir = FileDir.parent_path();
-
-	// 2. 타겟 파일 경로(텍스처나 MTL 이름)
-	std::filesystem::path Target(ToWide(TargetPath));
-
-	// 3. 두 경로 합치기 및 정규화
-	std::filesystem::path FullPath = (FileDir / Target).lexically_normal();
-	std::filesystem::path ProjectRoot(RootDir());
-
-	std::filesystem::path RelativePath;
-
-	// 4. 절대/상대 경로 분기 처리
-	if (FullPath.is_absolute())
+	if (TargetPath.empty())
 	{
-		RelativePath = FullPath.lexically_relative(ProjectRoot);
-		if (RelativePath.empty())
-		{
-			// 드라이브가 다르거나 계산이 불가능한 경우 최후의 수단으로 파일명만 추출
-			RelativePath = FullPath.filename();
-		}
-	}
-	else
-	{
-		RelativePath = FullPath;
+		return {};
 	}
 
-	// 5. 엔진에서 사용하는 UTF-8 포맷으로 반환 (Windows 백슬래시를 슬래시로 통일)
-	return ToUtf8(RelativePath.generic_wstring());
+	const std::filesystem::path ProjectRoot(RootDir());
+	std::filesystem::path BasePath(ToWide(BaseFilePath));
+	if (!BasePath.is_absolute())
+	{
+		BasePath = (ProjectRoot / BasePath).lexically_normal();
+	}
+
+	const std::filesystem::path BaseDir = std::filesystem::is_directory(BasePath) ? BasePath : BasePath.parent_path();
+	const std::filesystem::path Target(ToWide(TargetPath));
+	const std::filesystem::path FullPath = (Target.is_absolute() ? Target : (BaseDir / Target)).lexically_normal();
+
+	std::error_code ErrorCode;
+	const std::filesystem::path Relative = std::filesystem::relative(FullPath, ProjectRoot, ErrorCode);
+	if (!ErrorCode && !Relative.empty() && Relative.native().find(L"..") != 0)
+	{
+		return NormalizePath(ToUtf8(Relative.generic_wstring()));
+	}
+
+	// Project 밖의 import source는 상대경로로 망가뜨리지 말고 절대경로를 유지한다.
+	return NormalizePath(ToUtf8(FullPath.generic_wstring()));
 }

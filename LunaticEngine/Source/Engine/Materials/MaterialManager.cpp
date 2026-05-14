@@ -2,6 +2,7 @@
 #include "MaterialManager.h"
 #include <filesystem>
 #include <fstream>
+#include "Core/Log.h"
 #include "Materials/Material.h"
 #include "Platform/Paths.h"
 #include "Render/Shader/ShaderManager.h"
@@ -12,6 +13,21 @@
 #include "Render/Pipeline/Renderer.h"
 
 #include <algorithm>
+#include <vector>
+
+namespace
+{
+	std::filesystem::path ResolveMaterialAssetDiskPath(const FString& MaterialPath)
+	{
+		const std::filesystem::path Resolved(FPaths::ResolvePathToDisk(MaterialPath));
+		if (!Resolved.empty())
+		{
+			return Resolved.lexically_normal();
+		}
+
+		return std::filesystem::path(FPaths::ToWide(FPaths::NormalizePath(MaterialPath))).lexically_normal();
+	}
+}
 
 void FMaterialManager::ScanMaterialAssets()
 {
@@ -21,19 +37,27 @@ void FMaterialManager::ScanMaterialAssets()
 		std::filesystem::path(FPaths::ContentDir()) / L"Materials",
 		std::filesystem::path(FPaths::EngineContentDir()) / L"Materials"
 	};
+	std::vector<std::filesystem::path> UniqueRoots;
 
 	const std::filesystem::path ProjectRoot(FPaths::RootDir());
 
 	for (const std::filesystem::path& MaterialRoot : MaterialRoots)
 	{
+		const std::filesystem::path NormalizedRoot = MaterialRoot.lexically_normal();
+		if (std::find(UniqueRoots.begin(), UniqueRoots.end(), NormalizedRoot) != UniqueRoots.end())
+		{
+			continue;
+		}
+		UniqueRoots.push_back(NormalizedRoot);
+
 		std::error_code ErrorCode;
-		if (!std::filesystem::exists(MaterialRoot, ErrorCode) || !std::filesystem::is_directory(MaterialRoot, ErrorCode))
+		if (!std::filesystem::exists(NormalizedRoot, ErrorCode) || !std::filesystem::is_directory(NormalizedRoot, ErrorCode))
 		{
 			continue;
 		}
 
 		std::filesystem::recursive_directory_iterator It(
-			MaterialRoot,
+			NormalizedRoot,
 			std::filesystem::directory_options::skip_permission_denied,
 			ErrorCode);
 		const std::filesystem::recursive_directory_iterator End;
@@ -125,13 +149,12 @@ UTexture2D* FMaterialManager::GetMaterialPreviewTexture(const FString& MaterialP
 
 UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 {
-	std::filesystem::path Path(FPaths::ToWide(MaterialPath));
-	FString GenericPath = FPaths::ToUtf8(Path.generic_wstring());
-
+	FString GenericPath = FPaths::NormalizePath(MaterialPath);
 	if (MaterialPath == "None" || MaterialPath.empty())
 	{
 		GenericPath = "None";
 	}
+	std::filesystem::path Path(FPaths::ToWide(GenericPath));
 
 	auto It = MaterialCache.find(GenericPath);
 	if (It != MaterialCache.end())
@@ -141,11 +164,13 @@ UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 
 	if (Path.extension() == L".uasset")
 	{
+		const std::filesystem::path DiskPath = ResolveMaterialAssetDiskPath(GenericPath);
 		FString Error;
-		UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(Path, &Error);
+		UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(DiskPath, &Error);
 		UMaterial* LoadedMaterial = Cast<UMaterial>(LoadedObject);
 		if (LoadedMaterial)
 		{
+			LoadedMaterial->SetAssetPathFileName(GenericPath);
 			LoadedMaterial->RebuildCachedSRVs();
 			MaterialCache.emplace(GenericPath, LoadedMaterial);
 			return LoadedMaterial;
@@ -155,11 +180,25 @@ UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 		{
 			UObjectManager::Get().DestroyObject(LoadedObject);
 		}
+
+		UE_LOG_CATEGORY(Material, Warning,
+			"Material asset load failed. path=%s resolved=%s error=%s",
+			GenericPath.c_str(),
+			FPaths::ToUtf8(DiskPath.generic_wstring()).c_str(),
+			Error.c_str());
 	}
 
 	// .uasset이 없거나 None인 경우 기본 머티리얼 생성.
 	UMaterial* DefaultMaterial = UObjectManager::Get().CreateObject<UMaterial>();
 	FMaterialTemplate* Template = GetOrCreateTemplate(DefaultShaderPath);
+	if (!Template)
+	{
+		UE_LOG_CATEGORY(Material, Error,
+			"Failed to create fallback material because default shader template could not be loaded: %s",
+			DefaultShaderPath.c_str());
+		UObjectManager::Get().DestroyObject(DefaultMaterial);
+		return nullptr;
+	}
 	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> Buffers = CreateConstantBuffers(Template);
 	DefaultMaterial->Create(GenericPath, Template, ERenderPass::Opaque, EBlendState::Opaque,
 		EDepthStencilState::Default, ERasterizerState::SolidBackCull, std::move(Buffers), DefaultShaderPath);
@@ -170,14 +209,8 @@ UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 
 UMaterial* FMaterialManager::CreateMaterialAssetFromJson(const FString& AssetPath, json::JSON& JsonData)
 {
-	std::filesystem::path Path(FPaths::ToWide(AssetPath));
-	FString GenericPath = FPaths::ToUtf8(Path.generic_wstring());
-
-	auto It = MaterialCache.find(GenericPath);
-	if (It != MaterialCache.end())
-	{
-		return It->second;
-	}
+	const FString GenericPath = FPaths::NormalizePath(AssetPath);
+	std::filesystem::path Path(FPaths::ToWide(GenericPath));
 
 	FString PathFileName = JsonData[MatKeys::PathFileName].ToString().c_str();
 	FString ShaderPath = JsonData[MatKeys::ShaderPath].ToString().c_str();
@@ -202,10 +235,20 @@ UMaterial* FMaterialManager::CreateMaterialAssetFromJson(const FString& AssetPat
 
 	auto InjectedBuffers = CreateConstantBuffers(Template);
 
-	UMaterial* Material = UObjectManager::Get().CreateObject<UMaterial>();
-	Material->SetFName(FName(FPaths::ToUtf8(Path.stem().wstring())));
-	Material->Create(PathFileName.empty() ? GenericPath : PathFileName, Template, RenderPass, BlendState, DepthState, RasterState, std::move(InjectedBuffers), ShaderPath);
-	MaterialCache.emplace(GenericPath, Material);
+	UMaterial* Material = nullptr;
+	auto It = MaterialCache.find(GenericPath);
+	if (It != MaterialCache.end())
+	{
+		Material = It->second;
+	}
+	else
+	{
+		Material = UObjectManager::Get().CreateObject<UMaterial>();
+		Material->SetFName(FName(FPaths::ToUtf8(Path.stem().wstring())));
+		MaterialCache.emplace(GenericPath, Material);
+	}
+
+	Material->Create(PathFileName.empty() ? GenericPath : FPaths::NormalizePath(PathFileName), Template, RenderPass, BlendState, DepthState, RasterState, std::move(InjectedBuffers), ShaderPath);
 
 	InjectDefaultParameters(JsonData, Template, Material);
 	PurgeStaleParameters(JsonData, Template);
@@ -233,6 +276,10 @@ TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> FMaterialManager::Create
 {
 
 	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> InjectedBuffers;
+	if (!Template)
+	{
+		return InjectedBuffers;
+	}
 
 	const auto& RequiredBuffers = Template->GetParameterInfo();
 	std::vector<FString> CreatedBuffers;
@@ -288,7 +335,7 @@ void FMaterialManager::ApplyTextures(UMaterial* Material, json::JSON& JsonData)
 	for (auto& Pair : JsonData[MatKeys::Textures].ObjectRange())
 	{
 		FString SlotName = Pair.first.c_str();
-		FString TexturePath = Pair.second.ToString().c_str();
+		FString TexturePath = FPaths::NormalizePath(Pair.second.ToString().c_str());
 
 		UTexture2D* Texture = UTexture2D::LoadFromFile(TexturePath, Device);
 		if (Texture)

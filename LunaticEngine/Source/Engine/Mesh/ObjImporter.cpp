@@ -7,6 +7,7 @@
 #include "Mesh/MeshAssetManager.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
 #include "Materials/MaterialManager.h"
+#include "Texture/Texture2D.h"
 #include <algorithm>
 #include <fstream>
 #include <filesystem>
@@ -47,9 +48,9 @@ namespace
 		const std::filesystem::path RelativePath = std::filesystem::relative(NormalizedPath, RootPath, ErrorCode);
 		if (!ErrorCode && !RelativePath.empty())
 		{
-			return FPaths::ToUtf8(RelativePath.generic_wstring());
+			return FPaths::NormalizePath(FPaths::ToUtf8(RelativePath.generic_wstring()));
 		}
-		return FPaths::ToUtf8(NormalizedPath.generic_wstring());
+		return FPaths::NormalizePath(FPaths::ToUtf8(NormalizedPath.generic_wstring()));
 	}
 
 	FString MakeImportedMaterialAssetPath(const FString& SourceFilePath, const FString& MaterialSlotName)
@@ -599,7 +600,7 @@ bool FObjImporter::ParseMtl(const FString& MtlFilePath, TArray<FObjMaterialInfo>
 }
 
 // MTL 정보에서 정식 Material .uasset 파일로 변환한다.
-// 생성 위치는 Asset/Game/Content/Materials/<SourceAssetName>/ 이다.
+// 생성 위치는 Asset/Content/Materials/ 아래이다.
 FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePath, const FObjMaterialInfo* MtlInfo)
 {
 	if (!MtlInfo)
@@ -611,12 +612,6 @@ FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePat
 
 	const std::filesystem::path MaterialAssetPathW = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(MaterialAssetPath);
 
-	// 이미 존재하면 덮어쓰지 않음. 사용자가 Material Editor에서 수정했을 수 있다.
-	if (std::filesystem::exists(MaterialAssetPathW))
-	{
-		return MaterialAssetPath;
-	}
-
 	std::filesystem::create_directories(MaterialAssetPathW.parent_path());
 
 	json::JSON JsonData;
@@ -626,9 +621,13 @@ FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePat
 	JsonData["ShaderPath"] = "Shaders/Geometry/UberLit.hlsl";
 	JsonData["RenderPass"] = "Opaque";
 
-	if (!MtlInfo->map_Kd.empty())
+	const FString DiffuseTextureAssetPath = MtlInfo->map_Kd.empty() ? FString() : UTexture2D::ImportTextureAsset(MtlInfo->map_Kd);
+	const FString NormalTextureAssetPath = MtlInfo->bump.empty() ? FString() : UTexture2D::ImportTextureAsset(MtlInfo->bump);
+	const FString SpecularTextureAssetPath = MtlInfo->map_Ks.empty() ? FString() : UTexture2D::ImportTextureAsset(MtlInfo->map_Ks);
+
+	if (!DiffuseTextureAssetPath.empty())
 	{
-		JsonData["Textures"]["DiffuseTexture"] = MtlInfo->map_Kd;
+		JsonData["Textures"]["DiffuseTexture"] = DiffuseTextureAssetPath;
 
 		JsonData["Parameters"]["SectionColor"][0] = 1.0f;
 		JsonData["Parameters"]["SectionColor"][1] = 1.0f;
@@ -643,16 +642,16 @@ FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePat
 		JsonData["Parameters"]["SectionColor"][3] = 1.0f;
 	}
 
-	JsonData["Parameters"]["HasNormalMap"] = MtlInfo->bump.empty() ? 0.0f : 1.0f;
+	JsonData["Parameters"]["HasNormalMap"] = NormalTextureAssetPath.empty() ? 0.0f : 1.0f;
 
-	if (!MtlInfo->bump.empty())
+	if (!NormalTextureAssetPath.empty())
 	{
-		JsonData["Textures"]["NormalTexture"] = MtlInfo->bump;
+		JsonData["Textures"]["NormalTexture"] = NormalTextureAssetPath;
 	}
 
-	if (!MtlInfo->map_Ks.empty())
+	if (!SpecularTextureAssetPath.empty())
 	{
-		JsonData["Textures"]["SpecularTexture"] = MtlInfo->map_Ks;
+		JsonData["Textures"]["SpecularTexture"] = SpecularTextureAssetPath;
 	}
 
 	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);

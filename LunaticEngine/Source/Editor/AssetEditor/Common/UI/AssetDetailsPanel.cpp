@@ -167,6 +167,7 @@ bool FAssetDetailsPanel::RenderMaterialSlots(USkeletalMesh *Mesh, USkeletalMeshC
             nullptr,
             false,
             true,
+            false,
             120.0f,
         });
         if (bChanged)

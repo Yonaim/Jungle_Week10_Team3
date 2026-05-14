@@ -35,7 +35,7 @@ struct FAssetFileHeader
 namespace FAssetFileSerializer
 {
     static constexpr uint32 AssetMagic = 0x5453414A; // 'JAST' little-endian: Jungle Asset
-    static constexpr uint32 AssetVersion = 3;
+    static constexpr uint32 AssetVersion = 4;
 
     EAssetClassId GetAssetClassIdFromClassName(const FString& ClassName);
     FString       GetClassNameFromAssetClassId(EAssetClassId ClassId);

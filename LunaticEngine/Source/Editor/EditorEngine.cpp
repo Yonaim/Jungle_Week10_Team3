@@ -71,6 +71,43 @@ void ApplyLevelTransformSettingsToGizmo(FGizmoManager& Manager, const FLevelEdit
                             Settings.bEnableScaleSnap, Settings.ScaleSnapSize);
     Manager.SyncVisualFromTarget();
 }
+
+
+void DeactivateAllExceptActiveLevelViewport(FLevelViewportLayout* Layout)
+{
+    if (!Layout)
+    {
+        return;
+    }
+
+    FLevelEditorViewportClient* ActiveClient = Layout->GetActiveViewport();
+    for (FLevelEditorViewportClient* Client : Layout->GetLevelViewportClients())
+    {
+        if (!Client)
+        {
+            continue;
+        }
+
+        if (Client == ActiveClient)
+        {
+            // IMPORTANT: Do not call ActivateEditorContext() every frame.
+            // Activation resets transient gizmo interaction state; doing that from
+            // UEditorEngine::Tick() makes the active gizmo unable to start/continue drag.
+            // Only activate when this viewport was actually inactive.
+            if (!Client->IsEditorContextActive())
+            {
+                Client->ActivateEditorContext();
+            }
+        }
+        else
+        {
+            if (Client->IsEditorContextActive())
+            {
+                Client->DeactivateEditorContext();
+            }
+        }
+    }
+}
 } // namespace
 
 void UEditorEngine::Init(FWindowsWindow *InWindow)
@@ -172,12 +209,29 @@ void UEditorEngine::Tick(float DeltaTime)
         PendingSceneLoadReference.clear();
         LoadScene(SceneToLoad);
     }
+    // 절대 격리 안전장치: 매 프레임 현재 활성 editor context가 아닌 쪽의 viewport/gizmo를 강제로 끊는다.
+    // 설계적으로 예쁘지는 않지만, Level/Asset 탭이 동시에 열린 상태에서 hidden tab의 stale gizmo target이
+    // 나중에 transform을 적용하는 문제를 즉시 차단한다.
+    if (IsAssetEditorContextActive())
+    {
+        if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+        {
+            DeactivateLevelViewportClients(ActiveLayout->GetLevelViewportClients());
+        }
+    }
+    else
+    {
+        AssetEditorManager.ForceDeactivateAllViewportClients();
+        DeactivateAllExceptActiveLevelViewport(LevelEditorWindow.GetActiveLevelViewportLayout());
+    }
+
     // Asset Editor 컨텍스트가 활성화되어 있어도 Level 월드와 에디터 서브시스템은 계속 Tick된다.
     // 활성 컨텍스트는 뷰포트 입력/렌더 포커스만 가지며, 에디터 월드 자체를 멈추지는 않는다.
     LevelEditor.Tick(DeltaTime);
 
     ApplyTransformSettingsToGizmo();
     FDirectoryWatcher::Get().ProcessChanges();
+    AssetImportManager.Tick();
     if (UTexture2D::HasPendingTextureRefresh())
     {
         UTexture2D::RefreshChangedTextures(Renderer.GetFD3DDevice().GetDevice());
@@ -257,15 +311,24 @@ void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
     const EEditorContextType PreviousContextType = ActiveEditorContextType;
     if (PreviousContextType == InContextType)
     {
+        // Re-entering the same context can happen when selecting a document tab inside the same main window.
+        // Treat it as a full ownership refresh, not a no-op.  This cleans up the opposite editor side even if
+        // an earlier activation path accidentally left a viewport alive.
         if (InContextType == EEditorContextType::AssetEditor)
         {
+            if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
+            {
+                DeactivateLevelViewportClients(ActiveLayout->GetLevelViewportClients());
+            }
             AssetEditorManager.GetAssetEditorWindow().EnterEditorContext();
         }
         else
         {
+            AssetEditorManager.GetAssetEditorWindow().ExitEditorContext();
+            AssetEditorManager.ForceDeactivateAllViewportClients();
             if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
             {
-                ActivateLevelViewportClient(ActiveLayout->GetActiveViewport());
+                DeactivateAllExceptActiveLevelViewport(ActiveLayout);
             }
             ApplyTransformSettingsToGizmo();
         }
@@ -296,10 +359,11 @@ void UEditorEngine::SetActiveEditorContext(EEditorContextType InContextType)
 
     // Asset Editor 탭은 닫지 않는다. state/selection/preview scene/layout은 탭 객체에 유지하고,
     // live input/tick/render target sync만 ExitEditorContext()에서 끊는다.
+    AssetEditorManager.ForceDeactivateAllViewportClients();
     RestoreLevelEditorUIAfterAssetEditor();
     if (FLevelViewportLayout *ActiveLayout = LevelEditorWindow.GetActiveLevelViewportLayout())
     {
-        ActivateLevelViewportClient(ActiveLayout->GetActiveViewport());
+        DeactivateAllExceptActiveLevelViewport(ActiveLayout);
     }
     ApplyTransformSettingsToGizmo();
 }
@@ -380,6 +444,11 @@ bool UEditorEngine::IsScoreSavePopupOpen() const { return LevelEditor.GetPIEMana
 
 void UEditorEngine::ToggleCoordSystem()
 {
+    if (!IsLevelEditorContextActive())
+    {
+        return;
+    }
+
     FLevelEditorSettings &Settings = FLevelEditorSettings::Get();
     Settings.CoordSystem = (Settings.CoordSystem == EEditorCoordSystem::World) ? EEditorCoordSystem::Local : EEditorCoordSystem::World;
     ApplyTransformSettingsToGizmo();
@@ -641,6 +710,8 @@ bool UEditorEngine::LoadSceneWithDialog() { return LevelEditor.GetSceneManager()
 bool UEditorEngine::ImportAssetWithDialog() { return AssetImportManager.ImportAssetWithDialog(); }
 
 bool UEditorEngine::ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath) { return AssetImportManager.ImportAssetFromPath(SourcePath, OutImportedAssetPath); }
+
+bool UEditorEngine::QueueImportAssetFromPath(const FString& SourcePath) { return AssetImportManager.QueueImportAssetFromPath(SourcePath); }
 
 bool UEditorEngine::ImportMaterialWithDialog() { return AssetImportManager.ImportMaterialWithDialog(); }
 

@@ -5,15 +5,41 @@
 #include "Core/Log.h"
 #include "Engine/Platform/Paths.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
+#include "Texture/Texture2D.h"
 
 #include <fstream>
 #include <filesystem>
+#include <vector>
+#include <algorithm>
 #include <cmath>
+#include <cwctype>
 
 #if defined(_WIN64)
 
 namespace
 {
+	FString FindTexturePathFromProperty(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial, const char* PropertyName)
+	{
+		if (!FbxMaterial || !PropertyName)
+		{
+			return "";
+		}
+
+		FbxProperty Property = FbxMaterial->FindProperty(PropertyName);
+		if (!Property.IsValid())
+		{
+			return "";
+		}
+
+		const int32 TextureCount = Property.GetSrcObjectCount<FbxFileTexture>();
+		if (TextureCount <= 0)
+		{
+			return "";
+		}
+
+		return FFbxCommon::ResolveFbxTexturePath(FbxFilePath, Property.GetSrcObject<FbxFileTexture>(0));
+	}
+
 	int32 GetPolygonVertexLinearIndex(FbxMesh* Mesh, int32 PolygonIndex, int32 CornerIndex)
 	{
 		if (!Mesh || PolygonIndex < 0 || CornerIndex < 0)
@@ -50,6 +76,207 @@ namespace
 	bool IsFiniteVector(const FVector& Vector)
 	{
 		return std::isfinite(Vector.X) && std::isfinite(Vector.Y) && std::isfinite(Vector.Z);
+	}
+
+	void AddUniqueCandidatePath(std::vector<std::filesystem::path>& Candidates, const std::filesystem::path& Candidate)
+	{
+		if (Candidate.empty())
+		{
+			return;
+		}
+
+		const std::filesystem::path Normalized = Candidate.lexically_normal();
+		if (std::find(Candidates.begin(), Candidates.end(), Normalized) == Candidates.end())
+		{
+			Candidates.push_back(Normalized);
+		}
+	}
+
+	std::wstring ToLowerCopy(std::wstring Text)
+	{
+		std::transform(Text.begin(), Text.end(), Text.begin(), [](wchar_t Character)
+		{
+			return static_cast<wchar_t>(std::towlower(Character));
+		});
+		return Text;
+	}
+
+	void AddAncestorTextureRoots(std::vector<std::filesystem::path>& SearchRoots, const std::filesystem::path& StartPath)
+	{
+		std::filesystem::path Current = StartPath.lexically_normal();
+		while (!Current.empty())
+		{
+			AddUniqueCandidatePath(SearchRoots, Current);
+			AddUniqueCandidatePath(SearchRoots, Current / L"textures");
+			AddUniqueCandidatePath(SearchRoots, Current / L"Textures");
+
+			const std::filesystem::path Parent = Current.parent_path();
+			if (Parent == Current)
+			{
+				break;
+			}
+			Current = Parent;
+		}
+	}
+
+	void AddTrimmedRelativeCandidates(
+		std::vector<std::filesystem::path>& Candidates,
+		const std::vector<std::filesystem::path>& SearchRoots,
+		const std::filesystem::path& RawPath)
+	{
+		if (RawPath.empty())
+		{
+			return;
+		}
+
+		std::vector<std::filesystem::path> SuffixPaths;
+		AddUniqueCandidatePath(SuffixPaths, RawPath);
+
+		std::vector<std::filesystem::path> Components;
+		for (const auto& Part : RawPath)
+		{
+			if (Part.empty() || Part == L".")
+			{
+				continue;
+			}
+			SuffixPaths.reserve(SuffixPaths.size() + 1);
+			Components.push_back(Part);
+		}
+
+		for (size_t StartIndex = 1; StartIndex < Components.size(); ++StartIndex)
+		{
+			std::filesystem::path Suffix;
+			for (size_t Index = StartIndex; Index < Components.size(); ++Index)
+			{
+				Suffix /= Components[Index];
+			}
+			AddUniqueCandidatePath(SuffixPaths, Suffix);
+		}
+
+		for (const std::filesystem::path& SearchRoot : SearchRoots)
+		{
+			for (const std::filesystem::path& SuffixPath : SuffixPaths)
+			{
+				AddUniqueCandidatePath(Candidates, SearchRoot / SuffixPath);
+			}
+		}
+	}
+
+	std::filesystem::path FindTextureByFileName(
+		const std::vector<std::filesystem::path>& SearchRoots,
+		const std::wstring& FileName)
+	{
+		for (const std::filesystem::path& SearchRoot : SearchRoots)
+		{
+			std::error_code ErrorCode;
+			if (!std::filesystem::exists(SearchRoot, ErrorCode))
+			{
+				continue;
+			}
+
+			for (const std::filesystem::directory_entry& Entry : std::filesystem::recursive_directory_iterator(SearchRoot, std::filesystem::directory_options::skip_permission_denied, ErrorCode))
+			{
+				if (ErrorCode)
+				{
+					break;
+				}
+				if (Entry.is_regular_file() && ToLowerCopy(Entry.path().filename().wstring()) == ToLowerCopy(FileName))
+				{
+					return Entry.path().lexically_normal();
+				}
+			}
+		}
+
+		return {};
+	}
+
+	std::filesystem::path FindTextureByStemHeuristic(
+		const std::vector<std::filesystem::path>& SearchRoots,
+		const std::filesystem::path& RawPath)
+	{
+		const std::wstring TargetStem = ToLowerCopy(RawPath.stem().wstring());
+		const std::wstring TargetExtension = ToLowerCopy(RawPath.extension().wstring());
+		if (TargetStem.empty())
+		{
+			return {};
+		}
+
+		std::filesystem::path BestMatch;
+		int32 BestScore = 0;
+
+		for (const std::filesystem::path& SearchRoot : SearchRoots)
+		{
+			std::error_code ErrorCode;
+			if (!std::filesystem::exists(SearchRoot, ErrorCode))
+			{
+				continue;
+			}
+
+			for (const std::filesystem::directory_entry& Entry : std::filesystem::recursive_directory_iterator(SearchRoot, std::filesystem::directory_options::skip_permission_denied, ErrorCode))
+			{
+				if (ErrorCode)
+				{
+					break;
+				}
+				if (!Entry.is_regular_file())
+				{
+					continue;
+				}
+
+				const std::wstring CandidateStem = ToLowerCopy(Entry.path().stem().wstring());
+				const std::wstring CandidateExtension = ToLowerCopy(Entry.path().extension().wstring());
+				if (!TargetExtension.empty() && CandidateExtension != TargetExtension)
+				{
+					continue;
+				}
+
+				int32 Score = 0;
+				if (CandidateStem == TargetStem)
+				{
+					Score = 4;
+				}
+				else if (CandidateStem.find(TargetStem) != std::wstring::npos || TargetStem.find(CandidateStem) != std::wstring::npos)
+				{
+					Score = 3;
+				}
+				else
+				{
+					continue;
+				}
+
+				if (Score > BestScore)
+				{
+					BestScore = Score;
+					BestMatch = Entry.path().lexically_normal();
+				}
+			}
+		}
+
+		return BestMatch;
+	}
+
+	bool IsRelativeSubpath(const std::filesystem::path& RelativePath)
+	{
+		return !RelativePath.empty()
+			&& RelativePath.native().find(L"..") != 0
+			&& !RelativePath.is_absolute();
+	}
+
+	std::filesystem::path MakeImportedMaterialDirectory(const FString& SourceFilePath)
+	{
+		const std::filesystem::path ContentRoot = std::filesystem::path(FPaths::ContentDir()).lexically_normal();
+		const std::filesystem::path SourceRoot = std::filesystem::path(FPaths::EngineSourceDir()).lexically_normal();
+		const std::filesystem::path SourcePath = std::filesystem::path(FPaths::ToWide(SourceFilePath)).lexically_normal();
+		const std::filesystem::path RelativeToSource = SourcePath.lexically_relative(SourceRoot);
+
+		std::filesystem::path MaterialDirectory = ContentRoot / L"Materials";
+		if (IsRelativeSubpath(RelativeToSource))
+		{
+			MaterialDirectory /= RelativeToSource.parent_path();
+			MaterialDirectory /= RelativeToSource.stem();
+		}
+
+		return MaterialDirectory.lexically_normal();
 	}
 }
 
@@ -160,6 +387,7 @@ int32 FFbxCommon::FindOrAddMaterial(const FString& FbxFilePath, FbxNode* Node, i
 	MaterialInfo.SourceMaterial = SourceMaterial;
 	MaterialInfo.MaterialSlotName = SanitizeName(SourceMaterial->GetName());
 	MaterialInfo.DiffuseTexturePath = FindDiffuseTexturePath(FbxFilePath, SourceMaterial);
+	MaterialInfo.NormalTexturePath = FindNormalTexturePath(FbxFilePath, SourceMaterial);
 	MaterialInfo.DiffuseColor = GetDiffuseColor(SourceMaterial);
 
 	const int32 MaterialIndex = static_cast<int32>(Context.Materials.size());
@@ -175,17 +403,11 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 		return "None";
 	}
 
-	const FString SourceAssetName = SanitizeName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(FbxFilePath)).stem().wstring()));
 	const FString SlotAssetName = SanitizeName(MaterialInfo.MaterialSlotName.empty() ? FString("None") : MaterialInfo.MaterialSlotName);
 
-	std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials";
+	std::filesystem::path MaterialDirectory = MakeImportedMaterialDirectory(FbxFilePath);
 	std::filesystem::path MaterialAssetPathW = MaterialDirectory / (L"M_" + FPaths::ToWide(SlotAssetName) + L".uasset");
 	const FString MaterialAssetPath = MakeProjectRelativePath(MaterialAssetPathW);
-
-	if (std::filesystem::exists(MaterialAssetPathW))
-	{
-		return MaterialAssetPath;
-	}
 
 	std::filesystem::create_directories(MaterialDirectory);
 
@@ -196,9 +418,16 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 	JsonData["ShaderPath"] = "Shaders/Geometry/UberLit.hlsl";
 	JsonData["RenderPass"] = "Opaque";
 
-	if (!MaterialInfo.DiffuseTexturePath.empty())
+	const FString DiffuseTextureAssetPath = MaterialInfo.DiffuseTexturePath.empty()
+		? FString()
+		: UTexture2D::ImportTextureAsset(MaterialInfo.DiffuseTexturePath);
+	const FString NormalTextureAssetPath = MaterialInfo.NormalTexturePath.empty()
+		? FString()
+		: UTexture2D::ImportTextureAsset(MaterialInfo.NormalTexturePath);
+
+	if (!DiffuseTextureAssetPath.empty())
 	{
-		JsonData["Textures"]["DiffuseTexture"] = MaterialInfo.DiffuseTexturePath;
+		JsonData["Textures"]["DiffuseTexture"] = DiffuseTextureAssetPath;
 		JsonData["Parameters"]["SectionColor"][0] = 1.0f;
 		JsonData["Parameters"]["SectionColor"][1] = 1.0f;
 		JsonData["Parameters"]["SectionColor"][2] = 1.0f;
@@ -210,6 +439,12 @@ FString FFbxCommon::ConvertMaterialInfoToMaterialAsset(const FString& FbxFilePat
 		JsonData["Parameters"]["SectionColor"][1] = MaterialInfo.DiffuseColor.Y;
 		JsonData["Parameters"]["SectionColor"][2] = MaterialInfo.DiffuseColor.Z;
 		JsonData["Parameters"]["SectionColor"][3] = 1.0f;
+	}
+
+	JsonData["Parameters"]["HasNormalMap"] = NormalTextureAssetPath.empty() ? 0.0f : 1.0f;
+	if (!NormalTextureAssetPath.empty())
+	{
+		JsonData["Textures"]["NormalTexture"] = NormalTextureAssetPath;
 	}
 
 	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);
@@ -254,24 +489,18 @@ FVector FFbxCommon::GetDiffuseColor(FbxSurfaceMaterial* FbxMaterial)
 
 FString FFbxCommon::FindDiffuseTexturePath(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial)
 {
-	if (!FbxMaterial)
+	return FindTexturePathFromProperty(FbxFilePath, FbxMaterial, FbxSurfaceMaterial::sDiffuse);
+}
+
+FString FFbxCommon::FindNormalTexturePath(const FString& FbxFilePath, FbxSurfaceMaterial* FbxMaterial)
+{
+	FString TexturePath = FindTexturePathFromProperty(FbxFilePath, FbxMaterial, FbxSurfaceMaterial::sNormalMap);
+	if (!TexturePath.empty())
 	{
-		return "";
+		return TexturePath;
 	}
 
-	FbxProperty DiffuseProperty = FbxMaterial->FindProperty(FbxSurfaceMaterial::sDiffuse);
-	if (!DiffuseProperty.IsValid())
-	{
-		return "";
-	}
-
-	const int32 TextureCount = DiffuseProperty.GetSrcObjectCount<FbxFileTexture>();
-	if (TextureCount <= 0)
-	{
-		return "";
-	}
-
-	return ResolveFbxTexturePath(FbxFilePath, DiffuseProperty.GetSrcObject<FbxFileTexture>(0));
+	return FindTexturePathFromProperty(FbxFilePath, FbxMaterial, FbxSurfaceMaterial::sBump);
 }
 
 FString FFbxCommon::ResolveFbxTexturePath(const FString& FbxFilePath, FbxFileTexture* Texture)
@@ -281,23 +510,79 @@ FString FFbxCommon::ResolveFbxTexturePath(const FString& FbxFilePath, FbxFileTex
 		return "";
 	}
 
-	FString TexturePath = Texture->GetRelativeFileName();
-	if (TexturePath.empty())
+	TArray<FString> RawPaths;
+	if (Texture->GetRelativeFileName() && Texture->GetRelativeFileName()[0] != '\0')
 	{
-		TexturePath = Texture->GetFileName();
+		RawPaths.push_back(Texture->GetRelativeFileName());
 	}
-	if (TexturePath.empty())
+	if (Texture->GetFileName() && Texture->GetFileName()[0] != '\0')
+	{
+		RawPaths.push_back(Texture->GetFileName());
+	}
+	if (RawPaths.empty())
 	{
 		return "";
 	}
 
-	std::filesystem::path Candidate(FPaths::ToWide(TexturePath));
-	if (!Candidate.is_absolute())
+	std::vector<std::filesystem::path> Candidates;
+
+	const std::filesystem::path Root(FPaths::RootDir());
+	const std::filesystem::path FbxDir = std::filesystem::path(FPaths::ToWide(FbxFilePath)).parent_path();
+	std::vector<std::filesystem::path> SearchRoots;
+	AddAncestorTextureRoots(SearchRoots, FbxDir);
+	AddUniqueCandidatePath(SearchRoots, std::filesystem::path(FPaths::AssetDir()));
+	AddUniqueCandidatePath(SearchRoots, std::filesystem::path(FPaths::ContentDir()));
+	AddUniqueCandidatePath(SearchRoots, std::filesystem::path(FPaths::EngineSourceDir()));
+
+	for (const FString& RawPath : RawPaths)
 	{
-		Candidate = std::filesystem::path(FPaths::ToWide(FbxFilePath)).parent_path() / Candidate;
+		std::filesystem::path Raw(FPaths::ToWide(RawPath));
+		AddUniqueCandidatePath(Candidates, Raw.is_absolute() ? Raw : FbxDir / Raw);
+		AddUniqueCandidatePath(Candidates, Raw.is_absolute() ? Raw : Root / Raw);
+		AddTrimmedRelativeCandidates(Candidates, SearchRoots, Raw);
+
+		std::wstring SlashPath = FPaths::ToWide(RawPath);
+		std::replace(SlashPath.begin(), SlashPath.end(), L'\\', L'/');
+		auto AddProjectSegmentCandidate = [&](const std::wstring& Marker)
+		{
+			const size_t Pos = SlashPath.find(Marker);
+			if (Pos != std::wstring::npos)
+			{
+				AddUniqueCandidatePath(Candidates, Root / std::filesystem::path(SlashPath.substr(Pos)));
+			}
+		};
+		AddProjectSegmentCandidate(L"Asset/Content/");
+		AddProjectSegmentCandidate(L"Asset/");
 	}
 
-	return MakeProjectRelativePath(Candidate);
+	for (const std::filesystem::path& Candidate : Candidates)
+	{
+		std::error_code ErrorCode;
+		if (std::filesystem::exists(Candidate, ErrorCode) && std::filesystem::is_regular_file(Candidate, ErrorCode))
+		{
+			return FPaths::NormalizePath(FPaths::ToUtf8(Candidate.generic_wstring()));
+		}
+	}
+
+	const std::wstring FileName = std::filesystem::path(FPaths::ToWide(RawPaths.front())).filename().wstring();
+	if (!FileName.empty())
+	{
+		if (std::filesystem::path ExactFileMatch = FindTextureByFileName(SearchRoots, FileName); !ExactFileMatch.empty())
+		{
+			return FPaths::NormalizePath(FPaths::ToUtf8(ExactFileMatch.generic_wstring()));
+		}
+
+		if (std::filesystem::path HeuristicMatch = FindTextureByStemHeuristic(SearchRoots, std::filesystem::path(FPaths::ToWide(RawPaths.front()))); !HeuristicMatch.empty())
+		{
+			return FPaths::NormalizePath(FPaths::ToUtf8(HeuristicMatch.generic_wstring()));
+		}
+	}
+
+	UE_LOG_CATEGORY(ObjImporter, Warning,
+		"Failed to resolve FBX texture path: fbx=%s raw=%s",
+		FbxFilePath.c_str(),
+		RawPaths.front().c_str());
+	return "";
 }
 
 FString FFbxCommon::MakeProjectRelativePath(const std::filesystem::path& Path)
@@ -308,9 +593,9 @@ FString FFbxCommon::MakeProjectRelativePath(const std::filesystem::path& Path)
 	const std::filesystem::path RelativePath = std::filesystem::relative(NormalizedPath, RootPath, ErrorCode);
 	if (!ErrorCode && !RelativePath.empty())
 	{
-		return FPaths::ToUtf8(RelativePath.generic_wstring());
+		return FPaths::NormalizePath(FPaths::ToUtf8(RelativePath.generic_wstring()));
 	}
-	return FPaths::ToUtf8(NormalizedPath.generic_wstring());
+	return FPaths::NormalizePath(FPaths::ToUtf8(NormalizedPath.generic_wstring()));
 }
 
 bool FFbxCommon::ReadNormal(FbxMesh* Mesh, int32 ControlPointIndex, int32 PolygonIndex, int32 CornerIndex, FbxVector4& OutNormal)

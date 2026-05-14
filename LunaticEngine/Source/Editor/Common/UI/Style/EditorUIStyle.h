@@ -182,7 +182,7 @@ inline void PushPopupWindowStyle()
     ImGui::PushStyleColor(ImGuiCol_Separator, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorHovered, PopupSectionLineColor);
     ImGui::PushStyleColor(ImGuiCol_SeparatorActive, PopupSectionLineColor);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 14.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 14.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(5.0f, 4.0f));

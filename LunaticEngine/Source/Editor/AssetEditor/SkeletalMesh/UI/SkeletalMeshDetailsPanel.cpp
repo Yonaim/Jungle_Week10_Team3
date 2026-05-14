@@ -294,49 +294,19 @@ void FSkeletalMeshDetailsPanel::RenderTransformSection(USkeletalMesh *Mesh, USke
         ImGui::TextDisabled("Enable Pose Edit Mode to edit Bone transform values.");
     }
 
+    const FTransform &ResetTransform = MeshAsset->Bones[BoneIndex].LocalBindTransform;
     FVector Location = DisplayTransform.Location;
     FVector RotationEuler = DisplayTransform.Rotation.ToRotator().ToVector();
     FVector Scale = DisplayTransform.Scale;
+    const FVector ResetLocation = ResetTransform.Location;
+    const FVector ResetRotationEuler = ResetTransform.Rotation.ToRotator().ToVector();
+    const FVector ResetScale = ResetTransform.Scale;
 
     ImGui::Spacing();
     bool bChanged = false;
-    bool bLocationResetClicked = false;
-    bool bRotationResetClicked = false;
-    bool bScaleResetClicked = false;
-    const bool bShowReset = bCanEdit;
-    bChanged |= FEditorDetailsWidgets::DrawVector3RowWithReset("Location", Location, bReadOnly, &bLocationResetClicked, bShowReset);
-    bChanged |= FEditorDetailsWidgets::DrawVector3RowWithReset("Rotation", RotationEuler, bReadOnly, &bRotationResetClicked, bShowReset);
-    bChanged |= FEditorDetailsWidgets::DrawVector3RowWithReset("Scale", Scale, bReadOnly, &bScaleResetClicked, bShowReset);
-
-    const bool bResetRequested = bLocationResetClicked || bRotationResetClicked || bScaleResetClicked;
-    if (bResetRequested && bCanEdit)
-    {
-        FTransform ResetLocal = DisplayTransform;
-        const FTransform &DefaultLocal = MeshAsset->Bones[BoneIndex].LocalBindTransform;
-        if (bLocationResetClicked)
-        {
-            ResetLocal.Location = DefaultLocal.Location;
-        }
-        if (bRotationResetClicked)
-        {
-            ResetLocal.Rotation = DefaultLocal.Rotation;
-        }
-        if (bScaleResetClicked)
-        {
-            ResetLocal.Scale = DefaultLocal.Scale;
-        }
-
-        if (PoseController)
-        {
-            PoseController->SetBoneLocalTransformFromUI(BoneIndex, ResetLocal);
-        }
-        else if (PreviewComponent)
-        {
-            PreviewComponent->SetBoneLocalTransform(BoneIndex, ResetLocal);
-            PreviewComponent->RefreshSkinningNow();
-        }
-        return;
-    }
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Location", Location, bReadOnly, bCanEdit, &ResetLocation);
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Rotation", RotationEuler, bReadOnly, bCanEdit, &ResetRotationEuler);
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Scale", Scale, bReadOnly, bCanEdit, &ResetScale);
 
     if (bChanged && bCanEdit)
     {

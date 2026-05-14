@@ -1,6 +1,7 @@
 #include "PCH/LunaticPCH.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialManager.h"
+#include "Core/Log.h"
 #include "Serialization/Archive.h"
 #include "Render/Shader/Shader.h"
 #include "Texture/Texture2D.h"
@@ -104,6 +105,22 @@ void UMaterial::Create(const FString& InPathFileName, FMaterialTemplate* InTempl
 	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>>&& InBuffers,
 	const FString& InShaderPath)
 {
+	for (auto& Pair : ConstantBufferMap)
+	{
+		if (Pair.second)
+		{
+			Pair.second->Release();
+		}
+	}
+	ConstantBufferMap.clear();
+	TextureParameters.clear();
+	for (ID3D11ShaderResourceView*& CachedSRV : CachedSRVs)
+	{
+		CachedSRV = nullptr;
+	}
+	PerShaderOverride = {};
+	TransientShader = nullptr;
+
 	PathFileName = InPathFileName;
 	Template = InTemplate;
 	ShaderPath = InShaderPath.empty() && InTemplate ? InTemplate->GetShaderPath() : InShaderPath;
@@ -117,6 +134,11 @@ void UMaterial::Create(const FString& InPathFileName, FMaterialTemplate* InTempl
 
 bool UMaterial::SetParameter(const FString& Name, const void* Data, uint32 Size)
 {
+	if (!Template)
+	{
+		return false;
+	}
+
 	FMaterialParameterInfo Info;
 	if (!Template->GetParameterInfo(Name, Info)) {
 		return false;
@@ -174,6 +196,11 @@ bool UMaterial::SetMatrixParameter(const FString& ParamName, const FMatrix& Valu
 
 bool UMaterial::GetScalarParameter(const FString& ParamName, float& OutValue) const
 {
+	if (!Template)
+	{
+		return false;
+	}
+
 	FMaterialParameterInfo Info;
 	if (!Template->GetParameterInfo(ParamName, Info)) return false;
 
@@ -187,6 +214,11 @@ bool UMaterial::GetScalarParameter(const FString& ParamName, float& OutValue) co
 
 bool UMaterial::GetVector3Parameter(const FString& ParamName, FVector& OutValue) const
 {
+	if (!Template)
+	{
+		return false;
+	}
+
 	FMaterialParameterInfo Info;
 	if (!Template->GetParameterInfo(ParamName, Info)) return false;
 
@@ -200,6 +232,11 @@ bool UMaterial::GetVector3Parameter(const FString& ParamName, FVector& OutValue)
 
 bool UMaterial::GetVector4Parameter(const FString& ParamName, FVector4& OutValue) const
 {
+	if (!Template)
+	{
+		return false;
+	}
+
 	FMaterialParameterInfo Info;
 	if (!Template->GetParameterInfo(ParamName, Info)) return false;
 
@@ -222,6 +259,11 @@ bool UMaterial::GetTextureParameter(const FString& ParamName, UTexture2D*& OutTe
 
 bool UMaterial::GetMatrixParameter(const FString& ParamName, FMatrix& Value) const
 {
+	if (!Template)
+	{
+		return false;
+	}
+
 	FMaterialParameterInfo Info;
 	if (!Template->GetParameterInfo(ParamName, Info)) return false;
 
@@ -281,6 +323,15 @@ void UMaterial::Serialize(FArchive& Ar)
 		}
 
 		Template = FMaterialManager::Get().GetOrCreateTemplate(ShaderPath);
+		if (!Template && ShaderPath != "Shaders/Geometry/UberLit.hlsl")
+		{
+			UE_LOG_CATEGORY(Material, Warning,
+				"Material '%s' failed to load shader '%s'. Falling back to default UberLit shader.",
+				PathFileName.c_str(),
+				ShaderPath.c_str());
+			ShaderPath = "Shaders/Geometry/UberLit.hlsl";
+			Template = FMaterialManager::Get().GetOrCreateTemplate(ShaderPath);
+		}
 		ConstantBufferMap = FMaterialManager::Get().CreateConstantBuffers(Template);
 	}
 

@@ -81,6 +81,7 @@ class FAssetEditorWindow : public IEditorMenuProvider
     bool IsCapturingInput() const;
     FEditorViewportClient *GetActiveViewportClient() const;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
+    void ForceDeactivateAllViewportClients();
 
     // IEditorMenuProvider: 공통 EditorMenuBar가 호출하는 메뉴 구성 함수들.
     void BuildFileMenu() override;

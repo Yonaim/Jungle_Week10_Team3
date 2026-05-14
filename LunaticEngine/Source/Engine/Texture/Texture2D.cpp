@@ -3,6 +3,7 @@
 #include "Object/ObjectFactory.h"
 #include "Core/AsciiUtils.h"
 #include "Core/Log.h"
+#include "Engine/Runtime/Engine.h"
 #include "Engine/Platform/DirectoryWatcher.h"
 #include "Platform/Paths.h"
 #include "Engine/Asset/AssetFileSerializer.h"
@@ -13,6 +14,8 @@
 #include <cwctype>
 #include <d3d11.h>
 #include <filesystem>
+#include <vector>
+#include <algorithm>
 #include <wincodec.h>
 
 IMPLEMENT_CLASS(UTexture2D, UObject)
@@ -29,58 +32,224 @@ namespace
 {
 	FString NormalizeTexturePath(const FString& FilePath)
 	{
-		if (FilePath.empty())
-		{
-			return FilePath;
-		}
-
-		std::filesystem::path Path(FPaths::ToWide(FilePath));
-		const std::filesystem::path Root(FPaths::RootDir());
-
-		if (Path.is_absolute())
-		{
-			auto Relative = Path.lexically_relative(Root);
-			if (!Relative.empty() && Relative.native() != L".")
-			{
-				return FPaths::ToUtf8(Relative.generic_wstring());
-			}
-		}
-
-		return FPaths::ToUtf8(Path.lexically_normal().generic_wstring());
+		return FPaths::NormalizePath(FilePath);
 	}
 
 	std::wstring ResolveTexturePathOnDisk(const FString& FilePath)
 	{
-		if (FilePath.empty()) return {};
+		return FPaths::ResolvePathToDisk(FilePath);
+	}
 
-		std::filesystem::path Path(FPaths::ToWide(FilePath));
-		if (Path.is_absolute())
+	std::filesystem::path TryGetProjectRootFromAssetPath(const FString& PathText)
+	{
+		std::wstring SlashPath = FPaths::ToWide(PathText);
+		std::replace(SlashPath.begin(), SlashPath.end(), L'\\', L'/');
+
+		auto TryMarker = [&](const std::wstring& Marker) -> std::filesystem::path
 		{
-			return Path.lexically_normal().wstring();
+			const size_t Pos = SlashPath.find(Marker);
+			if (Pos == std::wstring::npos || Pos == 0)
+			{
+				return {};
+			}
+
+			std::filesystem::path CandidateRoot(SlashPath.substr(0, Pos));
+			std::error_code ErrorCode;
+			if (std::filesystem::exists(CandidateRoot / L"Asset" / L"Content", ErrorCode))
+			{
+				return CandidateRoot.lexically_normal();
+			}
+
+			// 존재 여부와 무관하게, 절대 경로 문자열 안에 Asset/Content가 있으면
+			// 그 앞부분은 "그 파일이 원래 속했던 프로젝트 루트"로 볼 수 있다.
+			if (CandidateRoot.is_absolute())
+			{
+				return CandidateRoot.lexically_normal();
+			}
+
+			return {};
+		};
+
+		if (std::filesystem::path Root = TryMarker(L"/Asset/Content/"); !Root.empty())
+		{
+			return Root;
+		}
+		if (std::filesystem::path Root = TryMarker(L"Asset/Content/"); !Root.empty())
+		{
+			return Root;
+		}
+		if (std::filesystem::path Root = TryMarker(L"/Asset/"); !Root.empty())
+		{
+			return Root;
+		}
+		return {};
+	}
+
+	FString ToLowerAsciiCopy(FString Value)
+	{
+		AsciiUtils::ToLowerInPlace(Value);
+		return Value;
+	}
+
+	void AddUniquePath(std::vector<std::filesystem::path>& Paths, const std::filesystem::path& Path)
+	{
+		if (Path.empty())
+		{
+			return;
 		}
 
-		// 1. Root relative (Asset/Game/Content/...)
-		std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / Path;
-		if (std::filesystem::exists(FullPath))
+		const std::filesystem::path Normalized = Path.lexically_normal();
+		if (std::find(Paths.begin(), Paths.end(), Normalized) == Paths.end())
 		{
-			return FullPath.lexically_normal().wstring();
+			Paths.push_back(Normalized);
+		}
+	}
+
+	void AddContentSearchRoots(std::vector<std::filesystem::path>& Roots, const FString& SourcePath)
+	{
+		AddUniquePath(Roots, std::filesystem::path(FPaths::AssetDir()));
+		AddUniquePath(Roots, std::filesystem::path(FPaths::EngineSourceDir()));
+		AddUniquePath(Roots, std::filesystem::path(FPaths::ContentDir()));
+		AddUniquePath(Roots, std::filesystem::current_path() / L"Asset" / L"Content");
+		AddUniquePath(Roots, std::filesystem::current_path() / L"Asset" / L"Source");
+
+		if (std::filesystem::path RootFromPath = TryGetProjectRootFromAssetPath(SourcePath); !RootFromPath.empty())
+		{
+			AddUniquePath(Roots, RootFromPath / L"Asset");
+			AddUniquePath(Roots, RootFromPath / L"Asset" / L"Source");
+			AddUniquePath(Roots, RootFromPath / L"Asset" / L"Content");
+		}
+	}
+
+	bool IsRelativeSubpath(const std::filesystem::path& RelativePath)
+	{
+		return !RelativePath.empty()
+			&& RelativePath.native().find(L"..") != 0
+			&& !RelativePath.is_absolute();
+	}
+
+	std::filesystem::path FindByFileNameUnderContentRoots(const FString& SourcePath)
+	{
+		const std::filesystem::path Original(FPaths::ToWide(SourcePath));
+		const std::wstring FileName = Original.filename().wstring();
+		if (FileName.empty())
+		{
+			return {};
 		}
 
-		// 2. Content relative fallback
-		std::filesystem::path ContentPath = std::filesystem::path(FPaths::ProjectContentDir()) / Path;
-		if (std::filesystem::exists(ContentPath))
+		std::vector<std::filesystem::path> SearchRoots;
+		AddContentSearchRoots(SearchRoots, SourcePath);
+
+		for (const std::filesystem::path& ContentRoot : SearchRoots)
 		{
-			return ContentPath.lexically_normal().wstring();
+			std::error_code ErrorCode;
+			if (!std::filesystem::exists(ContentRoot, ErrorCode))
+			{
+				continue;
+			}
+
+			for (const std::filesystem::directory_entry& Entry : std::filesystem::recursive_directory_iterator(ContentRoot, std::filesystem::directory_options::skip_permission_denied, ErrorCode))
+			{
+				if (ErrorCode)
+				{
+					break;
+				}
+				if (Entry.is_regular_file()
+					&& ToLowerAsciiCopy(FPaths::ToUtf8(Entry.path().filename().wstring()))
+						== ToLowerAsciiCopy(FPaths::ToUtf8(FileName)))
+				{
+					return Entry.path().lexically_normal();
+				}
+			}
 		}
 
-		// 3. Asset relative fallback
-		std::filesystem::path AssetPath = std::filesystem::path(FPaths::AssetDir()) / Path;
-		if (std::filesystem::exists(AssetPath))
+		return {};
+	}
+
+	std::filesystem::path FindTextureSourceOnDisk(const FString& SourcePath)
+	{
+		std::vector<std::filesystem::path> Candidates;
+
+		const std::filesystem::path Root(FPaths::RootDir());
+		const std::filesystem::path Original(FPaths::ToWide(SourcePath));
+		const std::filesystem::path Resolved(FPaths::ResolvePathToDisk(SourcePath));
+
+		AddUniquePath(Candidates, Resolved);
+		AddUniquePath(Candidates, Original.is_absolute() ? Original : Root / Original);
+
+		// 경로 문자열 안에 Asset/Content/...가 들어있으면, 그 뒤쪽 상대 경로만 떼서
+		// 현재 프로젝트 루트와 원본 프로젝트 루트 양쪽에 붙여본다.
+		std::wstring SlashPath = FPaths::ToWide(SourcePath);
+		std::replace(SlashPath.begin(), SlashPath.end(), L'\\', L'/');
+		auto AddAssetSegmentCandidates = [&](const std::wstring& Marker)
 		{
-			return AssetPath.lexically_normal().wstring();
+			const size_t Pos = SlashPath.find(Marker);
+			if (Pos == std::wstring::npos)
+			{
+				return;
+			}
+
+			const std::filesystem::path AssetRelative(SlashPath.substr(Pos));
+			AddUniquePath(Candidates, Root / AssetRelative);
+			if (std::filesystem::path RootFromPath = TryGetProjectRootFromAssetPath(SourcePath); !RootFromPath.empty())
+			{
+				AddUniquePath(Candidates, RootFromPath / AssetRelative);
+			}
+		};
+		AddAssetSegmentCandidates(L"Asset/Content/");
+		AddAssetSegmentCandidates(L"Asset/");
+
+		for (const std::filesystem::path& Candidate : Candidates)
+		{
+			std::error_code ErrorCode;
+			if (std::filesystem::exists(Candidate, ErrorCode) && std::filesystem::is_regular_file(Candidate, ErrorCode))
+			{
+				return Candidate;
+			}
 		}
 
-		return FullPath.lexically_normal().wstring();
+		if (std::filesystem::path FoundByName = FindByFileNameUnderContentRoots(SourcePath); !FoundByName.empty())
+		{
+			return FoundByName;
+		}
+
+		return Candidates.empty() ? std::filesystem::path() : Candidates.front();
+	}
+
+	FString SanitizeAssetName(FString Name)
+	{
+		if (Name.empty())
+		{
+			return "Imported";
+		}
+
+		for (char& Character : Name)
+		{
+			const bool bAlphaNum = (Character >= 'a' && Character <= 'z')
+				|| (Character >= 'A' && Character <= 'Z')
+				|| (Character >= '0' && Character <= '9');
+			if (!bAlphaNum && Character != '_' && Character != '-')
+			{
+				Character = '_';
+			}
+		}
+
+		return Name;
+	}
+
+	std::filesystem::path MakeImportedTextureDirectory(const std::filesystem::path& SourceDiskPath)
+	{
+		const std::filesystem::path ContentRoot = std::filesystem::path(FPaths::ContentDir()).lexically_normal();
+		const std::filesystem::path SourceRoot = std::filesystem::path(FPaths::EngineSourceDir()).lexically_normal();
+		const std::filesystem::path RelativeToSource = SourceDiskPath.lexically_normal().lexically_relative(SourceRoot);
+
+		std::filesystem::path TextureDirectory = ContentRoot / L"Textures";
+		if (IsRelativeSubpath(RelativeToSource))
+		{
+			TextureDirectory /= RelativeToSource.parent_path();
+		}
+
+		return TextureDirectory.lexically_normal();
 	}
 
 	bool TryGetTextureWriteTime(const FString& FilePath, std::filesystem::file_time_type& OutWriteTime)
@@ -152,6 +321,11 @@ namespace
 		OutWidth = 0;
 		OutHeight = 0;
 		OutPixels.clear();
+		const std::wstring DiskPath = ResolveTexturePathOnDisk(FilePath);
+		if (DiskPath.empty())
+		{
+			return false;
+		}
 
 		IWICImagingFactory* Factory = nullptr;
 		HRESULT HR = CoCreateInstance(
@@ -166,7 +340,7 @@ namespace
 
 		IWICBitmapDecoder* Decoder = nullptr;
 		HR = Factory->CreateDecoderFromFilename(
-			FPaths::ToWide(FilePath).c_str(),
+			DiskPath.c_str(),
 			nullptr,
 			GENERIC_READ,
 			WICDecodeMetadataCacheOnDemand,
@@ -235,6 +409,84 @@ namespace
 		Factory->Release();
 		return SUCCEEDED(HR);
 	}
+
+	bool LoadTextureMetadataWithRuntimeLoader(const FString& FilePath, ID3D11Device* Device, uint32& OutWidth, uint32& OutHeight)
+	{
+		OutWidth = 0;
+		OutHeight = 0;
+		if (!Device)
+		{
+			return false;
+		}
+
+		const std::wstring DiskPath = ResolveTexturePathOnDisk(FilePath);
+		if (DiskPath.empty())
+		{
+			return false;
+		}
+
+		FString Extension = FPaths::ToUtf8(std::filesystem::path(DiskPath).extension().generic_wstring());
+		AsciiUtils::ToLowerInPlace(Extension);
+
+		ID3D11Resource* Resource = nullptr;
+		ID3D11ShaderResourceView* TempSRV = nullptr;
+		HRESULT HR = S_OK;
+		if (Extension == ".dds")
+		{
+			HR = DirectX::CreateDDSTextureFromFileEx(
+				Device, DiskPath.c_str(),
+				0,
+				D3D11_USAGE_DEFAULT,
+				D3D11_BIND_SHADER_RESOURCE,
+				0,
+				0,
+				DirectX::DDS_LOADER_DEFAULT,
+				&Resource, &TempSRV);
+		}
+		else
+		{
+			HR = DirectX::CreateWICTextureFromFileEx(
+				Device, DiskPath.c_str(),
+				0,
+				D3D11_USAGE_DEFAULT,
+				D3D11_BIND_SHADER_RESOURCE,
+				0,
+				0,
+				DirectX::WIC_LOADER_IGNORE_SRGB,
+				&Resource, &TempSRV);
+		}
+
+		if (FAILED(HR) || !Resource)
+		{
+			if (Resource)
+			{
+				Resource->Release();
+			}
+			if (TempSRV)
+			{
+				TempSRV->Release();
+			}
+			return false;
+		}
+
+		ID3D11Texture2D* Tex2D = nullptr;
+		if (SUCCEEDED(Resource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&Tex2D))) && Tex2D)
+		{
+			D3D11_TEXTURE2D_DESC Desc;
+			Tex2D->GetDesc(&Desc);
+			OutWidth = Desc.Width;
+			OutHeight = Desc.Height;
+			Tex2D->Release();
+		}
+
+		Resource->Release();
+		if (TempSRV)
+		{
+			TempSRV->Release();
+		}
+
+		return OutWidth > 0 && OutHeight > 0;
+	}
 }
 
 UTexture2D::~UTexture2D()
@@ -252,7 +504,7 @@ UTexture2D::~UTexture2D()
 	}
 
 	// 캐시에서 제거
-	auto It = TextureCache.find(SourceFilePath);
+	auto It = TextureCache.find(CacheKeyPath);
 	if (It != TextureCache.end() && It->second == this)
 	{
 		TextureCache.erase(It);
@@ -314,6 +566,7 @@ void UTexture2D::ScanTextureAssets()
 {
 	EnsureTextureAssetWatcher();
 	AvailableTextureFiles.clear();
+	TSet<FString> SeenTexturePaths;
 
 	const std::filesystem::path ProjectRoot(FPaths::RootDir());
 	const std::filesystem::path AssetRoot(FPaths::AssetDir());
@@ -362,10 +615,17 @@ void UTexture2D::ScanTextureAssets()
 					continue;
 				}
 
+				const FString NormalizedFullPath = FPaths::NormalizePath(FPaths::ToUtf8(RelativePath.generic_wstring()));
+				if (!SeenTexturePaths.insert(NormalizedFullPath).second)
+				{
+					It.increment(ErrorCode);
+					continue;
+				}
+
 				FTextureAssetListItem Item;
 				Item.DisplayName = FPaths::ToUtf8(Entry.path().filename().wstring());
-				Item.FullPath = FPaths::ToUtf8(RelativePath.generic_wstring());
-				Item.SourceFolder = FPaths::ToUtf8(RelativePath.parent_path().generic_wstring());
+				Item.FullPath = NormalizedFullPath;
+				Item.SourceFolder = FPaths::NormalizePath(FPaths::ToUtf8(RelativePath.parent_path().generic_wstring()));
 				AvailableTextureFiles.push_back(std::move(Item));
 			}
 		}
@@ -419,17 +679,26 @@ bool UTexture2D::IsSupportedTextureExtension(const std::filesystem::path& Path)
 
 UTexture2D* UTexture2D::LoadFromAssetFile(const FString& AssetPath, ID3D11Device* Device)
 {
-	if (AssetPath.empty() || !Device) return nullptr;
+	if (AssetPath.empty())
+	{
+		return nullptr;
+	}
 
 	const FString NormalizedAssetPath = NormalizeTexturePath(AssetPath);
 	auto CachedIt = TextureCache.find(NormalizedAssetPath);
 	if (CachedIt != TextureCache.end())
 	{
+		if (CachedIt->second && Device && !CachedIt->second->EnsureGPUTexture(Device))
+		{
+			return nullptr;
+		}
 		return CachedIt->second;
 	}
 
 	FString Error;
-	UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(std::filesystem::path(FPaths::ToWide(AssetPath)), &Error);
+	UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(
+		std::filesystem::path(FPaths::ResolvePathToDisk(NormalizedAssetPath)),
+		&Error);
 	UTexture2D* LoadedTextureAsset = Cast<UTexture2D>(LoadedObject);
 	if (!LoadedTextureAsset)
 	{
@@ -440,8 +709,17 @@ UTexture2D* UTexture2D::LoadFromAssetFile(const FString& AssetPath, ID3D11Device
 		return nullptr;
 	}
 
-	const FString SourcePath = LoadedTextureAsset->GetSourcePath();
-	if (SourcePath.empty() || !LoadedTextureAsset->LoadInternal(SourcePath, Device))
+	LoadedTextureAsset->AssetFilePath = NormalizedAssetPath;
+	LoadedTextureAsset->CacheKeyPath = NormalizedAssetPath;
+
+	std::filesystem::file_time_type SourceWriteTime{};
+	LoadedTextureAsset->bHasSourceFileWriteTime = TryGetTextureWriteTime(LoadedTextureAsset->SourceFilePath, SourceWriteTime);
+	if (LoadedTextureAsset->bHasSourceFileWriteTime)
+	{
+		LoadedTextureAsset->SourceFileWriteTime = SourceWriteTime;
+	}
+
+	if (Device && !LoadedTextureAsset->EnsureGPUTexture(Device))
 	{
 		UObjectManager::Get().DestroyObject(LoadedTextureAsset);
 		return nullptr;
@@ -453,9 +731,17 @@ UTexture2D* UTexture2D::LoadFromAssetFile(const FString& AssetPath, ID3D11Device
 
 UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Device)
 {
-	if (FilePath.empty() || !Device) return nullptr;
+	if (FilePath.empty())
+	{
+		return nullptr;
+	}
 
 	const FString NormalizedPath = NormalizeTexturePath(FilePath);
+	const std::wstring Extension = std::filesystem::path(FPaths::ToWide(NormalizedPath)).extension().wstring();
+	if (_wcsicmp(Extension.c_str(), L".uasset") == 0)
+	{
+		return LoadFromAssetFile(NormalizedPath, Device);
+	}
 
 	// 캐시 히트
 	auto It = TextureCache.find(NormalizedPath);
@@ -464,6 +750,10 @@ UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Devi
 		if (It->second && It->second->HasSourceFileChanged())
 		{
 			It->second->LoadInternal(NormalizedPath, Device);
+		}
+		else if (It->second && Device)
+		{
+			It->second->EnsureGPUTexture(Device);
 		}
 		return It->second;
 	}
@@ -476,6 +766,8 @@ UTexture2D* UTexture2D::LoadFromFile(const FString& FilePath, ID3D11Device* Devi
 		return nullptr;
 	}
 
+	Texture->AssetFilePath.clear();
+	Texture->CacheKeyPath = NormalizedPath;
 	TextureCache[NormalizedPath] = Texture;
 	return Texture;
 }
@@ -497,6 +789,48 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 {
 	const FString NormalizedPath = NormalizeTexturePath(FilePath);
 	const std::wstring WidePath = ResolveTexturePathOnDisk(NormalizedPath);
+	if (WidePath.empty() || !std::filesystem::exists(WidePath))
+	{
+		UE_LOG_CATEGORY(Texture, Error, "Failed to load texture: %s", FilePath.c_str());
+		return false;
+	}
+
+	uint32 NewWidth = 0;
+	uint32 NewHeight = 0;
+	std::vector<uint8> NewCPUTextureRGBA;
+	LoadCPUTextureRGBA(NormalizedPath, NewWidth, NewHeight, NewCPUTextureRGBA);
+
+	std::filesystem::file_time_type NewWriteTime{};
+	const bool bHasNewWriteTime = TryGetTextureWriteTime(NormalizedPath, NewWriteTime);
+
+	if (!Device)
+	{
+		if (NewCPUTextureRGBA.empty() || NewWidth == 0 || NewHeight == 0)
+		{
+			UE_LOG_CATEGORY(Texture, Error, "Failed to load texture pixels without device: %s", FilePath.c_str());
+			return false;
+		}
+
+		if (SRV)
+		{
+			if (TrackedTextureMemory > 0)
+			{
+				MemoryStats::SubTextureMemory(TrackedTextureMemory);
+				TrackedTextureMemory = 0;
+			}
+			SRV->Release();
+			SRV = nullptr;
+		}
+
+		Width = NewWidth;
+		Height = NewHeight;
+		CPUTextureRGBA = std::move(NewCPUTextureRGBA);
+		SourceFilePath = NormalizedPath;
+		SourceFileWriteTime = NewWriteTime;
+		bHasSourceFileWriteTime = bHasNewWriteTime;
+		return true;
+	}
+
 	const std::filesystem::path ExtensionPath = std::filesystem::path(WidePath).extension();
 	FString Extension = FPaths::ToUtf8(ExtensionPath.generic_wstring());
 	AsciiUtils::ToLowerInPlace(Extension);
@@ -543,8 +877,6 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 		return false;
 	}
 
-	uint32 NewWidth = 0;
-	uint32 NewHeight = 0;
 	uint64 NewTrackedTextureMemory = 0;
 
 	// 텍스처 크기 추출
@@ -563,12 +895,6 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 		}
 		Resource->Release();
 	}
-
-	std::vector<uint8> NewCPUTextureRGBA;
-	LoadCPUTextureRGBA(NormalizedPath, NewWidth, NewHeight, NewCPUTextureRGBA);
-
-	std::filesystem::file_time_type NewWriteTime{};
-	const bool bHasNewWriteTime = TryGetTextureWriteTime(NormalizedPath, NewWriteTime);
 
 	if (SRV)
 	{
@@ -598,9 +924,95 @@ bool UTexture2D::LoadInternal(const FString& FilePath, ID3D11Device* Device)
 	return true;
 }
 
+bool UTexture2D::EnsureGPUTexture(ID3D11Device* Device)
+{
+	if (SRV)
+	{
+		return true;
+	}
+
+	if (!Device)
+	{
+		return !CPUTextureRGBA.empty();
+	}
+
+	if (CreateSRVFromStoredPixels(Device))
+	{
+		return true;
+	}
+
+	if (!SourceFilePath.empty())
+	{
+		return LoadInternal(SourceFilePath, Device);
+	}
+
+	return false;
+}
+
+bool UTexture2D::CreateSRVFromStoredPixels(ID3D11Device* Device)
+{
+	if (!Device || Width == 0 || Height == 0 || CPUTextureRGBA.empty())
+	{
+		return false;
+	}
+
+	D3D11_TEXTURE2D_DESC Desc = {};
+	Desc.Width = Width;
+	Desc.Height = Height;
+	Desc.MipLevels = 1;
+	Desc.ArraySize = 1;
+	Desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	Desc.SampleDesc.Count = 1;
+	Desc.Usage = D3D11_USAGE_IMMUTABLE;
+	Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	D3D11_SUBRESOURCE_DATA InitialData = {};
+	InitialData.pSysMem = CPUTextureRGBA.data();
+	InitialData.SysMemPitch = Width * 4u;
+
+	ID3D11Texture2D* TextureResource = nullptr;
+	HRESULT HR = Device->CreateTexture2D(&Desc, &InitialData, &TextureResource);
+	if (FAILED(HR) || !TextureResource)
+	{
+		return false;
+	}
+
+	ID3D11ShaderResourceView* NewSRV = nullptr;
+	HR = Device->CreateShaderResourceView(TextureResource, nullptr, &NewSRV);
+	const uint64 NewTrackedTextureMemory = MemoryStats::CalculateTextureMemory(TextureResource);
+	TextureResource->Release();
+
+	if (FAILED(HR) || !NewSRV)
+	{
+		if (NewSRV)
+		{
+			NewSRV->Release();
+		}
+		return false;
+	}
+
+	if (SRV)
+	{
+		if (TrackedTextureMemory > 0)
+		{
+			MemoryStats::SubTextureMemory(TrackedTextureMemory);
+		}
+		SRV->Release();
+	}
+
+	SRV = NewSRV;
+	TrackedTextureMemory = NewTrackedTextureMemory;
+	if (TrackedTextureMemory > 0)
+	{
+		MemoryStats::AddTextureMemory(TrackedTextureMemory);
+	}
+
+	return true;
+}
+
 bool UTexture2D::HasSourceFileChanged() const
 {
-	if (SourceFilePath.empty())
+	if (!AssetFilePath.empty() || SourceFilePath.empty())
 	{
 		return false;
 	}
@@ -617,6 +1029,121 @@ bool UTexture2D::HasSourceFileChanged() const
 	}
 
 	return CurrentWriteTime != SourceFileWriteTime;
+}
+
+FString UTexture2D::ImportTextureAsset(const FString& SourcePath)
+{
+	const std::filesystem::path SourceDiskPathW = FindTextureSourceOnDisk(SourcePath);
+	if (SourceDiskPathW.empty() || !std::filesystem::exists(SourceDiskPathW))
+	{
+		UE_LOG_CATEGORY(Texture, Error, "Texture import source not found: source=%s resolved=%s contentRoot=%s cwd=%s", SourcePath.c_str(), FPaths::ToUtf8(SourceDiskPathW.generic_wstring()).c_str(), FPaths::ToUtf8(std::filesystem::path(FPaths::ContentDir()).generic_wstring()).c_str(), FPaths::ToUtf8(std::filesystem::current_path().generic_wstring()).c_str());
+		return {};
+	}
+
+	const std::filesystem::path ProjectRoot = std::filesystem::path(FPaths::RootDir()).lexically_normal();
+	const std::filesystem::path TextureDirectory = MakeImportedTextureDirectory(SourceDiskPathW);
+	std::error_code DirectoryError;
+	std::filesystem::create_directories(TextureDirectory, DirectoryError);
+	if (DirectoryError)
+	{
+		UE_LOG_CATEGORY(Texture, Error, "Failed to create texture output directory: %s (%s)", FPaths::ToUtf8(TextureDirectory.generic_wstring()).c_str(), DirectoryError.message().c_str());
+		return {};
+	}
+
+	const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(SourceDiskPathW.stem().wstring()));
+	const std::filesystem::path AssetDiskPath = (TextureDirectory / (L"T_" + FPaths::ToWide(SourceStem) + L".uasset")).lexically_normal();
+	const std::filesystem::path RelativeAssetPath = AssetDiskPath.lexically_relative(ProjectRoot);
+	const FString AssetPath = NormalizeTexturePath(FPaths::ToUtf8(RelativeAssetPath.generic_wstring()));
+
+	ID3D11Device* Device = GEngine ? GEngine->GetRenderer().GetFD3DDevice().GetDevice() : nullptr;
+	uint32 ImportedWidth = 0;
+	uint32 ImportedHeight = 0;
+	std::vector<uint8> ImportedPixels;
+	const FString SourceDiskPathString = NormalizeTexturePath(FPaths::ToUtf8(SourceDiskPathW.generic_wstring()));
+	const bool bHasEmbeddedPixels =
+		LoadCPUTextureRGBA(SourceDiskPathString, ImportedWidth, ImportedHeight, ImportedPixels)
+		&& !ImportedPixels.empty()
+		&& ImportedWidth > 0
+		&& ImportedHeight > 0;
+
+	UTexture2D* Texture = nullptr;
+	auto CachedIt = TextureCache.find(AssetPath);
+	const bool bCreatedNewTexture = CachedIt == TextureCache.end();
+	if (CachedIt != TextureCache.end())
+	{
+		Texture = CachedIt->second;
+	}
+	else
+	{
+		Texture = UObjectManager::Get().CreateObject<UTexture2D>();
+	}
+
+	if (!Texture)
+	{
+		return {};
+	}
+
+	Texture->SetFName(FName("T_" + SourceStem));
+	Texture->AssetFilePath = AssetPath;
+	Texture->CacheKeyPath = AssetPath;
+	Texture->SourceFilePath = SourceDiskPathString;
+	if (bHasEmbeddedPixels)
+	{
+		Texture->Width = ImportedWidth;
+		Texture->Height = ImportedHeight;
+		Texture->CPUTextureRGBA = std::move(ImportedPixels);
+	}
+	else
+	{
+		Texture->CPUTextureRGBA.clear();
+		Texture->Width = 0;
+		Texture->Height = 0;
+
+		if (!LoadTextureMetadataWithRuntimeLoader(SourceDiskPathString, Device, ImportedWidth, ImportedHeight))
+		{
+			if (bCreatedNewTexture)
+			{
+				UObjectManager::Get().DestroyObject(Texture);
+			}
+			UE_LOG_CATEGORY(Texture, Error, "Texture import failed before save: no CPU decode and runtime loader also failed source=%s", SourceDiskPathString.c_str());
+			return {};
+		}
+
+		Texture->Width = ImportedWidth;
+		Texture->Height = ImportedHeight;
+		UE_LOG_CATEGORY(Texture, Warning, "Texture import fallback: saving asset without embedded CPU pixels source=%s", SourceDiskPathString.c_str());
+	}
+
+	std::filesystem::file_time_type SourceWriteTime{};
+	Texture->bHasSourceFileWriteTime = TryGetTextureWriteTime(SourceDiskPathString, SourceWriteTime);
+	if (Texture->bHasSourceFileWriteTime)
+	{
+		Texture->SourceFileWriteTime = SourceWriteTime;
+	}
+
+	if (Device)
+	{
+		Texture->CreateSRVFromStoredPixels(Device); // 실패해도 .uasset 저장은 계속한다.
+	}
+
+	TextureCache[AssetPath] = Texture;
+
+	FString Error;
+	if (!FAssetFileSerializer::SaveObjectToAssetFile(AssetDiskPath, Texture, &Error))
+	{
+		if (bCreatedNewTexture)
+		{
+			TextureCache.erase(AssetPath);
+			UObjectManager::Get().DestroyObject(Texture);
+		}
+		UE_LOG_CATEGORY(Texture, Error, "Failed to save texture asset: assetPath=%s diskPath=%s error=%s", AssetPath.c_str(), FPaths::ToUtf8(AssetDiskPath.generic_wstring()).c_str(), Error.c_str());
+		return {};
+	}
+
+	MarkTextureAssetListDirty();
+	QueueTextureRefresh(AssetPath);
+	UE_LOG_CATEGORY(Texture, Info, "Saved texture asset: source=%s assetPath=%s diskPath=%s size=%ux%u bytes=%zu", SourceDiskPathString.c_str(), AssetPath.c_str(), FPaths::ToUtf8(AssetDiskPath.generic_wstring()).c_str(), Texture->Width, Texture->Height, Texture->CPUTextureRGBA.size());
+	return AssetPath;
 }
 
 void UTexture2D::EnsureTextureAssetWatcher()
@@ -668,6 +1195,33 @@ void UTexture2D::Serialize(FArchive& Ar)
 	Ar << SourceFilePath;
 	Ar << Width;
 	Ar << Height;
+
+	const uint32 AssetVersion = FAssetFileSerializer::GetCurrentAssetSerializationVersion();
+	if (AssetVersion >= 4)
+	{
+		uint32 PixelByteCount = static_cast<uint32>(CPUTextureRGBA.size());
+		Ar << PixelByteCount;
+		if (Ar.IsLoading())
+		{
+			CPUTextureRGBA.resize(PixelByteCount);
+		}
+		if (PixelByteCount > 0)
+		{
+			Ar.Serialize(CPUTextureRGBA.data(), PixelByteCount);
+		}
+	}
+	else if (Ar.IsLoading())
+	{
+		CPUTextureRGBA.clear();
+	}
+
+	if (Ar.IsLoading())
+	{
+		AssetFilePath.clear();
+		CacheKeyPath.clear();
+		SourceFileWriteTime = {};
+		bHasSourceFileWriteTime = TryGetTextureWriteTime(SourceFilePath, SourceFileWriteTime);
+	}
 }
 
 bool UTexture2D::SampleAlpha(float U, float V, float& OutAlpha) const

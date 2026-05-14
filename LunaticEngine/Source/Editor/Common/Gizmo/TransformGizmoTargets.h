@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common/Viewport/EditorViewportClient.h"
 #include "Component/Gizmo/TransformGizmoTarget.h"
 #include "Component/SceneComponent.h"
 
@@ -8,20 +9,40 @@
 class FSceneComponentTransformGizmoTarget final : public ITransformGizmoTarget
 {
 public:
-    explicit FSceneComponentTransformGizmoTarget(USceneComponent* InComponent, const bool* InOwnerContextActiveFlag = nullptr)
+    explicit FSceneComponentTransformGizmoTarget(USceneComponent* InComponent,
+                                                 const FEditorViewportClient* InOwnerViewportClient = nullptr,
+                                                 const bool* InOwnerContextActiveFlag = nullptr,
+                                                 uint64 InOwnerContextEpoch = 0)
         : Component(InComponent)
+        , OwnerViewportClient(InOwnerViewportClient)
         , OwnerContextActiveFlag(InOwnerContextActiveFlag)
+        , OwnerContextEpoch(InOwnerContextEpoch)
     {
     }
 
     bool IsValid() const override
     {
-        return Component != nullptr && (!OwnerContextActiveFlag || *OwnerContextActiveFlag);
+        if (!Component)
+        {
+            return false;
+        }
+
+        if (OwnerViewportClient && !OwnerViewportClient->CanProcessLiveContextWork())
+        {
+            return false;
+        }
+
+        if (OwnerViewportClient && OwnerViewportClient->GetEditorContextEpoch() != OwnerContextEpoch)
+        {
+            return false;
+        }
+
+        return !OwnerContextActiveFlag || *OwnerContextActiveFlag;
     }
 
     FTransform GetWorldTransform() const override
     {
-        if (!Component)
+        if (!IsValid())
         {
             return FTransform();
         }
@@ -31,17 +52,25 @@ public:
 
     void SetWorldTransform(const FTransform& NewWorldTransform) override
     {
+        // Hard isolation guard: stale targets from inactive tabs must never write.
+        if (!IsValid())
+        {
+            return;
+        }
         SetWorldMatrix(NewWorldTransform.ToMatrix());
     }
 
     FMatrix GetWorldMatrix() const override
     {
-        return Component ? Component->GetWorldMatrix() : FMatrix::Identity;
+        return IsValid() ? Component->GetWorldMatrix() : FMatrix::Identity;
     }
 
     void SetWorldMatrix(const FMatrix& NewWorldMatrix) override
     {
-        if (!Component)
+        // This target can survive inside an old FGizmoManager after a tab/context switch.
+        // Never allow that stale wrapper to mutate a component unless its owner viewport is
+        // still the single live editor viewport.
+        if (!IsValid())
         {
             return;
         }
@@ -62,12 +91,12 @@ public:
 
     FTransform GetLocalTransform() const override
     {
-        return Component ? Component->GetRelativeTransform() : FTransform();
+        return IsValid() ? Component->GetRelativeTransform() : FTransform();
     }
 
     void SetLocalTransform(const FTransform& NewLocalTransform) override
     {
-        if (!Component)
+        if (!IsValid())
         {
             return;
         }
@@ -78,5 +107,7 @@ public:
 
 private:
     USceneComponent* Component = nullptr;
+    const FEditorViewportClient* OwnerViewportClient = nullptr;
     const bool* OwnerContextActiveFlag = nullptr;
+    uint64 OwnerContextEpoch = 0;
 };

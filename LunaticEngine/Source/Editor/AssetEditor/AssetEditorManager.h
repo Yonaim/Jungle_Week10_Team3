@@ -54,6 +54,7 @@ class FAssetEditorManager
     bool IsCapturingInput() const;
     FEditorViewportClient *GetActiveViewportClient() const;
     void CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const;
+    void ForceDeactivateAllViewportClients();
 
     FAssetEditorWindow &GetAssetEditorWindow() { return AssetEditorWindow; }
     const FAssetEditorWindow &GetAssetEditorWindow() const { return AssetEditorWindow; }

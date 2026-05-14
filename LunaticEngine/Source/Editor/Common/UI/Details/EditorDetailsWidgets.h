@@ -73,9 +73,9 @@ inline void DrawDetailsSearchToolbar(const char *Id, char *SearchBuffer, size_t 
 
     FEditorUIStyle::DrawSearchInputWithIcon(Id, "Search", SearchBuffer, SearchBufferSize, SearchWidth);
     ImGui::SameLine();
-    DrawSmallIconButton("##DetailsViewOptions", "▦", "View Options");
+    DrawSmallIconButton("##DetailsViewOptions", "V", "View Options");
     ImGui::SameLine();
-    DrawSmallIconButton("##DetailsSettings", "⚙", "Settings");
+    DrawSmallIconButton("##DetailsSettings", "S", "Settings");
     ImGui::Spacing();
 }
 
@@ -144,57 +144,12 @@ inline void DrawAxisField(const char *Id, const char *AxisLabel, float &Value, b
     ImGui::PopID();
 }
 
-inline bool DrawVector3Row(const char *Label, FVector &Values, bool bReadOnly, bool bShowReset = true)
+inline bool DrawVector3Row(const char *Label, FVector &Values, bool bReadOnly, bool bShowReset = true,
+                           const FVector *ResetValues = nullptr)
 {
     bool bChanged = false;
     ImGui::PushID(Label);
     if (ImGui::BeginTable("##Vector3Row", 5, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
-    {
-        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, FEditorUIStyle::DetailsLabelWidth);
-        ImGui::TableSetupColumn("X", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Y", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Z", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, bShowReset ? 28.0f : 4.0f);
-
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted(Label);
-
-        const float AxisWidth = (std::max)(54.0f, ImGui::GetContentRegionAvail().x * 0.55f);
-        ImGui::TableNextColumn();
-        const float OldX = Values.X;
-        DrawAxisField("X", "X", Values.X, bReadOnly, AxisWidth);
-        bChanged |= OldX != Values.X;
-
-        ImGui::TableNextColumn();
-        const float OldY = Values.Y;
-        DrawAxisField("Y", "Y", Values.Y, bReadOnly, AxisWidth);
-        bChanged |= OldY != Values.Y;
-
-        ImGui::TableNextColumn();
-        const float OldZ = Values.Z;
-        DrawAxisField("Z", "Z", Values.Z, bReadOnly, AxisWidth);
-        bChanged |= OldZ != Values.Z;
-
-        ImGui::TableNextColumn();
-        if (bShowReset)
-        {
-            DrawSmallIconButton("##Reset", "↶", "Reset");
-        }
-        ImGui::EndTable();
-    }
-    ImGui::PopID();
-    return bChanged;
-}
-
-inline bool DrawVector3RowWithReset(const char *Label, FVector &Values, bool bReadOnly,
-                                    bool *bOutResetClicked = nullptr, bool bShowReset = true)
-{
-    bool bChanged = false;
-    bool bResetClicked = false;
-    ImGui::PushID(Label);
-    if (ImGui::BeginTable("##Vector3RowWithReset", 5, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
     {
         ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, FEditorUIStyle::DetailsLabelWidth);
         ImGui::TableSetupColumn("X", ImGuiTableColumnFlags_WidthStretch);
@@ -231,16 +186,12 @@ inline bool DrawVector3RowWithReset(const char *Label, FVector &Values, bool bRe
                 ImGui::BeginDisabled();
             }
 
-            FEditorUIStyle::PushHeaderButtonStyle(4.0f);
-            bResetClicked = ImGui::Button("##Reset", ImVec2(22.0f, 22.0f));
-            FEditorUIStyle::PopHeaderButtonStyle();
-
+            const bool bResetClicked = ImGui::Button("##Reset", ImVec2(22.0f, 22.0f));
             const ImVec2 Min = ImGui::GetItemRectMin();
             const ImVec2 LabelSize = ImGui::CalcTextSize("R");
             ImGui::GetWindowDrawList()->AddText(
                 ImVec2(Min.x + (22.0f - LabelSize.x) * 0.5f, Min.y + (22.0f - LabelSize.y) * 0.5f),
                 ImGui::GetColorU32(ImGuiCol_Text), "R");
-
             if (ImGui::IsItemHovered())
             {
                 ImGui::SetTooltip("Reset");
@@ -250,16 +201,16 @@ inline bool DrawVector3RowWithReset(const char *Label, FVector &Values, bool bRe
             {
                 ImGui::EndDisabled();
             }
-        }
 
+            if (bResetClicked && !bReadOnly && ResetValues)
+            {
+                Values = *ResetValues;
+                bChanged = true;
+            }
+        }
         ImGui::EndTable();
     }
-
     ImGui::PopID();
-    if (bOutResetClicked)
-    {
-        *bOutResetClicked = bResetClicked;
-    }
     return bChanged;
 }
 
@@ -271,6 +222,7 @@ struct FMaterialSlotWidgetArgs
     const char *ResetPath = nullptr;
     bool bReadOnly = false;
     bool bAllowDragDrop = true;
+    bool bShowPreviewImages = true;
     float LeftColumnWidth = 120.0f;
 };
 
@@ -314,10 +266,15 @@ inline bool DrawMaterialSlotRow(const FMaterialSlotWidgetArgs &Args)
     const bool bShowResetButton = !Args.bReadOnly && !ResetPath.empty();
     const bool bCanReset = bShowResetButton && !AssetPathsMatch(Args.Slot->Path, ResetPath);
 
-    UMaterial *CurrentMaterial = (Args.Slot->Path.empty() || Args.Slot->Path == "None")
-                                     ? nullptr
-                                     : FMaterialManager::Get().GetOrCreateMaterial(Args.Slot->Path);
-    UTexture2D *CurrentPreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(CurrentMaterial);
+    UMaterial *CurrentMaterial = nullptr;
+    UTexture2D *CurrentPreviewTexture = nullptr;
+    if (Args.bShowPreviewImages)
+    {
+        CurrentMaterial = (Args.Slot->Path.empty() || Args.Slot->Path == "None")
+                              ? nullptr
+                              : FMaterialManager::Get().GetOrCreateMaterial(Args.Slot->Path);
+        CurrentPreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(CurrentMaterial);
+    }
     const float ReservedPreviewWidth =
         (CurrentPreviewTexture && CurrentPreviewTexture->GetSRV()) ? (PreviewImageSize + PreviewSpacing) : 0.0f;
     const float ReservedResetWidth = bShowResetButton ? (ResetButtonSize + PreviewSpacing) : 0.0f;
@@ -353,7 +310,9 @@ inline bool DrawMaterialSlotRow(const FMaterialSlotWidgetArgs &Args)
         for (const FMaterialAssetListItem &Item : MatFiles)
         {
             const bool bSelected = (Args.Slot->Path == Item.FullPath);
-            UTexture2D *PreviewTexture = FMaterialManager::Get().GetMaterialPreviewTexture(Item.FullPath);
+            UTexture2D *PreviewTexture = Args.bShowPreviewImages
+                ? FMaterialManager::Get().GetMaterialPreviewTexture(Item.FullPath)
+                : nullptr;
             if (PreviewTexture && PreviewTexture->GetSRV())
             {
                 ImGui::Image(PreviewTexture->GetSRV(), ImVec2(24.0f, 24.0f));

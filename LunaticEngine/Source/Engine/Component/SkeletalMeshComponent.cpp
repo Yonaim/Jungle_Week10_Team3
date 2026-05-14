@@ -3,6 +3,7 @@
 #include "Serialization/Archive.h"
 #include "Mesh/SkeletalMesh.h"
 #include "Mesh/SkeletalMeshCommon.h"
+#include "Core/Log.h"
 #include "Math/Quat.h"
 
 // 시연용 — 랜덤 본 진동
@@ -10,6 +11,29 @@
 #include <cmath>
 
 IMPLEMENT_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
+
+namespace
+{
+	bool IsFiniteVectorValue(const FVector& Value)
+	{
+		return std::isfinite(Value.X) && std::isfinite(Value.Y) && std::isfinite(Value.Z);
+	}
+
+	bool IsFiniteMatrixValue(const FMatrix& Value)
+	{
+		for (int32 Row = 0; Row < 4; ++Row)
+		{
+			for (int32 Column = 0; Column < 4; ++Column)
+			{
+				if (!std::isfinite(Value.M[Row][Column]))
+				{
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+}
 
 bool USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
 {
@@ -68,14 +92,22 @@ void USkeletalMeshComponent::SetPreviewPoseForEditor(const FSkeletonPose& InPose
 // 메시 할당 시 즉시 초기화 — 에디터에서 BeginPlay 없이도 렌더링되도록
 void USkeletalMeshComponent::SetSkeletalMesh(USkeletalMesh* Mesh)
 {
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] SetSkeletalMesh begin: mesh=%s",
+		Mesh ? Mesh->GetFName().ToString().c_str() : "None");
 	USkinnedMeshComponent::SetSkeletalMesh(Mesh);
 	InitializeSkeleton();
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] SetSkeletalMesh complete");
 }
 
 void USkeletalMeshComponent::InitializeSkeleton()
 {
 	if (!SkeletalMesh || !SkeletalMesh->GetSkeletalMeshAsset())
 		return;
+
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] InitializeSkeleton: bones=%d vertices=%d indices=%d",
+		SkeletalMesh->GetBoneCount(),
+		SkeletalMesh->GetVertexCount(),
+		SkeletalMesh->GetIndexCount());
 
 	const FSkeletalMesh* MeshAsset = SkeletalMesh->GetSkeletalMeshAsset();
 	InitBoneTransform();
@@ -121,6 +153,7 @@ void USkeletalMeshComponent::RefreshSkinningForEditor(float DeltaTime)
 
 void USkeletalMeshComponent::RefreshSkinningNow()
 {
+	UE_LOG_CATEGORY(Component, Info, "[SkeletalMeshComponent] RefreshSkinningNow");
 	RebuildComponentSpace();
 	PerformCPUSkinning(CurrentPose);
 	FinalizeRenderState();
@@ -190,10 +223,48 @@ void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 	const TArray<FBoneInfo>& Bones = MeshAsset->Bones;
 	const TArray<FMatrix>& ComponentSpaceTransforms = Pose.ComponentTransforms;
 	const int32 VertexCount = static_cast<int32>(BindVerts.size());
+	const int32 SkinWeightCount = static_cast<int32>(SkinWeights.size());
+	const int32 BoneCount = static_cast<int32>(Bones.size());
+	const int32 PoseTransformCount = static_cast<int32>(ComponentSpaceTransforms.size());
 
 	if (static_cast<int32>(SkinBuffer.size()) != VertexCount)
 	{
 		SkinBuffer.resize(VertexCount);
+	}
+
+	if (VertexCount <= 0)
+	{
+		return;
+	}
+
+	if (SkinWeightCount < VertexCount)
+	{
+		UE_LOG_CATEGORY(Component, Warning,
+			"SkeletalMesh CPU skinning fallback: mesh=%s vertices=%d skinWeights=%d",
+			MeshAsset->PathFileName.c_str(),
+			VertexCount,
+			SkinWeightCount);
+
+		for (int32 VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
+		{
+			SkinBuffer[VertexIndex] = BindVerts[VertexIndex];
+		}
+		return;
+	}
+
+	if (PoseTransformCount < BoneCount)
+	{
+		UE_LOG_CATEGORY(Component, Warning,
+			"SkeletalMesh CPU skinning fallback: mesh=%s bones=%d poseTransforms=%d",
+			MeshAsset->PathFileName.c_str(),
+			BoneCount,
+			PoseTransformCount);
+
+		for (int32 VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
+		{
+			SkinBuffer[VertexIndex] = BindVerts[VertexIndex];
+		}
+		return;
 	}
 
 	// CPU Skinning 흐름:
@@ -219,9 +290,26 @@ void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 			if (BoneIdx == InvalidBoneIndex || W <= 0.0f)
 				continue;
 
+			if (BoneIdx < 0 || BoneIdx >= BoneCount || BoneIdx >= PoseTransformCount)
+			{
+				UE_LOG_CATEGORY(Component, Warning,
+					"SkeletalMesh CPU skinning skipped invalid bone influence: mesh=%s vertex=%d influence=%d boneIndex=%d bones=%d poseTransforms=%d",
+					MeshAsset->PathFileName.c_str(),
+					VertexIndex,
+					Inf,
+					BoneIdx,
+					BoneCount,
+					PoseTransformCount);
+				continue;
+			}
+
 			// 현재 코드의 행렬 곱 순서를 그대로 사용한다.
 			// 수학 규약(row/column major)에 따라 의미가 달라질 수 있어 추후 검증 포인트다.
 			const FMatrix SkinningMatrix = Bones[BoneIdx].InverseBindPose * ComponentSpaceTransforms[BoneIdx];
+			if (!IsFiniteMatrixValue(SkinningMatrix))
+			{
+				continue;
+			}
 
 			SkinnedPos += SkinningMatrix.TransformPositionWithW(BindVertex.pos) * W;
 
@@ -236,7 +324,7 @@ void USkeletalMeshComponent::PerformCPUSkinning(const FSkeletonPose& Pose)
 		}
 
 		SkinBuffer[VertexIndex] = BindVertex;
-		if (TotalWeight > 0.0f)
+		if (TotalWeight > 0.0f && IsFiniteVectorValue(SkinnedPos) && IsFiniteVectorValue(SkinnedNormal))
 		{
 			SkinBuffer[VertexIndex].pos = SkinnedPos;
 			SkinBuffer[VertexIndex].normal = SkinnedNormal.Normalized();

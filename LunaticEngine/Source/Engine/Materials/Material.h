@@ -114,7 +114,11 @@ public:
 
 	const uint8* GetRawPtr(const FString& BufferName, uint32 Offset) const;
 
-	const TMap<FString, FMaterialParameterInfo*> GetParameterInfo() const { return Template->GetParameterInfo(); }
+	const TMap<FString, FMaterialParameterInfo*> GetParameterInfo() const
+	{
+		static const TMap<FString, FMaterialParameterInfo*> EmptyLayout;
+		return Template ? Template->GetParameterInfo() : EmptyLayout;
+	}
 
 	bool SetScalarParameter(const FString& ParamName, float Value);
 	bool SetVector3Parameter(const FString& ParamName, const FVector& Value);

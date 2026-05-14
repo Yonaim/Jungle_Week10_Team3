@@ -11,11 +11,6 @@
 
 namespace
 {
-    EGizmoSpace GetDisplayedGizmoSpace(const FSkeletalMeshEditorState& State)
-    {
-        return State.GizmoMode == EGizmoMode::Scale ? EGizmoSpace::Local : State.GizmoSpace;
-    }
-
     FEditorViewportToolbar::EToolMode ToCommonToolMode(EGizmoMode Mode)
     {
         switch (Mode)
@@ -85,9 +80,8 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
     Desc.Renderer = Renderer;
     Desc.bEnabled = Mesh != nullptr;
     Desc.ToolMode = ToCommonToolMode(State.GizmoMode);
-    Desc.CoordSpace = GetDisplayedGizmoSpace(State) == EGizmoSpace::World
-        ? FEditorViewportToolbar::ECoordSpace::World
-        : FEditorViewportToolbar::ECoordSpace::Local;
+    Desc.CoordSpace = State.GizmoSpace == EGizmoSpace::World ? FEditorViewportToolbar::ECoordSpace::World
+                                                             : FEditorViewportToolbar::ECoordSpace::Local;
     Desc.bSnapEnabled = State.bEnableTranslationSnap || State.bEnableRotationSnap || State.bEnableScaleSnap;
     Desc.ViewportTypeIcon = GetViewportTypeIcon(State.PreviewViewportType);
     Desc.ViewportTypeLabel = GetViewportTypeLabel(State.PreviewViewportType);
@@ -194,13 +188,10 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
         {
             ImGui::Checkbox("Gizmo", &State.bShowGizmo);
             ImGui::Checkbox("Bones", &State.bShowBones);
-            if (State.bShowBones)
-            {
-                FEditorViewportToolbar::DrawSliderFloat("Bone Debug Scale", State.BoneDebugScale, 0.1f, 10.0f, "%.2f");
-            }
             ImGui::Checkbox("Reference Pose", &State.bShowReferencePose);
             ImGui::Checkbox("Mesh Stats", &State.bShowMeshStatsOverlay);
             FEditorViewportToolbar::DrawSliderFloat("Billboard Icon Scale", State.BillboardIconScale, 0.1f, 5.0f);
+            FEditorViewportToolbar::DrawSliderFloat("Bone Debug Scale", State.BoneDebugScale, 0.1f, 5.0f);
         }
 
         if (ImGui::CollapsingHeader("Debug"))

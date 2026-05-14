@@ -120,14 +120,7 @@ namespace
 
 	FString NormalizeGenericPath(FString Value)
 	{
-		for (char& C : Value)
-		{
-			if (C == '\\')
-			{
-				C = '/';
-			}
-		}
-		return ToLowerCopy(Value);
+		return ToLowerCopy(FPaths::NormalizePath(Value));
 	}
 
 	FString SanitizeResourceToken(const FString& Value)
@@ -231,9 +224,9 @@ namespace
 				continue;
 			}
 
-			std::filesystem::path FullPath = std::filesystem::path(FPaths::RootDir()) / FPaths::ToWide(Resource.Path);
+			std::filesystem::path FullPath(FPaths::ResolvePathToDisk(Resource.Path));
 			FullPath = FullPath.lexically_normal();
-			const FString RelativePath = FPaths::ToUtf8(FullPath.lexically_relative(FPaths::RootDir()).generic_wstring());
+			const FString RelativePath = FPaths::NormalizePath(Resource.Path);
 
 			if (!std::filesystem::exists(FullPath))
 			{
@@ -328,7 +321,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			JSON Entry = Pair.second;
 			FFontResource Resource;
 			Resource.Name    = FName(Pair.first.c_str());
-			Resource.Path    = Entry[ResourceKey::Path].ToString();
+			Resource.Path    = FPaths::NormalizePath(Entry[ResourceKey::Path].ToString());
 			Resource.Columns = static_cast<uint32>(Entry[ResourceKey::Columns].ToInt());
 			Resource.Rows    = static_cast<uint32>(Entry[ResourceKey::Rows].ToInt());
 			Resource.SRV     = nullptr;
@@ -345,7 +338,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			JSON Entry = Pair.second;
 			FParticleResource Resource;
 			Resource.Name    = FName(Pair.first.c_str());
-			Resource.Path    = Entry[ResourceKey::Path].ToString();
+			Resource.Path    = FPaths::NormalizePath(Entry[ResourceKey::Path].ToString());
 			Resource.Columns = static_cast<uint32>(Entry[ResourceKey::Columns].ToInt());
 			Resource.Rows    = static_cast<uint32>(Entry[ResourceKey::Rows].ToInt());
 			Resource.SRV     = nullptr;
@@ -362,13 +355,13 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			JSON Entry = Pair.second;
 			FTextureResource Resource;
 			Resource.Name    = FName(Pair.first.c_str());
-			Resource.Path    = Entry[ResourceKey::Path].ToString();
+			Resource.Path    = FPaths::NormalizePath(Entry[ResourceKey::Path].ToString());
 			Resource.Columns = 1;
 			Resource.Rows    = 1;
 			Resource.SRV     = nullptr;
 			const FString NormalizedTexturePath = NormalizeGenericPath(Resource.Path);
 			Resource.bEditorResource = bIsEditorResourceFile
-				|| NormalizedTexturePath.rfind("asset/engine/source/editor/", 0) == 0;
+				|| NormalizedTexturePath.rfind("asset/source/editor/", 0) == 0;
 			TextureResources[Pair.first] = Resource;
 		}
 	}
@@ -386,7 +379,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			JSON Entry = Pair.second;
 			FMeshResource Resource;
 			Resource.Name = FName(Pair.first.c_str());
-			Resource.Path = Entry[ResourceKey::Path].ToString();
+			Resource.Path = FPaths::NormalizePath(Entry[ResourceKey::Path].ToString());
 			Resource.MeshType = MeshType;
 			MeshResources[Pair.first] = Resource;
 		}
@@ -406,7 +399,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			JSON Entry = Pair.second;
 			FSoundResource Resource;
 			Resource.Name = FName(Pair.first.c_str());
-			Resource.Path = Entry[ResourceKey::Path].ToString();
+			Resource.Path = FPaths::NormalizePath(Entry[ResourceKey::Path].ToString());
 			Resource.Category = InferSoundCategory(Pair.first, Resource.Path);
 			if (Entry.hasKey(ResourceKey::Category))
 			{
@@ -433,7 +426,7 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			JSON Entry = Pair.second;
 			FMaterialResource Resource;
 			Resource.Name = FName(Pair.first.c_str());
-			Resource.Path = Entry[ResourceKey::Path].ToString();
+			Resource.Path = FPaths::NormalizePath(Entry[ResourceKey::Path].ToString());
 			MaterialResources[Pair.first] = Resource;
 
 			FGenericPathResource PathResource;
@@ -451,12 +444,12 @@ void FResourceManager::LoadFromFile(const FString& Path, ID3D11Device* InDevice)
 			JSON Entry = Pair.second;
 			FGenericPathResource Resource;
 			Resource.Name = FName(Pair.first.c_str());
-			Resource.Path = Entry[ResourceKey::Path].ToString();
+			Resource.Path = FPaths::NormalizePath(Entry[ResourceKey::Path].ToString());
 			PathResources[Pair.first] = Resource;
 		}
 	}
 
-	DiscoverBitmapFonts("Asset/Engine/Source/Font");
+	DiscoverBitmapFonts("Asset/Source/Font");
 
 	UE_LOG_CATEGORY(
 		ResourceManager,
@@ -1078,7 +1071,7 @@ bool FResourceManager::LoadGPUResources(ID3D11Device* Device)
 			Resource.SRV = nullptr;
 		}
 
-		std::wstring FullPath = FPaths::Combine(FPaths::RootDir(), FPaths::ToWide(Resource.Path));
+		std::wstring FullPath = FPaths::ResolvePathToDisk(Resource.Path);
 
 		// 확장자에 따라 DDS / WIC 로더 분기
 		std::filesystem::path Ext = std::filesystem::path(Resource.Path).extension();

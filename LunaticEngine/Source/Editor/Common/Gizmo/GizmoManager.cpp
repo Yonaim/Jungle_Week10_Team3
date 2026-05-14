@@ -11,11 +11,12 @@
 
 void FGizmoManager::SetTarget(std::shared_ptr<ITransformGizmoTarget> InTarget, std::shared_ptr<IGizmoDeltaTarget> InDeltaTarget)
 {
-    // Target replacement is an ownership/selection-context change, not a user commit.
-    // Mouse release is the only path that should commit an active drag through EndDrag().
+    // Target replacement is an ownership/selection-context change, not an explicit user cancel.
+    // Do not restore DragStartWorldMatrix here: tab/context switches can otherwise write a
+    // stale start matrix back to an unrelated or old target.
     if (bDragging)
     {
-        CancelDrag();
+        AbortLiveInteractionWithoutApplying();
     }
 
     Target = InTarget;
@@ -37,10 +38,10 @@ bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey,
     }
 
     // A target-key change means the old live target no longer owns the interaction.
-    // Cancel instead of committing, otherwise tab/context switches can apply a stale drag.
+    // This is not an explicit user cancel, so never restore the old drag-start matrix.
     if (bDragging)
     {
-        CancelDrag();
+        AbortLiveInteractionWithoutApplying();
     }
 
     TargetKey = InKey;
@@ -54,10 +55,10 @@ bool FGizmoManager::SetTargetIfChanged(const FGizmoTargetKey& InKey,
 void FGizmoManager::ClearTarget()
 {
     // Clearing a target usually happens on selection/tab/context loss.
-    // Do not commit a partially dragged transform here. Restore first, then detach.
+    // Detach the live session without restoring DragStartWorldMatrix.
     if (bDragging)
     {
-        CancelDrag();
+        AbortLiveInteractionWithoutApplying();
     }
 
     Target.reset();
@@ -186,7 +187,7 @@ void FGizmoManager::SetInteractionPolicy(EGizmoInteractionPolicy InPolicy)
     InteractionPolicy = InPolicy;
     if (InteractionPolicy == EGizmoInteractionPolicy::VisualOnly)
     {
-        CancelDrag();
+        AbortLiveInteractionWithoutApplying();
         ResetVisualInteractionState();
     }
 }
@@ -409,7 +410,7 @@ bool FGizmoManager::BeginDragFromHitProxy(const FGizmoHitProxyResult& HitResult)
     LastIntersectionLocation = FVector::ZeroVector;
     bFirstDragUpdate = true;
 
-    if (DragStartMode != EGizmoMode::Select && DeltaTarget)
+    if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
     {
         FGizmoDragBeginContext BeginContext{};
         BeginContext.Mode = DragStartMode;
@@ -465,7 +466,7 @@ void FGizmoManager::EndDrag()
 {
     if (bDragging && Target && Target->IsValid())
     {
-        if (DragStartMode != EGizmoMode::Select && DeltaTarget)
+        if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
         {
             DeltaTarget->EndGizmoDrag(false);
         }
@@ -485,7 +486,7 @@ void FGizmoManager::CancelDrag()
 {
     if (bDragging && Target && Target->IsValid())
     {
-        if (DragStartMode != EGizmoMode::Select && DeltaTarget)
+        if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
         {
             DeltaTarget->EndGizmoDrag(true);
         }
@@ -499,6 +500,36 @@ void FGizmoManager::CancelDrag()
     bDragging = false;
     bFirstDragUpdate = true;
     ActiveAxis = -1;
+    ResetSnapAccumulation();
+    ResetVisualInteractionState();
+    SyncVisualFromTarget();
+}
+
+void FGizmoManager::AbortLiveInteractionWithoutApplying()
+{
+    // Context/tab deactivation is not a user Cancel command. It is a live-session
+    // detach. Do not restore DragStartWorldMatrix here: when bDragging is stale or
+    // the start matrix was captured before the current target was fully synced,
+    // restoring it can snap the actor/component to identity/origin when returning
+    // to the Level Editor.
+    if (bDragging && Target && Target->IsValid())
+    {
+        if (DragStartMode == EGizmoMode::Translate && DeltaTarget)
+        {
+            DeltaTarget->EndGizmoDrag(false);
+        }
+
+        // End the target edit scope if one was opened, but leave the current target
+        // transform untouched. Hidden tabs must not receive further input after this.
+        Target->EndTransform();
+    }
+
+    bDragging = false;
+    bFirstDragUpdate = true;
+    ActiveAxis = -1;
+    bHasTargetKey = false;
+    Target.reset();
+    DeltaTarget.reset();
     ResetSnapAccumulation();
     ResetVisualInteractionState();
     SyncVisualFromTarget();
@@ -722,31 +753,12 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
     if (DragStartMode == EGizmoMode::Scale && !bPlanar)
     {
         const FVector TotalDelta = CurrentIntersection - DragStartIntersectionLocation;
-        const float ScaleSensitivity = Target ? Target->GetScaleDeltaSensitivity(DragStartSpace) : 1.0f;
-        const float RawScaleDelta = TotalDelta.Dot(DragAxisVector) * ScaleSensitivity;
+        const float RawScaleDelta = TotalDelta.Dot(DragAxisVector);
         const float ScaleDelta = ApplySnapToTotalDragAmount(RawScaleDelta);
         if (std::abs(ScaleDelta) <= FMath::Epsilon)
         {
             LastIntersectionLocation = CurrentIntersection;
             return;
-        }
-
-        if (DeltaTarget)
-        {
-            FGizmoDelta Delta{};
-            Delta.Mode = DragStartMode;
-            Delta.Space = DragStartSpace;
-            Delta.ActiveAxis = ActiveAxis;
-            Delta.AxisVectorComponent = DragAxisVector;
-            Delta.StartTargetTransform = DragStartTransform;
-            if (ActiveAxis == 0) Delta.ScaleDelta.X = ScaleDelta;
-            if (ActiveAxis == 1) Delta.ScaleDelta.Y = ScaleDelta;
-            if (ActiveAxis == 2) Delta.ScaleDelta.Z = ScaleDelta;
-            if (DeltaTarget->ApplyGizmoDelta(Delta))
-            {
-                LastIntersectionLocation = CurrentIntersection;
-                return;
-            }
         }
 
         if (DragStartSpace == EGizmoSpace::World)
@@ -774,7 +786,6 @@ void FGizmoManager::ApplyLinearDrag(const FRay& Ray)
         Delta.Mode = DragStartMode;
         Delta.Space = DragStartSpace;
         Delta.ActiveAxis = ActiveAxis;
-        Delta.AxisVectorComponent = DragAxisVector;
         Delta.StartTargetTransform = DragStartTransform;
 
         if (bPlanar)
@@ -897,22 +908,6 @@ void FGizmoManager::ApplyAngularDrag(const FRay& Ray)
     {
         LastIntersectionLocation = CurrentIntersection;
         return;
-    }
-
-    if (DeltaTarget)
-    {
-        FGizmoDelta Delta{};
-        Delta.Mode = DragStartMode;
-        Delta.Space = DragStartSpace;
-        Delta.ActiveAxis = ActiveAxis;
-        Delta.AxisVectorComponent = AxisVector;
-        Delta.AngularDeltaRadians = TotalAngleRadians;
-        Delta.StartTargetTransform = DragStartTransform;
-        if (DeltaTarget->ApplyGizmoDelta(Delta))
-        {
-            LastIntersectionLocation = CurrentIntersection;
-            return;
-        }
     }
 
     FTransform NewTransform = DragStartTransform;

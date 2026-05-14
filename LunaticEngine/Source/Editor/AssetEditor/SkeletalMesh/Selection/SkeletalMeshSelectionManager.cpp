@@ -169,7 +169,22 @@ bool FSkeletalMeshSelectionManager::IsSelected(int32 BoneIndex) const
 
 int32 FSkeletalMeshSelectionManager::GetPrimaryBoneIndex() const
 {
-    return SelectedBoneIndices.empty() ? -1 : SelectedBoneIndices.front();
+    if (SelectedBoneIndices.empty())
+    {
+        return -1;
+    }
+
+    // The primary gizmo target must be the bone the user most recently selected,
+    // not the first item in the selection array. SelectAll/range selection often
+    // puts root bone 0 at the front, and driving root makes the whole preview mesh
+    // look like it is being transformed.
+    if (LastSelectedBoneIndex >= 0 &&
+        std::find(SelectedBoneIndices.begin(), SelectedBoneIndices.end(), LastSelectedBoneIndex) != SelectedBoneIndices.end())
+    {
+        return LastSelectedBoneIndex;
+    }
+
+    return SelectedBoneIndices.back();
 }
 
 void FSkeletalMeshSelectionManager::RemoveInvalidDuplicates()

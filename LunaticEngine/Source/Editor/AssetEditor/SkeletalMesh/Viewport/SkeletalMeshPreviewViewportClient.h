@@ -54,6 +54,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void DeactivateEditorContext() override;
 
     void RenderViewportImage(bool bIsActiveViewport) override;
+    void NotifyViewportPresented() override;
     const char *GetViewportTooltipBarText() const override;
     bool BuildRenderRequest(FEditorViewportRenderRequest &OutRequest) override;
 
@@ -79,6 +80,7 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     void SyncRenderOptionsFromState();
     void ApplyViewportTypeToCamera();
     void SyncGizmoTargetFromSelection();
+    bool ShouldBlockViewportInteractionUntilContextSettles();
     bool CanProcessLiveViewportWork() const;
     bool CanProcessViewportInput() const;
 
@@ -106,4 +108,6 @@ class FSkeletalMeshPreviewViewportClient final : public FEditorViewportClient
     float OrbitPitch = -10.0f;
     bool bPreviewObjectsInitialized = false;
     bool bNeedsDeferredTargetSync = false;
+    bool bHasRenderedViewportFrameSinceActivation = false;
+    bool bSuppressViewportInputUntilMouseRelease = false;
 };

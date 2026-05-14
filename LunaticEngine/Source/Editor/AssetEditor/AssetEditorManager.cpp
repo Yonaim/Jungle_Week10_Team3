@@ -46,11 +46,7 @@ namespace
 
     std::filesystem::path MakeAbsoluteProjectPath(const std::filesystem::path &Path)
     {
-        if (Path.is_absolute())
-        {
-            return Path.lexically_normal();
-        }
-        return (std::filesystem::path(FPaths::RootDir()) / Path).lexically_normal();
+        return std::filesystem::path(FPaths::ResolvePathToDisk(FPaths::ToUtf8(Path.generic_wstring()))).lexically_normal();
     }
 
     void ShowUnsupportedAssetEditorAlert(UEditorEngine *EditorEngine, const std::filesystem::path &AssetPath)
@@ -112,7 +108,7 @@ bool FAssetEditorManager::OpenAssetFromPath(const std::filesystem::path &AssetPa
     if (!IsUnderDirectory(NormalizedPath, ContentRoot))
     {
         FNotificationManager::Get().AddNotification(
-            "Asset Editor opens only .uasset files under Asset/Game/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+            "Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
         return false;
     }
 
@@ -179,7 +175,7 @@ bool FAssetEditorManager::OpenOwnedWorkingCopy(UObject *Asset, const std::filesy
     if (!IsUnderDirectory(NormalizedPath, ContentRoot))
     {
         FNotificationManager::Get().AddNotification(
-            "Asset Editor opens only .uasset files under Asset/Game/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
+            "Asset Editor opens only .uasset files under Asset/Content. Use Import Source Asset first.", ENotificationType::Error, 5.0f);
         return false;
     }
 
@@ -306,6 +302,11 @@ FEditorViewportClient *FAssetEditorManager::GetActiveViewportClient() const { re
 void FAssetEditorManager::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients) const
 {
     AssetEditorWindow.CollectViewportClients(OutClients);
+}
+
+void FAssetEditorManager::ForceDeactivateAllViewportClients()
+{
+    AssetEditorWindow.ForceDeactivateAllViewportClients();
 }
 
 std::unique_ptr<IAssetEditor> FAssetEditorManager::CreateEditorForAsset(UObject *Asset) const

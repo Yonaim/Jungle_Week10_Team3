@@ -80,6 +80,9 @@ class FSkeletalMeshEditor final : public IAssetEditor
     void RenderPanelsInternal(float DeltaTime, ImGuiID DockspaceId);
     void BuildDefaultDockLayout(ImGuiID DockspaceId);
     void RenderPreviewerSettingsPanel(const FPanelDesc& Desc);
+    bool ShouldDisablePreviewForAsset(const std::filesystem::path& AssetPath) const;
+    bool CanUsePreviewViewport() const;
+    void RenderPreviewDisabledPanel(const FPanelDesc& Desc) const;
 
     FHistoryState CaptureHistoryState() const;
     void ApplyHistoryState(const FHistoryState &HistoryState);
@@ -129,4 +132,5 @@ class FSkeletalMeshEditor final : public IAssetEditor
 
     bool bCapturingInput = false;
     bool bIsActiveTab = false;
+    bool bDisablePreviewForCurrentAsset = false;
 };

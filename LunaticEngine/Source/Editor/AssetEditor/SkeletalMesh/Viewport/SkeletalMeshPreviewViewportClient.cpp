@@ -1,4 +1,4 @@
-﻿#include "PCH/LunaticPCH.h"
+#include "PCH/LunaticPCH.h"
 #include "AssetEditor/SkeletalMesh/Viewport/SkeletalMeshPreviewViewportClient.h"
 
 #include "AssetEditor/SkeletalMesh/Gizmo/BoneTransformGizmoTarget.h"
@@ -7,6 +7,7 @@
 
 #include "Component/GizmoVisualComponent.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "Core/Log.h"
 #include "Core/RayTypes.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "Engine/Mesh/SkeletalMesh.h"
@@ -207,10 +208,10 @@ void BuildBoneDebugRadii(
 {
     const int32 BoneCount = static_cast<int32>(Bones.size());
     const float DefaultSphereRadius = ComputeBoneSphereRadius(Bones, Pose);
-    constexpr float SphereRadiusScale = 1.75f;
-    const float EffectiveBoneDebugScale = ClampFloat(BoneDebugScale, 0.1f, 4.0f);
+    constexpr float SphereRadiusScale = 10.f;
+    const float ResolvedBoneDebugScale = ClampFloat(BoneDebugScale, 0.01f, 100.0f);
 
-    OutBoneSphereRadii.resize(BoneCount, DefaultSphereRadius * SphereRadiusScale * EffectiveBoneDebugScale);
+    OutBoneSphereRadii.resize(BoneCount, DefaultSphereRadius * SphereRadiusScale * ResolvedBoneDebugScale);
     OutConnectionBaseRadii.resize(BoneCount, 0.0f);
 
     for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
@@ -229,7 +230,8 @@ void BuildBoneDebugRadii(
         }
 
         const float BoneLength = FVector::Distance(ParentPosition, BonePosition);
-        const float ConnectionBaseRadius = ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius) * EffectiveBoneDebugScale;
+        const float ConnectionBaseRadius =
+            ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius) * ResolvedBoneDebugScale;
         OutConnectionBaseRadii[BoneIndex] = ConnectionBaseRadius;
         const float DesiredSphereRadius = ConnectionBaseRadius * SphereRadiusScale;
         OutBoneSphereRadii[BoneIndex] = (std::max)(OutBoneSphereRadii[BoneIndex], DesiredSphereRadius);
@@ -511,12 +513,8 @@ void ApplySkeletalMeshGizmoStateToManager(const FSkeletalMeshEditorState* State,
         return;
     }
 
-    const EGizmoSpace EffectiveSpace = (State->GizmoMode == EGizmoMode::Scale)
-        ? EGizmoSpace::Local
-        : State->GizmoSpace;
-
     Manager.SetMode(State->GizmoMode);
-    Manager.SetSpace(EffectiveSpace);
+    Manager.SetSpace(State->GizmoSpace);
     Manager.SetSnapSettings(State->bEnableTranslationSnap, State->TranslationSnapSize,
                             State->bEnableRotationSnap, State->RotationSnapSize,
                             State->bEnableScaleSnap, State->ScaleSnapSize);
@@ -583,11 +581,12 @@ void FSkeletalMeshPreviewViewportClient::ActivateEditorContext()
     PreviewScene.GetScene().GetDebugDrawQueue().Clear();
 
     bNeedsDeferredTargetSync = true;
+    bHasRenderedViewportFrameSinceActivation = false;
+    bSuppressViewportInputUntilMouseRelease = true;
 
     if (!CanProcessLiveViewportWork())
     {
-        GizmoManager.CancelDrag();
-        GizmoManager.ClearTarget();
+        GizmoManager.AbortLiveInteractionWithoutApplying();
         GizmoTargetBoneIndex = -1;
         return;
     }
@@ -596,11 +595,21 @@ void FSkeletalMeshPreviewViewportClient::ActivateEditorContext()
     // Activation is only ownership restoration; the first normal live Tick will sync selection -> target
     // after mouse capture has settled. This prevents stale input from applying to the old bone target.
     GizmoManager.ResetVisualInteractionState();
+
+    // 탭 복귀 시 자신의 State(GizmoMode/GizmoSpace/Snap)를 즉시 GizmoManager에 적용한다.
+    // Tick/BuildRenderRequest에서도 ApplyEditorStateToViewport()가 이를 수행하지만,
+    // ActivateEditorContext()와 첫 Tick 사이의 구간에서도 올바른 모드가 보장되도록 여기서도 적용한다.
+    // 특히 Level Editor에서 기즈모 모드를 바꾼 후 Asset Editor로 복귀할 때,
+    // Asset Editor의 GizmoManager가 자신의 State 값으로 즉시 덮어써지므로
+    // Level Editor의 마지막 상태가 잔류하는 현상이 차단된다.
+    ApplySkeletalMeshGizmoStateToManager(State, GizmoManager);
 }
 
 void FSkeletalMeshPreviewViewportClient::DeactivateEditorContext()
 {
     bNeedsDeferredTargetSync = false;
+    bHasRenderedViewportFrameSinceActivation = false;
+    bSuppressViewportInputUntilMouseRelease = false;
 
     // Exit live context completely. Keep preview scene/camera/selection state in the owning editor,
     // but detach transient gizmo target, drag session, hover/pressed axis, and input capture.
@@ -608,8 +617,7 @@ void FSkeletalMeshPreviewViewportClient::DeactivateEditorContext()
 
     PreviewScene.GetScene().GetDebugDrawQueue().Clear();
     GizmoManager.SetInteractionPolicy(EGizmoInteractionPolicy::VisualOnly);
-    GizmoManager.CancelDrag();
-    GizmoManager.ClearTarget();
+    GizmoManager.AbortLiveInteractionWithoutApplying();
     GizmoManager.ResetVisualInteractionState();
     GizmoTargetBoneIndex = -1;
     State = nullptr;
@@ -622,6 +630,8 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
     {
         return;
     }
+
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] EnsurePreviewObjects: begin");
 
     PreviewComponent = UObjectManager::Get().CreateObject<USkeletalMeshComponent>();
     if (PoseController)
@@ -646,6 +656,7 @@ void FSkeletalMeshPreviewViewportClient::EnsurePreviewObjects()
 
     ResetPreviewCamera();
     bPreviewObjectsInitialized = true;
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] EnsurePreviewObjects: complete");
 }
 
 void FSkeletalMeshPreviewViewportClient::ReleasePreviewObjects()
@@ -685,6 +696,9 @@ void FSkeletalMeshPreviewViewportClient::SetPreviewMesh(USkeletalMesh *InMesh)
         return;
     }
 
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] SetPreviewMesh: mesh=%s",
+        InMesh ? InMesh->GetFName().ToString().c_str() : "None");
+
     PreviewMesh = InMesh;
     PreviewScene.GetScene().GetDebugDrawQueue().Clear();
     GizmoManager.ClearTarget();
@@ -701,10 +715,12 @@ void FSkeletalMeshPreviewViewportClient::SetPreviewMesh(USkeletalMesh *InMesh)
 
     RebuildPreviewProxy();
     FramePreviewMesh();
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] SetPreviewMesh: complete");
 }
 
 void FSkeletalMeshPreviewViewportClient::RebuildPreviewProxy()
 {
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] RebuildPreviewProxy: begin");
     if (PreviewProxy)
     {
         PreviewScene.RemovePrimitive(PreviewProxy);
@@ -719,17 +735,43 @@ void FSkeletalMeshPreviewViewportClient::RebuildPreviewProxy()
     // PreviewComponent는 Level World에 등록하지 않는다.
     // 대신 PreviewScene에 직접 PrimitiveSceneProxy를 등록해 renderer가 같은 DrawCommand 경로를 타게 한다.
     PreviewProxy = PreviewScene.AddPrimitive(PreviewComponent);
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] RebuildPreviewProxy: complete proxy=%p", PreviewProxy);
 }
 
 
 bool FSkeletalMeshPreviewViewportClient::CanProcessLiveViewportWork() const
 {
-    return IsEditorContextActive() && State != nullptr;
+    return CanProcessLiveContextWork() && State != nullptr;
 }
 
 bool FSkeletalMeshPreviewViewportClient::CanProcessViewportInput() const
 {
     return CanProcessLiveViewportWork() && (IsHovered() || IsActive() || GizmoManager.IsDragging());
+}
+
+bool FSkeletalMeshPreviewViewportClient::ShouldBlockViewportInteractionUntilContextSettles()
+{
+    // This viewport ticks before the ImGui panel refreshes hover/focus/screen-rect state.
+    // Immediately after tab activation, IsActive() is already true, but the viewport may still
+    // be carrying the previous visible frame's rect. Swallow input until we have rendered once
+    // and observed a full mouse-release boundary after activation.
+    if (!bHasRenderedViewportFrameSinceActivation)
+    {
+        return true;
+    }
+
+    if (!bSuppressViewportInputUntilMouseRelease)
+    {
+        return false;
+    }
+
+    if (IsAnyPreviewMouseButtonDownForContextSwitchGuard())
+    {
+        return true;
+    }
+
+    bSuppressViewportInputUntilMouseRelease = false;
+    return true;
 }
 
 void FSkeletalMeshPreviewViewportClient::ApplyEditorStateToViewport()
@@ -877,16 +919,36 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
         return;
     }
 
-    FVector Min = MeshAsset->Vertices[0].pos;
-    FVector Max = MeshAsset->Vertices[0].pos;
+    bool bFoundFiniteVertex = false;
+    FVector Min = FVector::ZeroVector;
+    FVector Max = FVector::ZeroVector;
     for (const FNormalVertex &Vertex : MeshAsset->Vertices)
     {
+        if (!IsFiniteVector(Vertex.pos))
+        {
+            continue;
+        }
+
+        if (!bFoundFiniteVertex)
+        {
+            Min = Vertex.pos;
+            Max = Vertex.pos;
+            bFoundFiniteVertex = true;
+            continue;
+        }
+
         Min.X = (std::min)(Min.X, Vertex.pos.X);
         Min.Y = (std::min)(Min.Y, Vertex.pos.Y);
         Min.Z = (std::min)(Min.Z, Vertex.pos.Z);
         Max.X = (std::max)(Max.X, Vertex.pos.X);
         Max.Y = (std::max)(Max.Y, Vertex.pos.Y);
         Max.Z = (std::max)(Max.Z, Vertex.pos.Z);
+    }
+
+    if (!bFoundFiniteVertex)
+    {
+        ResetPreviewCamera();
+        return;
     }
 
     OrbitTarget = (Min + Max) * 0.5f;
@@ -902,8 +964,7 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 {
     if (!CanProcessLiveViewportWork())
     {
-        GizmoManager.CancelDrag();
-        GizmoManager.ClearTarget();
+        GizmoManager.AbortLiveInteractionWithoutApplying();
         GizmoManager.ResetVisualInteractionState();
         return;
     }
@@ -922,6 +983,14 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 
         bNeedsDeferredTargetSync = false;
         SyncGizmoTargetFromSelection();
+
+        // Context-switch safety: the first frame that rebuilds the gizmo target is
+        // still considered a settle frame.  Do not process viewport input or gizmo
+        // interaction in the same frame, otherwise a mouse/key state inherited from
+        // the previous Level Editor drag can be applied immediately to this Asset
+        // Editor target.
+        GizmoManager.ResetVisualInteractionState();
+        return;
     }
     else
     {
@@ -930,8 +999,15 @@ void FSkeletalMeshPreviewViewportClient::Tick(float DeltaTime)
 
     GetCameraController().SyncTargetToCamera();
     GetCameraController().TickFocus(DeltaTime);
-    TickViewportInput(DeltaTime);
-    TickGizmoInteraction();
+    if (ShouldBlockViewportInteractionUntilContextSettles())
+    {
+        GizmoManager.ResetVisualInteractionState();
+    }
+    else
+    {
+        TickViewportInput(DeltaTime);
+        TickGizmoInteraction();
+    }
 
     if (State && State->bFramePreviewRequested)
     {
@@ -1239,7 +1315,12 @@ int32 FSkeletalMeshPreviewViewportClient::HitTestBoneSelection(const FRay& Ray) 
 
     TArray<float> BoneSphereRadii;
     TArray<float> ConnectionBaseRadii;
-    BuildBoneDebugRadii(Bones, Pose, State->BoneDebugScale, BoneSphereRadii, ConnectionBaseRadii);
+    BuildBoneDebugRadii(
+        Bones,
+        Pose,
+        State ? State->BoneDebugScale : 1.0f,
+        BoneSphereRadii,
+        ConnectionBaseRadii);
     const float ComponentRadiusScale = GetComponentWorldRadiusScale(PreviewComponent);
 
     int32 BestBoneIndex = -1;
@@ -1356,8 +1437,16 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
         return false;
     }
 
+    UE_LOG_CATEGORY(AssetEditor, Info, "[SkeletalPreview] BuildRenderRequest: mesh=%s proxy=%p",
+        PreviewMesh->GetFName().ToString().c_str(), PreviewProxy);
+
     ApplyEditorStateToViewport();
-    SyncGizmoTargetFromSelection();
+    // NOTE: SyncGizmoTargetFromSelection()은 여기서 호출하지 않는다.
+    // BuildRenderRequest()는 Tick()과 독립적으로 렌더 루프에서 매 프레임 호출되기 때문에,
+    // 여기서 호출하면 ActivateEditorContext() → bNeedsDeferredTargetSync=true로 설정된
+    // 딜레이 가드를 우회하게 된다. 결과적으로 탭 전환 직후에 이전 탭(Level Editor)의
+    // 선택 상태가 Asset Editor의 기즈모 타겟으로 즉시 적용되어 기즈모 입력이 블리딩된다.
+    // 기즈모 타겟 동기화는 Tick()의 bNeedsDeferredTargetSync 흐름 안에서만 수행한다.
     SubmitSkeletonDebugDraw();
 
     // Asset Preview의 gizmo visual도 FGizmoManager가 독립 소유한다.
@@ -1393,6 +1482,14 @@ bool FSkeletalMeshPreviewViewportClient::BuildRenderRequest(FEditorViewportRende
         RenderOptions.ViewportType,
         GizmoManager.GetMode()));
     return true;
+}
+
+void FSkeletalMeshPreviewViewportClient::NotifyViewportPresented()
+{
+    if (CanProcessLiveViewportWork())
+    {
+        bHasRenderedViewportFrameSinceActivation = true;
+    }
 }
 
 void FSkeletalMeshPreviewViewportClient::RenderViewportImage(bool bIsActiveViewport)
@@ -1495,7 +1592,12 @@ void FSkeletalMeshPreviewViewportClient::SubmitSkeletonDebugDraw()
     const int32 SelectedBoneIndex = ResolveSelectedBoneIndex(State, SelectionManager);
     TArray<float> BoneSphereRadii;
     TArray<float> ConnectionBaseRadii;
-    BuildBoneDebugRadii(Bones, Pose, State->BoneDebugScale, BoneSphereRadii, ConnectionBaseRadii);
+    BuildBoneDebugRadii(
+        Bones,
+        Pose,
+        State ? State->BoneDebugScale : 1.0f,
+        BoneSphereRadii,
+        ConnectionBaseRadii);
     const float ComponentRadiusScale = GetComponentWorldRadiusScale(PreviewComponent);
     constexpr int32 SphereSegments = 12;
     const FColor NormalSphereColor(0, 255, 0, 255);
@@ -1562,20 +1664,22 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
 {
     if (!CanProcessLiveViewportWork())
     {
-        GizmoManager.CancelDrag();
-        GizmoManager.ClearTarget();
+        GizmoManager.AbortLiveInteractionWithoutApplying();
         GizmoTargetBoneIndex = -1;
         return;
     }
 
-    if (!State || !PreviewComponent || !State->bShowGizmo)
+    if (!State || !PreviewComponent || !State->bShowGizmo || !SelectionManager)
     {
         GizmoManager.ClearTarget();
         GizmoTargetBoneIndex = -1;
         return;
     }
 
-    const int32 SelectedBoneIndex = SelectionManager ? SelectionManager->GetPrimaryBoneIndex() : State->SelectedBoneIndex;
+    // Do not fall back to State->SelectedBoneIndex here. That field is a legacy UI mirror
+    // and can survive a tab/context switch. The live gizmo target must come only from
+    // this active editor tab's SelectionManager.
+    const int32 SelectedBoneIndex = SelectionManager->GetPrimaryBoneIndex();
     if (SelectedBoneIndex < 0)
     {
         GizmoManager.ClearTarget();
@@ -1588,7 +1692,13 @@ void FSkeletalMeshPreviewViewportClient::SyncGizmoTargetFromSelection()
     GizmoTargetBoneIndex = SelectedBoneIndex;
 
     std::shared_ptr<FBoneTransformGizmoTarget> BoneTarget =
-        std::make_shared<FBoneTransformGizmoTarget>(PreviewComponent, PoseController, SelectedBoneIndex, GetEditorContextActiveFlag());
+        std::make_shared<FBoneTransformGizmoTarget>(
+            PreviewComponent,
+            PoseController,
+            SelectedBoneIndex,
+            this,
+            GetEditorContextActiveFlag(),
+            GetEditorContextEpoch());
     std::shared_ptr<IGizmoDeltaTarget> BoneDeltaTarget = PoseController
         ? std::static_pointer_cast<IGizmoDeltaTarget>(BoneTarget)
         : nullptr;

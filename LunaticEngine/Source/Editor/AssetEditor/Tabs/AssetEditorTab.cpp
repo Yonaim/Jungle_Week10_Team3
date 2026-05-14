@@ -62,7 +62,7 @@ void FAssetEditorTab::RequestDefaultLayout()
 {
     LayoutState.bRequestDefaultLayout = true;
     LayoutState.bDefaultLayoutBuilt = false;
-    LayoutState.bRestoreCapturedLayoutNextFrame = false;
+    FPanel::ClearCapturedLayoutRestore(&LayoutState);
     LayoutState.PanelDockIds.clear();
     if (Editor)
     {
@@ -72,10 +72,14 @@ void FAssetEditorTab::RequestDefaultLayout()
 
 void FAssetEditorTab::RequestRestoreCapturedLayout()
 {
-    if (!LayoutState.PanelDockIds.empty())
+    LayoutState.bRequestDefaultLayout = false;
+    if (FPanel::HasCapturedDockLayout(&LayoutState))
     {
-        LayoutState.bRestoreCapturedLayoutNextFrame = true;
+        FPanel::RequestCapturedLayoutRestore(&LayoutState);
+        return;
     }
+
+    RequestDefaultLayout();
 }
 
 void FAssetEditorTab::MarkDefaultLayoutBuilt()
