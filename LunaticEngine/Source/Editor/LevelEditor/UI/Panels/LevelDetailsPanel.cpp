@@ -3611,6 +3611,7 @@ bool FLevelDetailsPanel::RenderPropertyRow(TArray<FPropertyDescriptor> &Props, i
             ResetPath.empty() ? nullptr : ResetPath.c_str(),
             false,
             true,
+            true,
             120.0f,
         });
         break;

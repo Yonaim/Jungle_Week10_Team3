@@ -7,6 +7,7 @@
 
 #include "Component/GizmoVisualComponent.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "Core/Log.h"
 #include "Core/RayTypes.h"
 #include "Debug/DrawDebugHelpers.h"
 #include "Engine/Mesh/SkeletalMesh.h"
