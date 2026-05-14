@@ -76,6 +76,7 @@ class UEditorEngine : public UEngine
     bool           LoadSceneFromPath(const FString &InScenePath);
     bool           ImportAssetWithDialog();
     bool           ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath = nullptr);
+    bool           QueueImportAssetFromPath(const FString& SourcePath);
     bool           ImportMaterialWithDialog();
     bool           ImportTextureWithDialog();
     bool           SaveScene();
@@ -93,6 +94,7 @@ class UEditorEngine : public UEngine
     void           ShowEditorWindows() { LevelEditorWindow.ShowEditorWindows(); }
     void           HideLevelEditorUIForAssetEditor() { LevelEditorWindow.HideLevelEditorUIForAssetEditor(); }
     void           RestoreLevelEditorUIAfterAssetEditor() { LevelEditorWindow.RestoreLevelEditorUIAfterAssetEditor(); }
+    void           RequestDefaultDockLayout() { LevelEditorWindow.RequestDefaultDockLayout(); }
     void           SetShowEditorOnlyComponents(bool bEnable) { LevelEditorWindow.SetShowEditorOnlyComponents(bEnable); }
     bool           IsShowingEditorOnlyComponents() const { return LevelEditorWindow.IsShowingEditorOnlyComponents(); }
     bool           IsWorldCoordSystem() const { return FLevelEditorSettings::Get().CoordSystem == EEditorCoordSystem::World; }

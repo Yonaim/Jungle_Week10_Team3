@@ -149,9 +149,6 @@ std::wstring FPaths::BasicShapeDir()       { return EngineContentDir() + L"Basic
 std::wstring FPaths::EngineBasicShapeSourceDir() { return EngineSourceDir() + L"BasicShape\\"; }
 std::wstring FPaths::SceneDir()            { return ContentDir() + L"Scene\\"; }
 std::wstring FPaths::DataDir()             { return ContentDir() + L"Data\\"; }
-std::wstring FPaths::TexturesDir()         { return ContentDir() + L"Textures\\"; }
-std::wstring FPaths::MaterialsDir()        { return ContentDir() + L"Materials\\"; }
-std::wstring FPaths::MeshesDir()           { return ContentDir() + L"Meshes\\"; }
 std::wstring FPaths::SaveDir()     { return RootDir() + L"Saves\\"; }
 std::wstring FPaths::DumpDir()     { return RootDir() + L"Saves\\Dump\\"; }
 std::wstring FPaths::LogDir()      { return RootDir() + L"Saves\\Logs\\"; }
@@ -294,34 +291,29 @@ std::string FPaths::ToUtf8(const std::wstring& WideStr)
 
 std::string FPaths::ResolveAssetPath(const std::string& BaseFilePath, const std::string& TargetPath)
 {
-	// 1. 기준 파일(OBJ 또는 MTL)의 폴더 경로 추출
-	std::filesystem::path FileDir(ToWide(BaseFilePath));
-	FileDir = FileDir.parent_path();
-
-	// 2. 타겟 파일 경로(텍스처나 MTL 이름)
-	std::filesystem::path Target(ToWide(TargetPath));
-
-	// 3. 두 경로 합치기 및 정규화
-	std::filesystem::path FullPath = (FileDir / Target).lexically_normal();
-	std::filesystem::path ProjectRoot(RootDir());
-
-	std::filesystem::path RelativePath;
-
-	// 4. 절대/상대 경로 분기 처리
-	if (FullPath.is_absolute())
+	if (TargetPath.empty())
 	{
-		RelativePath = FullPath.lexically_relative(ProjectRoot);
-		if (RelativePath.empty())
-		{
-			// 드라이브가 다르거나 계산이 불가능한 경우 최후의 수단으로 파일명만 추출
-			RelativePath = FullPath.filename();
-		}
-	}
-	else
-	{
-		RelativePath = FullPath;
+		return {};
 	}
 
-	// 5. 엔진에서 사용하는 UTF-8 포맷으로 반환 (Windows 백슬래시를 슬래시로 통일)
-	return NormalizePath(ToUtf8(RelativePath.generic_wstring()));
+	const std::filesystem::path ProjectRoot(RootDir());
+	std::filesystem::path BasePath(ToWide(BaseFilePath));
+	if (!BasePath.is_absolute())
+	{
+		BasePath = (ProjectRoot / BasePath).lexically_normal();
+	}
+
+	const std::filesystem::path BaseDir = std::filesystem::is_directory(BasePath) ? BasePath : BasePath.parent_path();
+	const std::filesystem::path Target(ToWide(TargetPath));
+	const std::filesystem::path FullPath = (Target.is_absolute() ? Target : (BaseDir / Target)).lexically_normal();
+
+	std::error_code ErrorCode;
+	const std::filesystem::path Relative = std::filesystem::relative(FullPath, ProjectRoot, ErrorCode);
+	if (!ErrorCode && !Relative.empty() && Relative.native().find(L"..") != 0)
+	{
+		return NormalizePath(ToUtf8(Relative.generic_wstring()));
+	}
+
+	// Project 밖의 import source는 상대경로로 망가뜨리지 말고 절대경로를 유지한다.
+	return NormalizePath(ToUtf8(FullPath.generic_wstring()));
 }

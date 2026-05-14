@@ -516,7 +516,7 @@ void FLevelEditorWindow::RequestRestoreForActiveDocument()
 {
     if (IsActiveDocumentAssetEditor())
     {
-        EditorEngine->GetAssetEditorManager().GetAssetEditorWindow().RequestRestoreForActiveTab();
+        RequestDefaultDockLayout();
         return;
     }
     if (FLevelDocumentTab *Tab = GetActiveLevelDocumentTab())

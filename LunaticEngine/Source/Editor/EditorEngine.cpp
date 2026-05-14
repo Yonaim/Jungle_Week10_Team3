@@ -231,6 +231,7 @@ void UEditorEngine::Tick(float DeltaTime)
 
     ApplyTransformSettingsToGizmo();
     FDirectoryWatcher::Get().ProcessChanges();
+    AssetImportManager.Tick();
     if (UTexture2D::HasPendingTextureRefresh())
     {
         UTexture2D::RefreshChangedTextures(Renderer.GetFD3DDevice().GetDevice());
@@ -709,6 +710,8 @@ bool UEditorEngine::LoadSceneWithDialog() { return LevelEditor.GetSceneManager()
 bool UEditorEngine::ImportAssetWithDialog() { return AssetImportManager.ImportAssetWithDialog(); }
 
 bool UEditorEngine::ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath) { return AssetImportManager.ImportAssetFromPath(SourcePath, OutImportedAssetPath); }
+
+bool UEditorEngine::QueueImportAssetFromPath(const FString& SourcePath) { return AssetImportManager.QueueImportAssetFromPath(SourcePath); }
 
 bool UEditorEngine::ImportMaterialWithDialog() { return AssetImportManager.ImportMaterialWithDialog(); }
 

@@ -5,12 +5,18 @@
 #include "Engine/Runtime/Engine.h"
 #include "Serialization/Archive.h"
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 
 IMPLEMENT_CLASS(USkinnedMeshComponent, UMeshComponent)
 
 namespace
 {
+	bool IsFiniteVertexPosition(const FVector& Value)
+	{
+		return std::isfinite(Value.X) && std::isfinite(Value.Y) && std::isfinite(Value.Z);
+	}
+
 	int32 GetRequiredMaterialSlotCount(const USkeletalMesh* SkeletalMesh)
 	{
 		if (!SkeletalMesh)
@@ -235,16 +241,36 @@ void USkinnedMeshComponent::UpdateWorldAABB() const
 		return;
 	}
 
-	FVector LocalMin = (*Verts)[0].pos;
-	FVector LocalMax = (*Verts)[0].pos;
+	bool bFoundFiniteVertex = false;
+	FVector LocalMin = FVector::ZeroVector;
+	FVector LocalMax = FVector::ZeroVector;
 	for (const FNormalVertex& V : *Verts)
 	{
+		if (!IsFiniteVertexPosition(V.pos))
+		{
+			continue;
+		}
+
+		if (!bFoundFiniteVertex)
+		{
+			LocalMin = V.pos;
+			LocalMax = V.pos;
+			bFoundFiniteVertex = true;
+			continue;
+		}
+
 		LocalMin.X = std::min(LocalMin.X, V.pos.X);
 		LocalMin.Y = std::min(LocalMin.Y, V.pos.Y);
 		LocalMin.Z = std::min(LocalMin.Z, V.pos.Z);
 		LocalMax.X = std::max(LocalMax.X, V.pos.X);
 		LocalMax.Y = std::max(LocalMax.Y, V.pos.Y);
 		LocalMax.Z = std::max(LocalMax.Z, V.pos.Z);
+	}
+
+	if (!bFoundFiniteVertex)
+	{
+		UPrimitiveComponent::UpdateWorldAABB();
+		return;
 	}
 
 	FVector LocalCenter = (LocalMin + LocalMax) * 0.5f;

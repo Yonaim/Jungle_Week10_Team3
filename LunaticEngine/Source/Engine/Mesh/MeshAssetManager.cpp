@@ -13,6 +13,7 @@
 #include "Object/ObjectFactory.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <cwctype>
 #include <vector>
@@ -172,6 +173,251 @@ namespace
             }
         }
         return false;
+    }
+
+    bool IsFiniteFloat(float Value)
+    {
+        return std::isfinite(Value);
+    }
+
+    bool IsFiniteVector(const FVector& Value)
+    {
+        return IsFiniteFloat(Value.X) && IsFiniteFloat(Value.Y) && IsFiniteFloat(Value.Z);
+    }
+
+    bool IsFiniteVector2(const FVector2& Value)
+    {
+        return IsFiniteFloat(Value.X) && IsFiniteFloat(Value.Y);
+    }
+
+    bool IsFiniteVector4(const FVector4& Value)
+    {
+        return IsFiniteFloat(Value.X) && IsFiniteFloat(Value.Y) && IsFiniteFloat(Value.Z) && IsFiniteFloat(Value.W);
+    }
+
+    bool IsFiniteQuat(const FQuat& Value)
+    {
+        return IsFiniteFloat(Value.X) && IsFiniteFloat(Value.Y) && IsFiniteFloat(Value.Z) && IsFiniteFloat(Value.W);
+    }
+
+    bool IsFiniteMatrix(const FMatrix& Value)
+    {
+        for (int32 Row = 0; Row < 4; ++Row)
+        {
+            for (int32 Column = 0; Column < 4; ++Column)
+            {
+                if (!IsFiniteFloat(Value.M[Row][Column]))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    void SanitizeSkeletalMeshVertex(FNormalVertex& Vertex)
+    {
+        if (!IsFiniteVector(Vertex.pos))
+        {
+            Vertex.pos = FVector::ZeroVector;
+        }
+
+        if (!IsFiniteVector(Vertex.normal) || Vertex.normal.Length() <= 1.0e-4f)
+        {
+            Vertex.normal = FVector(0.0f, 0.0f, 1.0f);
+        }
+        else
+        {
+            Vertex.normal.Normalize();
+        }
+
+        if (!IsFiniteVector4(Vertex.color))
+        {
+            Vertex.color = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+
+        if (!IsFiniteVector2(Vertex.tex))
+        {
+            Vertex.tex = FVector2(0.0f, 0.0f);
+        }
+
+        if (!IsFiniteVector4(Vertex.tangent))
+        {
+            Vertex.tangent = FVector4(1.0f, 0.0f, 0.0f, 1.0f);
+        }
+    }
+
+    void SanitizeSkeletalMeshBone(FBoneInfo& Bone, int32 BoneCount)
+    {
+        if (Bone.ParentIndex < InvalidBoneIndex || Bone.ParentIndex >= BoneCount)
+        {
+            Bone.ParentIndex = InvalidBoneIndex;
+        }
+
+        if (!IsFiniteVector(Bone.LocalBindTransform.Location))
+        {
+            Bone.LocalBindTransform.Location = FVector::ZeroVector;
+        }
+
+        if (!IsFiniteQuat(Bone.LocalBindTransform.Rotation) || Bone.LocalBindTransform.Rotation.SizeSquared() <= 1.0e-6f)
+        {
+            Bone.LocalBindTransform.Rotation = FQuat::Identity;
+        }
+        else
+        {
+            Bone.LocalBindTransform.Rotation.Normalize();
+        }
+
+        if (!IsFiniteVector(Bone.LocalBindTransform.Scale))
+        {
+            Bone.LocalBindTransform.Scale = FVector(1.0f, 1.0f, 1.0f);
+        }
+        else
+        {
+            if (std::abs(Bone.LocalBindTransform.Scale.X) <= 1.0e-6f) Bone.LocalBindTransform.Scale.X = 1.0f;
+            if (std::abs(Bone.LocalBindTransform.Scale.Y) <= 1.0e-6f) Bone.LocalBindTransform.Scale.Y = 1.0f;
+            if (std::abs(Bone.LocalBindTransform.Scale.Z) <= 1.0e-6f) Bone.LocalBindTransform.Scale.Z = 1.0f;
+        }
+
+        if (!IsFiniteMatrix(Bone.InverseBindPose))
+        {
+            Bone.InverseBindPose = FMatrix::Identity;
+        }
+    }
+
+    void EnsureSkeletalMaterialSlotCount(USkeletalMesh* SkeletalMesh, int32 RequiredSlotCount)
+    {
+        if (!SkeletalMesh || RequiredSlotCount <= 0)
+        {
+            return;
+        }
+
+        TArray<FStaticMaterial>& Materials = SkeletalMesh->GetStaticMaterialsMutable();
+        if (static_cast<int32>(Materials.size()) >= RequiredSlotCount)
+        {
+            return;
+        }
+
+        UMaterial* FallbackMaterial = FMaterialManager::Get().GetOrCreateMaterial("None");
+        const int32 PreviousCount = static_cast<int32>(Materials.size());
+        Materials.resize(RequiredSlotCount);
+        for (int32 SlotIndex = PreviousCount; SlotIndex < RequiredSlotCount; ++SlotIndex)
+        {
+            Materials[SlotIndex].MaterialInterface = FallbackMaterial;
+            Materials[SlotIndex].MaterialSlotName = "Element_" + std::to_string(SlotIndex);
+        }
+    }
+
+    void SanitizeLoadedSkeletalMesh(USkeletalMesh* SkeletalMesh, const FString& AssetPath)
+    {
+        if (!SkeletalMesh)
+        {
+            return;
+        }
+
+        FSkeletalMesh* MeshAsset = SkeletalMesh->GetSkeletalMeshAsset();
+        if (!MeshAsset)
+        {
+            return;
+        }
+
+        for (FNormalVertex& Vertex : MeshAsset->Vertices)
+        {
+            SanitizeSkeletalMeshVertex(Vertex);
+        }
+
+        const int32 BoneCount = static_cast<int32>(MeshAsset->Bones.size());
+        for (FBoneInfo& Bone : MeshAsset->Bones)
+        {
+            SanitizeSkeletalMeshBone(Bone, BoneCount);
+        }
+
+        bool bDroppedInvalidTriangles = false;
+        TArray<uint32> SanitizedIndices;
+        SanitizedIndices.reserve(MeshAsset->Indices.size());
+        const uint32 VertexCount = static_cast<uint32>(MeshAsset->Vertices.size());
+        for (size_t Index = 0; Index + 2 < MeshAsset->Indices.size(); Index += 3)
+        {
+            const uint32 I0 = MeshAsset->Indices[Index + 0];
+            const uint32 I1 = MeshAsset->Indices[Index + 1];
+            const uint32 I2 = MeshAsset->Indices[Index + 2];
+            if (I0 >= VertexCount || I1 >= VertexCount || I2 >= VertexCount)
+            {
+                bDroppedInvalidTriangles = true;
+                continue;
+            }
+
+            SanitizedIndices.push_back(I0);
+            SanitizedIndices.push_back(I1);
+            SanitizedIndices.push_back(I2);
+        }
+
+        if (SanitizedIndices.size() != MeshAsset->Indices.size())
+        {
+            MeshAsset->Indices = std::move(SanitizedIndices);
+        }
+
+        bool bNeedsFallbackSection = MeshAsset->Sections.empty();
+        int32 MaxMaterialIndex = -1;
+        if (!bNeedsFallbackSection)
+        {
+            const uint32 IndexCount = static_cast<uint32>(MeshAsset->Indices.size());
+            for (FSkeletalMeshSection& Section : MeshAsset->Sections)
+            {
+                if (Section.MaterialIndex < 0)
+                {
+                    Section.MaterialIndex = 0;
+                }
+
+                MaxMaterialIndex = (std::max)(MaxMaterialIndex, Section.MaterialIndex);
+
+                if (Section.IndexStart > IndexCount ||
+                    Section.IndexCount > IndexCount ||
+                    Section.IndexStart + Section.IndexCount > IndexCount ||
+                    (Section.IndexCount % 3u) != 0u)
+                {
+                    bNeedsFallbackSection = true;
+                    break;
+                }
+            }
+        }
+
+        if (bDroppedInvalidTriangles || bNeedsFallbackSection)
+        {
+            MeshAsset->Sections.clear();
+            if (!MeshAsset->Indices.empty())
+            {
+                FSkeletalMeshSection FallbackSection;
+                FallbackSection.MaterialIndex = 0;
+                FallbackSection.IndexStart = 0;
+                FallbackSection.IndexCount = static_cast<uint32>(MeshAsset->Indices.size());
+                FallbackSection.VertexStart = 0;
+                FallbackSection.VertexCount = static_cast<uint32>(MeshAsset->Vertices.size());
+                MeshAsset->Sections.push_back(FallbackSection);
+                MaxMaterialIndex = 0;
+            }
+        }
+
+        if (!MeshAsset->Sections.empty())
+        {
+            for (const FSkeletalMeshSection& Section : MeshAsset->Sections)
+            {
+                MaxMaterialIndex = (std::max)(MaxMaterialIndex, Section.MaterialIndex);
+            }
+        }
+
+        EnsureSkeletalMaterialSlotCount(SkeletalMesh, (std::max)(1, MaxMaterialIndex + 1));
+        MeshAsset->BuildBoneHierarchyCache();
+
+        if (bDroppedInvalidTriangles || bNeedsFallbackSection)
+        {
+            UE_LOG_CATEGORY(MeshAssetManager, Warning,
+                "[AssetLoad] SkeletalMesh sanitized for preview safety: path=%s vertices=%zu indices=%zu sections=%zu",
+                AssetPath.c_str(),
+                MeshAsset->Vertices.size(),
+                MeshAsset->Indices.size(),
+                MeshAsset->Sections.size());
+        }
     }
 }
 
@@ -399,6 +645,8 @@ USkeletalMesh* FMeshAssetManager::LoadSkeletalMeshAssetFile(const FString& Asset
         MeshAsset->PathFileName = CacheKey;
         MeshAsset->BuildBoneHierarchyCache();
     }
+
+    SanitizeLoadedSkeletalMesh(SkeletalMesh, CacheKey);
 
     if (Purpose == EMeshAssetLoadPurpose::RuntimeShared)
     {

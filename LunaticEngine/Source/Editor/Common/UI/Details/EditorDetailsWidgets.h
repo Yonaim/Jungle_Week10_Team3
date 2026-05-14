@@ -73,9 +73,9 @@ inline void DrawDetailsSearchToolbar(const char *Id, char *SearchBuffer, size_t 
 
     FEditorUIStyle::DrawSearchInputWithIcon(Id, "Search", SearchBuffer, SearchBufferSize, SearchWidth);
     ImGui::SameLine();
-    DrawSmallIconButton("##DetailsViewOptions", "▦", "View Options");
+    DrawSmallIconButton("##DetailsViewOptions", "V", "View Options");
     ImGui::SameLine();
-    DrawSmallIconButton("##DetailsSettings", "⚙", "Settings");
+    DrawSmallIconButton("##DetailsSettings", "S", "Settings");
     ImGui::Spacing();
 }
 
@@ -144,7 +144,8 @@ inline void DrawAxisField(const char *Id, const char *AxisLabel, float &Value, b
     ImGui::PopID();
 }
 
-inline bool DrawVector3Row(const char *Label, FVector &Values, bool bReadOnly, bool bShowReset = true)
+inline bool DrawVector3Row(const char *Label, FVector &Values, bool bReadOnly, bool bShowReset = true,
+                           const FVector *ResetValues = nullptr)
 {
     bool bChanged = false;
     ImGui::PushID(Label);
@@ -180,7 +181,32 @@ inline bool DrawVector3Row(const char *Label, FVector &Values, bool bReadOnly, b
         ImGui::TableNextColumn();
         if (bShowReset)
         {
-            DrawSmallIconButton("##Reset", "↶", "Reset");
+            if (bReadOnly)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            const bool bResetClicked = ImGui::Button("##Reset", ImVec2(22.0f, 22.0f));
+            const ImVec2 Min = ImGui::GetItemRectMin();
+            const ImVec2 LabelSize = ImGui::CalcTextSize("R");
+            ImGui::GetWindowDrawList()->AddText(
+                ImVec2(Min.x + (22.0f - LabelSize.x) * 0.5f, Min.y + (22.0f - LabelSize.y) * 0.5f),
+                ImGui::GetColorU32(ImGuiCol_Text), "R");
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("Reset");
+            }
+
+            if (bReadOnly)
+            {
+                ImGui::EndDisabled();
+            }
+
+            if (bResetClicked && !bReadOnly && ResetValues)
+            {
+                Values = *ResetValues;
+                bChanged = true;
+            }
         }
         ImGui::EndTable();
     }

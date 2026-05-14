@@ -21,7 +21,11 @@
 #include "Texture/Texture2D.h"
 
 #include <algorithm>
+#include <chrono>
+#include <fstream>
 #include <filesystem>
+#include <functional>
+#include <vector>
 #include <cwctype>
 
 namespace
@@ -93,6 +97,78 @@ namespace
         default:                          return "UObject";
         }
     }
+
+    bool CopyFileWithProgress(const std::filesystem::path& SourcePath,
+                              const std::filesystem::path& DestinationPath,
+                              const std::function<void(uint64, uint64)>& ProgressCallback,
+                              FString* OutErrorMessage)
+    {
+        std::ifstream Input(SourcePath, std::ios::binary);
+        if (!Input.is_open())
+        {
+            if (OutErrorMessage)
+            {
+                *OutErrorMessage = "Import failed: could not open source .uasset.";
+            }
+            return false;
+        }
+
+        std::ofstream Output(DestinationPath, std::ios::binary | std::ios::trunc);
+        if (!Output.is_open())
+        {
+            if (OutErrorMessage)
+            {
+                *OutErrorMessage = "Import failed: could not create destination .uasset.";
+            }
+            return false;
+        }
+
+        const uint64 TotalBytes = static_cast<uint64>(std::filesystem::file_size(SourcePath));
+        std::vector<char> Buffer(4 * 1024 * 1024);
+        uint64 CopiedBytes = 0;
+
+        if (ProgressCallback)
+        {
+            ProgressCallback(0, TotalBytes);
+        }
+
+        while (Input)
+        {
+            Input.read(Buffer.data(), static_cast<std::streamsize>(Buffer.size()));
+            const std::streamsize BytesRead = Input.gcount();
+            if (BytesRead <= 0)
+            {
+                break;
+            }
+
+            Output.write(Buffer.data(), BytesRead);
+            if (!Output.good())
+            {
+                if (OutErrorMessage)
+                {
+                    *OutErrorMessage = "Import failed: write error while copying .uasset.";
+                }
+                return false;
+            }
+
+            CopiedBytes += static_cast<uint64>(BytesRead);
+            if (ProgressCallback)
+            {
+                ProgressCallback(CopiedBytes, TotalBytes);
+            }
+        }
+
+        if (!Input.eof() && Input.fail())
+        {
+            if (OutErrorMessage)
+            {
+                *OutErrorMessage = "Import failed: read error while copying .uasset.";
+            }
+            return false;
+        }
+
+        return true;
+    }
 }
 
 void FAssetImportManager::Init(UEditorEngine* InEditorEngine)
@@ -102,7 +178,23 @@ void FAssetImportManager::Init(UEditorEngine* InEditorEngine)
 
 void FAssetImportManager::Shutdown()
 {
+    {
+        std::lock_guard<std::mutex> Lock(AsyncMutex);
+        PendingAsyncImports.clear();
+    }
+
+    if (AsyncImportThread.joinable())
+    {
+        AsyncImportThread.join();
+    }
+    bAsyncImportRunning = false;
     EditorEngine = nullptr;
+}
+
+void FAssetImportManager::Tick()
+{
+    FinalizeAsyncImportIfReady();
+    StartNextAsyncImportIfIdle();
 }
 
 bool FAssetImportManager::ImportAssetWithDialog()
@@ -129,8 +221,7 @@ bool FAssetImportManager::ImportAssetWithDialog()
         return false;
     }
 
-    FString ImportedAssetPath;
-    return ImportAssetFromPath(SelectedPath, &ImportedAssetPath);
+    return QueueImportAssetFromPath(SelectedPath);
 }
 
 bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString* OutImportedAssetPath)
@@ -209,6 +300,33 @@ bool FAssetImportManager::ImportAssetFromPath(const FString& SourcePath, FString
         EditorEngine->SelectContentBrowserPath(ImportedPath);
     }
 
+    return true;
+}
+
+bool FAssetImportManager::QueueImportAssetFromPath(const FString& SourcePath)
+{
+    const std::filesystem::path SourceAbsolute = ResolveSourcePathOnDisk(SourcePath);
+    if (SourcePath.empty() || !std::filesystem::exists(SourceAbsolute))
+    {
+        UE_LOG_CATEGORY(AssetImport, Error, "[Import] Source file not found: %s", SourcePath.c_str());
+        FNotificationManager::Get().AddNotification("Import failed: source file not found.", ENotificationType::Error, 5.0f);
+        return false;
+    }
+
+    if (!ShouldImportAsync(SourcePath))
+    {
+        FString ImportedAssetPath;
+        return ImportAssetFromPath(SourcePath, &ImportedAssetPath);
+    }
+
+    const FString SourceFileName = FPaths::ToUtf8(SourceAbsolute.filename().wstring());
+    {
+        std::lock_guard<std::mutex> Lock(AsyncMutex);
+        PendingAsyncImports.push_back({ SourcePath });
+    }
+
+    FNotificationManager::Get().AddNotification("Queued import: " + SourceFileName, ENotificationType::Info, 2.0f);
+    StartNextAsyncImportIfIdle();
     return true;
 }
 
@@ -325,49 +443,17 @@ bool FAssetImportManager::ImportTextureSource(const FString& SourcePath, FString
 
 bool FAssetImportManager::ImportExistingUAsset(const FString& SourcePath, FString* OutImportedAssetPath)
 {
-    const std::filesystem::path SourceAbsolute = ResolveSourcePathOnDisk(SourcePath);
-    FAssetFileHeader Header;
-    if (!FAssetFileSerializer::ReadAssetHeader(SourceAbsolute, Header))
+    FString ErrorMessage;
+    const bool bImported = ImportExistingUAssetWithProgress(SourcePath, OutImportedAssetPath, &ErrorMessage);
+    if (!bImported)
     {
-        UE_LOG_CATEGORY(AssetImport, Error, "[Import] Invalid .uasset file: %s", ToUtf8GenericPath(SourceAbsolute).c_str());
-        FNotificationManager::Get().AddNotification("Import failed: invalid .uasset file.", ENotificationType::Error, 5.0f);
-        return false;
+        const std::filesystem::path SourceAbsolute = ResolveSourcePathOnDisk(SourcePath);
+        UE_LOG_CATEGORY(AssetImport, Error, "[Import] Existing .uasset import failed: %s", ToUtf8GenericPath(SourceAbsolute).c_str());
+        FNotificationManager::Get().AddNotification(ErrorMessage.empty() ? "Import failed: invalid .uasset file." : ErrorMessage,
+                                                    ENotificationType::Error,
+                                                    5.0f);
     }
-
-    const wchar_t* Category = L"Imported";
-    switch (Header.ClassId)
-    {
-    case EAssetClassId::StaticMesh:
-    case EAssetClassId::SkeletalMesh:
-        Category = L"Meshes";
-        break;
-    case EAssetClassId::Material:
-        Category = L"Materials";
-        break;
-    case EAssetClassId::Texture:
-        Category = L"Textures";
-        break;
-    case EAssetClassId::PoseAsset:
-        Category = L"Poses";
-        break;
-    default:
-        Category = L"Imported";
-        break;
-    }
-
-    std::filesystem::path DestinationDirectory = std::filesystem::path(FPaths::ContentDir()) / Category;
-    std::filesystem::create_directories(DestinationDirectory);
-    std::filesystem::path DestinationPath = DestinationDirectory / SourceAbsolute.filename();
-    EnsureUniquePath(DestinationPath);
-
-    std::filesystem::copy_file(SourceAbsolute, DestinationPath, std::filesystem::copy_options::overwrite_existing);
-
-    if (OutImportedAssetPath)
-    {
-        *OutImportedAssetPath = MakeProjectRelativePath(DestinationPath);
-    }
-    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Existing %s copied into Content: %s", GetAssetClassIdName(Header.ClassId), MakeProjectRelativePath(DestinationPath).c_str());
-    return true;
+    return bImported;
 }
 
 bool FAssetImportManager::SaveImportedObject(const std::filesystem::path& DestinationPath, UObject* Object, FString* OutImportedAssetPath)
@@ -409,6 +495,17 @@ bool FAssetImportManager::SaveImportedObject(const std::filesystem::path& Destin
 
 std::filesystem::path FAssetImportManager::MakeDestinationAssetPath(const FString& SourcePath, const wchar_t* CategoryDir, const wchar_t* Prefix) const
 {
+    const std::wstring Category(CategoryDir ? CategoryDir : L"");
+    const std::wstring PrefixString(Prefix ? Prefix : L"");
+
+    if (Category == L"Meshes")
+    {
+        const FString AssetPath = PrefixString == L"SK_"
+            ? FMeshAssetManager::GetSkeletalMeshAssetPath(SourcePath)
+            : FMeshAssetManager::GetStaticMeshAssetPath(SourcePath);
+        return std::filesystem::path(FPaths::ResolvePathToDisk(AssetPath)).lexically_normal();
+    }
+
     const std::filesystem::path Source(FPaths::ToWide(SourcePath));
     const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(Source.stem().wstring()));
 
@@ -426,4 +523,209 @@ FString FAssetImportManager::MakeProjectRelativePath(const std::filesystem::path
         return FPaths::NormalizePath(FPaths::ToUtf8(Relative.generic_wstring()));
     }
     return FPaths::NormalizePath(FPaths::ToUtf8(Normalized.generic_wstring()));
+}
+
+bool FAssetImportManager::ShouldImportAsync(const FString& SourcePath) const
+{
+    return ToLowerExtension(ResolveSourcePathOnDisk(SourcePath)) == L".uasset";
+}
+
+void FAssetImportManager::StartNextAsyncImportIfIdle()
+{
+    if (bAsyncImportRunning)
+    {
+        return;
+    }
+
+    FPendingAsyncImport PendingImport;
+    {
+        std::lock_guard<std::mutex> Lock(AsyncMutex);
+        if (PendingAsyncImports.empty())
+        {
+            return;
+        }
+
+        PendingImport = PendingAsyncImports.front();
+        PendingAsyncImports.pop_front();
+        AsyncResult = {};
+    }
+
+    if (AsyncImportThread.joinable())
+    {
+        AsyncImportThread.join();
+    }
+
+    bAsyncImportRunning = true;
+    AsyncImportThread = std::thread(&FAssetImportManager::StartAsyncImportWorker, this, PendingImport.SourcePath);
+}
+
+void FAssetImportManager::FinalizeAsyncImportIfReady()
+{
+    FAsyncImportResult Result;
+    bool bHasCompletedResult = false;
+
+    {
+        std::lock_guard<std::mutex> Lock(AsyncMutex);
+        if (AsyncResult.bCompleted)
+        {
+            Result = AsyncResult;
+            AsyncResult = {};
+            bHasCompletedResult = true;
+        }
+    }
+
+    if (!bHasCompletedResult)
+    {
+        return;
+    }
+
+    if (AsyncImportThread.joinable())
+    {
+        AsyncImportThread.join();
+    }
+    bAsyncImportRunning = false;
+
+    if (!Result.bSucceeded)
+    {
+        FNotificationManager::Get().AddNotification(Result.ErrorMessage.empty() ? "Import failed: could not copy .uasset." : Result.ErrorMessage,
+                                                    ENotificationType::Error,
+                                                    5.0f);
+        return;
+    }
+
+    FNotificationManager::Get().AddNotification("Import 90%: refreshing asset browser", ENotificationType::Info, 1.5f);
+    FMeshAssetManager::ScanMeshAssets();
+    FMeshAssetManager::ScanMeshSourceFiles();
+    FMaterialManager::Get().ScanMaterialAssets();
+    UTexture2D::ScanTextureAssets();
+
+    if (EditorEngine)
+    {
+        EditorEngine->RefreshContentBrowser();
+        if (!Result.ImportedAssetPath.empty())
+        {
+            EditorEngine->SelectContentBrowserPath(Result.ImportedAssetPath);
+        }
+    }
+
+    const std::filesystem::path SourceAbsolute = ResolveSourcePathOnDisk(Result.SourcePath);
+    const FString SourceFileName = FPaths::ToUtf8(SourceAbsolute.filename().wstring());
+    const FString ImportedFileName = !Result.ImportedAssetPath.empty()
+        ? FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(Result.ImportedAssetPath)).filename().wstring())
+        : FString("asset");
+    const FString Message = !Result.ImportedAssetPath.empty()
+        ? "Imported " + SourceFileName + " as " + ImportedFileName
+        : "Imported " + SourceFileName;
+
+    FNotificationManager::Get().AddNotification(Message, ENotificationType::Success, 3.0f);
+    UE_LOG_CATEGORY(AssetImport, Info, "[Import] %s | source=%s target=%s", Message.c_str(), ToUtf8GenericPath(SourceAbsolute).c_str(), Result.ImportedAssetPath.c_str());
+}
+
+void FAssetImportManager::StartAsyncImportWorker(const FString& SourcePath)
+{
+    const std::filesystem::path SourceAbsolute = ResolveSourcePathOnDisk(SourcePath);
+    const FString SourceFileName = FPaths::ToUtf8(SourceAbsolute.filename().wstring());
+    FNotificationManager::Get().AddNotification("Import 0%: preparing " + SourceFileName, ENotificationType::Info, 1.5f);
+
+    FString ImportedAssetPath;
+    FString ErrorMessage;
+    const bool bSucceeded = ImportExistingUAssetWithProgress(SourcePath, &ImportedAssetPath, &ErrorMessage);
+
+    std::lock_guard<std::mutex> Lock(AsyncMutex);
+    AsyncResult.bCompleted = true;
+    AsyncResult.bSucceeded = bSucceeded;
+    AsyncResult.SourcePath = SourcePath;
+    AsyncResult.ImportedAssetPath = ImportedAssetPath;
+    AsyncResult.ErrorMessage = ErrorMessage;
+}
+
+bool FAssetImportManager::ImportExistingUAssetWithProgress(const FString& SourcePath, FString* OutImportedAssetPath, FString* OutErrorMessage)
+{
+    const std::filesystem::path SourceAbsolute = ResolveSourcePathOnDisk(SourcePath);
+    FAssetFileHeader Header;
+    if (!FAssetFileSerializer::ReadAssetHeader(SourceAbsolute, Header))
+    {
+        if (OutErrorMessage)
+        {
+            *OutErrorMessage = "Import failed: invalid .uasset file.";
+        }
+        return false;
+    }
+
+    const wchar_t* Category = L"Imported";
+    switch (Header.ClassId)
+    {
+    case EAssetClassId::StaticMesh:
+    case EAssetClassId::SkeletalMesh:
+        Category = L"Meshes";
+        break;
+    case EAssetClassId::Material:
+        Category = L"Materials";
+        break;
+    case EAssetClassId::Texture:
+        Category = L"Textures";
+        break;
+    case EAssetClassId::PoseAsset:
+        Category = L"Poses";
+        break;
+    default:
+        Category = L"Imported";
+        break;
+    }
+
+    std::filesystem::path DestinationDirectory = std::filesystem::path(FPaths::ContentDir()) / Category;
+    std::filesystem::create_directories(DestinationDirectory);
+    std::filesystem::path DestinationPath = DestinationDirectory / SourceAbsolute.filename();
+    EnsureUniquePath(DestinationPath);
+
+    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Existing %s copy begin: source=%s target=%s",
+                    GetAssetClassIdName(Header.ClassId),
+                    ToUtf8GenericPath(SourceAbsolute).c_str(),
+                    ToUtf8GenericPath(DestinationPath).c_str());
+
+    int32 NextMilestone = 25;
+    auto LastNotificationTime = std::chrono::steady_clock::now();
+    const bool bCopied = CopyFileWithProgress(
+        SourceAbsolute,
+        DestinationPath,
+        [SourceAbsolute, &NextMilestone, &LastNotificationTime](uint64 CopiedBytes, uint64 TotalBytes)
+        {
+            if (TotalBytes == 0)
+            {
+                return;
+            }
+
+            const int32 Percent = static_cast<int32>((CopiedBytes * 100ull) / TotalBytes);
+            const auto Now = std::chrono::steady_clock::now();
+            if (Percent < NextMilestone && (Now - LastNotificationTime) < std::chrono::milliseconds(300))
+            {
+                return;
+            }
+
+            while (Percent >= NextMilestone)
+            {
+                NextMilestone += 25;
+            }
+
+            LastNotificationTime = Now;
+            const FString SourceFileName = FPaths::ToUtf8(SourceAbsolute.filename().wstring());
+            FNotificationManager::Get().AddNotification("Import " + std::to_string((std::min)(Percent, 85)) + "%: copying " + SourceFileName,
+                                                        ENotificationType::Info,
+                                                        1.2f);
+        },
+        OutErrorMessage);
+    if (!bCopied)
+    {
+        return false;
+    }
+
+    if (OutImportedAssetPath)
+    {
+        *OutImportedAssetPath = MakeProjectRelativePath(DestinationPath);
+    }
+
+    UE_LOG_CATEGORY(AssetImport, Info, "[Import] Existing %s copied into Content: %s",
+                    GetAssetClassIdName(Header.ClassId),
+                    MakeProjectRelativePath(DestinationPath).c_str());
+    return true;
 }

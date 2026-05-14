@@ -749,11 +749,7 @@ void FContentBrowser::ProcessPendingActions()
         return;
     }
 
-    FString ImportedAssetPath;
-    if (EditorEngine->ImportAssetFromPath(FPaths::ToUtf8(SourcePath.wstring()), &ImportedAssetPath))
-    {
-        BrowserContext.bIsNeedRefresh = true;
-    }
+    EditorEngine->QueueImportAssetFromPath(FPaths::ToUtf8(SourcePath.wstring()));
 }
 
 TArray<FContentItem> FContentBrowser::ReadDirectory(std::wstring Path)

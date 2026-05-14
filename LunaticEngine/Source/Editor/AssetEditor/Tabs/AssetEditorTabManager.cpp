@@ -312,7 +312,9 @@ void FAssetEditorTabManager::ActivateActiveTabContext()
     bEditorContextActive = true;
     if (FAssetEditorTab* ActiveTab = GetActiveTab())
     {
-        ActiveTab->RequestRestoreCapturedLayout();
+        // Never surface a stale or broken captured dock layout when users return to this workspace.
+        // Rebuild the editor's canonical layout before the tab becomes visible again.
+        ActiveTab->RequestDefaultLayout();
         ActivateAssetEditorViewport(ActiveTab->GetEditor());
     }
 }
@@ -601,7 +603,9 @@ bool FAssetEditorTabManager::SetActiveTabIndex(int32 NewIndex)
     ActiveTabIndex = NewIndex;
     if (Tabs[ActiveTabIndex] && Tabs[ActiveTabIndex]->GetEditor())
     {
-        Tabs[ActiveTabIndex]->RequestRestoreCapturedLayout();
+        // Switching back to a document tab should always present the default layout rather than
+        // a previously captured, potentially corrupted dock arrangement.
+        Tabs[ActiveTabIndex]->RequestDefaultLayout();
         if (bEditorContextActive)
         {
             ActivateAssetEditorViewport(Tabs[ActiveTabIndex]->GetEditor());

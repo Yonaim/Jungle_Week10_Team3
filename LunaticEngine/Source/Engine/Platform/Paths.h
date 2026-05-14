@@ -23,9 +23,6 @@ public:
 	static std::wstring EngineBasicShapeSourceDir(); // Asset/Source/BasicShape/
 	static std::wstring SceneDir();             // Asset/Content/Scene/
 	static std::wstring DataDir();              // Asset/Content/Data/
-	static std::wstring TexturesDir();          // Asset/Content/Textures/
-	static std::wstring MaterialsDir();         // Asset/Content/Materials/
-	static std::wstring MeshesDir();            // Asset/Content/Meshes/
 	static std::wstring SaveDir();        // Saves/
 	static std::wstring DumpDir();        // Saves/Dump/
 	static std::wstring LogDir();         // Saves/Logs/

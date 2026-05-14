@@ -201,14 +201,16 @@ float ComputeBoneConnectionBaseRadius(float BoneLength, float ReferenceSphereRad
 void BuildBoneDebugRadii(
     const TArray<FBoneInfo>& Bones,
     const FSkeletonPose& Pose,
+    float BoneDebugScale,
     TArray<float>& OutBoneSphereRadii,
     TArray<float>& OutConnectionBaseRadii)
 {
     const int32 BoneCount = static_cast<int32>(Bones.size());
     const float DefaultSphereRadius = ComputeBoneSphereRadius(Bones, Pose);
     constexpr float SphereRadiusScale = 10.f;
+    const float ResolvedBoneDebugScale = ClampFloat(BoneDebugScale, 0.01f, 100.0f);
 
-    OutBoneSphereRadii.resize(BoneCount, DefaultSphereRadius * SphereRadiusScale);
+    OutBoneSphereRadii.resize(BoneCount, DefaultSphereRadius * SphereRadiusScale * ResolvedBoneDebugScale);
     OutConnectionBaseRadii.resize(BoneCount, 0.0f);
 
     for (int32 BoneIndex = 0; BoneIndex < BoneCount; ++BoneIndex)
@@ -227,7 +229,8 @@ void BuildBoneDebugRadii(
         }
 
         const float BoneLength = FVector::Distance(ParentPosition, BonePosition);
-        const float ConnectionBaseRadius = ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius);
+        const float ConnectionBaseRadius =
+            ComputeBoneConnectionBaseRadius(BoneLength, DefaultSphereRadius) * ResolvedBoneDebugScale;
         OutConnectionBaseRadii[BoneIndex] = ConnectionBaseRadius;
         const float DesiredSphereRadius = ConnectionBaseRadius * SphereRadiusScale;
         OutBoneSphereRadii[BoneIndex] = (std::max)(OutBoneSphereRadii[BoneIndex], DesiredSphereRadius);
@@ -906,16 +909,36 @@ void FSkeletalMeshPreviewViewportClient::FramePreviewMesh()
         return;
     }
 
-    FVector Min = MeshAsset->Vertices[0].pos;
-    FVector Max = MeshAsset->Vertices[0].pos;
+    bool bFoundFiniteVertex = false;
+    FVector Min = FVector::ZeroVector;
+    FVector Max = FVector::ZeroVector;
     for (const FNormalVertex &Vertex : MeshAsset->Vertices)
     {
+        if (!IsFiniteVector(Vertex.pos))
+        {
+            continue;
+        }
+
+        if (!bFoundFiniteVertex)
+        {
+            Min = Vertex.pos;
+            Max = Vertex.pos;
+            bFoundFiniteVertex = true;
+            continue;
+        }
+
         Min.X = (std::min)(Min.X, Vertex.pos.X);
         Min.Y = (std::min)(Min.Y, Vertex.pos.Y);
         Min.Z = (std::min)(Min.Z, Vertex.pos.Z);
         Max.X = (std::max)(Max.X, Vertex.pos.X);
         Max.Y = (std::max)(Max.Y, Vertex.pos.Y);
         Max.Z = (std::max)(Max.Z, Vertex.pos.Z);
+    }
+
+    if (!bFoundFiniteVertex)
+    {
+        ResetPreviewCamera();
+        return;
     }
 
     OrbitTarget = (Min + Max) * 0.5f;
@@ -1282,7 +1305,12 @@ int32 FSkeletalMeshPreviewViewportClient::HitTestBoneSelection(const FRay& Ray) 
 
     TArray<float> BoneSphereRadii;
     TArray<float> ConnectionBaseRadii;
-    BuildBoneDebugRadii(Bones, Pose, BoneSphereRadii, ConnectionBaseRadii);
+    BuildBoneDebugRadii(
+        Bones,
+        Pose,
+        State ? State->BoneDebugScale : 1.0f,
+        BoneSphereRadii,
+        ConnectionBaseRadii);
     const float ComponentRadiusScale = GetComponentWorldRadiusScale(PreviewComponent);
 
     int32 BestBoneIndex = -1;
@@ -1551,7 +1579,12 @@ void FSkeletalMeshPreviewViewportClient::SubmitSkeletonDebugDraw()
     const int32 SelectedBoneIndex = ResolveSelectedBoneIndex(State, SelectionManager);
     TArray<float> BoneSphereRadii;
     TArray<float> ConnectionBaseRadii;
-    BuildBoneDebugRadii(Bones, Pose, BoneSphereRadii, ConnectionBaseRadii);
+    BuildBoneDebugRadii(
+        Bones,
+        Pose,
+        State ? State->BoneDebugScale : 1.0f,
+        BoneSphereRadii,
+        ConnectionBaseRadii);
     const float ComponentRadiusScale = GetComponentWorldRadiusScale(PreviewComponent);
     constexpr int32 SphereSegments = 12;
     const FColor NormalSphereColor(0, 255, 0, 255);

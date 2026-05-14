@@ -2,6 +2,7 @@
 #include "MaterialManager.h"
 #include <filesystem>
 #include <fstream>
+#include "Core/Log.h"
 #include "Materials/Material.h"
 #include "Platform/Paths.h"
 #include "Render/Shader/ShaderManager.h"
@@ -13,6 +14,20 @@
 
 #include <algorithm>
 #include <vector>
+
+namespace
+{
+	std::filesystem::path ResolveMaterialAssetDiskPath(const FString& MaterialPath)
+	{
+		const std::filesystem::path Resolved(FPaths::ResolvePathToDisk(MaterialPath));
+		if (!Resolved.empty())
+		{
+			return Resolved.lexically_normal();
+		}
+
+		return std::filesystem::path(FPaths::ToWide(FPaths::NormalizePath(MaterialPath))).lexically_normal();
+	}
+}
 
 void FMaterialManager::ScanMaterialAssets()
 {
@@ -149,11 +164,13 @@ UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 
 	if (Path.extension() == L".uasset")
 	{
+		const std::filesystem::path DiskPath = ResolveMaterialAssetDiskPath(GenericPath);
 		FString Error;
-		UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(Path, &Error);
+		UObject* LoadedObject = FAssetFileSerializer::LoadObjectFromAssetFile(DiskPath, &Error);
 		UMaterial* LoadedMaterial = Cast<UMaterial>(LoadedObject);
 		if (LoadedMaterial)
 		{
+			LoadedMaterial->SetAssetPathFileName(GenericPath);
 			LoadedMaterial->RebuildCachedSRVs();
 			MaterialCache.emplace(GenericPath, LoadedMaterial);
 			return LoadedMaterial;
@@ -163,11 +180,25 @@ UMaterial* FMaterialManager::GetOrCreateMaterial(const FString& MaterialPath)
 		{
 			UObjectManager::Get().DestroyObject(LoadedObject);
 		}
+
+		UE_LOG_CATEGORY(Material, Warning,
+			"Material asset load failed. path=%s resolved=%s error=%s",
+			GenericPath.c_str(),
+			FPaths::ToUtf8(DiskPath.generic_wstring()).c_str(),
+			Error.c_str());
 	}
 
 	// .uasset이 없거나 None인 경우 기본 머티리얼 생성.
 	UMaterial* DefaultMaterial = UObjectManager::Get().CreateObject<UMaterial>();
 	FMaterialTemplate* Template = GetOrCreateTemplate(DefaultShaderPath);
+	if (!Template)
+	{
+		UE_LOG_CATEGORY(Material, Error,
+			"Failed to create fallback material because default shader template could not be loaded: %s",
+			DefaultShaderPath.c_str());
+		UObjectManager::Get().DestroyObject(DefaultMaterial);
+		return nullptr;
+	}
 	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> Buffers = CreateConstantBuffers(Template);
 	DefaultMaterial->Create(GenericPath, Template, ERenderPass::Opaque, EBlendState::Opaque,
 		EDepthStencilState::Default, ERasterizerState::SolidBackCull, std::move(Buffers), DefaultShaderPath);
@@ -245,6 +276,10 @@ TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> FMaterialManager::Create
 {
 
 	TMap<FString, std::unique_ptr<FMaterialConstantBuffer>> InjectedBuffers;
+	if (!Template)
+	{
+		return InjectedBuffers;
+	}
 
 	const auto& RequiredBuffers = Template->GetParameterInfo();
 	std::vector<FString> CreatedBuffers;

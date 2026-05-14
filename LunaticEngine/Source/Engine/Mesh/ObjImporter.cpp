@@ -3,7 +3,6 @@
 #include "Mesh/StaticMeshCommon.h"
 #include "Materials/Material.h"
 #include "Core/Log.h"
-#include "Core/Notification.h"
 #include "Engine/Platform/Paths.h"
 #include "Mesh/MeshAssetManager.h"
 #include "Engine/Core/SimpleJsonWrapper.h"
@@ -54,11 +53,6 @@ namespace
 		return FPaths::NormalizePath(FPaths::ToUtf8(NormalizedPath.generic_wstring()));
 	}
 
-	void NotifyObjMaterialImport(const FString& Message, ENotificationType Type = ENotificationType::Info, float Duration = 3.0f)
-	{
-		FNotificationManager::Get().AddNotification(Message, Type, Duration);
-	}
-
 	FString MakeImportedMaterialAssetPath(const FString& SourceFilePath, const FString& MaterialSlotName)
 	{
 		const FString SourceStem = SanitizeAssetName(FPaths::ToUtf8(std::filesystem::path(FPaths::ToWide(SourceFilePath)).stem().wstring()));
@@ -68,7 +62,7 @@ namespace
 			SlotName[0] == 'M' &&
 			SlotName[1] == '_';
 
-		std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::MaterialsDir());
+		std::filesystem::path MaterialDirectory = std::filesystem::path(FPaths::ContentDir()) / L"Materials";
 		const std::wstring FileName = bHasMaterialPrefix
 			? FPaths::ToWide(SlotName) + L".uasset"
 			: L"M_" + FPaths::ToWide(SlotName) + L".uasset";
@@ -627,24 +621,9 @@ FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePat
 	JsonData["ShaderPath"] = "Shaders/Geometry/UberLit.hlsl";
 	JsonData["RenderPass"] = "Opaque";
 
-	NotifyObjMaterialImport("OBJ material: " + MtlInfo->MaterialSlotName + " -> " + MaterialAssetPath, ENotificationType::Info, 2.5f);
-
 	const FString DiffuseTextureAssetPath = MtlInfo->map_Kd.empty() ? FString() : UTexture2D::ImportTextureAsset(MtlInfo->map_Kd);
 	const FString NormalTextureAssetPath = MtlInfo->bump.empty() ? FString() : UTexture2D::ImportTextureAsset(MtlInfo->bump);
 	const FString SpecularTextureAssetPath = MtlInfo->map_Ks.empty() ? FString() : UTexture2D::ImportTextureAsset(MtlInfo->map_Ks);
-
-	if (!MtlInfo->map_Kd.empty() && DiffuseTextureAssetPath.empty())
-	{
-		NotifyObjMaterialImport("OBJ material warning: diffuse texture import failed - " + MtlInfo->MaterialSlotName, ENotificationType::Error, 5.0f);
-	}
-	if (!MtlInfo->bump.empty() && NormalTextureAssetPath.empty())
-	{
-		NotifyObjMaterialImport("OBJ material warning: normal texture import failed - " + MtlInfo->MaterialSlotName, ENotificationType::Error, 5.0f);
-	}
-	if (!MtlInfo->map_Ks.empty() && SpecularTextureAssetPath.empty())
-	{
-		NotifyObjMaterialImport("OBJ material warning: specular texture import failed - " + MtlInfo->MaterialSlotName, ENotificationType::Error, 5.0f);
-	}
 
 	if (!DiffuseTextureAssetPath.empty())
 	{
@@ -676,7 +655,6 @@ FString FObjImporter::ConvertMtlInfoToMaterialAsset(const FString& SourceFilePat
 	}
 
 	FMaterialManager::Get().CreateMaterialAssetFromJson(MaterialAssetPath, JsonData);
-	NotifyObjMaterialImport("Saved material asset: " + MaterialAssetPath, ENotificationType::Success, 2.5f);
 
 	return MaterialAssetPath;
 }

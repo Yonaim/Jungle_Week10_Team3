@@ -294,15 +294,19 @@ void FSkeletalMeshDetailsPanel::RenderTransformSection(USkeletalMesh *Mesh, USke
         ImGui::TextDisabled("Enable Pose Edit Mode to edit Bone transform values.");
     }
 
+    const FTransform &ResetTransform = MeshAsset->Bones[BoneIndex].LocalBindTransform;
     FVector Location = DisplayTransform.Location;
     FVector RotationEuler = DisplayTransform.Rotation.ToRotator().ToVector();
     FVector Scale = DisplayTransform.Scale;
+    const FVector ResetLocation = ResetTransform.Location;
+    const FVector ResetRotationEuler = ResetTransform.Rotation.ToRotator().ToVector();
+    const FVector ResetScale = ResetTransform.Scale;
 
     ImGui::Spacing();
     bool bChanged = false;
-    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Location", Location, bReadOnly);
-    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Rotation", RotationEuler, bReadOnly);
-    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Scale", Scale, bReadOnly);
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Location", Location, bReadOnly, bCanEdit, &ResetLocation);
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Rotation", RotationEuler, bReadOnly, bCanEdit, &ResetRotationEuler);
+    bChanged |= FEditorDetailsWidgets::DrawVector3Row("Scale", Scale, bReadOnly, bCanEdit, &ResetScale);
 
     if (bChanged && bCanEdit)
     {

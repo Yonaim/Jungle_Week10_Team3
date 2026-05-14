@@ -60,7 +60,10 @@ void FAssetEditorWindow::EnterEditorContext()
     bOpen = true;
     bVisible = true;
     TabManager.SetEditorContextActive(true);
-    TabManager.RequestRestoreForActiveTab();
+    if (EditorEngine)
+    {
+        EditorEngine->RequestDefaultDockLayout();
+    }
 }
 
 void FAssetEditorWindow::ExitEditorContext()
@@ -179,7 +182,10 @@ bool FAssetEditorWindow::ActivateDocumentTab(int32 TabIndex)
     if (bActivated)
     {
         Show();
-        TabManager.RequestRestoreForActiveTab();
+        if (EditorEngine)
+        {
+            EditorEngine->RequestDefaultDockLayout();
+        }
     }
     return bActivated;
 }
@@ -334,12 +340,17 @@ void FAssetEditorWindow::RenderDocumentTabBar()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.035f, 0.035f, 0.040f, 1.0f));
+    const int32 PreviousActiveTabIndex = TabManager.GetActiveTabIndex();
     if (ImGui::Begin("##AssetEditorDocumentTabBar", nullptr, Flags))
     {
         TabManager.SetClosePromptOwnerWindowHandle(EditorEngine && EditorEngine->GetWindow() ? EditorEngine->GetWindow()->GetHWND() : nullptr);
         TabManager.RenderDocumentTabBar();
     }
     ImGui::End();
+    if (EditorEngine && PreviousActiveTabIndex != TabManager.GetActiveTabIndex())
+    {
+        EditorEngine->RequestDefaultDockLayout();
+    }
     ImGui::PopStyleColor();
     ImGui::PopStyleVar(4);
 }

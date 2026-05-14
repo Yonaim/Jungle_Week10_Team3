@@ -102,6 +102,7 @@ struct FSkeletalMeshEditorState
     float AxisIntensity = 1.0f;
     float DebugLineThickness = 1.0f;
     float BillboardIconScale = 1.0f;
+    float BoneDebugScale = 1.0f;
 
     // Previewer Settings 패널: 현재 렌더러가 직접 수치 조명을 모두 소비하지 않더라도,
     // 프리뷰 씬의 조명/시각화 정책을 한 곳에서 조정하기 위한 상태다.

@@ -191,6 +191,7 @@ void FSkeletalMeshEditorToolbar::RenderViewportToolbar(USkeletalMesh *Mesh, FSke
             ImGui::Checkbox("Reference Pose", &State.bShowReferencePose);
             ImGui::Checkbox("Mesh Stats", &State.bShowMeshStatsOverlay);
             FEditorViewportToolbar::DrawSliderFloat("Billboard Icon Scale", State.BillboardIconScale, 0.1f, 5.0f);
+            FEditorViewportToolbar::DrawSliderFloat("Bone Debug Scale", State.BoneDebugScale, 0.1f, 5.0f);
         }
 
         if (ImGui::CollapsingHeader("Debug"))

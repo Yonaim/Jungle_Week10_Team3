@@ -24,6 +24,17 @@ namespace
 {
 uint32 GNextSkeletalMeshEditorId = 1;
 
+FString ToLowerAsciiCopy(FString Value)
+{
+    for (char& Character : Value)
+    {
+        if (Character >= 'A' && Character <= 'Z')
+        {
+            Character = static_cast<char>(Character - 'A' + 'a');
+        }
+    }
+    return Value;
+}
 }
 
 void FSkeletalMeshEditor::Initialize(UEditorEngine *InEditorEngine, FRenderer *InRenderer)
@@ -59,6 +70,7 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
 
     EditingAsset = SkeletalMesh;
     EditingAssetPath = AssetPath.lexically_normal();
+    bDisablePreviewForCurrentAsset = ShouldDisablePreviewForAsset(EditingAssetPath);
     if (FSkeletalMesh *MeshData = EditingAsset->GetSkeletalMeshAsset())
     {
         if (MeshData->PathFileName.empty())
@@ -78,7 +90,7 @@ bool FSkeletalMeshEditor::OpenAsset(UObject *Asset, const std::filesystem::path 
     bSkeletonTreePanelOpen = true;
     bDetailsPanelOpen = true;
     bBoneDetailsPanelOpen = true;
-    bPreviewerSettingsPanelOpen = true;
+    bPreviewerSettingsPanelOpen = !bDisablePreviewForCurrentAsset;
 
     bOpen = true;
     bDirty = false;
@@ -108,6 +120,7 @@ void FSkeletalMeshEditor::Close()
     bDetailsPanelOpen = true;
     bBoneDetailsPanelOpen = true;
     bPreviewerSettingsPanelOpen = true;
+    bDisablePreviewForCurrentAsset = false;
 
     bOpen = false;
     bDirty = false;
@@ -151,7 +164,7 @@ bool FSkeletalMeshEditor::Save()
 
 void FSkeletalMeshEditor::Tick(float DeltaTime)
 {
-    if (!bOpen || !bIsActiveTab || !bPreviewPanelOpen)
+    if (!bOpen || !bIsActiveTab || !CanUsePreviewViewport())
     {
         PreviewViewport.DeactivateEditorContext();
         return;
@@ -182,7 +195,7 @@ void FSkeletalMeshEditor::OnActivated()
 {
     bIsActiveTab = true;
     bCapturingInput = false;
-    if (bOpen && bPreviewPanelOpen)
+    if (bOpen && CanUsePreviewViewport())
     {
         PreviewViewport.BindEditorContext(State, &SelectionManager);
     }
@@ -224,7 +237,7 @@ void FSkeletalMeshEditor::RenderPanels(float DeltaTime, ImGuiID DockspaceId)
 
 FEditorViewportClient *FSkeletalMeshEditor::GetActiveViewportClient()
 {
-    if (!bOpen || !bPreviewPanelOpen)
+    if (!bOpen || !CanUsePreviewViewport())
     {
         return nullptr;
     }
@@ -239,7 +252,7 @@ FEditorViewportClient *FSkeletalMeshEditor::GetActiveViewportClient()
 
 void FSkeletalMeshEditor::CollectViewportClients(TArray<FEditorViewportClient *> &OutClients)
 {
-    if (!bOpen || !bPreviewPanelOpen)
+    if (!bOpen || !CanUsePreviewViewport())
     {
         return;
     }
@@ -419,8 +432,44 @@ void FSkeletalMeshEditor::PushUndoStateIfChanged(const FHistoryState &BeforeStat
 
 USkeletalMeshComponent *FSkeletalMeshEditor::GetPreviewComponent() const
 {
+    if (!CanUsePreviewViewport())
+    {
+        return nullptr;
+    }
+
     FSkeletalMeshPreviewViewportClient *PreviewClient = const_cast<FSkeletalMeshPreviewViewport &>(PreviewViewport).GetViewportClient();
     return PreviewClient ? PreviewClient->GetPreviewComponent() : nullptr;
+}
+
+bool FSkeletalMeshEditor::ShouldDisablePreviewForAsset(const std::filesystem::path& AssetPath) const
+{
+    (void)AssetPath;
+    return false;
+}
+
+bool FSkeletalMeshEditor::CanUsePreviewViewport() const
+{
+    return bPreviewPanelOpen && !bDisablePreviewForCurrentAsset;
+}
+
+void FSkeletalMeshEditor::RenderPreviewDisabledPanel(const FPanelDesc& Desc) const
+{
+    if (!FPanel::Begin(Desc))
+    {
+        FPanel::End();
+        return;
+    }
+
+    ImGui::TextWrapped("Preview viewport is temporarily disabled for this asset to avoid editor crashes.");
+    ImGui::Spacing();
+    ImGui::TextWrapped("You can still inspect the asset, change material slots, and save the .uasset safely.");
+    if (!EditingAssetPath.empty())
+    {
+        ImGui::Spacing();
+        ImGui::TextDisabled("%s", FPaths::ToUtf8(EditingAssetPath.filename().wstring()).c_str());
+    }
+
+    FPanel::End();
 }
 
 std::string FSkeletalMeshEditor::MakePanelStableId(const char *PanelName) const
@@ -521,11 +570,18 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
 
     if (bPreviewPanelOpen)
     {
-        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        if (bDisablePreviewForCurrentAsset)
         {
-            PreviewClient->SetPoseController(PoseController);
+            RenderPreviewDisabledPanel(PreviewDesc);
         }
-        PreviewViewport.Render(EditingAsset, State, &SelectionManager, &Toolbar, DeltaTime, PreviewDesc);
+        else
+        {
+            if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+            {
+                PreviewClient->SetPoseController(PoseController);
+            }
+            PreviewViewport.Render(EditingAsset, State, &SelectionManager, &Toolbar, DeltaTime, PreviewDesc);
+        }
     }
     if (bSkeletonTreePanelOpen)
     {
@@ -545,9 +601,12 @@ void FSkeletalMeshEditor::RenderPanelsInternal(float DeltaTime, ImGuiID Dockspac
     if (bBoneDetailsPanelOpen)
     {
         USkeletalMeshComponent *PreviewComponent = nullptr;
-        if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+        if (!bDisablePreviewForCurrentAsset)
         {
-            PreviewComponent = PreviewClient->GetPreviewComponent();
+            if (FSkeletalMeshPreviewViewportClient *PreviewClient = PreviewViewport.GetViewportClient())
+            {
+                PreviewComponent = PreviewClient->GetPreviewComponent();
+            }
         }
         DetailsPanel.Render(EditingAsset, PreviewComponent, PoseController.get(), State, SelectionManager, BoneDetailsDesc);
     }
